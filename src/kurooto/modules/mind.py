@@ -38,8 +38,10 @@ from kurooto.mind import (
     journal,
     measure,
     mood,
+    pest,
     promises,
     signals,
+    stimulation,
     story,
     tone,
     workspace,
@@ -110,6 +112,7 @@ class Mind(Module):
         if self._unsub is None:
             self._unsub = subscribe(self._mirror)
         self.every("gate", "every 1m", lambda p: gate.release(self.app) if gate.on(self.app) else 0)  # held messages
+        self.every("pest", "every 1m", lambda p: pest.sweep(self.app) if mind.on(self.app) else 0)  # ignored an hour
         # stage 04 (shadow mode: computed, logged and shown, nothing depends on it yet); each part has its own switch
         self.every("signals", "hourly", self._signals)  # the day's numbers, then today's read
         self.every("tone", "hourly", lambda p: tone.batch(self.app) if mind.on(self.app) else 0)
@@ -122,6 +125,10 @@ class Mind(Module):
         self.every("promises", "every 5m", lambda p: promises.review(self.app) if mind.on(self.app) else {})
         self.every("feelings", "hourly", lambda p: feelings.tick(self.app) if mind.on(self.app) else None)
         self.every("feeling_say", "daily 17:30", lambda p: feelings.say(self.app) if mind.on(self.app) else False)
+        # 0.8.8: speaking up about a finding or a risk (off by default), concern for what it looks after, a body
+        self.every("feeling_vocal", "hourly", lambda p: feelings.vocal(self.app) if mind.on(self.app) else False)
+        workspace.register_bidder("concern", feelings.bids)
+        self.every("stimulation", "every 1m", lambda p: stimulation.tick(self.app) and None, thread=True)
         self.every("act_digest", "weekly sun 19:10", lambda p: act.digest(self.app) if mind.on(self.app) else False)
         # stage 07: the day's journal, then the checker's own nightly self-check against corrupted copies of it
         self.every("journal", "daily 23:40", self._journal)
@@ -539,8 +546,8 @@ class Mind(Module):
             return "Brain is off (Features → Brain)."
         w = (arg or "").split()
         names = ["intero", "activity", *[f"phone.{s}" for s in senses_phone.SENSORS]]
-        if w and w[0] == "body":
-            return senses_intero.report(self.app)
+        if w and w[0] == "body":  # its machine's readings, then how they're felt (0.8.8, mind/stimulation.py)
+            return senses_intero.report(self.app) + "\n\n" + stimulation.report(self.app)
         if len(w) == 2 and w[0] in ("on", "off"):
             key = w[1] if w[1] in names else (f"phone.{w[1]}" if f"phone.{w[1]}" in names else "")
             if not key:
@@ -845,6 +852,8 @@ def button(app, ref: str, act: str) -> str:
         "mind-plan-last.json",
         "mind-precedents.json",
         "mind-play.json",
+        "mind-pest.json",
+        "mind-stimulation.json",
     ):  # the gate's, the read's, the tone's, its promises' and its acts' own files
         (app.paths.state / f).unlink(missing_ok=True)
     app.events.emit("mind_deleted", records=n)

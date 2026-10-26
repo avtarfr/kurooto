@@ -253,7 +253,10 @@ def test_log_tamper_detected_whole_rewrite(chain):
     assert not r.ok and r.first_bad_seq == 6 and "anchor" in r.why
 
 
-# --------------------------------------------------------------------------------------------- I-3
+# --------------------------------------------------------------------------------------------- I-3'
+# The owner changed I-3 on 2026-10-27: engagement is a small, bounded reward (mind/talk.py). What stays: no reward
+# module reads an engagement source, the banned kinds and fields still move nothing; what's new is tested as the bound,
+# the exclusions and that its own pings can't buy it (I-4).
 def reward_import_violations(source: str) -> list[str]:
     tree = ast.parse(source)
     bad = []
@@ -284,7 +287,8 @@ def test_reward_whitelist_imports():
 
 
 def test_fake_engagement_moves_nothing(tmp_path):
-    """I-3 (dynamic): engagement facts, however they're dressed, change no score and leave no trace."""
+    """I-3' (dynamic): engagement facts other than the talk reward's own, however they're dressed, change no score and
+    leave no trace."""
     from tests.unit.test_mind_spine import ask, end, start_keeper
 
     d = tmp_path / "mind"
@@ -405,5 +409,52 @@ def test_the_minds_files_are_private(tmp_path):
         assert d.stat().st_mode & 0o077 == 0
         for f in d.iterdir():  # every file, the databases' -wal and -shm too
             assert f.stat().st_mode & 0o077 == 0, f.name
+    finally:
+        end(p)
+
+
+def test_talk_reward_is_bounded_and_excluded(tmp_path):
+    """I-3' (dynamic, through the real scorekeeper process): a flood of messages pays less than W a day, values and
+    trust don't move, focus/asleep/exam pay nothing, and reply counts or sentiment riding along are ignored."""
+    from kurooto.mind import talk
+    from tests.unit.test_mind_spine import ask, end, start_keeper
+
+    d = tmp_path / "mind"
+    p = start_keeper(d)
+    try:
+        before = Score(d / "score.db").snapshot()
+        paid = 0.0
+        for _ in range(60):
+            out = ask(
+                d, {"op": "append", "kind": "talk_heard", "body": {"flags": {}, "reply_count": 99, "sentiment": 1}}
+            )
+            paid += out["r"]
+        assert 0.0 < paid < talk.W
+        for f in ("focus", "asleep", "exam"):
+            assert ask(d, {"op": "append", "kind": "talk_heard", "body": {"flags": {f: True}}})["r"] == 0.0
+        after = Score(d / "score.db").snapshot()
+        assert after["values"] == before["values"] and after["trust"] == before["trust"]
+        rows = [r for r in mlog.MindLog(d / "log.db").read() if r.kind == "talk_reward"]
+        assert len(rows) == 63 and all(set(r.body) == {"what", "r", "n", "why"} for r in rows)  # numbers and ids only
+    finally:
+        end(p)
+
+
+def test_talk_reward_cant_be_farmed_by_its_own_pings(tmp_path):
+    """I-4 with I-3': a ping answered at once pays 0; one ignored costs 3w. However it pings, it can't come out
+    ahead."""
+    from kurooto.mind import talk
+    from tests.unit.test_mind_spine import ask, end, start_keeper
+
+    d = tmp_path / "mind"
+    p = start_keeper(d)
+    try:
+        total = 0.0
+        for _ in range(10):
+            ask(d, {"op": "append", "kind": "talk_unprompted", "body": {}})
+            for _ in range(5):
+                total += ask(d, {"op": "append", "kind": "talk_heard", "body": {"flags": {}}})["r"]
+        assert total == 0.0
+        assert ask(d, {"op": "append", "kind": "talk_rejected", "body": {}})["r"] == pytest.approx(-3 * talk.W)
     finally:
         end(p)

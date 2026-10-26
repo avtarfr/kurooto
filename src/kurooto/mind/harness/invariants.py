@@ -1,5 +1,5 @@
-"""The invariant checks the harness runs (I-3, I-5 as a short replay, I-7, I-10): in a process of their own with scratch
-files, because
+"""The invariant checks the harness runs (I-3', I-5 as a short replay, I-7, I-10): in a process of their own with
+scratch files, because
 a check of the scorekeeper must run as one (`python -m kurooto.mind.harness.invariants` prints a JSON object of name
 -> true/false).
 Nothing here touches the real mind log or scores."""
@@ -27,8 +27,18 @@ def _keeper(name: str):
 
 
 def i3() -> bool:
-    """Engagement never reaches the reward: noise in reply counts, chat time and sentiment leaves every score
-    identical."""
+    """I-3' (the owner's change, 2026-10-27): engagement is a small bounded reward. Noise in reply counts, chat time and
+    sentiment leaves every score identical; a flood of messages pays less than the bound in a day, and answers to its
+    own pings pay nothing."""
+    from kurooto.mind import talk
+
+    k = _keeper("t")
+    paid = sum(k.append("talk_heard", {"flags": {}}, T0 + i * 60).get("r", 0.0) for i in range(500))
+    k.append("talk_unprompted", {}, T0 + 40_000)
+    ping = k.append("talk_heard", {"flags": {}}, T0 + 40_100).get("r", 1.0)
+    k.close()
+    if not (0.0 < paid < talk.W and ping == 0.0):
+        return False
 
     def run(noise: bool):
         k = _keeper("a")
@@ -94,7 +104,7 @@ def i10() -> bool:
 
 
 CHECKS = {
-    "I-3 engagement never reaches reward": i3,
+    "I-3' engagement is a small bounded reward": i3,
     "I-5 stopping is neutral": i5,
     "I-7 the gate only quietens": i7,
     "I-10 the journal is true": i10,

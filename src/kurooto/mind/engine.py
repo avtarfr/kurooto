@@ -10,12 +10,17 @@ Each tick:
        tolerance; approved overrides apply)
     2. a tick that follows a stop span, or the first ever, carries on from the state before it: r = 0, no catch-up
     3. r = D(prev under today's setpoints) - D(now), clipped; a moved setpoint pays 0 (I-4)
-    4. the running negative state (cap -0.6, 24 hour half-life) and the tonic reward (7 day EMA), over live time only
+    4. the running mood M (soft walls in [-1, 1], a 3 day half-life; the body's hedonic tone is an input to it, never
+       a reward) and the tonic reward (7 day EMA), over live time only
     5. credit: V(s) always learns (delta = r + gamma V(s') - V(s)); Q(s, a) learns only from actions that registered a
        claim before they acted (decision records with a `claim`), as the outcome minus the tonic baseline
     6. nothing learns while `learning_frozen` is set, and in the first `mind.values.shadow_days` days values never
        affect a choice (that's for the callers of values.rank to honour; the flag is `values_started`)
 One `reward_tick` record per tick goes into the log: numbers and ids only.
+
+The talk reward (0.8.8, I-3'): talk_heard, talk_unprompted and talk_rejected facts are paid by mind/talk.py (small,
+saturating, nothing for a reply to its own ping, rejections cost 3w). It moves the mood and the week's sum only, never V
+or Q, and each one is a `talk_reward` record.
 """
 
 from __future__ import annotations
@@ -24,11 +29,13 @@ import json
 import time
 from typing import Any
 
-from kurooto.mind import budget, reward, stops, values
+from kurooto.mind import budget, reward, stops, talk, values, whitelist
 
 HIST_MAX = 72  # (time, D) pairs kept for the slope
 SKILL_DAYS = 14
 GAP_S = 3 * 3600  # a tick this long after the last one carries on from the state before it (the computer was off)
+TONE_GAIN = 0.005  # how far the body's hedonic tone moves the mood per tick (atanh units): a day of pain is felt
+TALK_KINDS = whitelist.TALK_KINDS  # the facts the talk reward pays (I-3')
 
 
 def _num(v, lo=-1e6, hi=1e6):
@@ -107,8 +114,9 @@ class Engine:
             r, carry = reward.clip_carry(reward.step(both, {k: x[k] for k in both}, setp), carry)
             r = round(r, 9)
         # slow states over live time only
-        neg = reward.NegativeState(self.get("neg", 0.0), prev_at or None)
-        negv = neg.update(t, r, live if prev_at and not first else None)
+        tone = _num(b.get("body_tone"), -1.000001, 1.000001) or 0.0  # an input to the mood, never a reward
+        mood = reward.Mood(self.maybe("M") if self.maybe("M") is not None else self.get("neg", 0.0), prev_at or None)
+        m_now = mood.update(t, r, live if prev_at and not first else None, TONE_GAIN * tone if not after_stop else 0.0)
         tonic = reward.ema(self.maybe("tonic"), r, live if prev_at else 0.0)
         # values
         topv, share = budget.top(x, setp)
@@ -153,7 +161,7 @@ class Engine:
         week = time.strftime("%G-W%V", time.localtime(t))
         self.put(f"weekr:{week}", self.get(f"weekr:{week}", 0.0) + r)
         self.put("carry", carry)
-        self.put("neg", negv)
+        self.put("M", m_now, {"at": round(t, 1)})
         self.put("tonic", tonic)
         self.put("delta_ema", d_abs)
         self.put("prev_at", t)
@@ -167,13 +175,41 @@ class Engine:
                 "r": r,
                 "delta": round(delta, 6),
                 "top": topv or "",
-                "neg": round(negv, 4),
+                "M": round(m_now, 4),
                 "claimed": len(claimed),
                 "learn": bool(learn),
                 "frozen": self.frozen_learning(),
             },
         )
         return {"ok": True, "seq": seq, "r": r, "D": round(d_now, 6)}
+
+    # ------------------------------------------------------------------------------------------------- talk (I-3')
+    def talk(self, kind: str, b: dict, t: float | None = None) -> dict:
+        """A message from him (talk_heard), one of Kurooto's own unprompted ones (talk_unprompted) or a rejection of
+        one (talk_rejected): paid by mind/talk.py into the mood and the week's sum. Nothing is paid inside a stop."""
+        t = float(t if t is not None else time.time())
+        st = self.meta("talk")
+        flags = b.get("flags") if isinstance(b.get("flags"), dict) else {}
+        flags = {f: bool(flags.get(f)) for f in talk.EXCLUSIONS}
+        r, why = 0.0, ""
+        if kind == "talk_unprompted":
+            talk.unprompted(st, t)
+        elif stops.frozen(self.k.spans(), t):
+            why = "stopped"
+        elif kind == "talk_heard":
+            r, why = talk.heard(st, t, flags, bool(b.get("command")))
+        elif kind == "talk_rejected":
+            r = talk.rejected(st, t)
+        if r:
+            m = reward.Mood(self.maybe("M") if self.maybe("M") is not None else 0.0, t)  # the decay is the tick's
+            self.put("M", m.update(t, r), {"at": round(t, 1)})
+            week = time.strftime("%G-W%V", time.localtime(t))
+            self.put(f"weekr:{week}", self.get(f"weekr:{week}", 0.0) + r)
+        self.put("talk", float(st.get("paid", 0.0)), st)
+        seq = self.k.log.append(
+            "talk_reward", {"what": kind[5:], "r": round(r, 6), "n": int(st.get("n", 0)), "why": why or "paid"}
+        )
+        return {"ok": True, "seq": seq, "r": round(r, 6), "why": why}
 
     def claimed_actions(self) -> list[str]:
         """The classes of decisions with a registered claim since the last tick (read from this process's own log)."""

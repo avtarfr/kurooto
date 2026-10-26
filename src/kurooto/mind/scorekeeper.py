@@ -338,6 +338,8 @@ class Keeper:
                 return self.engine.verdict(b)
             if kind == "trust_evidence":
                 return self.engine.trust_evidence(b, ts)
+            if kind in eng.TALK_KINDS:  # 0.8.8 (I-3'): the bounded talk reward, mind/talk.py
+                return self.engine.talk(kind, b, ts)
             if kind == "harness_result":  # numbers about how it does on tasks; nothing that scores reads them (I-12)
                 fams = {
                     str(f)[:20]: {str(s)[:10]: float(v) for s, v in d.items() if isinstance(v, (int, float))}

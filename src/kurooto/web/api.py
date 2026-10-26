@@ -264,6 +264,10 @@ class Api:
             return tools_api.get(self.app, path, q)
         if path == "addons":  # the add-ons by link, their cards and what's kept for Undo (core/addons.py)
             return 200, self._addons()
+        if path == "body":  # Brain's body map for the dashboard (mind/stimulation.py, 0.8.8): plain numbers only
+            from kurooto.mind import stimulation
+
+            return 200, stimulation.body(self.app)
         if path == "brain/claude-accounts":  # your extra Claude accounts (providers/claude_accounts.py)
             return 200, {"accounts": providers.claude_accounts.rows(self.app), "terms": providers.claude_accounts.TERMS}
         if path == "jobs":  # what the AI is working on and what waits (core/jobs.py; `kurooto jobs`)

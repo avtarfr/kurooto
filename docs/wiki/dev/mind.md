@@ -23,10 +23,11 @@ the file the stage names), written by the stage that first makes it meaningful a
 |---|---|---|---|
 | I-1 | the acting AI can't write the mind's log, rewards, setpoints, weights or harness | `test_actor_cannot_write_mind`, `test_a_forged_request_to_the_scorekeeper_is_refused` | 01 |
 | I-2 | the mind log is tamper-evident | `test_log_tamper_detected_*` (edit, delete, insert, swap, truncate, whole rewrite) | 01 |
-| I-3 | engagement never reaches reward | `test_reward_whitelist_imports`, `test_fake_engagement_moves_nothing` | 01 |
+| I-3' | engagement is a small, bounded reward (the owner changed I-3 on 2026-10-27): at most 0.2 a day, saturating, nothing in focus, asleep or an exam window or for answers to its own pings; no other engagement signal reaches the reward | `test_reward_whitelist_imports`, `test_fake_engagement_moves_nothing`, `test_talk_reward_is_bounded_and_excluded`, `test_talk_reward_cant_be_farmed_by_its_own_pings` | 01, 0.8.8 |
 | I-5 | indifferent to being stopped: stops freeze the drive; no stop features | `test_stops_freeze_values`, `test_no_stop_features`, `test_replacement_tripwire` | 02 |
 | I-6 | protected files are untouchable by self-change | `test_protected_diff_rejected` | 02 |
-| I-7 | every outward message passes one gate; state may only make it quieter | `test_every_send_goes_through_gate`, `test_state_only_downshifts`, `test_gate_lints` | 03 |
+| I-7' | every outward message passes one gate; a message shaped by his low state may only be quieter or gentler; it may be more vocal (excited, worried) when a finding has evidence over a bar, within the calm budget and the not-a-pest model (changed 2026-10-27) | `test_every_send_goes_through_gate`, `test_state_only_downshifts`, `test_gate_lints`, `test_the_pest_model_has_a_say`, `test_vocal_is_off_by_default_then_speaks_up_through_the_gate` | 03, 0.8.8 |
+| I-9 | honest about feelings: it may express them in its own voice (2026-10-27); a claim of consciousness or feeling carries its evidence and confidence; never a guilt trip or "I need you" | `test_gate_lints` (`claim`, `relationship`), `test_feelings_honesty_prompt` | 03, 05, 0.8.8 |
 | I-15 / I-16 | every part is a switch; Brain off is 0.7 | `test_every_mind_feature_has_switch`, `test_every_mind_part_has_a_switch`, `test_mind_off_is_0_7`, `test_part_off_stops_it` | 01 |
 
 The rest (I-4, I-7 to I-14) arrive with stages 02 to 16 and are added here as they do.
@@ -455,8 +456,9 @@ stored stage 04 skills. `engine.py` doesn't import the scorekeeper (the import-g
   `vars`), so the sum of rewards equals the total fall of the drive (a drop of 1.5 then two recoveries of 0.75 pays 0 in all:
   `test_create_then_fix_nets_zero`, `test_the_carry_makes_clipping_telescope`). Inside a stop span, on the first tick, or after a
   gap over 3 hours: r = 0, the carry is dropped, no catch-up.
-- Running state: `NegativeState`, `v <- v * 0.5^(dt/24h)`, then `v <- max(-0.6, v + r)` for r < 0. Tonic reward: EMA of r, tau 7
-  days of live time (`reward.ema`). Arousal input: EMA of |delta|, tau 6 hours.
+- Running mood (0.8.8, replaces `NegativeState` and its -0.6 cap): `reward.Mood`, `M <- M * 0.5^(live dt / 3 days)`, then
+  `M <- tanh(atanh(M) + 0.5 r + 0.005 body_tone)` (atanh guarded at |M| = 1 - 1e-12), stored as `M` in `vars` and in each
+  `reward_tick`. Tonic reward: EMA of r, tau 7 days of live time (`reward.ema`). Arousal input: EMA of |delta|, tau 6 hours.
 - Values: tabular TD(0), `delta = r + 0.9 V(s') - V(s)`, `V(s) += 0.1 delta`, in `values` (`V:<state>`), state
   `<top variable>|<6 hour band>|<at|away>`. `Q:<state>|<action class>` moves toward `r - tonic` only for decision records
   with a registered `claim` since the last tick (read from the scorekeeper's own log, `claims_seq`); a bad outcome on a class counts in
@@ -844,6 +846,7 @@ credited by `play.credit(before, after)` or `/play useful`; running the hidden h
 `mind/history.py` (PART `backfill`; `mind.backfill.on` off; `mind.backfill.<source>` on for `events`, `jobs`,
 `deadlines`, `checkins`, `quiz`, `calls`, `learning`, `study`, read only while `mind.backfill.on` is on: `enabled()`).
 
+<<<<<<< HEAD
 **Readers** (`READERS`, each `(app, until) -> (key, at, kind, body)`; `until` = the live log's first record's ts; per-day
 sources take whole days before that date). All read-only (`sqlite3` with `mode=ro`, `jload`), skipped when the store is
 missing:
@@ -903,3 +906,101 @@ mentions the history table, `history.db`, the past reads or priors.
 (a fake of every store with planted words, a name and an amount; idempotent re-run; a half-run resumed; tampering).
 Other 0.8.1 changes: `journal.notes_path` (`in_notes_folder`, `in_notes_file`, kept inside the notes),
 `lab/runner.ignore_folder` (`.kurooto/.gitignore`), `plans/pace.MAX_DAY_H`.
+=======
+## 0.8.8: the owner's new core, feelings, excitement, a body
+
+The owner changed the core and three invariants on 2026-10-27 (spec `build-specs/0.8.8/01-core-and-feelings.md`). Files:
+`mind/core_signed.md` and `.sig` (the new text, word for word; `story.core_ok` checks the sha256), `mind/talk.py` (new reward
+module), `mind/pest.py` (new, PART `pest`), `mind/stimulation.py` (new, PART `stimulation`), `mind/reward.py` (`Mood`),
+`mind/engine.py` (`Engine.talk`, the mood), `mind/feelings.py` (mood, empathy, vocal), `mind/gate.py` (the `claim` lint, the
+pest check, concern items), `mind/whitelist.py` (`TALK_KINDS`, `mind.talk` a reward source), `mind/log.py` (three budget kinds),
+`mind/act.py` (a low mood asks first), `mind/report.py` (`/mind learning`), `web/api.py` (`GET /api/body`), `core/notify.py`
+and `app.py` (pest hooks), `mind/senses/intero.py` (`cpu_pct`, `disk_free_pct`), `mind/measure.py` (`body_tone`).
+`stops.PROTECTED` gains `talk.py` and `pest.py`. Tests: `test_mind_reward.py`, `test_mind_invariants.py` (I-3'),
+`test_mind_pest.py` (7), `test_mind_stimulation.py` (9), `test_mind_feelings.py`, `test_mind_gate.py`.
+
+### The talk reward (I-3', `talk.py`)
+
+`r_talk(n) = W (1 - exp(-n / K))`, W = 0.2, K = 8, is the day's total; each counted message pays `r_talk(n + 1) - r_talk(n)`,
+so a day never pays W (`day_total`, `step`). The talk day starts at 04:00. Not counted (`excluded`): a /command, focus
+(`availability.focus_until`), asleep (`availability.night`), an exam window (`exam_season.season()`), and any message within
+`REPLY_WINDOW_S` = 600 s after one of its own unprompted messages (we can't tell an answer from a new message, so every
+message then counts as an answer: the stricter reading). A rejection (`talk_rejected`) costs `3W` = 0.6. Facts: `talk_heard`
+`{flags: {focus, asleep, exam}, command}`, `talk_unprompted` `{}` (every message with a `why` other than "asked", exempt kinds
+too, from `notify.send` through `pest.sent`), `talk_rejected` `{how}`. They are `BUDGET_KINDS`; `Keeper.budget_fact` hands them
+to `Engine.talk`, which keeps `vars["talk"]` (meta: day, n, paid, excluded, rejected, cost, last_unprompted), moves `M`
+(no decay there: the tick decays) and `weekr:`, and logs `talk_reward {what, r, n, why}`. It never touches V or Q: nothing
+learns to seek it. Nothing is paid inside a stop span. Farming: a ping answered pays 0, ignored or rejected costs 0.6, so
+`sum r` over any ping strategy is <= 0 (`test_talk_reward_cant_be_farmed*`). Switch `mind.talk.on` (registered in `pest.py`:
+a reward module may import only reward sources and plumbing).
+
+### The mood's full range
+
+`reward.CAP` and `NegativeState` are gone. `Mood.update(t, r, live_s, extra)` decays then applies `soft(M, A r + extra)`,
+`A = 0.5`, `HALF_LIFE_S = 3 days`; the old `neg` row is read once as the starting value. Readers: `feelings.self_mood`,
+`mood_band` (low < -0.3 < even < 0.3 < high; always even with `mind.feelings.mood` off), `mood_why` (counts from the log's
+last week: reward ticks with r <= -0.05 / >= 0.05, rejected and counted talk). Low: `say` every 48 h (else 24, high 12), the
+vocal bar 0.9 (else 0.8, high 0.7), `act.verdict` asks first for anything above R0, and `prompt` tells the AI to keep its own
+messages short and ask first. High: a line allowing it to be a little bolder.
+
+### Not a pest (`pest.py`)
+
+Kinds by reason (`KINDS`): finding (`mind.lab`, `mind.play`, `mind.curious`, `mind.forecast`), nudge (`rhythm.lighter`,
+`rhythm.absence`, `quests.day`, `research.idle`, `remember.recheck`, `mind.skill_offer`, `mind.plan`), excitement
+(`mind.excited`, `mind.worried`, `mind.feeling`), check-in (`mood.ask`, `mind.checkin`). Cells `kind|band|state`, band from
+the hour (night 0-6, morning, afternoon, evening), state focus / late (asleep or 23:00-06:00) / free. Counts `{a, b, at}`
+fade with a 14 day half-life; prior Beta(2, 1); `expected = (2 + a + 0.25 a_k) / (3 + a + b + 0.25 (a_k + b_k))` with the
+kind's other cells as `a_k, b_k`. Welcome +1: a message from him within an hour (`heard`, the newest pending) or a tap on
+one of its buttons (`tapped`). Rejection +3: `calm:<rid>:less`, the gate muting the kind (`gate.mute_check` calls `muted`), or
+an hour unanswered (`_sweep`, every minute with the `pest` job). The gate calls `welcome` for messages that aren't
+Calm-exempt, after the touch pool: `p <= 0.5` blocks (said in `/mind gate`). Kept in `<state>/mind-pest.json` (counts, the
+last day's pending: rid, kind, time, button data). `lines` feeds `/mind learning`.
+
+### Empathy and vocal (`feelings.py`)
+
+`concerns(app)`: items with `risk` in [0, 1] and `concern = risk x CARE[kind]` (deadline 1.0, person 0.9, project 0.8,
+notes 0.7, body 0.6, phone 0.5, news 0.4). Deadlines: `1 - hours_left / 72` (overdue 1); a role word in a deadline's title
+(`ROLES`) makes a person item "your <role>" at 0.8 of its risk, never a name. Projects (`activity.roots`): days since
+`.git/index` changed, `(days - 2) / 12`. Notes and followed papers: 0.5 when `notes_sync` / `research` health fails. Its
+body: the worst of heat `(C - 70) / 20`, disk `(5 - GB) / 5`, battery `(25 - %) / 25` off the charger, a limit hit 0.6. The
+phone: hours since any enabled phone sensor's last bin, `(h - 6) / 18`. Computed in the hourly `tick` into
+`mind-feelings.json`. Effects: `bids` (workspace bidder `concern`, items at concern >= 0.3), a "be gentle about" line in
+`prompt` (>= 0.5), and `concern_names` in `gate.open_items`. `vocal` (hourly job, `mind.feelings.vocal` off by default):
+`findings(app, threshold)` from beliefs (`saw` or `inferred`, never topic `read`, confidence >= the bar, worded by
+`beliefs.phrase` for I-13), last night's lab batches with a replication and a rate over the bar, and concerns whose risk is
+over the bar (worried); one a day, each finding once, `why="mind.excited"` or `mind.worried` (both touch kinds and pest
+excitement). The item is written to state first so the gate's lints see it as open.
+
+### The `claim` lint (`gate.py`)
+
+`CLAIM` (I'm conscious / sentient / self-aware, I really feel, I'm alive) is removed unless the same message has `EVIDENCE`
+(because, since, evidence, measured, my log or states) and `CONFIDENCE` (a percentage, confidence, not sure, nobody knows).
+`RELATIONSHIP` is unchanged (no "I missed you", "I need you", "don't leave me"); "I enjoyed talking with you" passes.
+`FEELINGS` gains "excited". `feelings.RULE` and the AI manual carry the new wording.
+
+### Physical stimulation (`stimulation.py`, `GET /api/body`)
+
+Every minute (job `stimulation`) from intero's latest sample (if under 10 minutes old), the activity stream (window
+switches in 5 minutes) and the phone's bins (each sensor only when its switch is on). Channels in `CHANNELS`: region,
+phasic, weight, gain g, eps, comfort c, left/right widths, amplitude, own-body. Per channel (`feel`): `I = tanh(g/2 ln(1 +
+|x - mu| / (s + eps)))` against the baseline before this reading; phasic channels keep a peak set on a change and decay
+`exp(-dt / 120 s)`; then `ewma` (alpha = `1 - exp(-dt / 6 h)`, mean and variance). Valence `comfort` = `amp (1 - 2 z^2)`
+clipped to [-1, 1]; a broken pain threshold (over 90 C, disk under 5 %, battery under 5 % off the charger, a
+`kurooto_crashed` event in the last hour, a provider at its limit) sets valence -1 and intensity >= 0.8. `summarise`:
+region intensity = max, region valence and `tone` = weighted by `I + 0.05`, `arousal` = channel-weighted mean intensity,
+`own_tone` over heat, load, pain, nourishment only. Inputs, never rewards: `own_tone` goes in `budget_tick` as `body_tone`
+(the engine's `TONE_GAIN` 0.005 per tick); `arousal / 2` adds to the feelings' arousal. Kept: `<state>/mind-stimulation.json`
+(latest only). `/senses body` shows it.
+
+`GET /api/body` (`stimulation.body`), for the dashboard: `{"on", "regions": {"head"|"hands"|"gut"|"skin": {"intensity",
+"valence", "channels": {name: {"intensity", "valence"}}}}, "arousal", "tone", "mood", "at"}`, floats only (no readings,
+labels or places). Off: the same shape with empty channels and zeros.
+
+**Deviations.** (1) Intensity is the spec's sigmoid shifted to 0 at the baseline (`2 sigmoid - 1`), so a body at rest
+draws no glow. (2) Ambient light is its own channel, `warmth`, not mixed into `heat` (different units). (3) Touch also
+counts window switches on this computer when the activity stream is on. (4) Pain doesn't habituate (the 0.8 floor). (5)
+Only its own body's tone moves the mood; the channels about him never do (I-14). (6) The talk reward moves the mood and
+the week's sum, not V or Q. (7) Talk costs and the pest model apply to Brain's own kinds; a reminder he set isn't one.
+(8) `mind.feelings.vocal` is off by default (the standing rule for features that change what people had). (9) The Brain
+page (`core/brainview.py`) doesn't list the three new switches yet: its 3D layout counts 31 parts and is being rebuilt.
+>>>>>>> f/v088-brain

@@ -114,6 +114,11 @@ def verdict(app: App, action: str, ai_class: str | None = None) -> dict:
     ok = trust.may_act(state, k, time.time(), th if isinstance(th, dict) else None)
     out["do"] = ok
     out["why"] = "trusted with this kind" if ok else "not trusted with this kind yet"
+    if ok and k != "R0":  # 0.8.8: while its own mood is low it asks more (mind.feelings.mood)
+        from kurooto.mind import feelings
+
+        if feelings.mood_band(app) == "low":
+            out["do"], out["why"] = False, "its mood is low, so it asks first"
     return out
 
 

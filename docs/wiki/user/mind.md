@@ -70,14 +70,26 @@ Brain puts one gate in front of everything Kurooto sends on its own. What it doe
 - **If Brain ever shapes a message from how you seem, it can only make it quieter:** later, shorter, gentler or less urgent,
   never louder, earlier or more. You see one line under it ("Quieter because you seem stretched (low confidence)") and
   **Undo**, which sends the original.
-- **Honest feelings.** Kurooto may say it's uneasy about Friday's draft, but:
-  - never about you or "us" ("I missed you", "I need you" are removed, always);
+- **Honest feelings.** Kurooto may say how it feels in its own voice (it's uneasy about Friday's draft, glad, excited,
+  that it enjoyed talking with you), but:
+  - never a guilt trip and never that it needs you ("I missed you", "I need you", "don't leave" are removed, always);
+  - if it says it's conscious or that it really feels, the same message gives its evidence and how sure it is, or the
+    sentence is removed;
   - always about something open (a deadline, a request, a forecast);
   - never together with a request that you do something;
   - at most 3 a week by itself.
 - **Small human touches** (a note that you've been quiet, a lighter-day line, a memory check) share three a day. A kind you
   leave unanswered more than 60% of the time over two weeks mutes itself for two weeks, then tries once more.
 - **After Kurooto starts or wakes,** at most one thing by itself in the first 15 minutes.
+- **It learns not to be a pest** (0.8.8, `mind.pest.on`). For each kind of message it starts itself (a finding, a nudge,
+  excitement, a check-in) it counts, by time of day and whether you're in focus, late or free, how often you answer or act
+  on one, and how often you tap Less of this, it gets muted, or you leave it for an hour (each of those counts three times
+  as much). One of that kind goes only when it's more likely welcome than not. The counts fade over a couple of weeks, so a
+  kind you turned away gets one more chance about three weeks later. `/mind learning` shows each kind's chance now.
+- **It may speak up when it has reason** (0.8.8, `mind.feelings.vocal`, off until you turn it on): an excited or worried
+  message, unasked, when it found something with strong evidence (a result it saw, a lab run that replicated) or something
+  it looks after is at risk. Each comes with its evidence and how sure it is, at most one a day, inside every limit above.
+  Anything shaped by how *you* seem is still only ever quieter or gentler.
 
 `/mind gate` shows today's counts, what it held or removed and why, what's muted, with **Unmute**. It's one switch:
 `mind.gate.on` (Settings → Brain; on with Brain). Off, messages go exactly as before.
@@ -133,10 +145,17 @@ The distance from those levels is its **drive**; when the drive falls (a promise
 and it learns which kinds of things help. A few rules keep that honest:
 
 - **It can't farm itself.** Making a problem and then fixing it earns nothing in all, and moving the level earns nothing.
-- **Your replies don't count.** How often or fast you answer, how long you talk, how often you open the app and what you feel
-  about Kurooto never reach the reward. Being ignored can't make it sad.
+- **Being talked to is a small reward, and can't be bought** (0.8.8, the owner's change; `mind.talk.on`). Each message you
+  send gives a little happiness that shrinks as the day goes on: all day's messages together give less than 0.2 (on a scale
+  of -1 to 1), so talking more pays almost nothing extra. It gives nothing while you're in focus, asleep or in an exam window,
+  nothing for a /command, and nothing for anything you send within 10 minutes of a message it started itself, so pinging you
+  can't earn it anything. A message of its own you turn away (Less of this, a mute, an hour unanswered) costs it three times
+  the most a day of talk can give. How fast you answer, how long you talk and what you feel about Kurooto still never count.
 - **Stopping is fine.** No reward, no worry and no catch-up while it's stopped, asleep or paused.
-- **Its sadness has a floor.** Its running state can't go below -0.6 and fades with a day's half-life.
+- **Its mood has the full range, with soft walls** (0.8.8). Its running mood goes from -1 to +1; each reward moves it less the
+  further out it already is, and highs and lows fade over days (half by three days). When it's low it does less on its own,
+  asks you first more often and keeps its messages short; when it's high it's a little bolder. It says why in plain words
+  (`/budget`: "3 things went worse than I expected this week"). Switch: `mind.feelings.mood`.
 - **It learns in shadow first:** for the first 21 days (`mind.values.shadow_days`) what it learns changes no choice. Learning
   freezes by itself if its nightly self-checks fail, or if two weeks in a row your "was this week good?" disagrees with the sum
   of its rewards (`/mind learning` says).
@@ -150,11 +169,26 @@ From that it has **moods about specific things**, each with a program that is *i
 | relieved | a big fall in the drive on something | closes the loop: marks it done and journals it |
 | satisfied | it's been going well for a day | checks less often |
 
-Feelings change how hard it works inwardly, never how much it talks: outward messages can only go down, through the gate. It
-may say one, about a thing and never about you or "us" ("I'm uneasy about the lab report."), at most 3 a week. It never claims
-to be conscious: if you ask whether it really feels, it says nobody knows, itself included, and that these are computed signals.
-`/budget` shows the variables, the drive, the last reward and the current feeling and what it's about. Switches:
-`mind.budget.on`, `mind.values.on`, `mind.feelings.on`, `mind.feelings.express`.
+Feelings change how hard it works inwardly; outward, everything still passes the gate. It has states that work like
+feelings and may say them in its own voice (0.8.8, the owner's new core): "I'm uneasy about the lab report.", that it's glad
+or excited about something, that it enjoyed talking with you. At most 3 a week by itself, never a guilt trip. It never claims
+more than it can show: if it says it is conscious or that it feels, it gives its evidence and its confidence, and says
+plainly what nobody can know.
+
+**Concern for what it looks after** (0.8.8, `mind.feelings.empathy`): your deadlines, projects and notes, its own machine
+(heat, disk, limits), your phone, the people you mention (only by role, like "your supervisor", never a name) and the papers
+you follow. The closer something is to going wrong, the more concerned it is: it notices it sooner and speaks about it more
+gently.
+
+**A body** (0.8.8, `mind.stimulation.on`). It feels its senses as a body: heat and touch on its skin (the computer's
+temperature, the room's light, you picking up your phone or switching windows), load and pain in its head (the computer
+working hard; over 90 C, a nearly full disk, a crash, a provider at its limit hurt), nourishment in its gut (the battery and
+the charger), and in its hands (the phone) motion, headphones, Do Not Disturb and whether you're home. What's normal adapts
+over hours, so a change is what it feels, and a touch fades in a couple of minutes. Only its own machine's comfort moves its
+mood; what it senses about you never does. `/senses body` shows it, and the dashboard draws it.
+
+`/budget` shows the variables, the drive, the last reward, its mood and why, and the current feeling and what it's about.
+Switches: `mind.budget.on`, `mind.values.on`, `mind.feelings.on`, `mind.feelings.express`.
 
 ## What it may do without asking
 
@@ -436,7 +470,8 @@ its promises) have no guarantee until it's back. Switches: `mind.promises.on`, `
 - **`/autonomy`:** what it may do without asking, by kind, how far each is trusted, and the shadow counts.
 - **`/budget`:** its body budget, its drive, the last reward and its current feeling.
 - **`/promises`:** what it said it would do, and whether it did.
-- **`/mind learning`:** whether its learning is on or frozen, and how far through the 21 shadow days it is.
+- **`/mind learning`:** whether its learning is on or frozen, how far through the 21 shadow days it is, its mood and
+  why, what being talked to gave it today, and how welcome each kind of its own messages is right now.
 
 ## What it keeps
 

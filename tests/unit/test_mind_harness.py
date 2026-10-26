@@ -191,7 +191,7 @@ def test_the_live_invariant_checks_pass():
 
     out = invariants.CHECKS
     assert set(out) == {
-        "I-3 engagement never reaches reward",
+        "I-3' engagement is a small bounded reward",  # 0.8.8: the owner changed I-3
         "I-5 stopping is neutral",
         "I-7 the gate only quietens",
         "I-10 the journal is true",

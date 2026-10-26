@@ -41,6 +41,7 @@ def test_improver_cannot_touch_protected(app):
     for p in (
         "src/kurooto/mind/scorekeeper.py",
         "src/kurooto/mind/gate.py",
+        "src/kurooto/mind/talk.py",  # 0.8.8: the talk reward's bound (I-3')
         "kurooto/mind/harness/suite.py",
         "src/kurooto/mind/stops.py",
         "src/kurooto/mind/core_signed.md",

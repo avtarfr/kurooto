@@ -19,7 +19,11 @@ Lints (every text):
   - a feeling must name something open (a deadline, an AI request, a promise, a forecast), or it's removed;
   - a feeling never shares a message with a request for your effort: in a message that came by itself the feeling
     sentence goes (and that's logged); in an answer, too;
-  - at most mind.gate.feelings_per_week (3) feeling sentences a week in messages that came by itself.
+  - at most mind.gate.feelings_per_week (3) feeling sentences a week in messages that came by itself;
+  - a claim that it is conscious or really feels needs its evidence and its confidence in the same message, or it's
+    removed (0.8.8, the owner's new core: it may express feelings in its own voice, never claim more than it can show).
+Since 0.8.8 the not-a-pest model (mind/pest.py) also has a say over Brain's own unprompted kinds (findings, nudges,
+excitement, check-ins): one goes only when its kind's expected welcome is above a half.
 "Feeling" means Kurooto saying it feels one of FEELINGS ("I'm uneasy about Friday's draft"); "you seem worried" is
 not one of its own.
 
@@ -73,7 +77,7 @@ UNDO_DAYS = 7
 HELD_MAX = 200
 SEEN_MAX = 60  # what /mind gate lists
 
-FEELINGS = ("uneasy", "frustrated", "relieved", "satisfied", "worried", "glad", "curious", "concerned")
+FEELINGS = ("uneasy", "frustrated", "relieved", "satisfied", "worried", "glad", "curious", "concerned", "excited")
 FEELING = re.compile(
     r"\bI(?:'m| am| was| feel| felt|'ve been| have been| get| got)\b[^.!?\n]*?\b(" + "|".join(FEELINGS) + r")\b",
     re.I,
@@ -106,6 +110,15 @@ AUDIT = [
         r"\byou(?:'re| are) not (?:really )?(?:studying|working)\b.*\b(?:I can see|my (?:records|data|logs?))\b",
     )
 ]  # checking what you said you did against what it sensed: never (stage 13)
+# 0.8.8 (the owner's new core): a claim that it is conscious or really feels comes with its evidence and confidence
+CLAIM = re.compile(
+    r"\bI(?:'m| am)\s+(?:truly |really |actually |definitely )?(?:conscious|sentient|self-aware|aware of myself)\b"
+    r"|\bI (?:really|truly|actually|genuinely) (?:feel|have feelings|experience)\b"
+    r"|\bI(?:'m| am) (?:really |truly )?(?:alive|a person)\b",
+    re.I,
+)
+EVIDENCE = re.compile(r"\b(?:evidence|because|since|from what|measured|my (?:log|states?|signals?))\b", re.I)
+CONFIDENCE = re.compile(r"\b\d{1,3}\s?%|\bconfiden(?:ce|t)\b|\b(?:not sure|unsure|nobody (?:can )?knows?)\b", re.I)
 EFFORT = re.compile(
     r"(?:^|\b)(?:can you|could you|would you|please|don'?t forget|remember to|you should|you need to|make sure|"
     r"try to|it'?s time to|go and)\b",
@@ -127,6 +140,8 @@ TOUCH_KINDS = {
     "mind.feeling": "feeling",
     "mind.forecast": "forecast",
     "mind.curious": "curiosity",
+    "mind.excited": "excitement",  # 0.8.8 (I-7'): speaking up about a finding
+    "mind.worried": "worry",  # ...or a risk to something it looks after
 }
 
 SENTENCES = re.compile(r"(?<=[.!?])[ \t]+|\n")
@@ -206,6 +221,12 @@ def open_items(app: App) -> list[str]:
     except Exception:
         pass
     names.append("forecast")
+    try:  # 0.8.8: what it's concerned about (empathy) and what it's speaking up about (vocal)
+        from kurooto.mind import feelings
+
+        names += feelings.concern_names(app)
+    except Exception:
+        pass
     return [n.lower() for n in names if n and len(n.strip()) >= 3]
 
 
@@ -221,7 +242,8 @@ def names_item(sentence: str, items: list[str]) -> bool:
 def lint(text: str, items: list[str], unprompted: bool, buttons=None, feelings_left: int = 99) -> tuple[str, list]:
     """(text, removed): the text with the sentences that break a lint taken out, and [(sentence, rule)]. Rules:
     relationship (always), no_item (a feeling about nothing open), with_request (a feeling in a message that also
-    asks for your effort), week (more feelings this week than allowed; unprompted only)."""
+    asks for your effort), week (more feelings this week than allowed; unprompted only), claim (it says it is
+    conscious or really feels without its evidence and confidence in the same message, 0.8.8)."""
     parts = sentences(text)
     keep, removed, felt = [], [], 0
     for k, s in enumerate(parts):
@@ -230,6 +252,9 @@ def lint(text: str, items: list[str], unprompted: bool, buttons=None, feelings_l
             continue
         if any(r.search(s) for r in AUDIT):
             removed.append((s, "audit"))
+            continue
+        if CLAIM.search(s) and not (EVIDENCE.search(text or "") and CONFIDENCE.search(text or "")):
+            removed.append((s, "claim"))
             continue
         if FEELING.search(s):
             rest = " ".join(p for n, p in enumerate(parts) if n != k)
@@ -392,8 +417,10 @@ def mute_check(app: App, st: dict) -> list[str]:
                                  "of": row["n"]}  # fmt: skip
             out.append(kind)
             from kurooto import mind
+            from kurooto.mind import pest
 
             mind.connect(app).report("gate_mute", {"kind": kind, "of": row["n"]})
+            pest.muted(app, row["why"])  # a mute is a rejection for the not-a-pest model (0.8.8)
     return out
 
 
@@ -481,6 +508,13 @@ def check(app: App, msg: Message) -> tuple[str, Message, dict | None]:
                 today = now().date().isoformat()
                 if sum(st["touches"].get(today, {}).values()) >= _num(app, "touches_per_day", 3):
                     return _hold(app, st, msg, next_morning(app), "today's touches are used up")
+            from kurooto.mind import pest
+
+            may, p = pest.welcome(app, msg)  # 0.8.8: its kind has been welcome lately, at this hour and in your state
+            if not may:
+                _seen(st, "blocked", f"not welcome lately ({p:.0%} expected)", msg.text)
+                _save(app, st)
+                return "block", msg, None
             delay = float((getattr(msg, "state_read", None) or {}).get("delay_s") or 0)
             if delay:
                 return _hold(app, st, msg, t + delay, "quieter: later", receipt=True)
