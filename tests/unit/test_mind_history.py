@@ -248,7 +248,7 @@ def test_0_8_1s_table_is_still_read_then_replaced_by_the_chain(app):
     assert st["old"] == 0 and st["sources"] == {"events": 1} and st["imported"] == 1
     assert mind.connect(app).history_rows() == []
     (rec,) = mind.connect(app).log(kinds={"history_import"})
-    assert rec.body["replaced"] == 1
+    assert rec.body["migrated"] == 1
     assert list(history.daily(app).values()) == [{"deadline_moved": 1}]
 
 

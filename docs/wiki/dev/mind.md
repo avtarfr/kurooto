@@ -886,7 +886,7 @@ which cleans, sorts by (at, key), appends, and, when rows were added, writes one
 `verify_history` (read-only, `mode=ro`).
 
 **Migration from 0.8.1**: 0.8.1's rows in score.db's `history` table stay readable (`daily()` falls back to them while the
-events chain is empty; `status()["old"]`); the first events batch that adds rows drops them (`replaced` in its witness).
+events chain is empty; `status()["old"]`); the first events batch that adds rows drops them (`migrated` in its witness).
 
 **Run** (`run(app, progress, only)`): per source, rows sorted, those older than the chain's head skipped (resume), batches
 of 500, a tqdm-style `bar()` line per batch to `<logs>/mind-backfill.log` and `progress(source, done, total)`; the final

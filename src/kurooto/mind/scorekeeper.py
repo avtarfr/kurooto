@@ -157,7 +157,7 @@ class Keeper:
                 self.log.append(
                     "history_import",
                     {"source": source, "batch": batch, "rows": res["added"], "dup": res["dup"], "late": res["late"],
-                     "from": res["from"], "to": res["to"], "n": res["n"], "head": res["head"], "replaced": old},
+                     "from": res["from"], "to": res["to"], "n": res["n"], "head": res["head"], "migrated": old},
                 )  # fmt: skip
         return {"ok": True, "rows": res["added"], "dup": res["dup"], "late": res["late"], "bad": len(rows) - len(good)}
 
