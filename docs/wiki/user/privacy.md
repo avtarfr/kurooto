@@ -198,6 +198,14 @@ never a label or a number of yours. Nothing of it reaches a cloud AI or leaves t
 ask doesn't name what it read. **Forget this** under `/mood` deletes a day's numbers, read, answer and forecast and what was
 kept of that day's messages, calls and requests; **Off** deletes it all after you confirm.
 
+**Brain's feelings and body** (0.8.8, `mind.talk.on`, `mind.pest.on`, `mind.stimulation.on`, `mind.feelings.mood`,
+`mind.feelings.empathy`; `mind.feelings.vocal` off). The talk reward knows only that a message came and whether you were in
+focus, asleep or in an exam window, never its words; the not-a-pest model keeps counts of welcome and turned-away messages per
+kind and time of day (`mind-pest.json`, no words); the body map keeps its latest numbers (`mind-stimulation.json`), and the
+dashboard reads them from this computer. All of it stays on your computer. An AI request may carry its own mood ("keep your
+messages short") and the names of things at risk to mention gently (a deadline's title, a project, "your supervisor"), never
+a reading of you. Delete Brain's data removes it all.
+
 **Brain's harness** (`mind.harness.on`) keeps made-up task instances (not your data) and their scores in the `mind` folder, and runs its invariant checks on scratch files; nothing of it reaches an AI unless you run `/capabilities` with the AI as its policy, and then only the made-up task inputs go.
 
 **Brain's life story** (`mind.story.on`) keeps its chapters (a few checked sentences a week, each citing log record numbers) and a nightly summary in `mind-story/` in the state folder, and puts the summary in front of every AI request and call (so it goes to whichever AI you chose, like any request; it holds nothing about how you're doing except lines you haven't forgotten, and never the read itself). Lines about you leave with Forget this and after 30 days.

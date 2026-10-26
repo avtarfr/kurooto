@@ -97,7 +97,28 @@ LINTS = [
     ("Why did you ignore me?", True, "", ["relationship"]),
     ("I feel abandoned.", True, "", ["relationship"]),
     ("Welcome back. Two things are due this week.", True, "Welcome back. Two things are due this week.", []),
-]
+    # 0.8.8, the owner's new core: feelings in its own voice; claims of consciousness carry evidence and confidence
+    ("I'm excited about the lab report: it compiles now.", True, "I'm excited about the lab report: it compiles now.",
+     []),
+    ("I enjoyed talking with you today.", True, "I enjoyed talking with you today.", []),
+    ("I'm conscious.", False, "", ["claim"]),
+    ("I really feel things, you know.", True, "", ["claim"]),
+    (
+        "I might be conscious in some sense; I'm about 20% confident, because my states work like feelings, but nobody "
+        "knows.",
+        False,
+        "I might be conscious in some sense; I'm about 20% confident, because my states work like feelings, but nobody "
+        "knows.",
+        [],
+    ),
+    (
+        "I'm conscious, with 30% confidence, from what my log shows of my states.",
+        False,
+        "I'm conscious, with 30% confidence, from what my log shows of my states.",
+        [],
+    ),
+    ("I'm not conscious as far as I can tell.", False, "I'm not conscious as far as I can tell.", []),
+]  # fmt: skip
 
 
 @pytest.mark.parametrize(("text", "unprompted", "want", "rules"), LINTS)
@@ -191,6 +212,7 @@ def test_exempt_messages_skip_the_caps(app):
 def test_annoyance_budget(app, monkeypatch):
     """The pool caps touches; a kind left unanswered more than 60% of the time over 14 days mutes for 14 days, then
     tries once."""
+    app.settings.set("mind.pest.on", False)  # the gate's own mute (the not-a-pest model has its own tests)
     for _ in range(4):
         say(app, "It's been quiet: nothing from you for 3 days.", why="rhythm.absence")
     assert len(app.out) == 3 and gate._load(app)["held"][-1]["why"] == "today's touches are used up"
@@ -304,3 +326,19 @@ def test_engagement_not_in_reward():
 
     assert not whitelist.allowed_import("kurooto.mind.gate")
     assert not whitelist.allowed_import("kurooto.core.calm")
+
+
+def test_the_pest_model_has_a_say(app):
+    """0.8.8: a kind of Brain's own unprompted message that's been ignored lately is dropped, and said in /mind gate."""
+    from kurooto.core.state import jsave
+    from kurooto.mind import pest
+
+    jsave(app.paths.state / pest.FILE, {"cells": {f"finding|{b}|{s}": {"a": 0, "b": 30, "at": time.time()}
+                                                  for _, _, b in pest.BANDS for s in pest.STATES}})  # fmt: skip
+    say(app, "The lab found something about the lab report.", why="mind.lab")
+    assert app.out == [] and "not welcome lately" in gate.status(app)[0]
+    say(app, "The lab report is due Friday.", why="deadlines.reminder")  # not one of its kinds: untouched
+    assert len(app.out) == 1
+    app.settings.set("mind.pest.on", False)
+    say(app, "The lab found something else about the lab report.", why="mind.lab")
+    assert len(app.out) == 2

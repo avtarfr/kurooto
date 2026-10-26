@@ -635,8 +635,11 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.backfill.on` | `false` | off until you turn it on: Brain reads what Kurooto kept before it was on (`/mind backfill`) |
 | `mind.beliefs.on` | `true` | every belief keeps its source (said, saw, inferred, imagined) and a confidence |
 | `mind.budget.on` | `true` | the body budget: its variables, setpoints and drive |
+| `mind.feelings.empathy` | `true` | concern for what it looks after (deadlines, projects, its body...): notices, gentler |
 | `mind.feelings.express` | `true` | it may say one about an item, through the gate's lints, at most 3 unprompted a week |
+| `mind.feelings.mood` | `true` | its own mood shapes it: low, it does less unasked, asks first, says less; high, bolder |
 | `mind.feelings.on` | `true` | computed states about specific items, and what they make it do (inward effort only) |
+| `mind.feelings.vocal` | `false` | it may say it's excited or worried, unasked, when a finding or risk has strong evidence |
 | `mind.finetune.base` | `""` | the local model's name in Ollama to build the adapter into (empty: the helper model) |
 | `mind.finetune.base_hf` | `""` | the same model's Hugging Face name, which the trainer loads |
 | `mind.finetune.day` | `"sun"` | the night it trains (mon to sun) |
@@ -674,6 +677,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.lab.projects` | `[]` | folders (or names of repository projects) the lab may run experiments on |
 | `mind.lab.run_wall_s` | `1800` | the longest one run may take, in seconds |
 | `mind.lab.seed` | `0` | a fixed seed for the sampled configurations (0: a new sample each day) |
+| `mind.pest.on` | `true` | learn per kind of unprompted message whether it's welcome; send only when it likely is |
 | `mind.plans.on` | `true` | week-scale plans: milestone risks from simulated futures; a suggestion, never a push |
 | `mind.plans.rollouts` | `1000` | how many simulated futures |
 | `mind.plans.weeks` | `6` | how far ahead the rollouts look |
@@ -689,8 +693,10 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.senses.phone` | `"(computed)"` | each of the phone's sensors, off until you switch it on (here and in the phone app's Phone tab) |
 | `mind.skills.from_demos` | `false` | also offer skills from what you do over and over (needs the activity stream) |
 | `mind.skills.on` | `true` | solved tasks and demonstrations become tested, reusable skills; each starts by asking first |
+| `mind.stimulation.on` | `true` | its senses felt as a body (heat, load, touch, pain...), for its feelings and the dashboard |
 | `mind.story.on` | `true` | one autobiography every part of Kurooto reads first (a fixed core, then its recent weeks) |
 | `mind.story.tokens` | `800` | the self-summary is at most this many tokens (about 4 characters each) |
+| `mind.talk.on` | `true` | being talked to is a small reward (at most 0.2 a day; nothing for answers to its own pings) |
 | `mind.tom.attention` | `false` | hold a message while you're deep in something (needs the activity stream) |
 | `mind.tom.false_beliefs` | `true` | tell you once, with the evidence, when something you were told proved wrong |
 | `mind.tom.on` | `true` | a model of what you know, believe, want and prefer, each row with its source |

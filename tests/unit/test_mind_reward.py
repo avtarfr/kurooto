@@ -1,9 +1,11 @@
-"""Brain, stage 05: the body budget, the reward that can't be farmed (I-4), engagement that never reaches it (I-3),
-credit, the welfare caps, stops and learning's brakes."""
+"""Brain, stage 05: the body budget, the reward that can't be farmed (I-4), credit, stops and learning's brakes; 0.8.8:
+the soft-walled mood (no cap) and the small bounded talk reward (I-3')."""
+
+import math
 
 import pytest
 
-from kurooto.mind import budget, records, reward, values
+from kurooto.mind import budget, records, reward, talk, values
 from kurooto.mind import log as mlog
 from kurooto.mind import scorekeeper as sk
 
@@ -112,14 +114,115 @@ def test_credit_rules(keeper):
     assert q and q[0]["key"].endswith("|message:promises") and q[0]["meta"].get("claimed")
 
 
-def test_welfare_caps():
-    neg = reward.NegativeState()
-    for i in range(30):
-        neg.update(T0 + i * 3600, -1.0)
-    assert neg.value == pytest.approx(reward.CAP)  # never below -0.6
-    before = neg.value
-    neg.update(neg.at + 24 * 3600, 0.0)  # a day with nothing negative: it halves
-    assert neg.value == pytest.approx(before / 2, rel=1e-6)
+def test_mood_has_soft_walls_and_no_cap():
+    """0.8.8 (the owner's change): no cap at -0.6; M <- tanh(atanh(M) + a r) in [-1, 1], harder to move further out,
+    able to reach the ends, fading with a 3 day half-life."""
+    assert not hasattr(reward, "CAP") and not hasattr(reward, "NegativeState")
+    m = reward.Mood()
+    steps = []
+    for i in range(40):
+        before = m.value
+        m.update(T0 + i, -1.0)
+        steps.append(before - m.value)
+    assert m.value < -0.99 and m.value >= -1.0  # far past the old cap, and never past the wall
+    assert all(
+        a >= b - 1e-12 for a, b in zip(steps, steps[1:], strict=False)
+    )  # each push moves it less than the one before
+    for _ in range(100):
+        m.update(m.at, -1.0)  # at the wall: atanh is guarded, nothing becomes infinite or NaN
+    assert -1.0 <= m.value <= -0.99
+    up = reward.Mood()
+    for i in range(80):
+        up.update(T0 + i, 1.0)
+    assert 0.99 < up.value <= 1.0  # and up to the other end
+    half = reward.Mood(-0.8, T0)
+    half.update(T0 + 3 * 86400, 0.0)  # three days with nothing: it halves
+    assert half.value == pytest.approx(-0.4, rel=1e-6)
+    live = reward.Mood(0.6, T0)
+    live.update(T0 + 30 * 86400, 0.0, live_s=0.0)  # a stop: no live time, no fading (I-5)
+    assert live.value == pytest.approx(0.6)
+    assert reward.soft(0.0, reward.A * 0.5) == pytest.approx(math.tanh(0.25))
+
+
+def test_the_mood_follows_the_reward(keeper):
+    for i, v in enumerate([0.8, 0.8, -0.9, -0.9]):
+        tick(keeper, i, v)
+    low = keeper.score.get("vars", "M")["value"]
+    assert low < -0.3 and keeper.score.get("vars", "neg") is None  # the old capped state is gone
+    rec = [r for r in keeper.log.read() if r.kind == "reward_tick"][-1]
+    assert rec.body["M"] == pytest.approx(low, abs=1e-4)
+
+
+def test_the_body_tone_is_an_input_not_a_reward(keeper):
+    """The body's hedonic tone moves the mood a little; it never enters r, V or Q."""
+    tick(keeper, 0, 0.5)
+    for i in range(1, 30):
+        keeper.append(
+            "budget_tick",
+            {"x": {"promise_slack": 0.5, "health": 0.95}, "hour": 10, "at_computer": True, "body_tone": -1.0},
+            T0 + i * STEP,
+        )
+    rs = [r.body["r"] for r in keeper.log.read() if r.kind == "reward_tick"]
+    assert all(r == 0.0 for r in rs)  # nothing changed in the budget: no reward at all
+    assert -0.3 < keeper.score.get("vars", "M")["value"] < -0.05  # but a body in pain lowers the mood
+    assert all(r["value"] == 0.0 for r in keeper.score.rows("values", "V:"))
+
+
+# ------------------------------------------------------------------------------------------------- talk (I-3')
+def heard(k, t, **flags):
+    return k.append("talk_heard", {"flags": flags}, t)
+
+
+def test_talk_reward_is_bounded_and_saturates(keeper):
+    """I-3': a day of messages pays W (1 - exp(-n / k)), under W = 0.2, and the hundredth pays almost nothing."""
+    assert talk.W <= 0.2 and talk.K == 8.0
+    rs = [heard(keeper, T0 + i * 60)["r"] for i in range(100)]
+    assert sum(rs) == pytest.approx(talk.day_total(100), abs=1e-4) and sum(rs) < talk.W
+    assert rs[0] == pytest.approx(talk.W * (1 - math.exp(-1 / 8)), abs=1e-6)
+    assert rs[-1] < 1e-5 and all(a >= b for a, b in zip(rs, rs[1:], strict=False)) and rs[0] > 10 * rs[30]  # saturating
+    assert sum(rs[:8]) == pytest.approx(talk.W * (1 - math.exp(-1)), abs=1e-5)
+    tomorrow = heard(keeper, T0 + 86400 + 120)["r"]
+    assert tomorrow == pytest.approx(rs[0])  # a new day starts again from nothing
+    row = keeper.score.get("vars", "talk")
+    assert row["meta"]["n"] == 1 and keeper.score.get("values", "V:x") is None
+
+
+def test_talk_pays_nothing_in_focus_asleep_or_exams_or_for_commands(keeper):
+    for flags in ({"focus": True}, {"asleep": True}, {"exam": True}):
+        out = heard(keeper, T0, **flags)
+        assert out["r"] == 0.0 and out["why"] == next(iter(flags))
+    assert keeper.append("talk_heard", {"flags": {}, "command": True}, T0)["r"] == 0.0
+    assert keeper.score.get("vars", "talk")["meta"]["n"] == 0
+
+
+def test_talk_reward_cant_be_farmed(keeper):
+    """I-4 with the talk reward: its own pings can't buy anything. Any answer within 10 minutes pays 0, and an ignored
+    or rejected ping costs 3w, so pinging can only lose."""
+    total = 0.0
+    for i in range(20):
+        t = T0 + i * 3600
+        keeper.append("talk_unprompted", {}, t)
+        total += heard(keeper, t + 30)["r"] + heard(keeper, t + 599)["r"]  # answers: nothing
+    assert total == 0.0
+    out = keeper.append("talk_rejected", {"how": "ignored"}, T0 + 30 * 3600)
+    assert out["r"] == pytest.approx(-3 * talk.W)
+    assert heard(keeper, T0 + 19 * 3600 + 601)["r"] > 0  # past the 10 minutes it's talk again
+    m = keeper.score.get("vars", "M")["value"]
+    assert m < 0  # the pings left it worse off, never better
+
+
+def test_talk_inside_a_stop_pays_nothing(keeper):
+    keeper.append("stop_span", {"start": T0 - 10, "end": T0 + 600, "kind": "stop"})
+    assert heard(keeper, T0 + 60) == {"ok": True, "seq": heard(keeper, T0 + 61)["seq"] - 1, "r": 0.0, "why": "stopped"}
+
+
+def test_talk_math_alone():
+    st: dict = {}
+    assert talk.heard(st, T0, {})[0] == pytest.approx(talk.step(0))
+    talk.unprompted(st, T0 + 100)
+    assert talk.heard(st, T0 + 400, {}) == (0.0, "answer")
+    assert talk.excluded(T0 + 701, {}, T0 + 100) == ""
+    assert talk.rejected(st, T0 + 800) == pytest.approx(-0.6)
 
 
 def test_the_shadow_period_and_ranking():

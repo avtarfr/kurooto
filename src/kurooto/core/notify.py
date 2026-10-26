@@ -137,6 +137,12 @@ class Notifier:
         if calm is not None and calm.decide(msg) != "send":
             return None
         gate.sent(self.app, msg)  # it went out: it counts toward the hour, the day and the touches
+        try:  # (Brain, 0.8.8) not-a-pest: it waits an hour for an answer; the talk reward's "its own ping" fact
+            from kurooto.mind import pest
+
+            pest.sent(self.app, msg)
+        except Exception:
+            pass
         try:  # (Brain, stage 05) a promise in what it said is written down, to be kept or owned up to
             from kurooto.mind import promises
 

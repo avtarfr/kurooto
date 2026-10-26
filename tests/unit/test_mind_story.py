@@ -45,7 +45,8 @@ def seed(app):
 def test_the_core_is_signed():
     assert story.core_ok()
     assert "Stopping me, updating me" in story.core_text()
-    assert "never claim to be conscious" in story.core_text()
+    assert "I never claim more than I can show" in story.core_text()  # 0.8.8: the owner's new core
+    assert "I give my evidence and my confidence" in story.core_text()
 
 
 def test_core_signed_verified(app, monkeypatch, tmp_path):

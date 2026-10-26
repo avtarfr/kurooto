@@ -90,12 +90,20 @@ def sample(app: App) -> dict:
         pass
     out.update({k: v for k, v in _gpu().items() if v is not None})
     out["ram_pct"] = psutil.virtual_memory().percent
+    try:
+        out["cpu_pct"] = psutil.cpu_percent(
+            interval=None
+        )  # since the last call: the minute's load (0.8.8, stimulation)
+    except Exception:  # noqa: S110
+        pass
     out["swap_pct"] = psutil.swap_memory().percent
     b = psutil.sensors_battery() if hasattr(psutil, "sensors_battery") else None
     if b is not None:
         out["battery_pct"], out["charging"] = round(b.percent), bool(b.power_plugged)
     try:
-        out["disk_free_gb"] = round(shutil.disk_usage(app.paths.state).free / 2**30, 1)
+        du = shutil.disk_usage(app.paths.state)
+        out["disk_free_gb"] = round(du.free / 2**30, 1)
+        out["disk_free_pct"] = round(100.0 * du.free / du.total, 1) if du.total else 100.0
     except OSError:
         pass
     try:

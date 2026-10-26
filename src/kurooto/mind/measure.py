@@ -89,7 +89,16 @@ def measure(app: App) -> dict:
         season = bool(ex is not None and app.is_on("exam_season") and ex.season())
     except Exception:
         pass
-    return {"x": x, "hour": t.hour, "at_computer": at, "season": season}
+    out = {"x": x, "hour": t.hour, "at_computer": at, "season": season}
+    try:  # 0.8.8: its own body's hedonic tone, an input to the mood (never a reward): mind/stimulation.py
+        from kurooto.mind import stimulation
+
+        tone = stimulation.own_tone(app)
+        if tone is not None:
+            out["body_tone"] = round(tone, 4)
+    except Exception:
+        pass
+    return out
 
 
 def run(app: App, payload: dict | None = None) -> bool:

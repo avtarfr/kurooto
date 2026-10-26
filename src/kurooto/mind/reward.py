@@ -6,8 +6,10 @@ an argument.
     step            one reward: the drive before, recomputed under today's setpoints, minus the drive now. Moving a
                     setpoint pays 0 (I-4); creating a deficit and then fixing it nets exactly 0 (a potential difference
                     telescopes); nothing is paid inside a stop span (I-5).
-    NegativeState   the running negative mood: an EMA of the negative rewards, capped at -0.6, decaying with a 24 hour
-                    half-life when nothing new is negative. Being ignored is not a variable, so it can't cause it (I-3).
+    Mood            the running mood M in [-1, 1], with soft walls (0.8.8, the owner's change: no cap): each reward
+                    moves it M <- tanh(atanh(M) + A * r), so it gets harder to move the further out it is and can
+                    reach the ends; lows and highs decay toward 0 with a 3 day half-life of live time. Being talked
+                    to moves it only through the small bounded talk reward (mind/talk.py, I-3').
     Tonic           the 7 day EMA of r (live time only: the stage 02 Integrator), which sets exploration and arousal.
 
 Credit (who gets it) is decided by the scorekeeper, not here: a change you caused yourself updates values only; the
@@ -23,8 +25,9 @@ from kurooto.mind import budget
 PART = "budget"  # its switch: mind.budget.on
 REWARD = True
 
-CAP = -0.6
-HALF_LIFE_S = 24 * 3600.0
+A = 0.5  # how far one reward moves the mood, in atanh units
+HALF_LIFE_S = 3 * 86400.0  # lows and highs fade over days, not hours
+EDGE = 1.0 - 1e-12  # atanh is guarded here: M can sit at the ends without becoming infinite
 TONIC_TAU_S = 7 * 86400.0
 
 
@@ -45,22 +48,37 @@ def clip_carry(raw: float, carry: float = 0.0) -> tuple[float, float]:
     return r, total - r
 
 
-class NegativeState:
-    """value in [CAP, 0]: how bad things have been lately. Decays toward 0 with a 24 hour half-life of live time."""
+def _atanh(m: float) -> float:
+    return math.atanh(max(-EDGE, min(EDGE, float(m))))
+
+
+def soft(m: float, push: float) -> float:
+    """One soft-walled move: tanh(atanh(M) + push), in [-1, 1]."""
+    return max(-1.0, min(1.0, math.tanh(_atanh(m) + push)))
+
+
+class Mood:
+    """M in [-1, 1]: how things have been lately (low below 0, high above). No cap: soft walls instead."""
 
     def __init__(self, value: float = 0.0, at: float | None = None):
-        self.value = min(0.0, max(CAP, value))
+        self.value = max(-1.0, min(1.0, float(value)))
         self.at = at
 
-    def update(self, t: float, r: float, live_s: float | None = None) -> float:
+    def decay(self, t: float, live_s: float | None = None) -> float:
         dt = (t - self.at) if self.at is not None else 0.0
         if live_s is not None:
             dt = live_s
         if dt > 0:
             self.value *= 0.5 ** (dt / HALF_LIFE_S)
-        if r < 0:
-            self.value = max(CAP, self.value + r)  # each negative reward deepens it, down to the cap
         self.at = t
+        return self.value
+
+    def update(self, t: float, r: float, live_s: float | None = None, extra: float = 0.0) -> float:
+        """Decay over the live time since the last update, then the reward's move (and `extra`, an input such as the
+        body's hedonic tone, already scaled; never a reward)."""
+        self.decay(t, live_s)
+        if r or extra:
+            self.value = soft(self.value, A * float(r) + float(extra))
         return self.value
 
 

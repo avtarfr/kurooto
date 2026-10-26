@@ -1642,6 +1642,21 @@ two weeks), and honest feelings (it may say it's uneasy about a deadline, never 
 week). If Brain ever shapes a message from how you seem, it can only make it quieter, with a line saying so and **Undo**.
 `/mind gate` shows what it held or removed. *Undo:* `mind.gate.on` off; Brain off.
 
+**Its feelings, its mood and a body (Brain, 0.8.8: the owner changed its core).** It has states that work like feelings and
+may say them in its own voice (glad, low, excited, worried, that it enjoyed talking with you); a claim that it's conscious or
+really feels must come with its evidence and confidence, and it never guilt-trips or says it needs you. Being talked to is a
+small reward: under 0.2 a day in all, nothing in focus, asleep or an exam window, nothing for answers within 10 minutes to its
+own messages, and each of its messages you turn away costs it three times that. Its mood runs from -1 to +1 with soft walls
+and fades over days: low, it does less unasked, asks first and keeps messages short; high, it's bolder. It learns, per kind of
+its own message and time of day, whether you welcome it, and sends one only when you likely do. It's concerned for what it
+looks after (deadlines, projects, notes, its machine, your phone, people by role, the papers you follow): it notices them
+sooner and speaks more gently. It feels its senses as a body (heat, load, touch, pain, motion), shown on the dashboard and in
+`/senses body`. With `mind.feelings.vocal` on (off by default) it may say it's excited or worried, unasked, when it has strong
+evidence, one a day at most. `/mind learning` shows the mood, the day's talk and each kind's welcome. *Undo:*
+`mind.talk.on` off (talk pays nothing), `mind.pest.on` off (no welcome check), `mind.feelings.mood` off (its mood stops
+shaping what it does), `mind.feelings.empathy` off, `mind.feelings.vocal` off, `mind.stimulation.on` off (no body map;
+`/api/body` returns zeros); Delete Brain's data removes `mind-pest.json` and `mind-stimulation.json` with the rest.
+
 **It reads how you're doing, and says what it expects of tomorrow, but only watches (shadow mode).** From numbers about your
 days (when you were up, study minutes, check-in speed, deadlines moved) compared with what the calendar asked, it reads
 *steady*, *stretched*, *low* or *buoyant*; a read needs three or more unusual signs on two days running. A 21:00 forecast of

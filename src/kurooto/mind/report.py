@@ -45,9 +45,8 @@ def budget_text(app: App) -> str:
     )
     if last:
         lines.append(f"Last reward {last.get('r', 0):+.2f}, surprise {last.get('delta', 0):+.2f}.")
-    neg = (rows.get("neg") or {}).get("value", 0.0)
     ton = (rows.get("tonic") or {}).get("value", 0.0)
-    lines.append(f"Running state: {neg:+.2f} (never below -0.60), the week's average reward {ton:+.2f}.")
+    lines.append(f"{mood_line(app, rows)} The week's average reward {ton:+.2f}.")
     st = feelings.state(app)
     if st.get("label"):
         about = f" about {st['item']}" if st.get("item") else ""
@@ -55,6 +54,46 @@ def budget_text(app: App) -> str:
     else:
         lines.append("Feeling: nothing in particular.")
     return "\n".join(lines)
+
+
+def mood_line(app: App, rows: dict | None = None) -> str:
+    """Its running mood in words, and why (0.8.8: soft walls in [-1, 1], no cap)."""
+    rows = rows if rows is not None else _rows(app)
+    m = (rows.get("M") or {}).get("value")
+    if m is None:
+        return "Mood: not measured yet."
+    word = "low" if m < feelings.LOW else "high" if m > feelings.HIGH else "even"
+    why = feelings.mood_why(app)
+    return f"Mood: {m:+.2f} ({word}; -1 to +1, fading over days)" + (f": {why}." if why else ".")
+
+
+def talk_lines(app: App, rows: dict | None = None) -> list[str]:
+    """The talk reward today (I-3'): what being talked to paid, what it didn't, and what rejections cost."""
+    from kurooto.mind import talk
+
+    if not mind.part_on(app, "talk"):
+        return ["Talk reward: off (mind.talk.on)."]
+    rows = rows if rows is not None else _rows(app)
+    st = (rows.get("talk") or {}).get("meta") or {}
+    if st.get("day") != talk.day_of(time.time()):
+        st = {}
+    n, paid = int(st.get("n") or 0), float(st.get("paid") or 0.0)
+    out = [
+        f"Talk reward today: {n} message{'s' if n != 1 else ''} counted, {paid:+.3f} paid "
+        f"(at most {talk.W:.1f} a day, saturating)"
+        + (
+            f"; {int(st.get('excluded') or 0)} paid nothing (focus, asleep, exam, or answers to my own messages)"
+            if st.get("excluded")
+            else ""
+        )  # fmt: skip
+        + (
+            f"; {int(st.get('rejected') or 0)} unwelcome message(s) cost {-float(st.get('cost') or 0):+.2f}"
+            if st.get("rejected")
+            else ""
+        )  # fmt: skip
+        + "."
+    ]
+    return out
 
 
 def learning_text(app: App) -> str:
@@ -84,4 +123,9 @@ def learning_text(app: App) -> str:
     v = mind.connect(app).values_rows("V:")
     q = mind.connect(app).values_rows("Q:")
     out.append(f"{len(v)} situations and {len(q)} action kinds learned so far.")
+    out.append(mood_line(app, rows))
+    out += talk_lines(app, rows)
+    from kurooto.mind import pest
+
+    out += pest.lines(app)
     return "\n".join(out)
