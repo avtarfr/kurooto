@@ -3320,8 +3320,9 @@ language is downloaded for on-device recognition (in the phone's language or spe
 computer; a number on the tab says how much waits for you), **Views** (Systems and the Notes map, below) and **Phone** (the checklist, location reminders, ringtones,
 bedside mode, and this phone with **Unpair**). Pull a tab down to look again. It's Material 3 Expressive, in your
 wallpaper's colours on Android 12+, with a slow living background (a cell and its nerves, as the dashboard's SYSTEMS
-view, tinted by the hour) that holds still with **Remove animations** on. Other screens (the chat, answers, places,
-bedside mode) look as before.
+view, tinted by the hour) that holds still with **Remove animations** on. Since 0.8.7 bedside mode and the call screen are
+in the same style (the ringing screen over the sky with its buttons in a floating bar; bedside mode on black with floating
+cards, warm at night).
 
 The app looks for a new version each time you open it (at most every 2 minutes) and shows an **Update** button at the
 end of Today; it opens the download.
@@ -3366,7 +3367,8 @@ stays in the box.
 the 2x1 widget asks your call line what's waiting as the app does.
 
 **The app's switches** (0.7.2, Phone tab → Switches): **Connect straight to your call line** (off: ntfy.sh only) and
-**Moving background** (off: a still picture). *Undo:* tap the switch again.
+**Moving background** (off: a still picture). 0.8.7: **New call screen** (on; off: the call screen from before 0.8.7;
+the next call opens with it). *Undo:* tap the switch again.
 
 **Bedside mode** (0.6.0): an old Android phone on a charger as a dock. A big clock, the date, the next alarm (Kurooto's
 wake-up call, or the phone's own alarm), the calls due next, and one big **Talk to Kurooto** button that starts a voice

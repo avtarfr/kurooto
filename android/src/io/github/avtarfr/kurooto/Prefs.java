@@ -141,6 +141,10 @@ final class Prefs {
     static void setVivid(Context c, boolean on) { sp(c).edit().putBoolean("vivid", on).apply(); }
     static boolean floatingBar(Context c) { return sp(c).getBoolean("floatingBar", true); }
     static void setFloatingBar(Context c, boolean on) { sp(c).edit().putBoolean("floatingBar", on).apply(); }
+    // the call screen (0.8.7): the Compose one (Material 3 Expressive), or off the framework one from before 0.8.7, kept
+    // reachable until the new one has carried real calls (CallActivity reads it as a call's screen opens)
+    static boolean newCallScreen(Context c) { return sp(c).getBoolean("newCallScreen", true); }
+    static void setNewCallScreen(Context c, boolean on) { sp(c).edit().putBoolean("newCallScreen", on).apply(); }
 
     // Systems or the Notes map: the one the Views tab opens on (ViewsActivity)
     static String viewMode(Context c) { return sp(c).getString("viewMode", "systems"); }

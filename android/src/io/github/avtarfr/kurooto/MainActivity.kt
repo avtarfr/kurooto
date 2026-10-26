@@ -342,6 +342,12 @@ class MainActivity : ComponentActivity() {
         recreate()
     }
 
+    /** The call screen (0.8.7): the Compose one, or the one from before; the next call opens with it. */
+    internal fun toggleNewCallScreen() {
+        Prefs.setNewCallScreen(this, !Prefs.newCallScreen(this))
+        ui.tick++
+    }
+
     internal fun toggleKeepOn() {
         Prefs.setBedsideKeepOn(this, !Prefs.bedsideKeepOn(this))
         ui.tick++

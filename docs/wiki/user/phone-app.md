@@ -60,6 +60,8 @@ ntfy.sh only, as before 0.7.0) and **Moving background** (on; off: a still pictu
 animations"). Since 0.7.5 two more: **Vivid colours** (on: a fuller, more colourful scheme made from your wallpaper's colour, with
 tinted cards; off: Android's own quieter colours) and **Floating bar** (on: the tabs are a rounded bar floating over the page, the
 open tab shown with its name; off: the bar sits on the bottom edge as before). Views is off until you turn it on in the dashboard → Phone.
+Since 0.8.7: **New call screen** (on: the ringing screen and the call in the new style, below; off: the call screen from before
+0.8.7, kept while the new one gets used for real calls).
 
 **The smaller screens (0.7.6)** match: the question you answer from a notification, Quick note, Share to Kurooto and the pairing window are rounded sheets floating over a dimmed screen (tap outside to close), and Places and Chat are full pages over Kurooto's sky, with floating message bubbles and a rounded message box. They use the same colours as the rest of the app (the **Vivid colours** switch).
 
@@ -126,7 +128,10 @@ Phone, stops when the app isn't on screen, and holds still with **Remove animati
 on Android 11 and older it's a still picture. The app's icon is the call line's: a white handset in a green circle (on Android 13 and newer it follows
 themed icons if you use them).
 
-**A ringing call** shows **Answer**, **Decline** and **Later** (**Snooze** for the wake-up alarm). On Android 12 and
+**A ringing call** shows **Answer**, **Decline** and **Later** (**Snooze** for the wake-up alarm). Since 0.8.7 the ringing
+screen matches the rest of the app: dark, over Kurooto's sky in your colours (the **Vivid colours** switch), a slowly turning badge
+(still with **Remove animations**), who's calling and why, and the three as big rounded buttons in a bar floating at the bottom.
+Answered, the call page fills the screen as before. The **New call screen** switch brings back the old one. On Android 12 and
 newer the notification looks like the phone's own incoming calls (a red Decline, a green Answer). What each does is in
 [Calls: Kurooto calling you](calls.md#kurooto-calling-you).
 
@@ -158,6 +163,11 @@ An old Android phone on a charger by your bed, as a dock. It shows:
   **Call** button. **Chat** and **Close** are the small buttons below it.
 
 **Open it** from the app's **Phone** tab: **Bedside mode** → **Open bedside mode**.
+
+**Its look (0.8.7).** Always on black. The calls due next sit in a faint floating card, "waiting for you" is a small pill
+(tap it for Inbox), **Talk** is a big rounded button with a handset that changes shape as you press it, and **Chat** and
+**Close** share a small floating bar at the bottom. By day the Talk button and the cards take the app's colours (Vivid or
+Calm); from 20:00 to 07:00 everything turns the warm, dim red-orange below.
 
 **On the lock screen.** It shows over the lock screen, so the dock can stay locked: **Talk** works without unlocking.
 **Chat** and "waiting for you" ask you to unlock first. With a PIN, pattern or fingerprint lock, the calls' reasons

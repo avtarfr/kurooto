@@ -688,7 +688,8 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   - `build.sh --lint`: Gradle's `lintRelease` with only `NewApi` and `InlinedApi` (Java and Kotlin), failing on any;
     CI runs it. `build.sh --test` is unchanged (plain javac and java, no Gradle): `test/CryptoTest.java`,
     `test/SpeechTest.java`, `test/CardsPlacesTest.java` (`CardRules`, `PlaceRules`), `test/TodayTest.java`
-    (`Buttons`, `AlarmPlan`), `test/DockTest.java` and `test/ViewsTest.java` (`ViewSeal`).
+    (`Buttons`, `AlarmPlan`), `test/DockTest.java`, `test/ViewsTest.java` (`ViewSeal`) and `test/CallRulesTest.java`
+    (`CallRules`, 0.8.7).
   - CI (`ci.yml` job `android`, `android-emulator.yml`) sets `GRADLE_USER_HOME` to the runner's temp folder and needs
     the network for Gradle's first run; `smoke.sh` is unchanged.
 - `build.sh --test` also runs `test/LinkTest.java` (0.7.0: `LinkRules`, and `WebSock` against a local server:
@@ -767,8 +768,34 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `QuickNoteActivity`, `ShareActivity` and `PairActivity` (small floating sheets: `Sheets.kt`'s `SheetActivity` and `Sheet` over a
   dimmed screen, window theme `Kurooto.Sheet`: translucent, tap outside to close), and `PlacesActivity` and `ChatActivity` (full pages
   over the sky: `PageActivity` / `Page`, and the chat's own `LazyColumn` of bubbles, with links via `LinkAnnotation`;
-  `ChatActivity.visible` and `ID_NOTE` stay static for `ListenService`). `BedsideActivity` and `CallActivity` are still framework views built by `Ui` (0.7.7; `ViewsActivity` is a thin wrapper now, see Views below), and everything else (services, receivers, calls, alarms,
-  crypto, notifications, widgets) stays framework Java:
+  `ChatActivity.visible` and `ID_NOTE` stay static for `ListenService`). Since 0.8.7 so are bedside mode and the call screen,
+  each keeping its Java activity as the entry point with every rule, intent extra and lifecycle hook (`ViewsActivity` is a thin
+  wrapper too, see Views below), and everything else (services, receivers, calls, alarms, crypto, notifications, widgets) stays
+  framework Java:
+  - `BedsideActivity` (a `ComponentActivity`, still Java) writes what to show into `BedsideState` (Compose state: clock, date,
+    alarm line, up to three calls, the waiting line, status, Talk's label and enabled, Dock's `ink`/`dim`, `night`) on every
+    `paint()`; `BedsideScreen.kt` draws it on black (`KurootoTheme(forceDark = true)`): the clock (a third of the width, 56 to
+    160sp, light), date, alarm, the calls in a floating card, the waiting pill (`openInbox()`), the Talk button (expressive
+    `ButtonDefaults.shapes()`, `talk()`), the status line, Chat (`openChat()`) and Close in a floating pill. At night
+    (`Dock.warm`) the Talk fill is the old warm `#2A1408` with Dock's ink and the cards are 7% ink; by day the scheme's primary
+    and `surfaceContainerHigh`. Taps on the background call `tapped()` (0.3 for 15 s). The window brightness, keep-on flag,
+    immersive mode, lock-screen flags, battery receiver, `auto` closing, `/upcoming` every 5 minutes, `requestDismissKeyguard`,
+    `Watcher`/`open()` and the Phone tab's `hours()` dialog are as before. The pure parts moved into `Dock`
+    (`brightness(hour, tapped)`, `alarmLine`, `waitingLine`, `test/DockTest.java`). Extras: `auto`, and in dev/debug builds
+    `demo` (`Demo.upcoming()`, nothing fetched or sent) with `hour` (int) to look at any hour's colours.
+  - `CallActivity` (a `ComponentActivity`, still Java) keeps all of a call's plumbing: the intents (`url`, `ringing`,
+    `reason`, `since`, `alarm`, `local`; `singleTask`, `onNewIntent`), `FLAG_KEEP_SCREEN_ON`, show-when-locked and turn
+    screen on, `STREAM_VOICE_CALL`, the WebView and its `KurootoApp` bridge, `MIN_WEBVIEW` and the browser fallback, the
+    microphone request, routing and the proximity wake lock, turn-by-turn speech, `showing`, and the clean-up in
+    `onDestroy`. `Prefs.newCallScreen` (Phone tab → Switches → **New call screen**, default on), read in `onCreate`, picks
+    the screen: on, `EdgeToEdge.enable` with dark bars and `CallScreen.kt` (`ringing()`: always dark over `Sky` at 0.6, a
+    turning, breathing `Cookie9Sided` badge, still with reduced motion, `displaySmallEmphasized` caller, and
+    Decline/Later/Answer as 64dp expressive buttons in a floating pill; `page()`: the WebView's `FrameLayout` in an
+    `AndroidView`, padded by the system bars' insets on `k_call_bg`); off, the framework screen from before 0.8.7
+    (`showRingingClassic`, the `fitsSystemWindows` frame). The decision of what an intent does, the ringing words,
+    which replies reach the line and `withAuto` are `CallRules` (pure Java, `test/CallRulesTest.java`). Dev/debug `demo`:
+    a made-up ring with no link; its buttons send nothing and Answer shows a stand-in page (no script, no microphone, no
+    audio changes).
   - `MainActivity` (a `ComponentActivity`, edge to edge, `enableOnBackInvokedCallback` for the predictive back
     gesture) holds `HomeState` (Compose state: paired, name, tab, today, waiting, queued, the status lines, update,
     tick) and does what the screens ask (`refresh`, `pull`, `loadWaiting`, `requestCall`, `chat`, `dueAct`, `answer`,
@@ -823,8 +850,8 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     never change. Light or dark follows the system (`-night`); Android 9 and older are light. Later (the Compose
     app): the named themes too, from `core/palette.py:export()` (each theme's flavours and their role → hex maps).
   - Themes (`res/values/themes.xml`): `Kurooto` (full-screen pages, the app's default), `Kurooto.Dialog` (`AnswerActivity`,
-    `PairActivity`, `ShareActivity`: a 28dp-cornered card, `drawable/k_dialog.xml`) and `Kurooto.Call` (`CallActivity`,
-    always dark). `Base.Kurooto*` only pick the framework's light or dark `Theme.Material` parent.
+    `PairActivity`, `ShareActivity`: a 28dp-cornered card, `drawable/k_dialog.xml`) and `Kurooto.Call` (`CallActivity` and
+    `BedsideActivity`, always dark; their Compose screens draw over it). `Base.Kurooto*` only pick the framework's light or dark `Theme.Material` parent.
   - `Ui.java` builds the views: `page(activity)` / `dialog(activity)` set the content and return the column to fill
     (`page` keeps clear of the system bars, which Android 15 draws over; `page(activity, behind)` puts a view behind
     the scrolling column, full screen; 0.7.0: `dialog` sets the window to 90% of the screen's width, at most 560dp,
@@ -850,8 +877,9 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     with three actions. Both share `ringNotice()` (full-screen intent, ongoing, timeout). 0.6.0: `ringingSince` is set
     after `startRing()` (which clears it): before, a ring neither stopped after its 60 s / 5 minutes nor on the line's
     `stop` (answered elsewhere) until it was tapped.
-  - `CallActivity` puts the WebView in a `fitsSystemWindows` FrameLayout, so on Android 15 (edge to edge) the call page
-    stays clear of the status and navigation bars; on 6 to 14 the insets are 0 and nothing changes.
+  - `CallActivity` (the old screen, "New call screen" off) puts the WebView in a `fitsSystemWindows` FrameLayout, so on
+    Android 15 (edge to edge) the call page stays clear of the status and navigation bars; on 6 to 14 the insets are 0 and
+    nothing changes. The new screen pads it with Compose's `WindowInsets.systemBars` instead.
   - Touch targets are 48dp at least (56dp for `large`, list rows 64dp). Use `Ui.color(c, R.color.k_*)`, never a
     hard-coded colour, so dark mode and Material You keep working.
 - CI: `ci.yml` job `android` (vectors, debug build, `NewApi`/`InlinedApi` lint as errors);

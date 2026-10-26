@@ -122,11 +122,11 @@ fun reducedMotion(c: Context): Boolean =
 val LocalReducedMotion = staticCompositionLocalOf { false }
 
 /** Kurooto's theme for a Compose screen: Material You on Android 12+ when dynamic, else the named palette; light or
- *  dark as the system is. */
+ *  dark as the system is (`forceDark`: always dark). */
 @Composable
-fun KurootoTheme(palette: String = "kuro", dynamic: Boolean = true, content: @Composable () -> Unit) {
+fun KurootoTheme(palette: String = "kuro", dynamic: Boolean = true, forceDark: Boolean = false, content: @Composable () -> Unit) {
     val c = LocalContext.current
-    val dark = isSystemInDarkTheme()
+    val dark = forceDark || isSystemInDarkTheme() // forceDark (0.8.7): the call and bedside screens, always dark
     val p = Palettes.named(palette)
     val k = if (dark) p.darkK else p.lightK
     val vivid = Prefs.vivid(c)
