@@ -51,6 +51,11 @@ CORE: tuple[tuple[tuple[str, ...], str], ...] = (
         'what I remember (encrypted): /memory <words> finds, /memory forget 3, /memory export; also "when did I '
         'last talk to Prof Ortiz?", "what was I doing last Thursday?"',
     ),
+    (
+        ("run",),
+        "all: every nightly process that's on, now, in order (books, inbox, concept graph, look-alike notes, "
+        "garden) with a progress line; /run all status, /run all stop",
+    ),
     (("helper",), "the offline helper: on, off, test"),
     (("egress",), "where my requests went in the last 7 days: each host and feature, requests, bytes, any blocked"),
     (("health",), "what isn't working, with Fix buttons (/health now checks online too)"),
@@ -163,7 +168,7 @@ GROUPS: tuple[Group, ...] = (
         "Settings and upkeep",
         "your-computer",
         ("backups", "profile", "space", "local_models", "awake", "terminals", "terminal", "overlay"),
-        ("health", "fixme", "keep", "calm", "why", "helper"),
+        ("health", "fixme", "keep", "calm", "why", "helper", "run"),
     ),
 )
 MORE = Group("more", "More", "index")  # a feature no group names (an add-on, a new one)

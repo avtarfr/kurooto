@@ -5,6 +5,8 @@ differently gets a quote-checked "Notation" table. A fake AI answers the reading
 # ruff: noqa: F811  (the world fixture is imported)
 import json
 
+import pytest
+
 from kurooto.core import conceptgraph as cg
 from kurooto.core import graphmerge
 from kurooto.core import graphwrite as gw
@@ -24,10 +26,11 @@ def note(env, slug: str, body: str, aliases: str = "") -> str:
     return text
 
 
-def setup_pair(env, made: bool = True):
+def setup_pair(env, made: bool = True, auto: bool = False):
     """Brownian motion (yours, two notes link to it) and Wiener process (written by the graph, sharing the name), and a
-    note whose typed link points at the second."""
+    note whose typed link points at the second. auto=False: integrate.auto_merge off, so the pair is asked (0.8.8)."""
     ig = env.integrate
+    env.app.settings.set("integrate.auto_merge", auto)
     texts = {
         "bm": note(
             env,
@@ -243,3 +246,138 @@ def test_a_second_source_with_other_notation_gets_a_checked_table(world):
     assert USER_TEXT in text
     prompt = json.dumps(env.fake_ai.requests[0])
     assert "notation" in prompt and "the notation exactly as these pages write it" in prompt
+
+
+# ---------------------------------------------------------------------------------------------- fixing itself (0.8.8)
+def undo_buttons(msg):
+    return [b for b in buttons(msg) if b.endswith(":undo")]
+
+
+def test_a_clear_pair_merges_by_itself_and_the_morning_line_has_its_undo(world):
+    env = world
+    texts = setup_pair(env, auto=True)  # a shared name, both notes Kurooto's
+    assert graphmerge.night(env.integrate) == ""  # nothing left to ask
+    wp = read(env, "zettel/wiener-process")
+    assert "<!-- kurooto:merged-into -->" in wp
+    assert WIENER_DEF in read(env, "zettel/brownian-motion")  # its text moved into the kept note: nothing lost
+    st = graphmerge.load(env.integrate)
+    (rec,) = [r for r in st["pairs"].values() if r.get("auto")]
+    assert rec["state"] == "merge"
+    env.integrate.summary()  # Dreaming is off: the concept graph's morning line carries it
+    msg = last(env)
+    assert "Merged 1 look-alike concept note by themselves" in msg["text"]
+    assert "1. Wiener process into Brownian motion" in msg["text"]
+    (undo,) = undo_buttons(msg)
+    assert graphmerge.merged_section(env.integrate) == ("", [])  # told once
+    assert env.press(undo) == "Merge undone."
+    for slug, key in (
+        ("zettel/brownian-motion", "bm"),
+        ("zettel/wiener-process", "wp"),
+        ("zettel/gradient-descent", "gd"),
+    ):
+        assert read(env, slug) == texts[key], slug
+    # undone: never merged by itself again, asked instead
+    assert graphmerge.auto(env.integrate) == []
+    assert graphmerge.night(env.integrate)
+    assert "Brownian motion and Wiener process" in last(env)["text"]
+
+
+def test_a_note_you_wrote_is_never_merged_by_itself(world):
+    env = world
+    setup_pair(env, auto=True)
+    bm = env.app.workspace / "zettel" / "brownian-motion.md"
+    bm.write_text(bm.read_text(encoding="utf-8").replace("trust_tier: agent_written\n", ""), encoding="utf-8")
+    assert graphmerge.auto(env.integrate) == []
+    assert "merged-into" not in read(env, "zettel/wiener-process")
+    text, rows = graphmerge.ask_now(env.integrate)  # asked, as before
+    assert "Brownian motion and Wiener process" in text and any(b.endswith(":merge") for r in rows for _, b in r)
+
+
+def test_meaning_merges_by_itself_only_above_the_strict_threshold(world, monkeypatch):
+    env = world
+    env.app.settings.set("integrate.auto_merge", True)
+    note(env, "zettel/forward-mode", "# Forward mode\n\nTangents pushed forward.\n")
+    note(env, "zettel/tangent-propagation", "# Tangent propagation\n\nTangents pushed forward again.\n")
+    ig = env.integrate
+    vec = {"zettel/forward-mode": [1.0, 0.0, 0.0], "zettel/tangent-propagation": [1.0, 0.3, 0.0]}  # 0.958 alike
+
+    def index(refresh=True):
+        i = cg.Index(cg.scan(env.app))
+        i.vec = {k: v for k, v in vec.items() if k in i.notes}
+        return i
+
+    monkeypatch.setattr(ig, "index", index)
+    assert graphmerge.auto(ig) == []  # over the question's 0.92, under 0.97: asked
+    (p,), _ = graphmerge.find(ig, again=True)
+    assert p.why == "meaning"
+    vec["zettel/tangent-propagation"] = [1.0, 0.1, 0.0]  # 0.995 alike
+    (m,) = graphmerge.auto(ig)
+    assert {m["a"], m["b"]} == {"zettel/forward-mode", "zettel/tangent-propagation"}
+    env.app.settings.set("integrate.auto_merge_min", 0.5)  # never below the question's own 0.92
+    assert graphmerge.auto_min(ig) == cg.DUP_COSINE
+
+
+def test_same_name_texts_far_apart_are_asked_not_merged(world, monkeypatch):
+    env = world
+    env.app.settings.set("integrate.auto_merge", True)
+    note(env, "zettel/kernel", "# Kernel\n\nThe vectors a linear map sends to zero.\n")
+    note(env, "zettel/kernel-function", "# Kernel\n\nA similarity function for an SVM.\n")
+    ig = env.integrate
+
+    def index(refresh=True):
+        i = cg.Index(cg.scan(env.app))
+        i.vec = {"zettel/kernel": [1.0, 0.0], "zettel/kernel-function": [0.2, 1.0]}
+        return i
+
+    monkeypatch.setattr(ig, "index", index)
+    assert graphmerge.auto(ig) == []
+    (p,), _ = graphmerge.find(ig, again=True)
+    assert p.why == "name"  # asked instead
+
+
+def test_off_switch_and_graph_same_says_what_it_merged(world):
+    env = world
+    setup_pair(env, auto=False)
+    assert graphmerge.auto(env.integrate) == []
+    env.app.settings.set("integrate.auto_merge", True)
+    env.say("/graph same")
+    msg = last(env)
+    assert msg["text"].startswith("Merged 1 look-alike concept note by themselves")
+    assert "No other look-alike concept notes to ask about." in msg["text"] and undo_buttons(msg)
+
+
+def test_run_alls_look_alike_step_merges_and_hands_back_the_undo(world):
+    from kurooto.core import runall
+
+    env = world
+    setup_pair(env, auto=True)
+    run = runall.Run(env.app, [])
+    assert runall.same_step(run).startswith("1 look-alike pair merged by themselves (Undo below), 0 unsure pairs")
+    assert [b for row in run.buttons for _, b in row][0].endswith(":undo")
+    env.app.settings.set("integrate.duplicates", False)
+    with pytest.raises(runall.Skip):
+        runall.same_step(run)
+
+
+def test_with_dreaming_on_the_merges_are_in_its_morning_message(world):
+    env = world
+    env.on("dreaming")
+    setup_pair(env, auto=True)
+    graphmerge.auto(env.integrate)
+    assert env.integrate.summary() == ""  # Dreaming's message carries it instead
+    text = env.app.modules["dreaming"].report(send=True)
+    assert "Merged 1 look-alike concept note by themselves" in text
+    assert undo_buttons(last(env))
+
+
+def test_run_alls_garden_step_waits_for_the_pass_and_a_stop_doesnt_outlive_it(world):
+    from kurooto.core import runall
+
+    env = world
+    run = runall.Run(env.app, [])
+    run.stop.set()  # stopped before the first note: nothing sent, and the next garden isn't held by it
+    assert runall.garden_step(run).startswith("0 notes sent to be linked (stopped")
+    assert env.integrate.garden_halt is None
+    env.app.settings.set("integrate.garden", False)
+    with pytest.raises(runall.Skip):
+        runall.garden_step(runall.Run(env.app, []))

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.8 (unreleased)
+
+- **Look-alike concept notes fix themselves** (`integrate.auto_merge`, on): pairs that are clearly one concept (the same
+  name, a shared name, or texts at least `integrate.auto_merge_min` = 0.97 alike), both notes Kurooto's, merge by
+  themselves through the usual Merge, in the garden pass, before the 06:25 question and on `/graph same`. Each is in the
+  morning line with its own Undo button; only unsure pairs are asked. A note you wrote is never merged by itself.
+- **`/run all`** (and `kurooto run all`): every nightly process that's on, now, in order (books, inbox, concept graph,
+  look-alike notes, garden), one at a time, with a progress line and ETA per step and a summary at the end;
+  `/run all status`, `/run all stop`. Off: `runall.on`.
+
 ## 0.8.6 (unreleased)
 
 - **The board you had, back if you want it** (`look.board`): `three` (default: NOTES, SYSTEMS and BRAIN on top, STATUS and

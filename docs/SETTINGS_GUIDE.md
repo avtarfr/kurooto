@@ -496,6 +496,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | Setting | Default | What it does |
 |---|---|---|
 | `integrate.at` | `"daily 01:30"` | when the night's integration starts (it carries on batch after batch) |
+| `integrate.auto_merge` | `true` | look-alike concept notes that are clearly one concept merge by themselves (Undo each) |
+| `integrate.auto_merge_min` | `0.97` | how alike two notes' text must be (embeddings, 0.92 to 1) to merge without asking |
 | `integrate.batch_pages` | `12` | about this many pages per request |
 | `integrate.commit` | `true` | one git commit per batch, when your notes are a repository |
 | `integrate.duplicates` | `true` | each morning, up to 3 pairs of look-alike concept notes: Merge / Keep both / Add alias |
@@ -937,6 +939,12 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `retro.routines` | `true` | propose a routine it sees in the records (the same thing at the same time, 3+ weeks) |
 | `retro.transcripts` | `true` | read today's call transcripts |
 | `retro.when` | `"daily 23:50"` | "weekly sun 21:00" looks back over the whole week instead |
+
+### `runall`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `runall.on` | `true` | /run all and `kurooto run all`: every nightly process that's on, now, one after another |
 
 ### `skills`
 

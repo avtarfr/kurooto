@@ -2172,6 +2172,18 @@ e.g. `Calendar: ok, 23 events`. With Notes sync off, plain `/sync` does the same
 summary; `kurooto sync --no-wait` starts it and returns (the summary comes as a message); `kurooto sync --status` says
 whether one is running and how the last one went (it works with Kurooto stopped, too).
 
+### Run everything now
+`/run all` on Telegram, or `kurooto run all` in a terminal (with Kurooto running), runs the processes that otherwise
+wait for the night, now, one after another and each only when its feature is on: read new books (on the charger),
+file the inbox (and read the files in it with `sorter.read_files`), the concept graph's queue until nothing is ready
+or tonight's budget is used up (it respects `/graph stop`), look-alike notes (clear pairs merged with Undo, the rest
+asked), then the garden. Each step waits for the one before and shows one line with an ETA, like
+`[3/5] Concept graph |########------------| 40% 4/10 batches, 2:05 elapsed, ETA 3:08` (Telegram edits one message;
+the terminal prints it live), then one summary with an Undo button per merge. Never two at once. `/run all status`
+shows where it is; `/run all stop` stops the step running at its next safe point and the rest don't start.
+*Settings:* `runall.on`. *Undo:* `runall.on` off; each merge has its Undo button, and what the other steps did is
+undone as always (`/sort undo`, a batch's Undo).
+
 ### Backups
 Once a day, a zip of Kurooto's settings, data and state in a folder you pick: a folder on an external drive, or one
 your computer already syncs to a cloud (Google Drive, OneDrive, iCloud Drive, Dropbox), so the zip goes there too. The
@@ -2800,6 +2812,17 @@ into the kept note. Links Kurooto wrote elsewhere follow, and new reading under 
 **Keep both** never asks about that pair again. **Add alias** keeps both and makes the second name an alias of the
 first, each linking the other as `equivalent-to`. Each has **Undo** (a note you changed since stays as it is, and it
 says so). A pair you don't answer comes back after two weeks; `/graph same` asks now.
+
+**It fixes itself** (0.8.8, `integrate.auto_merge`, on). A pair that is clearly one concept merges without asking,
+through the same Merge, and only the unsure pairs are asked. Clearly: both notes are Kurooto's (`made_by` or
+`trust_tier: agent_written` in the header), and they have the same name or share one (unless their texts are far
+apart where there are embeddings: two different "Kernel" notes are asked about), or their texts are at least
+`integrate.auto_merge_min` alike (0.97; asking starts at 0.92, and in between sit neighbouring ideas). A note you wrote
+is never merged by itself, nor a pair you answered before or whose merge you undid (that one is asked). At most six a
+pass, in the daily garden pass, before the 06:25 question and on `/graph same` (it says what it merged, then asks the
+rest). Each merge is listed in the morning line with its own **Undo** button (Dreaming's message, else the concept
+graph's morning line, else a message of its own). *Undo:* the merge's Undo button puts both notes back; turn
+`integrate.auto_merge` off and every pair is asked again, as before.
 
 **Notation** (`integrate.notation`, on; a switch on the Concept graph card: tables are written whenever the graph
 reads, books, class files or handwritten notes). The reading also notes how the pages write each concept (`B_t`, `W_t`, where
