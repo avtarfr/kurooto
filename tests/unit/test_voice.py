@@ -151,7 +151,6 @@ MISHEARD = [
     "Coo roto, hello",
     "Kirito, what's on today",
     "Guru to, read that again",
-    "Cool auto, what's due",
     "Kuroo, stop",
     "Hey kuro, what's the time",
     "Kurroto, open my notes",
