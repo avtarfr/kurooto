@@ -523,6 +523,41 @@ def test_a_reply_isnt_spoken_once_muted(voice, monkeypatch):
     assert said == ["one"]
 
 
+def tone(seconds=3.0, loud=8000) -> bytes:
+    """A stand-in stretch of sound (16 kHz, 16-bit mono): louder in the middle."""
+    import array
+    import math
+
+    n = int(16000 * seconds)
+    wave = (int(loud * math.sin(k / 9) * (0.2 + math.sin(math.pi * k / n))) for k in range(n))
+    return array.array("h", wave).tobytes()
+
+
+def test_a_stretch_that_isnt_a_turn_shows_its_outline_and_never_its_words(voice):
+    voice.judge.answers = ['{"class": "chatter", "confidence": 0.9}']
+    voice.hear(Heard(speech=True, text="the pin for the locker is four four seven one"), tone(8.0))
+    voice.hear(Heard(speech=False, text=""), tone(0.3, 300))  # noise
+    waves = [m for m in voice.app.live.sent if m["kind"] == "voice_heard"]
+    assert [sorted(m) for m in waves] == [["addressed", "kind", "samples", "t"]] * 2
+    assert all(m["t"] == "voice" and m["addressed"] is False for m in waves)
+    assert len(waves[0]["samples"]) == 120 and len(waves[1]["samples"]) == 15  # at most 120; one per 20 ms
+    assert all(0.0 <= x <= 1.0 for m in waves for x in m["samples"])
+    assert max(waves[0]["samples"][50:70]) > waves[0]["samples"][0]  # louder in the middle, as it was
+    assert "locker" not in json.dumps(voice.app.live.sent)
+
+
+def test_a_turn_has_no_outline_and_the_levels_switch_and_an_unwatched_page_stop_it(voice):
+    voice.hear(Heard(speech=True, text="Kurooto, what's due this week?"), tone())
+    assert not any(m["kind"] == "voice_heard" for m in voice.app.live.sent)
+    voice.judge.answers = ['{"class": "chatter", "confidence": 0.9}'] * 2
+    voice.app.settings.set("voice.listen.levels", False)
+    voice.hear(Heard(speech=True, text="no I'll get the snacks later"), tone())
+    voice.app.settings.set("voice.listen.levels", True)
+    voice.app.live.watched = lambda: False
+    voice.hear(Heard(speech=True, text="no I'll get the snacks later"), tone())
+    assert not any(m["kind"] == "voice_heard" for m in voice.app.live.sent)
+
+
 # ------------------------------------------------------------------------------------- Voice ID (0.8.10)
 class Stt:
     """The transcriber: says what it's told to, and counts each call (and how much sound it got)."""
@@ -649,6 +684,14 @@ def test_someone_else_not_calling_it_is_never_transcribed(vid):
     hear(v, "Kurooto, what's the time?", who_voice=55, utt=2, seconds=8.0)
     assert len(stt.calls) == 2 and stt.calls[1] > stt.calls[0]  # the name at the edges: then all of it
     assert v.portal.send.got[-1] == ("what's the time?", "guest")
+
+
+def test_someone_else_dropped_by_the_gate_still_shows_its_outline(vid):
+    v = vid.v
+    hear(v, "did you see the match last night, it was something", who_voice=55, seconds=8.0)
+    waves = [m for m in v.app.live.sent if m["kind"] == "voice_heard"]
+    assert len(waves) == 1 and waves[0]["addressed"] is False and 0 < len(waves[0]["samples"]) <= 120
+    assert "match" not in json.dumps(v.app.live.sent)
 
 
 def test_without_the_gate_only_addressed_turns_are_checked(vid):

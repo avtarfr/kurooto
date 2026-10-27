@@ -46,7 +46,7 @@ Mic (sounddevice | pw-record | parec), 16 kHz mono, 512-sample frames
   -> worker thread "voice-hear": Voice.hear(Heard(speech, wake, seconds), pcm)
        blocked()? drop.  Whisper.text(pcm) (CPU, int8; the assistant's name as initial_prompt and hotwords) -> del pcm
        Gate.decide(heard, portal.context())
-       not addressed: heard.text = "" (dropped), portal.take() closes an open portal
+       not addressed: heard.text = "" (dropped), its loudness outline -> voice_heard, portal.take() closes an open portal
        addressed: NameMatcher.uncall() (the call isn't sent); portal.take(heard, decision, text) -> ask_brain(text) -> Speaker.say(reply)
 ```
 
@@ -142,6 +142,7 @@ unknown `t`, so a page that doesn't draw Voice is unaffected.
 | `voice_level` | `levels`: 5 numbers 0..1 (two decimals: RMS on a -60..0 dB scale, 20 ms each), `rate`: 50 | every 100 ms while listening and a page is in sight (`voice.listen.levels`) |
 | `voice_text` | `who`: `you` or `kurooto`; `text` | an addressed turn and its reply, `/voice say` and `POST /api/voice/say` |
 | `voice_speak` | `samples` (the sentence's shape, `from_pcm`), `rate`: 50 | as each sentence starts playing |
+| `voice_heard` | `samples`: at most 120 numbers 0..1 (`shape.envelope`: one per 20 ms of the stretch on the `voice_level` scale, fewer and wider buckets for a long one), `addressed`: `false`; nothing else, no words | a stretch that wasn't a turn (chatter, noise, not to it, or someone else dropped by Voice ID's gate), from `Voice._heard_wave` on the `voice-hear` thread, while a page is in sight (`voice.listen.levels`) |
 
 Example: `{"t":"voice","kind":"voice_state","state":"thinking","portal":true,"listening":true,"why":""}`.
 

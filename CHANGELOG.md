@@ -2,6 +2,9 @@
 
 ## 0.8.11 (unreleased)
 
+- **Voice: the waveform shows speech that wasn't for Kurooto too.** People talking to each other and noise now move
+  the dashboard's waveform as well, as their loudness only: no words ever reach the page. `voice.listen.levels`
+  turns it off with the live levels.
 - **Voice ID: Set up from its own page.** With Voice ID on but its files not downloaded yet, the Your voice page
   said to go to the dashboard; it now has a **Set up now** button that downloads them there and shows the progress.
 - **Face presence: the near step can be finished.** Sitting close to a laptop's camera, leaning in pushed your chin

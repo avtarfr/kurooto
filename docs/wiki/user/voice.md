@@ -103,6 +103,8 @@ conversation. It closes:
 - when you mute it, a call starts, Kurooto pauses, or (with `voice.listen.night` off) the night begins.
 
 The dashboard shows each step (listening, hearing, talking to it, thinking, speaking, closed) and a waveform.
+Speech that wasn't for Kurooto (people talking to each other, noise) moves the waveform too: only its loudness
+reaches the page, never its words. `voice.listen.levels` off stops both.
 
 ## When it doesn't listen
 

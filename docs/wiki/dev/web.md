@@ -129,7 +129,7 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   open page is hidden the loop reads nothing (a dashboard left in a background tab kept the daemon at 13-30% of a
   core). Coming back sets `_wake`, so the loop takes a reading at once instead of within 2 s. Events and terminal
   output are still pushed to hidden pages; a new page counts as in sight; `drop` forgets its `hidden` entry.
-- Voice (0.8.8) pushes `{"t": "voice", "kind": voice_state | voice_level | voice_text | voice_speak, ...}` straight
+- Voice (0.8.8) pushes `{"t": "voice", "kind": voice_state | voice_level | voice_text | voice_speak | voice_heard, ...}` straight
   to the pages with `Live.push`, never through the event log (words and levels aren't logged); [voice.md](voice.md#events-and-the-live-stream).
 - Face presence (0.8.10) pushes `{"t": "face", kind: enrol | test | test_result | session}` to the Face page's `cid`
   only (`Live.push(..., only={cid})`), and `{"t": "face", "kind": "camera", "on"}` to every page (the "● camera"

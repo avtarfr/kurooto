@@ -15,7 +15,7 @@ touches the disk.
 
 The dashboard: GET /api/voice (state, engines, switches), POST /api/voice/say {text}, POST /api/voice/mute {on},
 POST /api/voice/shape {text} (shape.py), and the live stream's {"t": "voice"} messages: voice_state, voice_level,
-voice_text, voice_speak (docs/wiki/dev/voice.md).
+voice_text, voice_speak, voice_heard (docs/wiki/dev/voice.md).
 
 Voice ID (0.8.10, voiceid.py; voice.speaker_id.on, off by default): only the owner's voice can make Kurooto act; any
 other voice, or one it isn't sure of, can only chat (core/guest.py). Its own page is /voice-id; /voice id and /voice
@@ -377,6 +377,14 @@ class Voice(Module):
         if live is not None and live.watched():
             self.publish("voice_level", levels=shape_mod.levels(data, 5), rate=shape_mod.RATE)
 
+    def _heard_wave(self, audio: bytes | None) -> None:
+        """A stretch that wasn't a turn (chatter, noise, not to it): its loudness outline only, never words, so the
+        page's waveform moves for speech that wasn't for Kurooto too. Same switch as the live levels."""
+        live = getattr(self.app, "live", None)
+        if not audio or not self.setting("listen.levels") or live is None or not live.watched():
+            return
+        self.publish("voice_heard", samples=shape_mod.envelope(audio), addressed=False)
+
     def status(self) -> dict:
         s = self.setting
         missing = self.parts.missing(self.wants())
@@ -573,6 +581,7 @@ class Voice(Module):
                 elif not g.called(heard):
                     heard = ""  # dropped: someone else, not to it, never written out in full
                 if not h.text and not heard:
+                    self._heard_wave(audio)
                     del audio
                     self.heard[CHATTER] = self.heard.get(CHATTER, 0) + 1
                     from kurooto.modules.voice.gate import Decision
@@ -592,6 +601,7 @@ class Voice(Module):
         d = g.decide(h, ctx)
         self.heard[d.klass] = self.heard.get(d.klass, 0) + 1
         if not d.addressed:
+            self._heard_wave(audio)
             del audio
             h.text = ""  # dropped here: never stored, logged or sent
             was_open = self.portal.open
