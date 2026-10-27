@@ -90,9 +90,11 @@ In this order, first match wins:
 | no speech | noise |
 | your own wake word model (if you set one) | talking to it |
 | no real words (or what transcribers invent from silence: "thank you", "[music]") | noise |
-| its name, first or last, as Whisper may spell it | talking to it |
+| "stop", "not you", "never mind" ... right after it opened a conversation or spoke (see Telling it off) | it stops |
+| its name, first or last, as Whisper may spell it (careful when someone else may be talking: below) | talking to it |
 | the first words after its name said on its own ("Kurooto?") | talking to it |
 | two or more voices, and none of the above (when the listener can tell; today's can't, so the model judges this from the words and from how much talk there's been nearby) | chatter |
+| anything the voice it just answered says within 20 seconds of the answer ending, statements too | talking to it |
 | a question or request while the conversation is open | talking to it |
 | a question or request within 6 seconds of it speaking (a yes or no too, if it asked something) | talking to it |
 | anything else | the model on your computer decides |
@@ -101,14 +103,45 @@ The model on your computer (Ollama, the one Local AI models set up, or the offli
 answers noise, chatter or talking to it, with how sure it is. Below `voice.listen.threshold` (0.7) it counts as not
 talking to it. With no local model, only its name, your wake word and the rules above open a conversation.
 
+### When someone else may be talking: its name has to be a call
+
+Mentioning Kurooto to a friend shouldn't wake it. So when someone else may be talking (Voice ID isn't sure the voice
+is yours or knows it isn't, people talked here in the last minute without talking to Kurooto, or Face presence sees
+two or more faces), its name counts only said first as a call: "Kurooto, what's due?", "hey Kurooto, ...", or just
+"Kurooto". Its name at the end ("can you check this, Kurooto") or in the middle, or a word that only sounds like it,
+is then only a mention: the other rules and the model on your computer decide, and the model is told it may be a
+mention. With you alone and no one talking, its name first or last wakes it as before. Switches:
+`voice.listen.careful_name` (on) and `voice.listen.chatter_s` (60 seconds).
+
+### Telling it off
+
+If it wakes when you weren't talking to it, say "stop", "not you", "I wasn't talking to you", "shut up", "be quiet",
+"go away" or "never mind" within about 10 seconds of it opening the conversation or speaking: it stops speaking at
+once, closes the conversation and says nothing. While it's speaking the microphone is held so it doesn't hear itself,
+so say it as soon as it stops (or `/voice stop`, the dashboard). It notes the misfire (which rule woke it, never your
+words) for the night's learning. `voice.listen.told_off` (on).
+
+### Learning at night
+
+Every night at 04:10 it learns from how its voice turns went: ones you carried on talking to it (good) and ones you
+told off (misfires). Only flags and numbers are kept, under Kurooto's state in `voice/` (the rule that decided, how its
+name was said, how many voices, Voice ID's decision and score, seconds since other talk, faces in view; never words or
+sound). Once it has 20 turns with some of each, a small model can hold back a borderline opening (its name heard only
+as a near miss, a follow-up, the model's judgement) that looks like the misfires. It can never stop "Kurooto, ..."
+said first. `/voice` and `/health` show what it learned, as numbers. `voice.listen.learn_nightly` (on); forgetting
+your voice (`/voice id forget`) deletes these too.
+
 ## The conversation (the "portal")
 
 When the gate decides you're talking to Kurooto, a conversation opens: your words go to your AI like a chat message
-(answers worded to be spoken), and the answer comes back on the dashboard and aloud. Keep talking and it follows the
-conversation. It closes:
+(answers worded to be spoken), and the answer comes back on the dashboard and aloud. The conversation carries context
+like a typed chat: your AI sees your turns before (a guest's turns stay apart). Keep talking and it follows the conversation: you don't have to say
+its name again. Within 20 seconds of its answer ending (`voice.listen.follow_s`; counted from when it finishes, so a
+phone playing its voice doesn't eat the time), whatever the same voice says goes to it, statements too, not only
+questions. Another voice, two voices at once, or telling it off ends that. It closes:
 
 - **at once** when the next thing it hears isn't to it (you turn to someone else);
-- after `voice.listen.close_s` seconds (8) with nothing said to it;
+- after `voice.listen.close_s` seconds (8) with nothing said to it, or `voice.listen.follow_s` (20) after an answer;
 - when you mute it, a call starts, Kurooto pauses, or (with `voice.listen.night` off) the night begins.
 
 The dashboard shows each step (listening, hearing, talking to it, thinking, speaking, closed) and a waveform.
@@ -179,6 +212,11 @@ downloaded to your computer as separate programs, not part of Kurooto.
 | `voice.listen.model_judge` | on | let the model on your computer judge what the rules can't |
 | `voice.listen.threshold` | 0.7 | how sure the model must be that you're talking to it |
 | `voice.listen.close_s` | 8 | seconds of nothing said to it before the conversation closes |
+| `voice.listen.follow_s` | 20 | after an answer, what the same voice says this soon counts, statements too (0: off) |
+| `voice.listen.careful_name` | on | when someone else may be talking, its name counts only said first, as a call |
+| `voice.listen.chatter_s` | 60 | other talk this recent makes it careful with its name |
+| `voice.listen.told_off` | on | "stop", "not you", "never mind" right after it opened or spoke: it stops and closes |
+| `voice.listen.learn_nightly` | on | learn at night from turns that went well or were told off (numbers only) |
 | `voice.listen.night` | on | keep listening during the night hours |
 | `voice.listen.calls` | off | keep listening during calls |
 | `voice.listen.stt_model` | `base` | `tiny`, `base` or `small` |
@@ -291,6 +329,17 @@ A "yes" is too short to tell. Right after a turn it knew was you, in the same co
 (`voice.speaker_id.carry_s`), a short reply counts as you unless it sounds clearly like someone else
 (`voice.speaker_id.carry`, off in strict mode). That's a deliberate weakness: someone saying "yes" just after you could
 pass.
+
+**In a conversation you opened** (0.8.13, `voice.speaker_id.carry_talk`, on), it goes further: while the conversation
+that Voice ID knew you opened is open, any turn it's only "not sure" of (inside the margin, not clearly someone else,
+one voice) stays yours, within 15 seconds or the conversation window (20), the longer, of its last answer to you. So
+your history, notes and tools carry instead of the turn dropping to "only chatting". Before 0.8.13 such a turn went the
+guest way. Off in strict mode.
+
+**With your face** (0.8.13, `voice.speaker_id.face_assist`, on): when Face presence's last look (a few seconds old at
+most) shows exactly one face and it's yours, a voice it's only "not sure" of counts as you. A voice clearly someone
+else's, two voices, two faces or strict never do. With "improve over time" on, such a turn that went well (you carried
+on, nothing told off) may refine your voice print like a very sure one, under the same daily cap and undo.
 
 ### Other people talking
 

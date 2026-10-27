@@ -10,6 +10,12 @@ with the message. Each opening is a new `session`; the owner's last recognised t
 `last_owner_session`) lets a short reply right after it carry. Not the owner: in mode owner_only_at_all nothing is
 sent or shown and it says once per session "I only answer my owner's voice."; in owner_only_acts the turn goes on as
 chat, and the first reply of a session to a guest (or an unsure voice) says once that only the owner can make it act.
+
+0.8.13: it remembers, in memory only, why and when it opened (`opened_why`, for a misfire), whose voice opened it and
+whose turn it answered last (`opener`, `last_who`: decision words), whether its last words answered a turn
+(`answered`), and when speech that wasn't to it was last heard (the gate's chatter signal). After an answer it stays
+open for follow_s (voice.listen.follow_s) when that's longer than close_s, so the conversation can go on; the owner's
+last recognised turn counts from when Kurooto finished answering it, so carry follows the conversation.
 """
 
 from __future__ import annotations
@@ -59,6 +65,13 @@ class Portal:
         self._told: set[str] = set()  # the notices said in this session
         self._at_all_at: float | None = None
         self._close_s_before: float | None = None  # an invite's own hold, put back when it closes
+        self.follow_s = 0.0  # voice.listen.follow_s: after an answer it stays open at least this long
+        self.opened_why = ""  # the rule that opened this conversation (for a misfire); never words
+        self.opened_at: float | None = None
+        self.opener = ""  # (voice id) the decision word of the turn that opened it ("" when Voice ID is off)
+        self.last_who = ""  # (voice id) the decision word of the turn it answered last
+        self.answered = False  # its last words answered a turn in this conversation
+        self._chatter_at: float | None = None  # speech that wasn't to it, last heard (a time only)
 
     # ---------------------------------------------------------------------------------------------- state
     def context(self) -> Context:
@@ -72,6 +85,9 @@ class Portal:
             since_spoke_s=None if self.spoke_at is None else now - self.spoke_at,
             last_reply=self.last_reply,
             unaddressed=len(self._unaddressed),
+            since_chatter_s=None if self._chatter_at is None else now - self._chatter_at,
+            answered=self.open and self.answered,
+            since_open_s=None if not self.open or self.opened_at is None else now - self.opened_at,
         )
 
     def state(self, state: str, why: str = "") -> None:
@@ -81,9 +97,13 @@ class Portal:
         if is_open and not self.open:
             self.session += 1
             self._told = set()
+            self.opened_why, self.opened_at = why, self.clock()
+            self.opener = self.last_who = ""
+            self.answered = False
         self.open = is_open
         if not is_open:
             self.awaiting = False
+            self.answered = False
             if self._close_s_before is not None:
                 self.close_s, self._close_s_before = self._close_s_before, None
         if self.on_change:
@@ -106,6 +126,7 @@ class Portal:
         if not self.open:
             self._set(True, "greeting")
         self.awaiting = False
+        self.answered = False  # a greeting answers nobody: the conversation window (follow_s) doesn't start
         if self._close_s_before is None:
             self._close_s_before = self.close_s
         self.close_s = float(hold_s)
@@ -115,7 +136,8 @@ class Portal:
 
     def tick(self) -> None:
         """Called every second or so: close_s of nothing said to it closes it."""
-        if self.open and not self.busy and self.last is not None and self.clock() - self.last > self.close_s:
+        hold = max(self.close_s, self.follow_s) if self.answered else self.close_s
+        if self.open and not self.busy and self.last is not None and self.clock() - self.last > hold:
             self.close("silence")
 
     # ----------------------------------------------------------------------------------------------- a turn
@@ -125,6 +147,8 @@ class Portal:
         who: Voice ID's verdict (speakerid.Verdict), None when it's off."""
         if not d.addressed:
             self._unaddressed.append(self.clock())
+            if d.klass == "chatter":  # people talking, not to it: the gate is careful with its name for a while
+                self._chatter_at = self.clock()
             self.close("not addressed")
             return None
         said = (h.text if text is None else text).strip()
@@ -142,6 +166,9 @@ class Portal:
             return None
         if not self.open:
             self._set(True, d.why)
+            self.opener = who.decision if who is not None else ""
+        self.last_who = who.decision if who is not None else ""
+        self.answered = False
         self.last = self.clock()
         if who is not None and who.decision == "owner":
             self.last_owner_at, self.last_owner_session = self.clock(), self.session
@@ -176,6 +203,9 @@ class Portal:
                 pass
             self.last_reply = reply
             self.spoke_at = self.last = self.clock()
+            self.answered = self.open
+            if who is not None and who.decision == "owner" and self.last_owner_session == self.session:
+                self.last_owner_at = self.spoke_at  # carry counts from the end of the answer, not the question
             if self.open:
                 self.state("addressed", "waiting for more")
             return reply

@@ -15,6 +15,27 @@
 - **Sentences no longer run into each other.** The speech engine trims the silence off both ends of what it makes and
   puts a pause back only between parts it joins itself, so sentences made one at a time followed each other with no
   breath. Kokoro's own pause (a quarter of a second after a sentence, a tenth after a clause) is put back between them.
+- **Voice: it no longer joins your conversations when you only mention it.** When someone else may be talking (Voice
+  ID isn't sure the voice is yours, people talked here in the last minute without talking to Kurooto, or Face presence
+  sees two or more faces), its name counts only as a call said first ("Kurooto, what's ...", "hey Kurooto ...", or
+  just "Kurooto"); at the end or in the middle of a sentence, or a word that only sounds like it, it's a mention the
+  model on your computer judges. You alone, it wakes as before. `voice.listen.careful_name`, `voice.listen.chatter_s`.
+- **Voice: a conversation goes on without its name.** After Kurooto answers, what the same voice says within 20
+  seconds of it finishing (statements too, not only questions) goes to it, and the conversation stays open that long;
+  another voice or two at once end it. In conversation mode the voice that opened the talk gets the same window.
+  `voice.listen.follow_s` (0 turns it off).
+- **Voice ID keeps a conversation yours.** In a conversation Voice ID knew you opened, a turn it's only "not sure" of
+  (inside the margin, not clearly someone else) stays yours, so history, notes and tools carry instead of dropping to
+  "only chatting" (`voice.speaker_id.carry_talk`); carry now counts from when Kurooto finished answering. With Face
+  presence seeing only your face, a "not sure" voice counts as you (`voice.speaker_id.face_assist`); with "improve over
+  time" on, such turns that went well can refine your voice print, with the same caps and undo.
+- **Tell it off.** "Stop", "not you", "I wasn't talking to you", "shut up", "be quiet", "go away" or "never mind"
+  within about 10 seconds of it opening a conversation or speaking: it stops speaking, closes the conversation and
+  says nothing, and notes a misfire (the rule that woke it, never your words). `voice.listen.told_off`.
+- **It learns at night from how its voice turns went.** Turns you carried on with and turns you told off are kept as
+  flags and numbers only (never words or sound); at 04:10 a small model is fitted, and with 20 turns or more it can
+  hold back a borderline opening that looks like past misfires, never "Kurooto, ..." said first. `/voice` and
+  `/health` show the numbers. `voice.listen.learn_nightly`.
 - **A backup could freeze Voice and Face.** A backup ran on Kurooto's main loop, so while it worked, the parts that
   share it waited; and one that met a named pipe in Kurooto's folders (an add-on's stream left behind by a hard stop)
   read it forever, so listening and Face presence never started. Backups now leave out anything that isn't a plain

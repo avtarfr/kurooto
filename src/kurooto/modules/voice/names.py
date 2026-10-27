@@ -12,13 +12,19 @@ to"), so a name counts when what was written out is:
 Whisper is also nudged toward the right spelling (audio.py: the name as its initial prompt and hotword).
 
 called() is the name used as a call: first ("Kurooto, what's due?", "hey kuro, ...") or last ("..., Kurooto?");
-anywhere() finds it in passing; uncall() takes the call off ("hey Kurooto, what's due" -> "what's due")."""
+anywhere() finds it in passing; uncall() takes the call off ("hey Kurooto, what's due" -> "what's due"). call()
+(0.8.13) says how it was said: where (first, last, in the middle), which kind of spelling (the name itself, a known
+spelling, or only a near miss) and whether a greeting came before it, so the gate can be stricter when it isn't sure
+the speaker is the owner talking to it."""
 
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 
 CALLS = ("hey", "hi", "hello", "ok", "okay", "yo", "oi", "listen", "so")
+GREETINGS = ("hey", "hi", "hello", "ok", "okay", "yo", "oi", "listen")  # a call by itself ("so Kurooto told me" isn't)
+EXACT, KNOWN, NEAR = "exact", "known", "near"
 MAX_WORDS = 3  # a name heard as up to three words ("coo ro to")
 MISHEARD = {  # the default name, as transcribers write it
     "kurooto": (
@@ -81,6 +87,17 @@ def distance(a: str, b: str) -> int:
     return prev[-1]
 
 
+@dataclass
+class Call:
+    """How its name was said in one stretch (never the words themselves, but `rest`, the words after the call, which
+    the caller drops with the rest)."""
+
+    where: str = ""  # first, last, middle, or "" (not said)
+    kind: str = ""  # exact (the name itself), known (a mishearing or your variant), near (close by sound only)
+    greeted: bool = False  # "hey", "ok" ... just before it
+    rest: str = ""  # what's left with the call taken off (first or last only)
+
+
 class NameMatcher:
     def __init__(self, names: list[str], variants: list[str] | tuple[str, ...] = ()):
         canon = []
@@ -97,30 +114,44 @@ class NameMatcher:
 
     def word(self, joined: str) -> bool:
         """Is this (one to three words, joined) the name?"""
+        return bool(self.kind(joined))
+
+    def kind(self, joined: str) -> str:
+        """EXACT, KNOWN or NEAR when this (one to three words, joined) is the name; "" when it isn't."""
+        if joined in self.names:
+            return EXACT
         if joined in self.spellings:
-            return True
+            return KNOWN
         if len(joined) < 4:
-            return False
+            return ""
         groups = vowel_groups(joined)
         for n in self.names:
             if len(n) < 4 or groups < 2 or abs(groups - vowel_groups(n)) > 1:
                 continue
             if skeleton(joined) == skeleton(n) and distance(joined, n) <= 2:
-                return True
-        return False
+                return NEAR
+        return ""
+
+    def _best(self, spans: list[str]) -> int:
+        """Of the candidate spans (longest first), how many words make the name: its own or a known spelling first,
+        so a near miss can't swallow the next word ("Kurooto I need ..." isn't "kurootoi")."""
+        near = 0
+        for joined, k in zip(spans, range(len(spans), 0, -1), strict=True):
+            kind = self.kind(joined)
+            if kind in (EXACT, KNOWN):
+                return k
+            if kind and not near:
+                near = k
+        return near
 
     def _span_at(self, w: list[str], start: int) -> int:
         """How many words from `start` make the name (0: none); longer first."""
-        for k in range(min(MAX_WORDS, len(w) - start), 0, -1):
-            if self.word("".join(w[start : start + k])):
-                return k
-        return 0
+        n = min(MAX_WORDS, len(w) - start)
+        return self._best(["".join(w[start : start + k]) for k in range(n, 0, -1)]) if n > 0 else 0
 
     def _span_end(self, w: list[str]) -> int:
-        for k in range(min(MAX_WORDS, len(w)), 0, -1):
-            if self.word("".join(w[len(w) - k :])):
-                return k
-        return 0
+        n = min(MAX_WORDS, len(w))
+        return self._best(["".join(w[len(w) - k :]) for k in range(n, 0, -1)]) if n > 0 else 0
 
     def called(self, text: str) -> bool:
         w = norm(text)
@@ -149,3 +180,23 @@ class NameMatcher:
         if k:
             return " ".join(words[: len(words) - k]).rstrip(" ,;:-").strip()
         return text.strip()
+
+    def call(self, text: str) -> Call:
+        """Where and how its name was said: first (after an optional greeting), else last, else in the middle."""
+        w = norm(text)
+        if not w:
+            return Call()
+        first = 1 if len(w) > 1 and w[0] in CALLS else 0
+        k = self._span_at(w, first)
+        if k:
+            return Call(
+                "first", self.kind("".join(w[first : first + k])), bool(first and w[0] in GREETINGS), self.uncall(text)
+            )
+        k = self._span_end(w)
+        if k:
+            return Call("last", self.kind("".join(w[len(w) - k :])), False, self.uncall(text))
+        for i in range(len(w)):
+            k = self._span_at(w, i)
+            if k:
+                return Call("middle", self.kind("".join(w[i : i + k])))
+        return Call()

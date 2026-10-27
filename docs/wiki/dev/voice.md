@@ -10,8 +10,9 @@ with listening a second switch. User page: [../user/voice.md](../user/voice.md).
 | File | What's in it |
 |---|---|
 | `modules/voice/__init__.py` | `Voice` (the module: settings, parts it wants, `hear()`, `ask_brain()`, the listener's lifecycle in `background()`, the API's `status()`/`say()`/`mute()`/`shape()`, `add_output()`, `/voice`), `Speaker` (speech a piece at a time, played by an output or the `Player`), `strip_wake()` |
-| `modules/voice/names.py` | `NameMatcher`: its name as Whisper may spell it (`MISHEARD`, `voice.listen.name_variants`, `skeleton()` + `distance()` near misses); `called()`, `anywhere()`, `uncall()` |
-| `modules/voice/gate.py` | `Gate.decide(Heard, Context) -> Decision`: the rules, then the local model; `PROMPT`; `parse()` |
+| `modules/voice/names.py` | `NameMatcher`: its name as Whisper may spell it (`MISHEARD`, `voice.listen.name_variants`, `skeleton()` + `distance()` near misses); `called()`, `anywhere()`, `uncall()`, `kind()`, `call() -> Call(where, kind, greeted, rest)` |
+| `modules/voice/gate.py` | `Gate.decide(Heard, Context) -> Decision`: the rules, then the local model, then the learned veto; `PROMPT`; `parse()`; `told_off()`, `features()`, `borderline()` |
+| `modules/voice/learn.py` | (0.8.13) `Learner`: labelled turns (`record()`, flags and numbers only), the nightly fit (`train()`, logistic regression in plain Python), `veto()`, `status()`, `forget()` |
 | `modules/voice/portal.py` | `Portal`: open/closed, `take(heard, decision)`, `tick()` (silence), `close(why)`, `context()` for the gate |
 | `modules/voice/audio.py` | engines, all lazily imported: `Kokoro`, `Piper`, `Player`, `Mic`, `microphone()`, `Silero`, `Energy`, `Whisper`, `Wake`, `Listener` |
 | `modules/voice/parts.py` | what to fetch: `PACKAGES` (pip specs into `<app>/voice/py-<X.Y>`), `models()` (URLs and sizes into `<app>/voice/models`), `Parts.install()` |
@@ -19,6 +20,7 @@ with listening a second switch. User page: [../user/voice.md](../user/voice.md).
 | `modules/voice/numbers.py` | numbers as words for the voice (`voice.speak.numbers_as_words`, 0.8.13): `say(text)` and its parts `words()`, `indian()`, `ordinal()`, `year()`, `number()`; pure Python, no dependency |
 | `tests/unit/test_voice.py` | everything above with fakes (no device, no model) |
 | `tests/unit/test_voice_numbers.py` | `numbers.say()` case by case, and the switch |
+| `tests/unit/test_voice_listening.py` | (0.8.13) careful calls, the conversation window, told off, the learner, face assist, the talk carry |
 
 ## Used by Face presence (0.8.10)
 
@@ -125,6 +127,32 @@ and the worker are daemon threads; the coroutine never blocks the loop. `heavy =
    JSON, else a single class word at 0.5, else chatter at 0. Addressed below `voice.listen.threshold` -> chatter.
    No model, no answer, or `model_judge` off -> chatter, 0.0.
 
+0.8.13 additions (`Context` gained `speaker`, `speaker_score`, `faces`, `since_chatter_s`, `chatter_s`, `careful`,
+`answered`, `same_speaker`, `follow_window_s`, `since_open_s`, `speaking`, `told_off`; `Voice._moment()` fills them
+from the switches, `Speaker.holding()`, `core/nearby.py:view()` and Voice ID's verdict when it came before the words):
+
+- **told off**, after 3: `told_off(text)` (the call taken off first; `_TOLD`, at most 12 words: stop / not you / I
+  wasn't talking to you / shut up / be quiet / go away / never mind, with fillers; "stop the timer" and "never mind,
+  what's ..." don't match) within `TOLD_S` (10 s) of `since_spoke_s` or of the portal opening (`since_open_s`), or
+  while speaking -> chatter, why `TOLD_OFF`. `Voice._told_off()`: `Speaker.stop()`, `voice_misfire {rule, turn}`
+  (`rule`: the portal's `opened_why`; `turn`: the last addressed turn's rule), a row labelled 0 (learn_nightly),
+  `portal.close("told off")`, no reply. Only after `voice.listen.told_off`.
+- **careful calls**, rule 4: when `ctx.careful` and `ctx.unconfirmed()` (speaker unsure/guest, chatter within
+  `chatter_s`, or faces >= 2), its name counts only as `call.where == "first"`, `call.kind != NEAR`, and a greeting
+  (`GREETINGS`, not "so"), nothing, or `asks(rest)` after it. Otherwise it falls through (`mention`), and rule 9's
+  prompt gets a line saying a mention isn't a call. Not careful: rule 4 as before.
+- **the conversation goes on**, after 6: `answered` (the portal's last words answered a turn; not after an `invite()`),
+  `same_speaker is not False`, `since_spoke_s <= follow_window_s` (`voice.listen.follow_s`, 20; 0 off) -> addressed,
+  0.8, statements too. In conversation mode only with `same_speaker` True (the voice that opened the talk and that it
+  answered last: `Portal.opener`, `Portal.last_who`), replacing `conversation_follow_s`. Two voices end it (rule 6),
+  as does any non-addressed stretch (it closes the portal).
+- **the learned veto**, after all: `Gate(veto=Learner.veto)` (with learn_nightly) is asked about an addressed decision
+  only when `borderline(d)`: rule 4 by a near miss, rule 7, the conversation going on, rule 9. True -> chatter, why
+  `VETOED`. Never its name first with its own or a known spelling (the cap).
+
+`Decision` carries `name` (exact/known/near), `where`, `careful` and `feats` (`features()`: rule, name flags, where,
+voices, speaker, score, since_chatter_s, faces, careful; never words).
+
 The prompt (`gate.py:PROMPT`):
 
 ```
@@ -154,6 +182,9 @@ faster-whisper before 1.0.2). `NameMatcher(names, variants)`:
   c/k/q/g, t/d, r/l, b/p, v/f, s/z merged; vowels, h, w, y dropped; doubles once), and Levenshtein `distance() <= 2`.
 - `called()`: at the start (after one of `CALLS`) or the end; `anywhere()` for the model's context line; `uncall()`
   removes the call before the turn is sent.
+- (0.8.13) `kind(joined)`: `EXACT` (a name itself), `KNOWN` (a mishearing or variant), `NEAR` (fuzzy only). A span
+  that is its own or a known spelling wins over a longer near miss ("Kurooto I need" was "kurootoi", a near miss, and
+  swallowed the "I"). `call(text)`: where (first / last / middle), kind, `greeted` and `rest`.
 
 `tests/unit/test_voice.py` lists mishearings that must match and ordinary words that must not (cool, auto, curry,
 ghetto, kurt, router, kurta, karate, curator, Kyoto, Toronto, kettle ...). "cool auto" was dropped: it matched an ordinary phrase.
@@ -166,6 +197,17 @@ closes an open portal at once (`voice_state` `closed`, why `not addressed`). An 
 `send` (`Voice.ask_brain`), publishes `voice_text {who: "kurooto"}`, `speaking`, speaks, then `addressed` (waiting).
 The name or wake word alone (`uncall()` leaves nothing) says "Yes?" (locally) and sets `awaiting`; nothing is sent. `tick()` closes after `close_s` of
 nothing addressed (why `silence`). `close()` is also called on mute, block and `stop()`.
+
+0.8.13: `opened_why`/`opened_at` (set on opening), `opener` and `last_who` (Voice ID's decision words for the turn
+that opened it and the turn it answered last; "" with Voice ID off), `answered` (its last words answered a turn; reset
+by `invite()`, a new turn and closing), `_chatter_at` (a non-addressed CHATTER, a time only: the gate's
+`since_chatter_s`), `follow_s` (set by `Voice._moment()`). `tick()` holds `max(close_s, follow_s)` after an answer.
+After an owner's turn is answered, `last_owner_at` moves to the end of the answer (`spoke_at`), so carry counts from
+when Kurooto finished speaking, not from the question.
+
+`Voice` keeps the last addressed turn as `_pending` (its row, session, decision word, any face-assisted vector) until
+it's known how it went: the next addressed turn in the same session from the same decision word labels it 1
+(`_went_well()`, and `VoiceID.learn_face()` for a face-assisted one); being told off labels it 0; a close drops it.
 
 `ask_brain()` builds `Incoming(text, via="voice", voice=True)` and calls `app.handle()`: commands and instant requests
 answer through `respond`; anything for the AI becomes a Chat job. `modules/chat.py` makes `via == "voice"` jobs quiet
@@ -192,13 +234,30 @@ unknown `t`, so a page that doesn't draw Voice is unaffected.
 Example: `{"t":"voice","kind":"voice_state","state":"thinking","portal":true,"listening":true,"why":""}`.
 
 Logged events (`app.events.emit`, so also in the feed with `cell: "voice"` via `web/live.py:EVENT_CELL`), with no
-words: `voice_portal {open, why}`, `voice_listening {on, why}`, `voice_mute {on}`, `voice_failed {part, error}`.
+words: `voice_portal {open, why}`, `voice_listening {on, why}`, `voice_mute {on}`, `voice_failed {part, error}`,
+(0.8.13) `voice_misfire {rule, turn}` and `voice_learned {rows, good, misfires, active}`.
+
+## Learning at night (`learn.py`, 0.8.13)
+
+`voice.listen.learn_nightly` (on). Rows in `<state>/voice/gate-turns.jsonl`, one JSON object per labelled turn:
+`learn.KEYS` (rule, name_exact, name_near, where, voices, speaker, score, since_chatter_s, faces, careful) + label +
+day, passed through `clean()` (unknown keys dropped, rules outside `RULES` become "other"). Voice ID's score is stored
+here, rounded to two decimals, in local state only (never an event or the live stream); `VoiceID.forget()` deletes the
+rows and the model. `ROWS_MAX` 2000 kept.
+
+`Voice.start()` schedules `voice:learn` at `NIGHT_AT` (daily 04:10, after the mind's fine-tune at 03:40) with
+`thread=True`. `Learner.train()`: below `MIN_ROWS` (20) or fewer than `MIN_EACH` (3) of either label -> saved with
+`active: false`. Else `fit()`: logistic regression over `vector()` (bias, rule one-hot, name flags, where, two voices,
+speaker one-hot, score, exp(-since_chatter/30), one face, two faces, careful), batch gradient descent, class-balanced,
+L2 0.05, 600 steps. `<state>/voice/gate-model.json`: weights, counts, the training fit, how many misfires and good
+turns it would have held back. `veto(feats)`: chance < `VETO_P` (0.25). `status()` (numbers) goes into
+`Voice.status()["learned"]`, `Voice.line()` (so `/health`) and `/voice`.
 
 ## API (`web/api.py`)
 
 | Route | Body | Answer |
 |---|---|---|
-| `GET /api/voice` | | `Voice.status()`: `on, state, portal, listening, why, muted, blocked, line, speak {on, engine, voice, rate, what, player, speaking}, listen {on, wake_word, stt_model, close_s, night, calls, microphone}, engines {kokoro, piper, whisper, vad, wake}, missing, missing_gb, heard {noise, chatter, addressed}, choices {voices, stt_models}` |
+| `GET /api/voice` | | `Voice.status()`: `on, state, portal, listening, why, muted, blocked, line, speak {on, engine, voice, rate, what, player, speaking}, listen {on, wake_word, stt_model, close_s, night, calls, microphone}, engines {kokoro, piper, whisper, vad, wake}, missing, missing_gb, heard {noise, chatter, addressed}, choices {voices, stt_models}`; (0.8.13) `learned {rows, good, misfires, active, trained, fit, vetoes, recorded, on, misfires_now}` and `speaker_id.face_learned` (numbers only) |
 | `POST /api/voice/say` | `{"text": "Good morning"}` | `{"ok": true, "message": "Speaking."}` (not waiting for it to finish); `ok: false` with why when off, muted or no engine |
 | `POST /api/voice/mute` | `{"on": true}`, `{"on": false}`, `{}` flips | `{"ok": true, "message": "...", "muted": true}` |
 | `POST /api/voice/stop` | | stops speaking |
@@ -333,6 +392,12 @@ within `conversation_follow_s` of its answer; rules 7 and 9 (open portal, local 
 (< 2.5 s of speech) use `t.short`; under `min_speech_s`: owner only by carry (same portal session, within `carry_s`,
 score >= unsure; never in strict), else unsure; score >= accept -> owner; >= unsure -> unsure; else guest.
 
+0.8.13, in the >= unsure band only and never in strict: `face_assist` and `ctx.face_owner` (`VoiceID.face_owner()`:
+`nearby.view()` says one face, the owner's, at most `VIEW_S` 5 s old; set from Face presence's watcher `view` emit
+each frame, cleared when the camera closes) -> owner, `FACE_WHY`, `assisted`; `carry_talk` and `ctx.portal_open` and
+the same session and within `carry_talk_s` (`max(carry_s, listen.follow_s)`) of `last_owner_at` -> owner, `TALK_WHY`,
+`carried`. Rules come from `VoiceID.rules()` (`voice.speaker_id.face_assist`, `carry_talk`).
+
 `calibrate(samples, bank, synthetic, strictness, margin, threshold)`: n >= 12; outliers by leave-one-out (`g_i <
 median - 3 * 1.4826 * MAD` and `< 0.30`, at most 10%, named by condition); centroid = normalised mean; held-out genuine
 scores (long, and the 1.5 s crops for short) against `c_-i`; impostor scores from the bank (full + 3 s for long, 1.5 s
@@ -394,13 +459,18 @@ voices, under `adapt_per_day`; FIFO up to `adapt_max`; centroid = normalize(0.75
 drift guard cos(new, enrolled) >= 0.95, else `drift_stopped`; thresholds derived again after each take. Undo today /
 all.
 
+0.8.13: `consider(..., face=True)` takes a face-assisted owner verdict with score >= the stored `long.unsure` instead
+of accept + 0.08 (the other checks the same); the entry is marked `face: true` (counted in `status()["adapt"]["face"]`).
+`VoiceID.check()` keeps such a turn's vector in memory (`_face_last`); `Voice` holds it with the turn and calls
+`learn_face()` only when the turn went well (adapt and face_assist on); told off or closed, it's dropped.
+
 ### Storage
 
 `BioStore(app, "voice")`: `state/voiceid/template.bin` (0600 in a 0700 folder), `nonce || AES-256-GCM(json)` with AAD
 `kurooto-biometric:voice:v1`, key `biometric.voice.key` (secrets; made on the first save and read back; never a new
 key over an existing file: `Locked`). JSON: model, model_sha256, mic, dates, `samples [{e, s, cond, day}]` (base64
 float16), `adapted [{e, day}]`, `centroid`, `centroid_enrolled`, `thresholds`, `calibrated`, `genuine`, `report`,
-`last_test`, `drift_stopped`. Kept out of backups (`SKIP_STATE_DIRS`, and `known_secret_names` drops the key), profile
+`last_test`, `drift_stopped` (0.8.13: an adapted entry may carry `face: true`). Kept out of backups (`SKIP_STATE_DIRS`, and `known_secret_names` drops the key), profile
 sync (`NEVER`), diagnostics (`KNOWN_SECRETS` redacts the key; state isn't bundled), events and the live stream. The
 uninstall part should list `state/voiceid/` among what it deletes. `forget()` deletes the key first, then the file;
 `/forget all` (core/retention.py) calls it.
@@ -458,6 +528,10 @@ macOS wheels; Linux uses the system's libportaudio) or `pw-record`/`parec` on Li
 then `pactl` on Linux, else "can't tell". Subprocesses it starts are its own children, stopped by their exact pid.
 
 ## Not verified
+
+0.8.13 (careful calls, the conversation window, told off, the learner, face assist, the talk carry): unit tests with
+fakes only. Not run with a real room, real Face presence frames feeding Voice ID, or a night's real fit; the told-off
+phrases can't be heard while Kurooto is speaking (the microphone is held then), only after.
 
 Voice ID (0.8.10): the unit tests use fakes and synthetic data only (a fake embedder, fake banks, a fake microphone
 and transcriber). The CAM++ models, kaldi-native-fbank's features, the enrolment session, the calibration and the

@@ -272,6 +272,12 @@ authorises anything.** It never answers an approval, unlocks your screen or Kuro
 than it could anyway. The worst a photo of you can do is make Kurooto say good morning and open a conversation anyone in
 the room could already open by saying "Kurooto".
 
+One narrow exception, with Voice ID on (0.8.13, `voice.speaker_id.face_assist`, on by default): when Voice ID is only
+"not sure" a voice is yours (its score just under the line, inside the margin) and Face presence sees exactly one face,
+yours, that voice counts as you. A voice clearly not yours, two voices, two faces or strict strictness never do, and a
+face with no voice never does anything. Turn `voice.speaker_id.face_assist` off if a photo of you plus a voice close to
+yours is a risk where you live.
+
 ## Commands
 
 | Command | What it does |

@@ -43,7 +43,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
 - [Brain](#brain): 91 settings
-- [Voice and voice notes](#voice-and-voice-notes): 46 settings
+- [Voice and voice notes](#voice-and-voice-notes): 53 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
@@ -5754,6 +5754,92 @@ In conversation mode, a reply to what Kurooto just said counts only this soon af
 
 - **Values:** A whole number. **Default:** `4`.
 - **When to change it:** Lengthen it if your replies to Kurooto in a conversation get ignored.
+
+### `voice.listen.careful_name`
+
+When someone else may be talking, its name wakes Kurooto only said first, as a call ("Kurooto, what's ...").
+
+Someone else may be talking when Voice ID isn't sure the voice is yours (or knows it isn't), when people talked here
+within voice.listen.chatter_s without talking to Kurooto, or when Face presence sees two or more faces. Then its name at
+the end or in the middle of a sentence, or a word that only sounds like it, is just a mention: the other rules and the
+model on this computer decide. With you alone, its name first or last still wakes it as before.
+
+- **Values:** `true` (default), `false` (its name first or last always wakes it, as before 0.8.13). **Default:** on.
+- **When to change it:** Leave it on if Kurooto joins your conversations when you mention it; turn it off if it ignores
+  you at the end of a sentence when you're alone.
+
+### `voice.listen.chatter_s`
+
+Speech here that wasn't to Kurooto (any voice) this many seconds ago makes it careful with its name.
+
+- **Values:** A whole number. **Default:** `60`.
+- **When to change it:** Lengthen it if it still jumps into a conversation that paused for a while.
+
+### `voice.listen.follow_s`
+
+After Kurooto answers, what the same voice says this many seconds after counts as said to it, statements too.
+
+You don't have to say its name again to go on: within this window of its answer ending, anything the voice it answered
+says goes to it. Another voice, two voices at once, or being told off ("not you", "stop") end it. In conversation mode
+this window applies to the voice that opened the talk instead of voice.listen.conversation_follow_s. The conversation
+stays open at least this long after an answer.
+
+- **Values:** Seconds; `20` (default), `0` (off: only questions and requests within voice.listen.close_s count).
+  **Default:** `20`.
+- **When to change it:** Shorten it (or 0) if it takes what you say to someone else right after its answer; lengthen it
+  if it stops listening while you think.
+
+### `voice.listen.told_off`
+
+"Stop", "not you", "never mind" and the like, right after it woke or spoke, stop it at once and close the talk.
+
+Within about 10 seconds of the conversation opening or of Kurooto speaking: it stops speaking, closes the conversation
+and doesn't reply. It notes a misfire (the rule that opened it, never your words) and, with voice.listen.learn_nightly,
+a training row of numbers for the night's learning. While Kurooto is speaking the microphone is held (so it doesn't hear
+itself): say it as soon as it stops, or use /voice stop.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if one of those phrases is something you often say to Kurooto as a request.
+
+### `voice.listen.learn_nightly`
+
+Every night Kurooto learns from how its voice turns went: ones you carried on with, and ones you told off.
+
+Each turn the gate let through is labelled once it's known how it went: you went on talking to it (good), or told it off
+(a misfire). Only flags and numbers are kept, in Kurooto's state under voice/: the rule that decided, how its name was
+said, how many voices, Voice ID's decision and score, seconds since other talk, faces in view; never words or sound. At
+night (04:10) a small model is fitted to them; with 20 turns or more, some of each, it can hold back a borderline
+opening (its name heard only as a near miss, a follow-up, the local model's judgement) that looks like past misfires. It
+can never stop its name said first ("Kurooto, ..."). /voice and /health show the numbers; forgetting your voice (/voice
+id forget) deletes them too.
+
+- **Values:** `true` (default), `false` (nothing recorded, nothing held back). **Default:** on.
+- **When to change it:** Turn it off to keep the gate's rules fixed.
+
+### `voice.speaker_id.face_assist`
+
+When Voice ID is only "not sure" it's your voice and Face presence sees just your face, it counts as you.
+
+Only a voice already inside the "not sure" margin, only while the camera's last look (a few seconds old at most) shows
+exactly one face and it's yours. A voice clearly not yours, two voices, two faces, or strict strictness never count.
+With "improve over time" (voice.speaker_id.adapt) on, such a turn that went well may be added to your voice print like a
+very sure turn, with the same caps and undo.
+
+- **Values:** `true` (default), `false`. **Default:** on.
+- **When to change it:** Turn it off if a photo of you plus a voice close to yours is a risk where you are.
+- **Depends on:** Voice ID and Face presence, both enrolled.
+
+### `voice.speaker_id.carry_talk`
+
+In a talk Voice ID knew you opened, a voice it's only "not sure" of stays you, so history and tools carry.
+
+Extends voice.speaker_id.carry: not only a short reply, but any turn whose score is inside the "not sure" margin, while
+the conversation you opened is open and within voice.speaker_id.carry_s or voice.listen.follow_s (the longer) of its
+last answer to you. A voice clearly someone else's, or two voices, are never carried; strict turns it off.
+
+- **Values:** `true` (default), `false` (only short replies carry, as before 0.8.13). **Default:** on.
+- **When to change it:** Turn it off in a shared room where someone with a voice like yours might carry on your
+  conversation.
 
 ## Privacy and what it keeps
 

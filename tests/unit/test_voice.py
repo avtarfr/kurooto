@@ -338,6 +338,7 @@ def test_chatter_and_noise_send_nothing_and_their_words_are_never_kept(voice):
 
 
 def test_addressed_speech_opens_the_portal_and_chatter_closes_it_at_once(voice):
+    voice.app.settings.set("voice.listen.follow_s", 0)  # no conversation window (0.8.13): a statement is judged
     voice.judge.answers = ['{"class": "chatter", "confidence": 0.95}']
     assert voice.hear(Heard(speech=True, text="Kurooto, what's due this week?")) == "It's due Friday."
     assert voice.brain.got == ["what's due this week?"] and voice.portal.open

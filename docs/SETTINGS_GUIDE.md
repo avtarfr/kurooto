@@ -1171,12 +1171,16 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.addons.listen` | `true` | Let an add-on take one stretch of speech at a time through the microphone (written out here, never sent). ([guide](wiki/user/settings-guide.md#voiceaddonslisten)) |
 | `voice.listen.after_speak_s` | `6` | Seconds after it spoke during which a question counts as an answer to it. ([guide](wiki/user/settings-guide.md#voicelistenafterspeaks)) |
 | `voice.listen.calls` | `false` | Keep listening while you're on a phone call (off: listening pauses during calls). ([guide](wiki/user/settings-guide.md#voicelistencalls)) |
+| `voice.listen.careful_name` | `true` | When someone else may be talking, its name wakes Kurooto only said first, as a call ("Kurooto, what's ..."). ([guide](wiki/user/settings-guide.md#voicelistencarefulname)) |
+| `voice.listen.chatter_s` | `60` | Speech here that wasn't to Kurooto (any voice) this many seconds ago makes it careful with its name. ([guide](wiki/user/settings-guide.md#voicelistenchatters)) |
 | `voice.listen.close_s` | `8` | Seconds of nothing said to it before the spoken conversation closes. ([guide](wiki/user/settings-guide.md#voicelistencloses)) |
 | `voice.listen.conversation_follow_s` | `4` | In conversation mode, a reply to what Kurooto just said counts only this soon after it. ([guide](wiki/user/settings-guide.md#voicelistenconversationfollows)) |
 | `voice.listen.conversation_mode` | `true` | While another voice is here, Kurooto stays out of people talking: only its name said to it opens a talk. ([guide](wiki/user/settings-guide.md#voicelistenconversationmode)) |
 | `voice.listen.conversation_s` | `60` | Seconds after the other person last spoke before Kurooto stops staying out of the conversation. ([guide](wiki/user/settings-guide.md#voicelistenconversations)) |
 | `voice.listen.device` | `""` | Which microphone to use; empty is the system's default. ([guide](wiki/user/settings-guide.md#voicelistendevice)) |
+| `voice.listen.follow_s` | `20` | After Kurooto answers, what the same voice says this many seconds after counts as said to it, statements too. ([guide](wiki/user/settings-guide.md#voicelistenfollows)) |
 | `voice.listen.language` | `""` | The language you speak, e.g. `en` or `hi`; empty works it out each time. ([guide](wiki/user/settings-guide.md#voicelistenlanguage)) |
+| `voice.listen.learn_nightly` | `true` | Every night Kurooto learns from how its voice turns went: ones you carried on with, and ones you told off. ([guide](wiki/user/settings-guide.md#voicelistenlearnnightly)) |
 | `voice.listen.levels` | `true` | Show the microphone's loudness as a waveform on the dashboard (numbers only). ([guide](wiki/user/settings-guide.md#voicelistenlevels)) |
 | `voice.listen.model_judge` | `true` | When the rules can't tell whether you're talking to it, the model on this computer judges. ([guide](wiki/user/settings-guide.md#voicelistenmodeljudge)) |
 | `voice.listen.name_variants` | `[]` | More spellings of its name to accept (the common mishearings of Kurooto are built in). ([guide](wiki/user/settings-guide.md#voicelistennamevariants)) |
@@ -1184,6 +1188,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.on` | `false` | Listen through the microphone, all on this computer; only what's said to Kurooto leaves it. ([guide](wiki/user/settings-guide.md#voicelistenon)) |
 | `voice.listen.stt_model` | `"base"` | How big the speech-to-text model is: tiny (75 MB), base (145 MB) or small (484 MB, more accurate). ([guide](wiki/user/settings-guide.md#voicelistensttmodel)) |
 | `voice.listen.threshold` | `0.7` | How sure the local model must be (0 to 1) that speech is said to Kurooto. ([guide](wiki/user/settings-guide.md#voicelistenthreshold)) |
+| `voice.listen.told_off` | `true` | "Stop", "not you", "never mind" and the like, right after it woke or spoke, stop it at once and close the talk. ([guide](wiki/user/settings-guide.md#voicelistentoldoff)) |
 | `voice.listen.wake_threshold` | `0.5` | How sure the wake-word model must be (0 to 1). ([guide](wiki/user/settings-guide.md#voicelistenwakethreshold)) |
 | `voice.listen.wake_word` | `""` | A wake-word model of your own (an openWakeWord `.onnx` path); empty: its name wakes it. ([guide](wiki/user/settings-guide.md#voicelistenwakeword)) |
 | `voice.speak.engine` | `"kokoro"` | The voice made on this computer: Kokoro (natural, about 0.55 GB), Piper (lighter) or off. ([guide](wiki/user/settings-guide.md#voicespeakengine)) |
@@ -1199,6 +1204,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.speaker_id.adapt_per_day` | `10` | A daily cap on how many of your turns may be added to your voice print. ([guide](wiki/user/settings-guide.md#voicespeakeridadaptperday)) |
 | `voice.speaker_id.carry` | `true` | A short reply right after a turn it knew was you counts as you (not when the voice is clearly someone else). ([guide](wiki/user/settings-guide.md#voicespeakeridcarry)) |
 | `voice.speaker_id.carry_s` | `15` | The window, in seconds, in which a quick reply after you spoke still counts as you. ([guide](wiki/user/settings-guide.md#voicespeakeridcarrys)) |
+| `voice.speaker_id.carry_talk` | `true` | In a talk Voice ID knew you opened, a voice it's only "not sure" of stays you, so history and tools carry. ([guide](wiki/user/settings-guide.md#voicespeakeridcarrytalk)) |
+| `voice.speaker_id.face_assist` | `true` | When Voice ID is only "not sure" it's your voice and Face presence sees just your face, it counts as you. ([guide](wiki/user/settings-guide.md#voicespeakeridfaceassist)) |
 | `voice.speaker_id.gate` | `true` | Check who's speaking before writing words out: other people not calling Kurooto are never transcribed. ([guide](wiki/user/settings-guide.md#voicespeakeridgate)) |
 | `voice.speaker_id.guest_brain` | `"main"` | Who answers other voices: your AI (none of your data, no tools) or the model on this computer. ([guide](wiki/user/settings-guide.md#voicespeakeridguestbrain)) |
 | `voice.speaker_id.guest_per_hour` | `20` | At most this many answers to other voices an hour. ([guide](wiki/user/settings-guide.md#voicespeakeridguestperhour)) |

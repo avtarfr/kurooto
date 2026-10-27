@@ -443,7 +443,10 @@ class Watcher:
             if best_i >= 0:
                 judged[best_i] = True
             self._update_tracks(now, faces, self.frames.size(frame), judged)
-        others = sum(1 for f in faces if f.score >= SCORE_OTHER) >= 2
+        n_faces = sum(1 for f in faces if f.score >= SCORE_OTHER)
+        # (0.8.13) for Voice ID's face assist: how many faces, and whether the only one is the owner's
+        self.emit("view", faces=n_faces, owner_alone=best is not None and n_other == 0)
+        others = n_faces >= 2
         if others != self.others or others:  # while it lasts, every frame refreshes it (core/nearby.py's STALE_S)
             self.others = others
             self.emit("others", on=others)

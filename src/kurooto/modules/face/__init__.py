@@ -11,8 +11,10 @@ secret face.key (core/biometric.py), in <state>/face/template.bin, and its statu
 <state>/face/face.json. Frames, crops and strangers' numbers live in memory and go with each frame. Forget (`/face
 forget`, `kurooto face forget`, the Face page, /forget all) deletes the key first, then the template and its status.
 
-A face match never authorises anything: it isn't one of core/tap.py's ways, never answers an approval, unlocks
-anything or widens what a voice turn may do (tests/unit/test_face.py checks no such path reads this module).
+A face match never authorises anything: it isn't one of core/tap.py's ways, never answers an approval or unlocks
+anything (tests/unit/test_face.py checks no such path reads this module). The one narrow use (0.8.13,
+voice.speaker_id.face_assist): a voice Voice ID already scored inside its "not sure" margin counts as the owner while
+only his face is in view (each frame's "view" -> core/nearby.py). A face alone never makes Kurooto act.
 
 The dashboard: GET /api/face (status and stage), POST /api/face/<action> (web/api.py), GET /api/face/frame?s=<session>
 (a JPEG made in memory, Cache-Control: no-store) and the live stream's {"t": "face"} messages (to the Face page only,
@@ -548,6 +550,8 @@ class Face(Module):
     def _on_watch(self, kind: str, **f) -> None:
         if kind == "watch":
             self.app.events.emit("face_watch", **_event_safe(on=bool(f.get("on")), why=str(f.get("why") or "")))
+            if not f.get("on"):
+                nearby.clear_view(self.app)
             self._push({"t": "face", "kind": "camera", "on": bool(f.get("on"))})
         elif kind == "arrived":
             self._arrived(int(f.get("away_min") or 0), bool(f.get("others")))
@@ -558,6 +562,8 @@ class Face(Module):
             self.flush_desktop()
         elif kind == "others":
             nearby.set_others(self.app, "face", bool(f.get("on")))
+        elif kind == "view":  # (0.8.13) how many faces, and whether the only one is yours: memory only, never an event
+            nearby.set_view(self.app, int(f.get("faces") or 0), bool(f.get("owner_alone")))
         elif kind == "learn":
             self.learn(f.get("e"))
         elif kind == "failed":
