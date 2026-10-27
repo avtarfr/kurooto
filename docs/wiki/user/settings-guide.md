@@ -43,7 +43,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
 - [Brain](#brain): 91 settings
-- [Voice and voice notes](#voice-and-voice-notes): 45 settings
+- [Voice and voice notes](#voice-and-voice-notes): 46 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
@@ -5415,6 +5415,18 @@ How much of a long answer is read aloud before it says "the rest is on screen".
 
 - **Values:** Characters. **Default:** `800`.
 - **When to change it:** Raise it to hear long answers in full.
+- **Depends on:** `voice.speak.on`.
+
+### `voice.speak.join_sentences`
+
+Speak short sentences together, up to about 200 characters at a time, instead of each on its own.
+
+Kokoro reads a few words on their own with a hurried, flat tune; joined to their neighbours they get a natural one, and
+it still pauses at each full stop. The first piece is kept under about 120 characters, so speech starts as soon as
+before.
+
+- **Values:** `true` (short sentences joined) or `false` (one sentence at a time, as before 0.8.13). **Default:** on.
+- **When to change it:** Turn it off if a long pause before the first word bothers you on a slow computer.
 - **Depends on:** `voice.speak.on`.
 
 ### `voice.speak.numbers_as_words`

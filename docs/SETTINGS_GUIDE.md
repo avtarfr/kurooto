@@ -1186,6 +1186,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.wake_threshold` | `0.5` | How sure the wake-word model must be (0 to 1). ([guide](wiki/user/settings-guide.md#voicelistenwakethreshold)) |
 | `voice.listen.wake_word` | `""` | A wake-word model of your own (an openWakeWord `.onnx` path); empty: its name wakes it. ([guide](wiki/user/settings-guide.md#voicelistenwakeword)) |
 | `voice.speak.engine` | `"kokoro"` | The voice made on this computer: Kokoro (natural, about 0.55 GB), Piper (lighter) or off. ([guide](wiki/user/settings-guide.md#voicespeakengine)) |
+| `voice.speak.join_sentences` | `true` | Speak short sentences together, up to about 200 characters at a time, instead of each on its own. ([guide](wiki/user/settings-guide.md#voicespeakjoinsentences)) |
 | `voice.speak.max_chars` | `800` | How much of a long answer is read aloud before it says "the rest is on screen". ([guide](wiki/user/settings-guide.md#voicespeakmaxchars)) |
 | `voice.speak.numbers_as_words` | `true` | Say numbers as a person would: 21:31 as "nine thirty-one PM", ₹3,000 as "three thousand rupees". ([guide](wiki/user/settings-guide.md#voicespeaknumbersaswords)) |
 | `voice.speak.on` | `true` | Kurooto speaks through this computer's speakers. ([guide](wiki/user/settings-guide.md#voicespeakon)) |

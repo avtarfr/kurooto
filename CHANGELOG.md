@@ -8,6 +8,10 @@
   and units are now said in words ("nine thirty-one PM", "three thousand rupees", "twelve gigabytes", "twenty
   twenty-six"), and the waveform follows what's said. Only the voice changes; the screen shows what was written
   (`voice.speak.numbers_as_words`).
+- **Short sentences are spoken together.** Each sentence was made on its own, and Kokoro reads a few words alone with a
+  hurried, flat tune ("Done." "Sure."). Short sentences are now joined into pieces of up to about 200 characters (the
+  first kept short, so speech starts as soon as before) and Kokoro pauses at each full stop inside them
+  (`voice.speak.join_sentences`).
 - **A backup could freeze Voice and Face.** A backup ran on Kurooto's main loop, so while it worked, the parts that
   share it waited; and one that met a named pipe in Kurooto's folders (an add-on's stream left behind by a hard stop)
   read it forever, so listening and Face presence never started. Backups now leave out anything that isn't a plain

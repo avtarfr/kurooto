@@ -152,3 +152,18 @@ def sentences(text: str, numbers: bool = False) -> list[str]:
         if p:
             out.append(p)
     return out
+
+
+def join(parts: list[str], first: int = 120, most: int = 200) -> list[str]:
+    """Short sentences spoken together (voice.speak.join_sentences), up to `most` characters a piece and `first` for
+    the first, so speech still starts soon. Kokoro reads a few words on their own with a hurried, flat tune (its style
+    is picked by length, and a sentence alone has no neighbours to lean on); inside one piece it pauses at each full
+    stop itself. A line with no mark at its end (a list item) gets a full stop, so it still ends where it ended."""
+    out: list[str] = []
+    for p in parts:
+        if out and len(out[-1]) + 1 + len(p) <= (first if len(out) == 1 else most):
+            prev = out[-1] if out[-1][-1] in ".!?;:," else out[-1] + "."
+            out[-1] = f"{prev} {p}"
+        else:
+            out.append(p)
+    return out

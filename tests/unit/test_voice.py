@@ -604,6 +604,7 @@ class Output:
 @pytest.fixture
 def speakers(voice, monkeypatch):
     monkeypatch.setattr(voice, "tts", lambda: (Tts(), ""))
+    voice.app.settings.set("voice.speak.join_sentences", False)  # these count sentences: one sound each
     voice.speaker.player = Speakers()
     return voice.speaker.player
 
@@ -686,6 +687,30 @@ def test_numbers_are_said_as_words_and_shown_as_written(voice, speakers, monkeyp
     engine.said.clear()
     voice.say("Lab at 21:31 costs ₹3,000.", wait=True)
     assert engine.said == ["Lab at 21:31 costs ₹3,000."]
+
+
+def test_short_sentences_are_spoken_together_unless_switched_off(voice, speakers, monkeypatch):
+    engine = Engine()
+    monkeypatch.setattr(voice, "tts", lambda: (engine, ""))
+    voice.app.settings.set("voice.speak.join_sentences", True)
+    voice.say("Done. It's on your list.\n- Milk\n- Eggs", wait=True)
+    assert engine.said == ["Done. It's on your list. Milk. Eggs"]  # one piece; a list item still ends
+    assert sum(m["kind"] == "voice_speak" for m in voice.app.live.sent) == 1
+    voice.app.settings.set("voice.speak.join_sentences", False)
+    engine.said.clear()
+    voice.say("Done. It's on your list.", wait=True)
+    assert engine.said == ["Done.", "It's on your list."]
+
+
+def test_joining_keeps_the_first_piece_short_and_long_sentences_whole():
+    long = "This sentence is a fairly long one, made to be more than half of the limit on its own here."
+    assert len(long) > 60
+    parts = ["Sure.", long, long, "Okay.", "Bye."]
+    joined = shape_mod.join(parts)
+    assert joined == [f"Sure. {long}", f"{long} Okay. Bye."]  # the first stays under 120 so speech starts soon
+    assert all(len(p) <= 200 for p in joined)
+    assert shape_mod.join([long * 3]) == [long * 3]  # never cut, only joined
+    assert shape_mod.join([]) == []
 
 
 # ------------------------------------------------------------------------------------- Voice ID (0.8.10)

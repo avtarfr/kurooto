@@ -64,6 +64,7 @@ register_defaults(
             "what": "voice",  # what's read aloud: voice (answers to what you said aloud), all (every AI answer) or off
             "max_chars": 800,  # a longer answer is read this far, then "the rest is on screen"
             "numbers_as_words": True,  # say times, dates, money, versions and units as a person would (only aloud)
+            "join_sentences": True,  # short sentences spoken together (up to ~200 characters), not each on its own
         },
         "listen": {
             "on": False,  # listen through the microphone, all on this computer; only turns said to Kurooto leave
@@ -119,8 +120,8 @@ ONCE_WORK_S = 30.0  # and this long more for a stretch it took to be written out
 
 
 class Speaker:
-    """Speaks text sentence by sentence: the next sentence is made while this one plays, so speech starts as soon
-    as the first sentence is ready."""
+    """Speaks text a piece at a time (a sentence, or short ones joined: shape.join): the next piece is made while this
+    one plays, so speech starts as soon as the first piece is ready."""
 
     def __init__(self, v: Voice):
         self.v = v
@@ -163,6 +164,8 @@ class Speaker:
                 break
             out.append(p)
             n += len(p)
+        if self.v.setting("speak.join_sentences"):
+            out = shape_mod.join(out)
         if not out:
             return
         with self.lock:
@@ -497,7 +500,10 @@ class Voice(Module):
                 try:
                     pcm = b""
                     sr = 24000
-                    for part in shape_mod.sentences(text, numbers=words) or [text]:
+                    parts = shape_mod.sentences(text, numbers=words)
+                    if self.setting("speak.join_sentences"):
+                        parts = shape_mod.join(parts)
+                    for part in parts or [text]:
                         got, sr = tts.synth(part)
                         pcm += got
                     if pcm:
@@ -756,9 +762,10 @@ class Voice(Module):
             self.speaker.say(result.text, wait=False)
 
     def add_output(self, fn: Output) -> Callable[[], None]:
-        """Play Kurooto's voice elsewhere (an add-on: another device). fn(pcm, sr, stop) gets each sentence's 16-bit
-        mono PCM, newest output first, instead of this computer's speakers; it blocks until the sound has played (or
-        `stop` is set: /voice stop, mute, Voice off) and returns True, or False when it can't now (the next output,
+        """Play Kurooto's voice elsewhere (an add-on: another device). fn(pcm, sr, stop) gets each piece's 16-bit
+        mono PCM at the engine's own rate `sr` (a sentence, or short ones joined), newest output first, instead of
+        this computer's speakers; it blocks until the sound has played (or `stop` is set: /voice stop, mute, Voice
+        off) and returns True, or False when it can't now (the next output,
         finally the speakers, play it). Raising counts as False (voice_failed part="output", once). It runs on the
         speaking thread while holding() is true, so the microphone doesn't hear Kurooto. Returns remove()."""
         return self.speaker.add_output(fn)
