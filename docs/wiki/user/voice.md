@@ -45,6 +45,11 @@ answer from your AI (Telegram and the phone app ones too), and `off` keeps it si
   `am_michael`, `am_adam`, `bf_emma`, `bf_isabella`, `bm_george`, `bm_lewis`), and the speed with `voice.speak.rate`.
 - Long answers are read up to `voice.speak.max_chars` (800 characters), then "The rest is on screen."
 - Code in an answer isn't read out ("code on screen"), and links are read as "a link".
+- Numbers are said as a person would (0.8.13): 21:31 as "nine thirty-one PM", 27/10/2026 as "the twenty-seventh of
+  October twenty twenty-six", ₹3,000 as "three thousand rupees", 3-5 as "three to five", 12 GB as "twelve gigabytes",
+  0.8.13 as "zero point eight point thirteen", 2026 as "twenty twenty-six". Only what's said changes; the screen shows
+  what was written. Write a count in the year range with a comma (2,026 people) and it's read as a count.
+  `voice.speak.numbers_as_words` turns it off.
 - `/voice say Good morning` says something now; `/voice stop` stops it mid-sentence.
 - An add-on can play Kurooto's voice on another device instead of these speakers (0.8.12); when that device can't,
   the computer's speakers play it, and `/voice stop` and mute stop it there too.
@@ -163,6 +168,7 @@ downloaded to your computer as separate programs, not part of Kurooto.
 | `voice.speak.voice` | (Kokoro's `af_heart`) | the voice |
 | `voice.speak.rate` | 1.0 | speed |
 | `voice.speak.what` | `voice` | `voice` (answers to what you said aloud), `all` (every AI answer) or `off` |
+| `voice.speak.numbers_as_words` | on | say times, dates, money, versions and units in words (only aloud) |
 | `voice.listen.on` | off | listen through the microphone |
 | `voice.listen.wake_word` | (none) | the path of your own openWakeWord `.onnx`; empty: its name wakes it |
 | `voice.listen.name_variants` | (none) | more spellings of its name to accept; the common mishearings are built in |

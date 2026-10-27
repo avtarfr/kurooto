@@ -18,6 +18,8 @@ import array
 import math
 import re
 
+from kurooto.modules.voice import numbers as numbers_mod
+
 RATE = 50  # samples a second
 VOWELS = set("aeiouy")
 VOICED = set("lmnrwvzj")
@@ -131,9 +133,15 @@ def clean(text: str) -> str:
     return re.sub(r"[ \t]+", " ", t).strip()
 
 
-def sentences(text: str) -> list[str]:
+def spoken(text: str, numbers: bool = False) -> str:
+    """clean(), and with `numbers` its numbers in words (numbers.py): the text as the voice says it, never shown."""
+    t = clean(text)
+    return numbers_mod.say(t) if numbers else t
+
+
+def sentences(text: str, numbers: bool = False) -> list[str]:
     """Sentence by sentence, so speech starts after the first one is ready; long ones split at commas."""
-    parts = [p.strip() for p in re.split(r"(?<=[.!?])\s+|\n+", clean(text)) if p.strip()]
+    parts = [p.strip() for p in re.split(r"(?<=[.!?])\s+|\n+", spoken(text, numbers)) if p.strip()]
     out = []
     for p in parts:
         while len(p) > 220:

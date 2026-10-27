@@ -664,6 +664,30 @@ def test_a_removed_output_isnt_used(voice, speakers):
     assert len(out.got) == 1 and len(speakers.got) == 1
 
 
+class Engine(Tts):
+    """A speech engine that keeps the text it was given."""
+
+    def __init__(self):
+        self.said = []
+
+    def synth(self, text):
+        self.said.append(text)
+        return super().synth(text)
+
+
+def test_numbers_are_said_as_words_and_shown_as_written(voice, speakers, monkeypatch):
+    engine = Engine()
+    monkeypatch.setattr(voice, "tts", lambda: (engine, ""))
+    voice.say("Lab at 21:31 costs ₹3,000.", wait=True)
+    assert engine.said == ["Lab at nine thirty-one P-M costs three thousand rupees."]
+    shown = [m for m in voice.app.live.sent if m["kind"] == "voice_text"]
+    assert shown[-1]["text"] == "Lab at 21:31 costs ₹3,000."  # the screen keeps what was written
+    voice.app.settings.set("voice.speak.numbers_as_words", False)
+    engine.said.clear()
+    voice.say("Lab at 21:31 costs ₹3,000.", wait=True)
+    assert engine.said == ["Lab at 21:31 costs ₹3,000."]
+
+
 # ------------------------------------------------------------------------------------- Voice ID (0.8.10)
 class Stt:
     """The transcriber: says what it's told to, and counts each call (and how much sound it got)."""

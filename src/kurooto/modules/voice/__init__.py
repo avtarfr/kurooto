@@ -63,6 +63,7 @@ register_defaults(
             "rate": 1.0,  # speaking speed: 1.0 normal, 0.8 slower, 1.2 faster
             "what": "voice",  # what's read aloud: voice (answers to what you said aloud), all (every AI answer) or off
             "max_chars": 800,  # a longer answer is read this far, then "the rest is on screen"
+            "numbers_as_words": True,  # say times, dates, money, versions and units as a person would (only aloud)
         },
         "listen": {
             "on": False,  # listen through the microphone, all on this computer; only turns said to Kurooto leave
@@ -154,7 +155,7 @@ class Speaker:
 
     def _speak(self, tts, text: str) -> None:
         limit = int(self.v.setting("speak.max_chars") or 800)
-        parts = shape_mod.sentences(text)
+        parts = shape_mod.sentences(text, numbers=bool(self.v.setting("speak.numbers_as_words")))
         out, n = [], 0
         for p in parts:
             if n + len(p) > limit and out:
@@ -489,13 +490,14 @@ class Voice(Module):
     def shape(self, text: str) -> dict:
         """POST /api/voice/shape: the text's waveform outline (shape.py), from the speech engine when it's here."""
         text = (text or "")[: shape_mod.MAX_CHARS]
+        words = bool(self.setting("speak.numbers_as_words"))  # the shape of what's said, numbers and all
         if self.app.is_on(self.id):
             tts, _why = self.tts()
             if tts is not None:
                 try:
                     pcm = b""
                     sr = 24000
-                    for part in shape_mod.sentences(text) or [text]:
+                    for part in shape_mod.sentences(text, numbers=words) or [text]:
                         got, sr = tts.synth(part)
                         pcm += got
                     if pcm:
@@ -503,7 +505,7 @@ class Voice(Module):
                 except Exception:
                     pass
         rate = float(self.setting("speak.rate") or 1.0)
-        return shape_mod.payload(shape_mod.estimate(shape_mod.clean(text), rate), "estimate")
+        return shape_mod.payload(shape_mod.estimate(shape_mod.spoken(text, words), rate), "estimate")
 
     # ----------------------------------------------------------------------------------------- the switches
     def muted(self) -> bool:

@@ -15,8 +15,10 @@ with listening a second switch. User page: [../user/voice.md](../user/voice.md).
 | `modules/voice/portal.py` | `Portal`: open/closed, `take(heard, decision)`, `tick()` (silence), `close(why)`, `context()` for the gate |
 | `modules/voice/audio.py` | engines, all lazily imported: `Kokoro`, `Piper`, `Player`, `Mic`, `microphone()`, `Silero`, `Energy`, `Whisper`, `Wake`, `Listener` |
 | `modules/voice/parts.py` | what to fetch: `PACKAGES` (pip specs into `<app>/voice/py-<X.Y>`), `models()` (URLs and sizes into `<app>/voice/models`), `Parts.install()` |
-| `modules/voice/shape.py` | the waveform outline: `estimate()`, `from_pcm()`, `levels()`, `clean()`, `sentences()` |
+| `modules/voice/shape.py` | the waveform outline: `estimate()`, `from_pcm()`, `levels()`, `clean()`, `spoken()`, `sentences()` |
+| `modules/voice/numbers.py` | numbers as words for the voice (`voice.speak.numbers_as_words`, 0.8.13): `say(text)` and its parts `words()`, `indian()`, `ordinal()`, `year()`, `number()`; pure Python, no dependency |
 | `tests/unit/test_voice.py` | everything above with fakes (no device, no model) |
+| `tests/unit/test_voice_numbers.py` | `numbers.say()` case by case, and the switch |
 
 ## Used by Face presence (0.8.10)
 
@@ -209,6 +211,21 @@ Otherwise `"estimate"` (`shape.py:estimate`, deterministic): vowels 0.55 rise, 0
 fricatives (`s f h x`, `sh ch th ph zh`) three of 0.22/0.31/0.18/0.27/0.24 in turn; 0.05 between words; 8 zeros at
 `, ; : - ( )` and 15 at `. ! ?` and line breaks; digits 0.5, 0.85, 0.85, 0.5; other letters 0.5, 0.8, 0.6; trailing
 silence trimmed; `voice.speak.rate` resamples the length. Text is `clean()`ed first (Markdown, links, code).
+
+### Numbers as words (0.8.13)
+
+Kokoro's pronunciation comes from espeak-ng, which reads digits literally ("21:31" → "twenty one : thirty one",
+"0.8.13" → "zero. eight point one three", "₹3,000" → "rupee three thousand", "12 GB" → "gee bee"). With
+`voice.speak.numbers_as_words` (default on) `shape.spoken(text, numbers=True)` runs `numbers.say()` after `clean()`
+and before the text is split into sentences, so "a.m." no longer ends a sentence. It's applied to the speech engine's
+input (`Speaker._speak`) and to both shape paths (`Voice.shape`: the engine's and the estimate's), never to
+`voice_text` or anything shown. Passes in order: dates, versions, ranges, times, money, percentages, decades, units,
+"/month", ordinals, years, fractions, ratios, "1920x1080", "±", minus signs, letters joined to digits, then any number
+left. Each pass only touches a number standing on its own (`LEFT`/`RIGHT`: not inside a word, a decimal or a
+code-like token), so `7c12897`, `x86_64` and `0x1F` stay as written. AM and PM are written `A-M`, `P-M`: espeak reads a
+bare "AM" before a full stop as the word "am". Years: 1900 to 2099 always, 1100 to 1899 after a year word (in, since,
+by ...) or a month. Indian commas (`1,00,000`) are read in lakhs and crores. Check a reading with the Kokoro
+tokenizer's `phonemize(text, "en-us")` (phonemes only, no sound).
 
 ## Parts and setting up
 
