@@ -1,0 +1,97 @@
+title = "Notes brain (GBrain)"
+page = "notes-and-concept-graph.md"
+intro = """An index of your notes folder you can search by meaning (`/notes <question>`), which your AI also uses as
+memory. It runs on this computer with its own database. Its nightly extras each have their own switch; the ones that
+would rewrite your notes or call an AI model are left out unless you add them."""
+cost = "Nothing leaves this computer, except note text sent to Google for embeddings when `gbrain.embeddings` is `gemini`."
+needs = "The Notes brain (GBrain) feature."
+
+[s."gbrain.embeddings"]
+tip = "How the notes brain makes its search-by-meaning index: a model here, Google's, or keywords only."
+values = "`auto` (picked for your computer), `ollama` (a model on this computer), `gemini` (your key), `off` (keyword search only)."
+when = "Pick `ollama` to keep note text on this computer if you have a graphics card or Apple Silicon; `off` for keyword search only."
+cost = "`gemini` sends your notes' text to Google to be embedded; `ollama` and `off` keep it here."
+
+[s."gbrain.sync"]
+tip = "How often your notes are read into the notes brain."
+when = "Shorten it if new notes take too long to show up in search; lengthen it on a slow computer."
+
+[s."gbrain.timelines"]
+tip = "Nightly, dated log lines in your notes become each note's timeline (`/timeline <note>`)."
+when = "Turn it off if you don't write dated log lines. No AI, nothing leaves."
+
+[s."gbrain.course_pages"]
+tip = "Nightly, each course page gets its key concepts and a dated timeline, in Kurooto's own block."
+when = "Turn it off if you don't want Kurooto's block on your course pages. Your own text is never touched."
+
+[s."gbrain.upkeep"]
+tip = "Nightly upkeep of the brain (links, facts, the index), light steps only; waits for the charger."
+when = "Turn it on for a tidier, faster brain over time."
+
+[s."gbrain.upkeep_steps"]
+tip = "Which upkeep steps run (GBrain's own phase names); empty: the light ones."
+values = "A list of GBrain phase names."
+when = "Add steps only if you know what they do: some rewrite note files or call an AI model. Kurooto never runs purge."
+cost = "Steps that call an AI model send note text to the model GBrain is set up with."
+needs = "`gbrain.upkeep`."
+
+[s."gbrain.nightly"]
+tip = "When the brain's nightly timelines and upkeep run."
+when = "Move it to when the computer is on and charging."
+
+[s."gbrain.checkup_line"]
+tip = "Once a week, one line on how the notes brain is (read only)."
+when = "Turn it off if you don't want the line."
+
+[s."gbrain.checkup"]
+tip = "A weekly checkup of the brain; a message only when something needs a look."
+when = "Turn it on if you run a big brain and want to hear about problems early."
+
+[s."gbrain.checkup_when"]
+tip = "When the weekly checkup runs."
+needs = "`gbrain.checkup`."
+when = "Move it to when you'd deal with a finding."
+
+[s."gbrain.checkup_ignore"]
+tip = "Checkup findings starting with these words aren't reported."
+values = "A list of words."
+when = "Add a finding's first word if it keeps coming up and doesn't matter to you."
+needs = "`gbrain.checkup`."
+
+[s."gbrain.contradictions"]
+tip = "The brain's last contradictions report joins Dreaming's morning section, with Keep A / Keep B."
+when = "Turn it off if you don't run GBrain's contradictions check. Kurooto only reads the report; you make it."
+needs = "Dreaming."
+
+[s."gbrain.managed"]
+tip = "Kurooto runs its own notes brain; off, it uses a GBrain you already run."
+when = "Turn it off only if you have your own GBrain (on Postgres, say). Kurooto then never creates, migrates or reconfigures it."
+
+[s."gbrain.exe"]
+tip = "Your own GBrain: your gbrain program; empty uses the one on your PATH."
+values = "A full path, or empty."
+when = "Set it if your gbrain isn't on PATH."
+needs = "`gbrain.managed` off."
+
+[s."gbrain.home"]
+tip = "Your own GBrain: its GBRAIN_HOME folder; empty uses GBrain's default."
+values = "A full path, or empty."
+when = "Set it if your brain lives somewhere other than GBrain's default."
+needs = "`gbrain.managed` off."
+
+[s."gbrain.source"]
+tip = "Your own GBrain: the source that is your notes folder, kept in step every 15 minutes."
+values = "A source name, or empty (you keep it in step yourself)."
+when = "Name it if you want Kurooto to sync and embed your notes into your brain for you."
+needs = "`gbrain.managed` off."
+
+[s."gbrain.agy_mcp"]
+tip = "Your own GBrain: agy gets its MCP tools too (you're asked first)."
+when = "Turn it on to let agy search and read your brain directly during requests."
+cost = "agy reads from your brain; what it reads goes to agy's service with the request."
+needs = "`gbrain.managed` off, agy as your AI."
+
+[s."gbrain.mcp_surface"]
+tip = "What your brain's MCP server offers agy: everything, a starter set, or only verbs."
+when = "Pick `starter` or `verbs` to give agy fewer tools to choose from."
+needs = "`gbrain.agy_mcp`."

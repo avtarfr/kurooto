@@ -1,0 +1,79 @@
+title = "When it may interrupt you"
+page = "calls.md"
+intro = """The night, focus time, calendar events that hold calls, and the regular commitments in your week. A held call
+or message isn't lost: it comes once the hold ends (or in the evening bundle). Learned changes to your hours are said
+once, with Undo, and never touch hours you set yourself."""
+cost = "Nothing: rules on this computer. What it learns about your hours (two times) is kept in state/rhythm.json."
+needs = "Nothing: core settings, always there."
+
+[parent."availability.night"]
+tip = "The night hours: when calls are held, and whether only a night with an alarm set counts."
+
+[s."availability.night.enabled"]
+tip = "No calls during the night hours."
+when = "Turn it off only if calls at any hour are fine with you. With the wake-up alarm set, the night runs from your bedtime to the alarm instead."
+
+[s."availability.night.from"]
+tip = "When the night hours start."
+when = "Set it to when you usually go to sleep. Kurooto may move it for you (`availability.learn_night`) unless you set it here yourself."
+
+[s."availability.night.to"]
+tip = "When the night hours end."
+when = "Set it to when you're usually up. Once you set it, the learning leaves it alone."
+
+[s."availability.night.alarm_only"]
+tip = "Hold calls at night only on nights you've set a wake-up alarm."
+when = "Turn it on if you set the alarm every night you want quiet, and calls on other nights are fine."
+needs = "The Morning alarm."
+
+[s."availability.learn_night"]
+tip = "Move the night hours to when you're actually quiet, learned from three weeks of your activity, with Undo."
+what = "At most once a week, never night hours you set yourself, and not for a month after an Undo."
+when = "Turn it off if your hours vary a lot or you want them fixed."
+
+[s."availability.learn_morning"]
+tip = "The check-in day, the morning message and \"Time to start\" follow your learned hours."
+what = "Unless you set those times yourself: the check-in day turns two hours before you're up, the morning message comes half an hour after, Time to start an hour after."
+when = "Turn it off to keep those at their clock times."
+needs = "`availability.learn_night`."
+
+[s."availability.absence_days"]
+tip = "After this many days with nothing from you, one gentle \"all good?\" message."
+values = "Days; 0: never."
+when = "Set 0 if you often go quiet for days on purpose. It's never repeated, never a call, and Busy gives you a quiet week."
+cost = "One Telegram message, through Calm."
+
+[s."availability.focus_keyword"]
+tip = "A calendar event with this word in its title is focus time: messages and calls wait."
+values = "A word, e.g. `#focus`."
+when = "Change it if you already use another tag for deep-work blocks."
+needs = "The Calendar feature."
+
+[s."availability.nocall_keyword"]
+tip = "A calendar event with this word in its title holds calls while it's on."
+values = "A word, e.g. `#nocall`."
+when = "Change it to a tag you already use. Matters when `calendar.nocall_events` is `tagged`."
+needs = "The Calendar feature."
+
+[s."availability.nocall_calendar"]
+tip = "Part of a calendar's name: every event in such a calendar holds calls."
+values = "Part of a calendar's name, any case."
+when = "Name a calendar (say, \"Shifts\") whose events should always hold calls. Matters when `calendar.nocall_events` is `tagged`."
+needs = "The Calendar feature."
+
+[s."commitments.items"]
+tip = "Your regular commitments (the gym, a shift, a standup), each on its days and hours."
+values = "A list of `{\"name\": \"gym\", \"days\": [\"mon\", \"wed\"], \"start\": \"18:00\", \"end\": \"19:00\", \"calls\": true}`."
+when = "Easier with `/busy add gym mon,wed 18:00-19:00` or by saying \"every Tuesday at 7pm I go to the gym\". Edit here to fix a time."
+needs = "The Commitments feature."
+
+[s."commitments.no_calls"]
+tip = "No calls while a commitment is on."
+when = "Turn it off to keep commitments only as a list. Each one can also opt out alone: `/busy calls gym off`."
+needs = "The Commitments feature."
+
+[s."commitments.hooks"]
+tip = "Words of yours that start a hold: \"gym\" alone holds calls for 90 minutes."
+values = "A list of `{\"word\": \"gym\", \"hold\": \"calls\" or \"all\", \"minutes\": 90}`."
+when = "Set by saying \"when I say gym, hold calls 90 min\"; `/hooks drop gym` forgets one. A hook never sets an alarm or sends anything."
+needs = "The Commitments feature."

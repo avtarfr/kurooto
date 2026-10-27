@@ -155,5 +155,5 @@ Actions are pinned by commit hash; keep them pinned when updating.
 uv run ruff check . && uv run ruff format --check .
 uv run pytest -m "not live"
 python3 tools/privacy_scan.py --staged         # the pre-commit hook does this (git config core.hooksPath tools/hooks)
-python3 tools/gen_settings_guide.py --check    # if you touched settings
+python3 tools/gen_settings_guide.py --check    # if you touched settings (each needs its entry in tools/settings_guide/)
 ```

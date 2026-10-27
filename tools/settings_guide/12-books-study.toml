@@ -1,0 +1,241 @@
+title = "Books, study time and handwritten notes"
+page = "books-and-study.md"
+intro = """Books and PDFs read overnight into text your AI can cite, the mix of sources (your notes, books, class
+material) that goes into answers, the study tracker that counts time per subject, and handwritten pages written out
+as notes. Reading happens at night on the charger and carries on the next night."""
+cost = "Reading happens on this computer unless an entry says otherwise. The study tracker keeps minutes per subject only, never window titles."
+
+[parent."sources.cap"]
+tip = "The most characters each kind of source may put into one answer."
+
+[s."books.folder"]
+tip = "Your own folder for books, with a subfolder per subject."
+values = "A full folder path; empty: `files.folder`, else Kurooto's own."
+when = "Point it at where you already keep your PDFs; `/books folder` says where to drop them."
+needs = "Books and PDFs."
+
+[s."books.at"]
+tip = "When the night's book reading begins (on the charger)."
+when = "Move it to after you've gone to bed; it reads only on the charger."
+needs = "Books and PDFs."
+
+[s."books.until"]
+tip = "When the night's reading stops; it carries on the next night from that page."
+values = "A time `HH:MM`."
+when = "Move it earlier if the computer's fan wakes you; later for big backlogs."
+needs = "Books and PDFs."
+
+[s."books.max_mb"]
+tip = "PDFs bigger than this (MB) are left alone."
+when = "Raise it for big scanned books; they take several nights."
+needs = "Books and PDFs."
+
+[s."books.ocr"]
+tip = "Who reads scanned pages: Tesseract, a vision model on this computer, either, or nobody."
+when = "Pick `vision` for maths-heavy scans (equations come out as LaTeX) if you have a graphics card; `off` to skip scanned pages."
+needs = "Books and PDFs; Tesseract or Local AI models installed for those choices."
+
+[s."books.ocr_lang"]
+tip = "Tesseract's languages for scanned pages, e.g. `eng+deu`."
+values = "Tesseract language codes joined by `+`; each needs its language data installed."
+when = "Add the languages your books are in."
+needs = "`books.ocr` using Tesseract."
+
+[s."books.latex"]
+tip = "Which pages the vision model reads for LaTeX: only ones whose maths came out in pieces, all, or never."
+when = "Pick `all` for heavy maths books (slower); `never` to save time."
+needs = "A vision model (Local AI models, graphics cards from 8 GB)."
+
+[s."books.dpi"]
+tip = "How sharp the page pictures are for reading scanned pages."
+when = "Raise it for small print (slower, more disk while reading); lower it for speed."
+needs = "Books and PDFs."
+
+[s."books.gemini"]
+tip = "Pages nothing on this computer can read go to Google's Gemini as pictures."
+when = "Turn it on only if your scans are unreadable here and you're fine with those pages going to Google."
+cost = "Those page pictures go to Google with your Gemini key (free limit)."
+needs = "A Gemini key."
+
+[s."books.gemini_model"]
+tip = "Which Gemini model reads scanned book pages, when `books.gemini` is on."
+values = "A Gemini model name."
+when = "Change it when a better or cheaper vision model is out."
+cost = "Page pictures go to Google with your key."
+needs = "`books.gemini`."
+
+[s."books.brain"]
+tip = "Index each book's text into the notes brain, so search by meaning finds it."
+when = "Turn it off to keep books out of the notes brain's search."
+needs = "The Notes brain (GBrain)."
+
+[s."books.brain_source"]
+tip = "Which notes-brain source the book text goes into; empty is the default one."
+values = "A source name from `gbrain sources list`, or empty."
+when = "Only if you run your own GBrain and keep books in a separate source."
+needs = "`books.brain`."
+
+[s."books.duplicates"]
+tip = "A book that's the same file as one already read is linked to it, not read again."
+when = "Turn it off only if you want copies read separately."
+needs = "Books and PDFs."
+
+[s."books.after_read"]
+tip = "A command of yours run after each book is read, with its subject and id added."
+values = "A command as a list: `[\"prog\", \"-x\"]`."
+when = "When you want to do something with each new book (copy it, index it elsewhere). It runs as you."
+needs = "Books and PDFs."
+
+[s."sources.mix"]
+tip = "How much each kind of source counts in answers: your notes, books, class material."
+values = "A JSON object of shares adding up to 1: `{\"own\": 0.4, \"book\": 0.3, \"classroom\": 0.3}`."
+default = "own 0.4, book 0.3, classroom 0.3"
+when = "Give books more weight for theory-heavy subjects, your own notes more where you trust them most. `/books mix` sets it."
+cost = "Changes only what goes into a request, not how much."
+needs = "Nothing: core. It shapes every request that draws on your notes, books and class material (skills that write course notes, answers that cite them)."
+
+[s."sources.prefer"]
+tip = "An order of sources instead of the mix: the first counts most."
+values = "A list such as `[\"own\", \"book\", \"classroom\"]` (3:2:1); empty uses the mix."
+when = "When you'd rather rank sources than set shares."
+needs = "Nothing: core. It shapes every request that draws on your notes, books and class material (skills that write course notes, answers that cite them)."
+
+[s."sources.cap.book"]
+tip = "The most characters from books in one answer."
+when = "Lower it if book text crowds out your notes; raise it for book-led subjects."
+needs = "Nothing: core. It shapes every request that draws on your notes, books and class material (skills that write course notes, answers that cite them)."
+
+[s."sources.cap.classroom"]
+tip = "The most characters from class material in one answer."
+when = "Lower it if slides crowd out the rest."
+needs = "Nothing: core. It shapes every request that draws on your notes, books and class material (skills that write course notes, answers that cite them)."
+
+[s."sources.cap.own"]
+tip = "The most characters from your own notes in one answer."
+when = "Raise it if answers miss what you wrote yourself."
+needs = "Nothing: core. It shapes every request that draws on your notes, books and class material (skills that write course notes, answers that cite them)."
+
+[s."sources.budget"]
+tip = "Characters of notes, books and class material in all, per answer."
+when = "Raise it for deeper answers (more of your AI's limit per request); lower it to keep requests small."
+cost = "More characters means more of your notes go to your AI with each request that uses them."
+needs = "Nothing: core. It shapes every request that draws on your notes, books and class material (skills that write course notes, answers that cite them)."
+
+[s."sources.subjects"]
+tip = "A different mix or order for one subject."
+values = "A JSON object: `{\"linear-algebra\": {\"mix\": {\"book\": 0.6, \"own\": 0.4}}}`."
+when = "Use `/books mix` for a subject whose best material is different."
+needs = "Nothing: core. It shapes every request that draws on your notes, books and class material (skills that write course notes, answers that cite them)."
+
+[s."study.idle_min"]
+tip = "Minutes without activity before study time stops counting."
+when = "Raise it if reading on screen without touching anything counts as away."
+needs = "The Study tracker."
+
+[s."study.sample_s"]
+tip = "Seconds between looks at the window you're working in."
+when = "Raise it to look less often (rounder counts); lower it for exact minutes."
+needs = "The Study tracker."
+
+[s."study.keywords"]
+tip = "Extra words per subject that count a window for it."
+values = "A JSON object: `{\"linear-algebra\": [\"matrix\", \"eigen\"]}`."
+when = "Add words that show up in your windows for a subject but aren't its name."
+needs = "The Study tracker."
+
+[s."study.research_paths"]
+tip = "Words or folders whose windows count as Research time."
+values = "A list of words or folder names."
+when = "Add your project folders so time there isn't lost."
+needs = "The Study tracker."
+
+[s."study.daily_note"]
+tip = "When the day's study hours go into your daily note; none: never."
+values = "A time `HH:MM`, or none."
+when = "Move it to just before you stop for the day."
+needs = "The Study tracker."
+
+[s."study.focus_min"]
+tip = "Study mode's timer: minutes of focus (calls and messages wait, the time is logged)."
+when = "Set it to the length you focus well for."
+needs = "The Study tracker; Study mode on the dashboard."
+
+[s."study.break_min"]
+tip = "Minutes of break the Study mode timer gives after each focus session."
+when = "Set it to the break you actually take."
+needs = "The Study tracker; Study mode on the dashboard."
+
+[s."study.timer_ends_mode"]
+tip = "When a focus ends, Study mode ends too, instead of starting a break."
+when = "Turn it on if you use one focus session at a time."
+needs = "The Study tracker; Study mode on the dashboard."
+
+[s."handwritten.folder"]
+tip = "Where scans of handwritten pages land to be read."
+values = "A full folder path; empty: `handwritten-inbox` in your notes (or your files folder)."
+when = "Point it at the folder your scanner app saves into."
+needs = "Handwritten notes."
+
+[s."handwritten.into"]
+tip = "Where the written-out notes go, inside your notes folder."
+values = "A folder inside your notes; empty: your layout's `handwritten/`."
+when = "Pick the folder you want them in."
+needs = "Handwritten notes."
+
+[s."handwritten.every"]
+tip = "How often the handwritten-notes folder is checked for new scans."
+when = "Shorten it if you want notes sooner after scanning."
+needs = "Handwritten notes."
+
+[s."handwritten.local"]
+tip = "A model on this computer reads the pages when there is one."
+when = "Turn it off to always use Gemini (if `handwritten.cloud` is on)."
+cost = "Nothing leaves: read here."
+needs = "Handwritten notes and Local AI models with a model that reads pictures."
+
+[s."handwritten.local_model"]
+tip = "An Ollama model of your choice that reads pictures; empty uses Local AI models' pick."
+values = "An Ollama model name."
+when = "When you know a model that reads your handwriting better."
+cost = "Downloaded from Ollama's registry once."
+needs = "`handwritten.local`."
+
+[s."handwritten.cloud"]
+tip = "With no model on this computer, Gemini reads the pages; off, they wait for a model here."
+when = "Turn it off to keep your handwriting on this computer."
+cost = "Page pictures go to Google with your Gemini key."
+needs = "Handwritten notes, a Gemini key."
+
+[s."handwritten.model"]
+tip = "Which Gemini model reads handwriting when it's used."
+values = "A Gemini model name."
+when = "Change it when a better vision model is out."
+cost = "Page pictures go to Google with your key."
+needs = "`handwritten.cloud`."
+
+[s."handwritten.pdf_hours"]
+tip = "When the model on this computer reads PDFs (on the charger); empty: any time."
+values = "`HH:MM-HH:MM`, or empty."
+when = "Empty it if you want PDFs read straight away and the computer can take it."
+needs = "`handwritten.local`."
+
+[s."handwritten.max_pages"]
+tip = "The most pages written out per PDF."
+when = "Raise it for long notebooks."
+needs = "Handwritten notes."
+
+[s."handwritten.dpi"]
+tip = "How sharp the pictures of handwritten pages are when they're read."
+when = "Raise it if small handwriting is misread; lower it for speed."
+needs = "Handwritten notes."
+
+[s."handwritten.keep_original"]
+tip = "Keep a copy of the scan next to the note, or link to where it already is."
+when = "Pick `link` if your scans already live somewhere tidy and you don't want copies."
+needs = "Handwritten notes."
+
+[s."handwritten.link"]
+tip = "Link each written-out note to its lecture, course page and concept notes."
+when = "Turn it off to save one AI request per note."
+cost = "One AI request per note, with the note's text."
+needs = "Handwritten notes."

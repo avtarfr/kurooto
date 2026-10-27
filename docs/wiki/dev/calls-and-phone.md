@@ -709,6 +709,21 @@ fetched when opened. A WebView older than Chrome 58 (`MIN_CHROME`) gets a messag
 loaded afresh, as it draws one kind), and it opens on the one looked at last (`Prefs.viewMode`) unless the extra `mode`
 says. With `demo` (debug and dev builds) it shows `Demo.view(kind)`, made-up copies of both, and fetches nothing.
 
+## The settings guide in the app (0.8.10)
+
+`assets/settings-help.json` is written by `tools/gen_settings_guide.py` (committed, checked by `--check`, the same entries
+as the dashboard's `static/settings-guide.js`): `{page, groups: [{id, title, intro}], settings: {key: {g, tip, what,
+values, default, when, cost, needs, anchor}}, parents: {key: {g, tip, children, anchor}}}`, about 340 KB. Keys are the
+computer's settings (`brain.main`) and the app's own as `app.<Prefs key>` (`app.vivid`, `app.senses.steps`,
+`app.places.on`); a test checks each of those names a key `Prefs`, `SensesRules` or `Places` keeps. `SettingHelp.kt`:
+`SettingHelp.load(context)` reads and parses it once on `Dispatchers.IO` (`parse(json)` is plain), `rememberSettingHelp()`
+gives the `Guide` to a composable once it's loaded (null before, or with no asset), `guide.helpFor(key)` finds an entry
+(`"vivid"` and `"app.vivid"` alike; null for a key with no entry), `guide.search(words)` matches every entry's text, and
+`SettingHelpSheet(guide, entry, onClose)` shows it in a `ModalBottomSheet` (its group, the key, the tip as the headline,
+what it does, then values, default, when to change it, what it costs or sends and what it depends on on a tonal card; a
+box's settings as a card each; **In the settings guide** opens the entry's anchor on the site). The Settings pane calls
+it on a long-press. A setting added in the app needs its `app.<key>` entry in `tools/settings_guide/26-phone-app.toml`.
+
 ## Tell Kurooto, the iPhone Shortcut (0.6.0)
 
 Apple doesn't allow generating a Shortcut file, so the phone shows a recipe with a link to paste.

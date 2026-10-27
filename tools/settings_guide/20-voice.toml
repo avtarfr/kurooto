@@ -1,0 +1,139 @@
+title = "Voice and voice notes"
+page = "voice.md"
+intro = """Kurooto speaks through this computer's speakers with a voice made here, and, if you turn listening on, hears
+the room through the microphone, all on this computer: noise and people talking to each other are dropped on the spot,
+and only what's said to Kurooto goes on, like a chat message. Voice notes you send on Telegram are written out by
+Gemini."""
+cost = "Sound is handled on this computer and never touches the disk. Only turns said to Kurooto go to your AI, as a chat message would."
+needs = "The Voice feature."
+
+[parent."voice.speak"]
+tip = "How Kurooto speaks through this computer's speakers."
+[parent."voice.listen"]
+tip = "Listening through the microphone, all on this computer."
+
+[s."voice.speak.on"]
+tip = "Kurooto speaks through this computer's speakers."
+when = "Turn it off to keep Voice for listening only, or for a silent room."
+
+[s."voice.speak.engine"]
+tip = "The voice made on this computer: Kokoro (natural, about 0.55 GB), Piper (lighter) or off."
+values = "`kokoro`, `piper` or `off`."
+when = "Pick `piper` on an older computer; `kokoro` sounds more natural."
+cost = "The voice's files are downloaded once."
+needs = "`voice.speak.on`."
+
+[s."voice.speak.voice"]
+tip = "Which Kokoro voice it speaks in; empty is `af_heart`."
+values = "A Kokoro voice name: `af_heart`, `af_bella`, `am_michael`, `bf_emma`, `bm_george` and more."
+when = "Try a few with `/voice say` and keep the one you like."
+needs = "`voice.speak.engine` = `kokoro`."
+
+[s."voice.speak.rate"]
+tip = "How fast it speaks: 1.0 is normal, 0.8 slower, 1.2 faster."
+values = "A number around 0.5 to 2."
+when = "Slow it down for long answers, speed it up if you're used to it."
+needs = "`voice.speak.on`."
+
+[s."voice.speak.what"]
+tip = "What's read aloud: answers to what you said aloud, every AI answer, or nothing."
+values = "`voice` (answers to what you said aloud), `all` (every AI answer) or `off`."
+when = "Pick `all` if you work away from the screen."
+needs = "`voice.speak.on`."
+
+[s."voice.speak.max_chars"]
+tip = "How much of a long answer is read aloud before it says \"the rest is on screen\"."
+values = "Characters."
+when = "Raise it to hear long answers in full."
+needs = "`voice.speak.on`."
+
+[s."voice.listen.on"]
+tip = "Listen through the microphone, all on this computer; only what's said to Kurooto leaves it."
+when = "Turn it on to talk to Kurooto out loud. It stops during calls, when paused, on battery saver and when muted."
+cost = "The speech models are downloaded once. Only turns addressed to Kurooto go to your AI."
+
+[s."voice.listen.wake_word"]
+tip = "A wake-word model of your own (an openWakeWord `.onnx` path); empty: its name wakes it."
+values = "A full path, or empty."
+when = "Only if you trained your own wake word."
+needs = "`voice.listen.on`."
+
+[s."voice.listen.wake_threshold"]
+tip = "How sure the wake-word model must be (0 to 1)."
+when = "Raise it if it wakes by mistake; lower it if it misses you."
+needs = "`voice.listen.wake_word`."
+
+[s."voice.listen.name_variants"]
+tip = "More spellings of its name to accept (the common mishearings of Kurooto are built in)."
+values = "A list of spellings."
+when = "Add the way the transcriber writes the name you gave it, if it keeps missing it."
+needs = "`voice.listen.on`."
+
+[s."voice.listen.model_judge"]
+tip = "When the rules can't tell whether you're talking to it, the model on this computer judges."
+when = "Turn it off to use rules only (fewer false starts, more misses)."
+cost = "Nothing leaves: a local model."
+needs = "`voice.listen.on` and Local AI models."
+
+[s."voice.listen.threshold"]
+tip = "How sure the local model must be (0 to 1) that speech is said to Kurooto."
+when = "Raise it if it answers conversations not meant for it; lower it if it ignores you."
+needs = "`voice.listen.model_judge`."
+
+[s."voice.listen.after_speak_s"]
+tip = "Seconds after it spoke during which a question counts as an answer to it."
+when = "Raise it if you think before answering."
+needs = "`voice.listen.on`."
+
+[s."voice.listen.close_s"]
+tip = "Seconds of nothing said to it before the spoken conversation closes."
+when = "Raise it for slower back-and-forth."
+needs = "`voice.listen.on`."
+
+[s."voice.listen.night"]
+tip = "Keep listening during the night hours."
+when = "Turn it off to stop listening at night."
+needs = "`voice.listen.on`."
+
+[s."voice.listen.calls"]
+tip = "Keep listening while you're on a phone call (off: listening pauses during calls)."
+when = "Turn it on only if your calls are on another device out of earshot."
+needs = "`voice.listen.on`."
+
+[s."voice.listen.stt_model"]
+tip = "How big the speech-to-text model is: tiny (75 MB), base (145 MB) or small (484 MB, more accurate)."
+values = "`tiny`, `base` or `small`."
+when = "Pick `small` if it often mishears you and the computer is fast enough."
+cost = "The model is downloaded once."
+needs = "`voice.listen.on`."
+
+[s."voice.listen.language"]
+tip = "The language you speak, e.g. `en` or `hi`; empty works it out each time."
+values = "A language code, or empty."
+when = "Set it if it guesses your language wrong."
+needs = "`voice.listen.on`."
+
+[s."voice.listen.device"]
+tip = "Which microphone to use; empty is the system's default."
+values = "A device's name or number as your sound system lists it (the sounddevice library's names)."
+when = "Set it if you have several microphones."
+needs = "`voice.listen.on`."
+
+[s."voice.listen.levels"]
+tip = "Show the microphone's loudness as a waveform on the dashboard (numbers only)."
+when = "Turn it off if you don't watch the waveform."
+needs = "`voice.listen.on`."
+
+[s."voice_notes.model"]
+tip = "Which Gemini model writes out your voice notes."
+values = "A Gemini model name."
+when = "Change it when a better or cheaper speech model is out."
+cost = "Each voice note's audio goes to Google with your Gemini key."
+needs = "Voice notes, and a Gemini key."
+
+[s."voice_notes.api_base"]
+tip = "Another address for the voice-note model; empty is Google's."
+values = "A web address, or empty."
+when = "Only for a proxy or a compatible server of your own."
+cost = "Voice notes go to that address."
+needs = "Voice notes."

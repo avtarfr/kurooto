@@ -181,9 +181,10 @@ register_defaults(
 )
 ```
 
-This is the only way to declare settings (there's no `defaults` class attribute). The comment on each line becomes
-the description in `docs/SETTINGS_GUIDE.md`; run
-`python tools/gen_settings_guide.py` after changing settings (`tests/unit/test_settings_guide.py` checks it). The
+This is the only way to declare settings (there's no `defaults` class attribute). Keep a comment on each line for
+developers; what people read is the setting's entry in `tools/settings_guide/` (a tooltip and a guide entry, written
+for a person: [core.md](core.md#setting-choices-and-tooltips-080)). Add it, then run
+`python tools/gen_settings_guide.py` (`tests/unit/test_settings_guide.py` fails on a setting with no entry). The
 dashboard's Settings tab shows every enabled module's section automatically, rendered by value type, and
 `POST /api/settings` refuses a value whose type differs from the current one. Read with `self.setting("minutes")`.
 Secrets go in `app.secrets`, never in settings.

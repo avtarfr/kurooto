@@ -1188,6 +1188,13 @@ function settingsFind(host) {
     const ok = words.every((w) => r.dataset.hay.includes(w));
     r.classList.toggle("hidden", !ok); if (ok) n++;
     for (const i of r.querySelectorAll("input:not([type=checkbox]), select, textarea")) i.classList.toggle("hit", ok && words.some((w) => String(i.value).toLowerCase().includes(w)));
+    // found only by its guide entry: open the entry so what matched is in view (and close it again after)
+    const g = r.querySelector("details.set-guide");
+    if (g) {
+      const seen = [r.querySelector("label"), g.querySelector("summary")].map((x) => (x ? x.textContent : "")).join(" ").toLowerCase();
+      const inside = ok && words.some((w) => !seen.includes(w) && g.textContent.toLowerCase().includes(w));
+      if (inside && !g.open) { g.open = true; g.dataset.auto = "1"; } else if (!inside && g.dataset.auto) { g.open = false; delete g.dataset.auto; }
+    }
   }
   for (const fs of host.querySelectorAll(".form fieldset")) {
     const any = [...fs.querySelectorAll(".set")].some((r) => !r.classList.contains("hidden"));
@@ -1531,10 +1538,41 @@ async function renderAboutTab(body) {
   aboutEditor($("#about-host"), api);
 }
 
+// The settings guide (0.8.10, tools/gen_settings_guide.py writes static/settings-guide.js): every setting's entry. Its
+// tip shows under the setting as a line that opens the whole entry (what it does, values and default, when to change
+// it, what it costs or sends, what it depends on), with a link to it in the user wiki. Loaded once, when Settings
+// first opens; without it the page is as before (the tips from /api/settings still show on hover).
+let GUIDE_P = null;
+const settingsGuide = () => GUIDE_P || (GUIDE_P = new Promise((done) => {
+  const s = document.createElement("script");
+  s.src = "/static/settings-guide.js";
+  s.onload = () => done(window.KUROOTO_SETTINGS_GUIDE || null);
+  s.onerror = () => done(null);
+  document.head.append(s);
+}).then((g) => (g && g.settings ? g : (GUIDE_P = null, { settings: {}, parents: {} }))));
+const guideText = (t) => esc(t).replace(/`([^`]+)`/g, "<code>$1</code>");
+function guideFor(G, key, tip) {
+  const e = G.settings[key], p = !e && G.parents && G.parents[key];
+  if (!e && !p) return "";
+  const dl = (rows) => `<dl>${rows.filter(([, t]) => t).map(([h, t]) => `<dt>${h}</dt><dd>${guideText(t)}</dd>`).join("")}</dl>`;
+  const body = e
+    ? (e.what ? `<p>${guideText(e.what)}</p>` : "") + dl([["Values", e.values], ["Default", e.default], ["When to change it", e.when], ["What it costs or sends", e.cost], ["Depends on", e.needs]])
+    : p.children.map((c) => { // the box's keys as typed in it ("from"), each with its tip and default
+      const x = G.settings[c] || {};
+      return `<div class="sg-kid"><code>${esc(c.slice(key.length + 1))}</code> ${guideText(x.tip || "")}${x.default ? ` <span class="sg-def">Default: ${guideText(x.default)}.</span>` : ""}</div>`;
+    }).join("");
+  const more = G.page ? `<a class="sg-more" href="${esc(`${G.page}#${(e || p).anchor}`)}" target="_blank" rel="noopener">In the settings guide</a>` : "";
+  return `<details class="set-guide"><summary><span>${guideText(tip || (e || p).tip)}</span></summary><div class="sg-body">${body}${more}</div></details>`;
+}
+// what a search finds a setting by, from its guide entry (so "battery" finds power.on_battery)
+const guideHay = (G, key) => { const e = G.settings[key] || (G.parents && G.parents[key]) || {}; return [e.tip, e.what, e.values, e.when, e.cost, e.needs].filter(Boolean).join("\n"); };
+
 async function renderSettings(body) {
   const typing = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.find === "settings";
-  const { sections } = await api("settings");
+  const [{ sections }, guide] = await Promise.all([api("settings"), settingsGuide()]);
   if (stale(body, "settings")) return;
+  const lookSec = sections.find((s) => s.section === "look"); // look.settings_guide off: no guide lines, no search in them
+  const G = lookSec && lookSec.values.settings_guide === false ? { settings: {}, parents: {} } : guide;
   // a section may offer choices for a setting (a list) and a line of help under it; "fixed" shows a value that can't
   // change here, and "post" sends changes to the section's own request (Settings → Starting: /api/autostart);
   // "remove" puts a Remove button by each value that isn't fixed, which asks first (Settings → Claude accounts)
@@ -1551,7 +1589,7 @@ async function renderSettings(body) {
         .map(([id, label]) => `<option value="${esc(id)}"${id === v ? " selected" : ""}>${esc(label)}</option>`).join("")}</select></label>`
       : typeof v === "string" && post ? `<label><span>${esc(key)}</span><input data-key="${key}"${post} value="${esc(v)}">${gone}</label>` : plain(key, v);
     const tipped = tip ? html.replace(/^<label>/, `<label title="${esc(tip)}">`) : html; // hover: what the setting does
-    return help ? tipped.replace(/<\/label>$/, `</label><div class="help d">${esc(help)}</div>`) : tipped;
+    return (help ? tipped.replace(/<\/label>$/, `</label><div class="help d">${esc(help)}</div>`) : tipped) + guideFor(G, key, tip);
   };
   const plain = (key, v) => {
     if (typeof v === "boolean") return `<label><span>${esc(key)}</span><input type="checkbox" data-key="${key}" ${v ? "checked" : ""}></label>`;
@@ -1565,7 +1603,7 @@ async function renderSettings(body) {
   const shay = (key, v, sec) => {
     const k = key.split(".").slice(1).join("."), choices = ((sec.choices || {})[k] || (key === "look.layout" ? LAYOUTS : key === "notes.layout" ? NOTES : key === "look.links_in" ? LINKS : null) || []);
     const chosen = choices.find(([id]) => id === v);
-    return [sec.section, sec.title, key, k.replace(/[._]/g, " "), (sec.help || {})[k] || "", (sec.fixed || {})[k] || "", chosen ? chosen[1] : "", typeof v === "string" ? v : JSON.stringify(v)].join("\n").toLowerCase();
+    return [sec.section, sec.title, key, k.replace(/[._]/g, " "), (sec.help || {})[k] || "", (sec.fixed || {})[k] || "", (sec.tips || {})[k] || "", guideHay(G, key), chosen ? chosen[1] : "", typeof v === "string" ? v : JSON.stringify(v)].join("\n").toLowerCase();
   };
   body.innerHTML = `${findBar("settings", "settings")}<div class="form">${sections.map((s) => `<fieldset><legend>${esc(s.title)}</legend>${Object.entries(s.values).map(([k, v]) => `<div class="set" data-hay="${esc(shay(`${s.section}.${k}`, v, s))}">${field(`${s.section}.${k}`, v, s)}</div>`).join("")}</fieldset>`).join("")}</div><p class="d" id="saved"></p>`;
   findWire(body, "settings", typing);
@@ -1612,6 +1650,7 @@ async function renderSettings(body) {
     const r = await api("settings", { key: t.dataset.key, value });
     say(t, r.ok ? "Saved." : r.error, !r.ok);
     if (r.ok) settingChanged(t.dataset.key, value);
+    if (r.ok && t.dataset.key === "look.settings_guide") setTimeout(() => renderSettings(body), 600); // after "Saved." shows
   };
 }
 

@@ -1,0 +1,283 @@
+title = "Research, projects and proposals"
+page = "research.md"
+intro = """A digest of new papers, your code repositories' commits and runs written into project logs, projects set up
+from a repository, help with a project in a scratch folder, and proposals: every change the AI wants to make to your
+files comes as a diff you apply, change or discard. Nothing in a repository is ever run except a check you set."""
+cost = "Paper searches go to arXiv, bioRxiv, PubMed and your feeds; ranking, project help and minutes go to your AI. Repositories are read on this computer."
+needs = "The Research feature."
+
+[parent."research.endpoints"]
+tip = "The paper services' addresses. Leave them alone."
+
+[s."research.about"]
+tip = "What you work on, in a sentence or two: the AI uses it to pick papers for you."
+values = "A sentence or two."
+when = "Write it once; update it when your research changes. Better picks follow at the next digest."
+cost = "It goes to your AI with each digest's ranking request."
+
+[s."research.feeds"]
+tip = "Where papers come from: arXiv categories with keywords, RSS feeds, and more."
+values = "A list such as `[{\"type\": \"arxiv\", \"categories\": [\"cs.LG\"], \"keywords\": []}, {\"type\": \"rss\", \"url\": \"...\"}]`."
+when = "Add the arXiv categories and journal feeds you follow; `/feeds` helps."
+cost = "Kurooto fetches from those services and feeds."
+
+[s."research.topics"]
+tip = "Old-style keywords searched across all of arXiv; `research.feeds` is the newer way."
+values = "A list of keywords."
+when = "Use `research.feeds` instead for anything new; `/topics` edits this list."
+cost = "Searches go to arXiv."
+
+[s."research.papers"]
+tip = "When the paper digest comes."
+values = "`daily HH:MM` or `weekly <day> HH:MM`."
+when = "Pick weekly for a calm field, daily for a fast one."
+
+[s."research.max_papers"]
+tip = "The most papers in one digest (1 to 30)."
+when = "Lower it for a shorter read; raise it to miss less."
+
+[s."research.window_days"]
+tip = "How far back each digest looks, in days."
+when = "Match it to how often the digest comes (7 for weekly)."
+
+[s."research.rank"]
+tip = "Your AI picks the papers and says why; off, the newest come as they are."
+when = "Turn it off to save AI requests or if you prefer the raw list."
+cost = "Titles and abstracts go to your AI, with `research.about`."
+needs = "Chat with your AI."
+
+[s."research.save_note"]
+tip = "Keep each paper digest as a note in your inbox too."
+when = "Turn it on if you want digests in your notes."
+cost = "Nothing leaves."
+
+[s."research.zotero"]
+tip = "Put papers into Zotero with one tap: the app here, the web API with your key, or no Zotero buttons."
+values = "`auto` (the app when it's running, else the web API), `app`, `web`, `off`."
+when = "Pick `off` if you don't use Zotero."
+cost = "`web` sends the paper's details to api.zotero.org with your key; `app` stays on this computer."
+
+[s."research.zotero_links"]
+tip = "Notes that link a paper you put in Zotero get a link to its Zotero item."
+when = "Turn it off if you don't want Kurooto adding Zotero links."
+needs = "`research.zotero` not `off`."
+
+[s."research.repos"]
+tip = "Your code repositories on this computer, for project logs and quiet-project questions."
+values = "A list of full paths."
+when = "Add the repositories you work in."
+cost = "Nothing leaves: read on this computer."
+
+[s."research.projects"]
+tip = "Which project each repository belongs to (its notes go in research/<project>/)."
+values = "A JSON object, repository folder → project name; unset uses the folder's name."
+when = "Set it when a repository's folder name isn't the project's name."
+cost = "Nothing leaves."
+
+[s."research.log_when"]
+tip = "When the day's commits and runs are written into your project logs."
+when = "Move it to after you usually stop working."
+cost = "Nothing leaves."
+
+[s."research.repo_runs"]
+tip = "The folder in each repository where your scripts keep their runs (its index.csv); empty: don't read."
+values = "A folder name, or empty."
+when = "Change it if your runs live elsewhere."
+cost = "Nothing leaves."
+
+[s."research.idle_days"]
+tip = "After this many days without commits, ask about a project; 0: never."
+when = "Raise it for slow projects; 0 if you don't want to be asked."
+cost = "One Telegram message, through Calm."
+
+[s."research.idle_when"]
+tip = "When the quiet-project check runs."
+when = "Move it to when you'd answer."
+needs = "`research.idle_days` above 0."
+
+[s."research.remind_by_call"]
+tip = "\"Remind me tomorrow\" on a quiet-project question is a call at 18:00."
+when = "Turn it off to get a message instead."
+needs = "Phone calls."
+
+[s."research.endpoints.arxiv"]
+tip = "arXiv's API address. Leave it alone."
+when = "Only for tests or a mirror."
+
+[s."research.endpoints.biorxiv"]
+tip = "bioRxiv's API address. Leave it alone."
+when = "Only for tests or a mirror."
+
+[s."research.endpoints.pubmed"]
+tip = "PubMed's API address. Leave it alone."
+when = "Only for tests or a mirror."
+
+[s."research_addon.run_compare"]
+tip = "Run compare: `/runs` and `kurooto runlog diff A B` (part of the Research add-on)."
+when = "Switch it off on the add-on's card if you don't use it."
+cost = "Nothing leaves."
+needs = "The Research add-on."
+
+[s."research_addon.latex"]
+tip = "The LaTeX tracker: a nightly build of the documents you attach with `/latex add`."
+when = "Turn it off if you build your documents yourself."
+cost = "Nothing leaves: built on this computer."
+needs = "The Research add-on, and a LaTeX installation."
+
+[s."research_addon.latex_repos"]
+tip = "The LaTeX documents you attached with `/latex add`."
+values = "A list of `{\"path\": folder, \"main\": \"main.tex\"}`."
+when = "Use `/latex add` and `/latex remove` rather than editing it."
+cost = "Nothing leaves."
+needs = "`research_addon.latex`."
+
+[s."research_addon.latex_when"]
+tip = "When your attached LaTeX documents are built each night."
+when = "Move it to when the computer is on and idle."
+cost = "Nothing leaves."
+needs = "`research_addon.latex`."
+
+[s."research_addon.latex_morning"]
+tip = "When the morning line comes (only when a build broke or you wrote something)."
+when = "Move it to when you start work."
+cost = "Nothing leaves."
+needs = "`research_addon.latex`."
+
+[s."research_addon.latex_timeout_min"]
+tip = "Minutes a build may take before it's stopped and counted as an error."
+when = "Raise it for long documents."
+cost = "Nothing leaves."
+needs = "`research_addon.latex`."
+
+[s."research_addon.members_off"]
+tip = "Parts of the Research add-on you switched off on its card (they stay off when it's turned on)."
+values = "A list of feature ids."
+when = "Change it on the add-on's card."
+cost = "Nothing."
+needs = "The Research add-on."
+
+[s."repo_projects.on"]
+tip = "Set a project up from its repository: `/project add` and \"set up my project from github.com/…\"."
+when = "Turn it off if you don't want projects set up from repositories."
+cost = "A GitHub address is cloned to this computer; your AI reads its README and docs in one request."
+
+[s."repo_projects.max_mb"]
+tip = "The most of a cloned repository's files that are checked out to be read, in MB (history isn't counted)."
+when = "Raise it for documentation-heavy repositories."
+cost = "Disk on this computer."
+needs = "`repo_projects.on`."
+
+[s."repo_projects.github_extras"]
+tip = "With gh signed in: the repository's description, topics, open issues and milestones too."
+when = "Turn it off to read only the files."
+cost = "Read from GitHub through your own gh sign-in."
+needs = "`repo_projects.on` and the gh program signed in."
+
+[s."repo_projects.refresh"]
+tip = "Each night, watched repositories are looked at again: README, docs, releases, milestones."
+when = "Turn it off to update a project only with `/project update`."
+cost = "A fetch from GitHub, and an AI request when something changed."
+needs = "`repo_projects.on`, and Research on."
+
+[s."repo_projects.refresh_at"]
+tip = "When the nightly repository refresh runs."
+when = "Move it to when the computer is on."
+needs = "`repo_projects.refresh`."
+
+[s."projects.help"]
+tip = "The projects your AI may help with (none until you say so)."
+values = "A list of project names; `/project help on <name>` adds one."
+when = "Add a project you want help on; remove it to stop."
+cost = "Help requests send that project's files to your AI; it works in a scratch copy, never in your folder."
+needs = "Help with your project."
+
+[s."projects.folders"]
+tip = "More project folders of yours, by name."
+values = "A JSON object, project name → folder."
+when = "Add a project that isn't a repository Kurooto knows. `/project add` keeps its own list."
+cost = "Nothing by itself."
+needs = "Help with your project."
+
+[s."projects.checks"]
+tip = "A command that checks a project (its tests, a LaTeX build), run after the AI's changes."
+values = "A JSON object, project → command."
+when = "Set one so proposals come with a pass or fail. It runs in the scratch folder, with a time limit and no network."
+cost = "Runs on this computer, in the scratch copy."
+needs = "Help with your project."
+
+[s."projects.check_timeout_s"]
+tip = "Seconds a project check may run before it's stopped."
+when = "Raise it for slow test suites."
+cost = "Nothing leaves."
+needs = "`projects.checks`."
+
+[s."projects.effort"]
+tip = "How hard your AI thinks about project work."
+when = "Lower it to spend less of your AI's limit on project help."
+needs = "Help with your project."
+
+[s."proposals.notes_edits"]
+tip = "A change to text already in your notes comes as a proposal (Apply / Change / Discard)."
+when = "Leave it on: off, the AI may change your existing note text without asking."
+cost = "Nothing leaves: the diff is shown to you."
+needs = "Nothing: core."
+
+[s."proposals.keep_days"]
+tip = "Days an unanswered proposal is kept, with its scratch folder."
+when = "Raise it if you review proposals weekly."
+cost = "Disk on this computer."
+needs = "Nothing: core."
+
+[s."proposals.max_kb"]
+tip = "A bigger change than this (KB) isn't proposed: ask for a smaller part."
+when = "Raise it if you work on big documents."
+cost = "Nothing."
+needs = "Nothing: core."
+
+[s."proposals.max_files"]
+tip = "A change touching more files than this isn't proposed."
+when = "Raise it for project-wide changes."
+cost = "Nothing."
+needs = "Nothing: core."
+
+[s."proposals.inline_lines"]
+tip = "A change up to this many lines is shown inside the message; a bigger one comes as a file."
+when = "Raise it to read more diffs inline."
+cost = "The diff travels with the message (Telegram or the app)."
+needs = "Nothing: core."
+
+[s."proposals.morning"]
+tip = "When the night's proposals are told, if Dreaming is off (else in Dreaming's message)."
+when = "Move it to when you'd review them."
+cost = "One message."
+needs = "Nothing: core."
+
+[s."meetings.minutes"]
+tip = "Notes you send after a meeting with a project's person become minutes, through your AI."
+when = "Turn it off to keep such notes as you sent them."
+cost = "Your notes from the meeting go to your AI once."
+needs = "A project note with that person (Help with your project or Research)."
+
+[s."meetings.after_h"]
+tip = "Hours after a meeting's start that a voice note or long note counts as notes from it."
+when = "Raise it if you write up meetings later in the day."
+cost = "Nothing."
+needs = "`meetings.minutes`."
+
+[s."drafts.max_comments"]
+tip = "The most comments \"Check my draft\" puts on one draft."
+when = "Lower it for only the main points."
+cost = "The draft goes to your AI to be checked."
+needs = "Check my draft (part of the Research add-on)."
+
+[s."drafts.note_block"]
+tip = "For checked notes, the comments also go into a block in the matching lecture note."
+when = "Turn it off to get comments only as a message."
+cost = "Nothing more leaves."
+needs = "Check my draft."
+
+[s."drafts.recent_minutes"]
+tip = "\"Check this\" right after you sent a file checks that file, if it came this recently (minutes)."
+when = "Raise it if you send the file and ask later."
+cost = "Nothing more leaves."
+needs = "Check my draft."

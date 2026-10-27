@@ -65,6 +65,8 @@ all of them.
 
 **Reference**
 - [Commands](commands.md): every Telegram command, every plain-English request understood instantly, every `kurooto` terminal command, and the dashboard's keyboard shortcuts.
+- [Settings guide](settings-guide.md): every setting, one entry each: what it does, its values and default, when you'd
+  change it, what it costs or sends, and what it depends on; grouped by feature.
 - [FAQ](faq.md) · [Troubleshooting](troubleshooting.md) · [What it can't do yet](what-it-cant-do-yet.md) ·
   [Glossary](glossary.md)
 

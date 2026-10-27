@@ -466,8 +466,13 @@ each feature that's **on**. A feature's settings appear once you turn it on.
   `brain.classify`, `updates.mode`, `updates.channel`, `power.on_battery`, the layouts) is a list to pick from. Lists
   and groups (like `["status"]` or `{"night": "23:15"}`) are shown whole in a box of several lines and typed as JSON;
   if what you typed isn't valid, it says so under the setting and saves nothing.
+- **What a setting does:** the line under each setting says it in a sentence (hovering its name shows the same). Click
+  that line for its whole entry: what it does, its values and default, when you'd change it, what it costs or sends
+  outward, and what it depends on, with a link to it in the [settings guide](settings-guide.md). The search box looks
+  through those entries too, so "battery" finds `power.on_battery`, and an entry that matched opens by itself.
+  `look.settings_guide` off hides those lines (and the search keeps to the settings themselves).
 - **Go back to a default:** type the default value back (every default is in the
-  [settings guide](../../SETTINGS_GUIDE.md)), or delete that line from `settings.json`.
+  [settings guide](settings-guide.md)), or delete that line from `settings.json`.
 - **Starting** has its own choice (when you log in, or on Linux when the computer starts) and says what it did.
 - **Settings not on the page** (the features that are on, which the Features page changes, and Telegram's pairing:
   `telegram.chat_id`, `telegram.allowed_users`, `telegram.api_base`) are in `settings.json` in Kurooto's settings

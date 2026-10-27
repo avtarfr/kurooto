@@ -1,0 +1,167 @@
+title = "Updates, backups and upkeep"
+page = "updates-and-backups.md"
+intro = """How Kurooto updates itself, the daily backup zip, Profile sync (your setup, encrypted, in your own private
+repository), the Space keeper that clears Kurooto's own leftovers, and the daily health pass. Kurooto only ever removes
+its own files: never your notes, books or anything else in a folder you chose."""
+cost = "Updates are downloaded from Kurooto's release site and checked against its signing key. Backups stay on the drive or folder you pick. Profile sync goes, encrypted, to your own private GitHub repository."
+needs = "Updates and health are core; Backups, Profile sync and the Space keeper are features of their own."
+
+[s."updates.mode"]
+tip = "How updates happen: by themselves at night, after asking you, or not at all."
+values = "`night` (download when found, switch in the night window), `ask` (a message with Update / Later), `off` (only a note on the dashboard)."
+when = "Pick `ask` if you want to choose when; `off` only if you update by hand (`kurooto update`)."
+needs = "Nothing: core."
+
+[s."updates.window"]
+tip = "The hours an automatic update may switch versions."
+values = "A pair of times: `[\"03:00\", \"05:00\"]`."
+when = "Move it to hours the computer is on and you're not using it."
+needs = "`updates.mode` = `night`."
+
+[s."updates.channel"]
+tip = "Stable releases, or beta for every version the day it's signed."
+when = "Pick `beta` to try new things first (and report problems); `stable` for an older, steadier version."
+needs = "Nothing: core."
+
+[s."updates.staged"]
+tip = "Wait until a release has been out a while (and not during exams) before installing it; critical ones don't wait."
+when = "Turn it on if you'd rather let others find the bugs first."
+needs = "Nothing: core."
+
+[s."updates.wait_hours"]
+tip = "Hours a new version must have been out before it's installed."
+when = "Raise it to wait longer."
+needs = "`updates.staged`."
+
+[s."updates.exam_hold"]
+tip = "Nothing installs in an exam period or within a day of a quiz or exam."
+when = "Turn it off if updates during exams are fine."
+needs = "`updates.staged`; exam dates from Subjects and Deadlines."
+
+[s."backups.folder"]
+tip = "Where the backup zips go: an external drive or a cloud-synced folder."
+values = "A full folder path."
+when = "Set it to a drive that isn't this computer's own disk, so a dead disk doesn't take the backup with it."
+cost = "If the folder is synced by a cloud service, the zips go there."
+needs = "Backups."
+
+[s."backups.when"]
+tip = "When the automatic backup runs."
+when = "Move it to when the computer is on and the drive is plugged in."
+needs = "Backups."
+
+[s."backups.keep"]
+tip = "How many backup zips to keep; Kurooto removes only its own older zips."
+when = "Raise it to go back further; lower it to save space."
+needs = "Backups."
+
+[s."backups.notes"]
+tip = "Include your notes folder in the backup."
+when = "Turn it on unless Notes sync or something else already backs up your notes."
+needs = "Backups."
+
+[s."backups.secrets"]
+tip = "Include passwords and keys (bot token, API keys, sign-ins): anyone with the zip can use them."
+when = "Turn it on only if the backup folder is somewhere only you can reach. It's what lets a restore come back fully signed in."
+cost = "Your secrets sit unencrypted in the zip."
+needs = "Backups."
+
+[s."backups.index"]
+tip = "Include the notes brain's index (big, but slow to rebuild)."
+when = "Turn it off to keep zips small; the index is rebuilt after a restore."
+needs = "Backups."
+
+[s."backups.memory"]
+tip = "Include the memory ledger (encrypted: it opens only where its key is)."
+when = "Turn it on to keep gists and threads across a restore; on another computer it also needs `backups.secrets`."
+needs = "Backups."
+
+[s."backups.confidential_mail"]
+tip = "Include confidential mail summarised on this computer (the Mail digest's local mode)."
+when = "Leave it off unless you need those summaries back after a restore."
+needs = "Backups, and `mail_digest.confidential` = `local`."
+
+[s."profile.repo"]
+tip = "Your private GitHub repository for Profile sync; empty uses the one Notes sync uses."
+values = "`owner/name`, or empty."
+when = "Set it to keep your profile apart from your notes' repository."
+needs = "Profile sync."
+
+[s."profile.when"]
+tip = "When your profile is saved each day."
+when = "Move it to when the computer is usually on."
+needs = "Profile sync."
+
+[s."profile.after_changes"]
+tip = "Minutes after you change a setting (or turn a feature on or off) that the profile is saved."
+when = "Lower it to save sooner after changes."
+needs = "Profile sync."
+
+[s."profile.branch"]
+tip = "The branch your saved profile lives on (set by Kurooto)."
+default = "`kurooto-profile`"
+when = "Never by hand."
+needs = "Profile sync."
+
+[s."profile.remote"]
+tip = "For tests only: a local repository instead of GitHub."
+when = "Never in normal use."
+needs = "Profile sync."
+
+[s."space.when"]
+tip = "When the Space keeper clears Kurooto's own leftovers by itself."
+when = "Move it to when the computer is on. `/space` cleans now."
+cost = "Nothing leaves."
+needs = "The Space keeper."
+
+[s."space.cache_days"]
+tip = "Downloads, made zips and cut-off downloads older than this (days) go."
+when = "Lower it on a small disk."
+cost = "Nothing leaves."
+needs = "The Space keeper."
+
+[s."space.log_mb"]
+tip = "A log file bigger than this (MB) is cut to its newest part."
+when = "Raise it to keep more history for troubleshooting."
+cost = "Nothing leaves."
+needs = "The Space keeper."
+
+[s."space.jobs_days"]
+tip = "Finished AI requests older than this (days) are forgotten."
+when = "Raise it if you search old requests with `/history`."
+cost = "Nothing leaves."
+needs = "The Space keeper."
+
+[s."space.undo_days"]
+tip = "The concept graph's before-copies and unfinished work files older than this (days) go."
+when = "Raise it to keep Undo for the concept graph longer."
+cost = "Nothing leaves."
+needs = "The Space keeper."
+
+[s."space.backups_max_gb"]
+tip = "The most the backup zips may take in all (GB); 0: no limit. The newest is never removed."
+when = "Set it to fit your backup drive."
+cost = "Nothing leaves."
+needs = "The Space keeper and Backups."
+
+[s."space.backups_max_age_days"]
+tip = "Backup zips older than this (days) go; 0: no limit (`backups.keep` still applies)."
+when = "Set it if you only care about recent backups."
+cost = "Nothing leaves."
+needs = "The Space keeper and Backups."
+
+[s."health.on"]
+tip = "The daily health pass: it checks what matters and tells you only when something needs you."
+when = "Turn it off to stop the daily pass; `/health`, the dashboard and `kurooto doctor` still check."
+cost = "Nothing leaves beyond the message."
+needs = "Nothing: core."
+
+[s."health.when"]
+tip = "When the daily health pass runs; tonight's alarm is checked then."
+when = "Keep it before bedtime so a broken alarm is found in time."
+needs = "`health.on`."
+
+[s."health.auto_fix"]
+tip = "Try a safe fix before telling you (never a sync: that one waits for your tap)."
+when = "Turn it off to have every fix wait for your tap."
+needs = "`health.on`."

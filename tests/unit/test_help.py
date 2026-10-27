@@ -179,3 +179,10 @@ def test_the_phone_apps_chat_gets_the_index_with_its_wiki_links(env):
     assert all(commands.wiki(g.page) in "\n".join(got) for g in commands.GROUPS if f"/help {g.key}" in "\n".join(got))
     chat = (ROOT / "android" / "src" / "io" / "github" / "avtarfr" / "kurooto" / "ChatActivity.kt").read_text()
     assert "LinkAnnotation.Url" in chat  # 0.7.6: the Compose chat makes web addresses tappable
+
+
+def test_help_settings_links_the_settings_guide(app):
+    """/help settings ends with the settings guide's page (0.8.10): every setting, what it does, when to change it."""
+    text = "\n".join(app.help_parts("settings"))
+    assert "Every setting explained" in text and "wiki/user/settings-guide.html" in text
+    assert "settings-guide.html" not in app.help_parts("reminders")[0]

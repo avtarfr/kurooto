@@ -1,0 +1,59 @@
+title = "Calendar"
+page = "classes-and-timetable.md"
+intro = """Your calendar's events in Kurooto, read-only: from a private iCal link, or from Google's Calendar API with
+the Google Calendar feature. Events hold calls, #focus events are focus time, private events show only as "Busy
+(private)", and shared class calendars offer their deadlines with an Add button."""
+cost = "Kurooto reads your calendar from its link (or Google's API); nothing is ever written back. Event titles reach your AI only when a request needs the day's events, and private ones never do."
+needs = "The Calendar feature (Google calendars: the Google Calendar feature)."
+
+[s."calendar.days"]
+tip = "How many days ahead Kurooto reads your calendar."
+when = "Raise it to see deadlines and exams further ahead; lower it on a very busy calendar."
+
+[s."calendar.refresh"]
+tip = "How often the calendar is read again."
+when = "Shorten it if events you add late don't show up in time; lengthen it to fetch less."
+
+[s."calendar.remind_min"]
+tip = "Minutes before each timed event for a reminder; 0 is off."
+when = "Set it (say, 10) if you want a nudge before every event."
+
+[s."calendar.no_calls_in_events"]
+tip = "No calls while a calendar event is on."
+when = "Turn it off if events in your calendar don't mean you're busy."
+
+[s."calendar.nocall_events"]
+tip = "Which events hold calls: every timed one, or only those you tagged."
+when = "Pick `tagged` if your calendar is full of things that don't mean you're busy; then only #nocall events and \"no call\" calendars hold calls."
+needs = "`calendar.no_calls_in_events`."
+
+[s."calendar.mask_private"]
+tip = "Private events show only as \"Busy (private)\": no title, place or description kept."
+when = "Leave it on. Off, private events' titles show again here and to your AI."
+
+[s."calendar.private_keyword"]
+tip = "An event with this word in its title or description is private."
+values = "A word, e.g. `#private`."
+when = "Change it to a tag you already use."
+needs = "`calendar.mask_private`."
+
+[s."calendar.class_calendars"]
+tip = "Calendars whose events are classes: they hold calls and get the after-class question."
+values = "Names (any part, any case): `[\"Timetable\"]`; `/cal classes Timetable` sets it."
+when = "Set it if your timetable lives in a calendar instead of `/class`."
+
+[s."calendar.holiday_calendars"]
+tip = "Calendars whose all-day events are holidays (no classes)."
+values = "Names (any part, any case): `[\"Holidays\"]`."
+when = "Set it to your college's holiday calendar so no classes are expected on those days."
+
+[s."calendar.shared_offer"]
+tip = "A subscribed calendar's deadlines and exams are offered with an Add button each."
+when = "Turn it off to see shared calendars' entries only as events. They're never added by themselves."
+
+[s."google_calendar.skip"]
+tip = "Google calendars to leave out, by any part of their name."
+values = "A list: `[\"Birthdays\"]`."
+when = "Leave out calendars you don't want read (birthdays, a shared family calendar)."
+cost = "Calendars you skip are never read."
+needs = "The Google Calendar feature."

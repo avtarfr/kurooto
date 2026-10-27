@@ -1,0 +1,69 @@
+# The settings guide's source (tools/gen_settings_guide.py reads it). One table per setting; see the tool's docstring.
+title = "You and how it talks to you"
+page = "teaching-kurooto.md"
+intro = """Who you are to Kurooto (your name, time zone, notes folder) and how its AI words things for you. The persona
+card's four lines go with every AI request and every call, so the wording is the same on Telegram, in the app and on
+the phone. They set wording only: a line that would give Kurooto feelings, a backstory or a relationship is dropped,
+and you're told why."""
+cost = "Nothing by itself. The persona card's lines travel with each request to the AI you chose, like the rest of the request."
+needs = "Nothing: these are core settings, always there."
+
+[s."you.name"]
+tip = "Your name, as Kurooto uses it in messages and calls."
+when = "Set it at setup or when it gets your name wrong. Messages, the morning page and calls use it from the next one; empty, Kurooto just doesn't use a name."
+values = "Any text."
+
+[s."you.timezone"]
+tip = "Your time zone, for every time Kurooto keeps; empty follows this computer's clock."
+what = "Reminders, check-ins, the alarm, night hours and every schedule are worked out in this zone."
+values = "An IANA zone name such as `Asia/Kolkata` or `Europe/Berlin`, or empty."
+when = "When this computer's clock is set to another zone than the one you live in (a server, a travel laptop). The schedule reads it when Kurooto starts, so restart it after a change; times already set keep their wall-clock time in the new zone."
+
+[s."you.workspace"]
+tip = "Your notes folder: where Kurooto reads and writes notes, journal and course files."
+what = "Everything Kurooto writes (journal, course notes, book notes, its own blocks) goes inside it. Obsidian works on it as it is."
+values = "A full folder path, or empty for `Documents/Kurooto`."
+when = "Set it at setup to the folder you already keep notes in. Changing it later points Kurooto at the new folder from its next start; nothing is moved, so move your notes yourself first."
+needs = "Read when Kurooto starts: restart after changing it. Notes sync, the notes brain and the sorter all work in this folder."
+
+[s."you.assistant_name"]
+tip = "The name your assistant goes by in messages, calls and the dashboard."
+values = "Any short name."
+when = "When you'd rather call it something else. Your Telegram bot takes the new name at once and says so; messages, calls and the AI use it from the next one."
+
+[s."you.language"]
+tip = "Which language answers come in: the one you wrote in, or always one you name."
+values = "`follow` (the language of your message), or a language's name such as `English` or `Hindi`."
+when = "When you write in a mix and want answers always in one language. Only the wording of AI answers changes; Kurooto's own fixed messages stay in English."
+
+[s."persona.call_me"]
+tip = "What the AI calls you: a nickname, your first name, or nothing."
+values = "Any text; empty uses your name, or nothing."
+what = "The dashboard's About you page and `/persona` change it too."
+when = "When the AI's way of addressing you feels off. The next answer and the next call use it."
+
+[s."persona.tone"]
+tip = "The tone you want answers in, in your own words."
+values = "A short phrase, e.g. \"plain and direct, no pep talk\". Empty: the AI's usual tone."
+when = "When answers feel too chirpy, too formal or too long-winded. It shapes wording from the next request; facts and actions don't change."
+
+[s."persona.length"]
+tip = "How long answers should be, in your own words."
+values = "A short phrase, e.g. \"short unless I ask for detail\". Empty: by the length of your message (see `persona.register`)."
+when = "When answers keep coming out longer or shorter than you like. What you write here wins over the length-matching of `persona.register`."
+
+[s."persona.avoid"]
+tip = "Things answers should never have, such as emojis or motivational lines."
+values = "A short list in your own words, e.g. \"emojis, exclamation marks\"."
+when = "When something in the AI's style keeps annoying you. The next answer and call leave it out."
+
+[s."persona.register"]
+tip = "A short message gets a short answer, a voice note a spoken-style one."
+what = "By the message's length only: nothing changes with the time of day or partway through a conversation."
+when = "Turn it off if you want the same style of answer whatever you send. A length on your persona card wins over it either way."
+
+[s."persona.boundaries"]
+tip = "Health, relationship and money decisions stay yours: Kurooto names who to ask instead."
+what = "Every AI request and call is told so, and a request that asks Kurooto to make such a decision (\"should I stop my meds\") is answered at once, without the AI, with a short line naming a person to ask. It's a list of rules, not a judgement: anything else goes on as usual."
+when = "Leave it on. Turn it off only if the rule keeps catching ordinary questions; then such requests go to the AI like any other."
+cost = "Nothing: rules on this computer. Off, those requests go to your AI like any other."

@@ -1,0 +1,135 @@
+title = "Concept graph"
+page = "notes-and-concept-graph.md"
+intro = """What you read in books and class material, woven into the notes you already have: a concept note per new
+concept, typed links with reasons, "Seen in" lines on existing notes. It works at night, batch after batch, within a
+budget of your AI's limit. Only lines are added; nothing you wrote is changed."""
+cost = "Each batch of pages goes to your AI (the bulk AI), and doubtful answers to a second one (the check AI), within `integrate.share_pct` of its limit; with an API key, within `integrate.max_cost_per_night`."
+needs = "The Concept graph feature, and Books and PDFs or Classroom → notes for something to read."
+
+[parent."integrate.price_per_mtok"]
+tip = "An API key's prices per million tokens, for the night's cost estimate when it reports none."
+
+[parent."integrate.roles"]
+tip = "Which AI does the bulk reading, and which takes the second look."
+
+[s."integrate.sources"]
+tip = "What's read into the graph: books, Classroom files, handwritten notes, repositories, reference files."
+values = "A list of `books`, `classroom`, `handwritten`, `repos`, `reference` (files from the inbox)."
+when = "Add `handwritten` once your handwritten notes are written out; remove one to stop reading it."
+
+[s."integrate.at"]
+tip = "When the night's reading starts (it carries on batch after batch)."
+when = "Move it to after you've stopped using your AI for the day."
+
+[s."integrate.per_night"]
+tip = "How many batches a night: fitted to your AI's plan, or a number you set as a hard ceiling."
+values = "`auto`, or a whole number."
+when = "Set a number if the reading uses more of your AI than you like."
+
+[s."integrate.share_pct"]
+tip = "The most of a subscription's usage window (or a free key's day) the reading may take, in %."
+when = "Lower it if you run short of your AI the next morning; raise it to get through books faster."
+
+[s."integrate.max_cost_per_night"]
+tip = "With a paid API key: the most a night's reading may cost, in US dollars."
+when = "Raise it to read faster; lower it to spend less."
+cost = "This is money on your API key's bill, as the service reports it."
+
+[s."integrate.price_per_mtok.in"]
+tip = "An API key that reports no cost: its price per million input tokens (USD), for the estimate."
+when = "Set it to your key's real price so the night's budget is right."
+
+[s."integrate.price_per_mtok.out"]
+tip = "An API key that reports no cost: its price per million output tokens (USD), for the estimate."
+when = "Set it to your key's real price so the night's budget is right."
+
+[s."integrate.batch_pages"]
+tip = "About how many pages go into one request."
+when = "Lower it if requests time out or answers get sloppy; raise it to read faster."
+
+[s."integrate.roles.bulk"]
+tip = "The AI that does the bulk reading; empty is chosen for you."
+values = "An AI id (`agy`, `claude`, `gemini`…), or empty."
+when = "Pick the AI with the most room in its limit."
+cost = "The pages go to that AI."
+
+[s."integrate.roles.check"]
+tip = "The AI that takes the second look at doubtful answers; empty is chosen for you."
+values = "An AI id, or empty."
+when = "Pick a different AI from the bulk one for a real second opinion."
+cost = "Doubtful answers and their pages go to that AI."
+
+[s."integrate.first"]
+tip = "Subjects to read first."
+values = "A list of subject short names: `[\"deep-learning\"]`."
+when = "Put the subject you're studying now first."
+
+[s."integrate.order"]
+tip = "Which books first: the smallest (most books done soonest) or by name."
+when = "Pick `name` if you want them in a fixed order."
+
+[s."integrate.garden"]
+tip = "A daily second pass that links the notes the reading touched and notes nothing links to yet."
+when = "Turn it off to save AI requests; links then come only from the first reading."
+
+[s."integrate.garden_at"]
+tip = "When the daily second pass runs (`/graph garden` runs it now)."
+needs = "`integrate.garden`."
+when = "Move it to a time your AI is free."
+
+[s."integrate.garden_per_day"]
+tip = "The most notes in the daily second pass."
+when = "Lower it to spend less of your AI's limit."
+needs = "`integrate.garden`."
+
+[s."integrate.embeddings"]
+tip = "How related notes are found by meaning: a model here, Google's, or not at all."
+when = "Pick `ollama` to keep note text here; `off` matches by keywords and names only."
+cost = "`gemini` sends note text to Google to be embedded."
+
+[s."integrate.rerank"]
+tip = "A local model judges which notes belong together (a graphics card helps)."
+when = "Turn it off on a slow computer."
+cost = "Nothing leaves: a model on this computer."
+
+[s."integrate.rerank_model"]
+tip = "Which local model does that judging; empty uses this computer's helper model."
+values = "An Ollama model name, or empty."
+when = "Only if you have a better reranking model."
+cost = "Downloaded from Ollama's registry once."
+needs = "`integrate.rerank`."
+
+[s."integrate.commit"]
+tip = "One git commit per batch, when your notes folder is a repository."
+when = "Turn it off if you commit your notes yourself."
+cost = "Nothing leaves: a local commit (Notes sync sends it up later, if that's on)."
+
+[s."integrate.summary"]
+tip = "One line each morning about what the reading changed."
+when = "Turn it off if you don't want the line."
+cost = "One Telegram message."
+
+[s."integrate.duplicates"]
+tip = "Each morning, up to three pairs of look-alike concept notes: Merge / Keep both / Add alias."
+when = "Turn it off to leave look-alikes as they are."
+
+[s."integrate.duplicates_all"]
+tip = "Each morning, also ask about notes of any kind that are copies of each other, old ones included."
+when = "Turn it off to be asked only about concept notes."
+
+[s."integrate.duplicates_per_day"]
+tip = "How many pairs of copied notes it asks about in a day, at most."
+when = "Lower it if the morning list is long."
+
+[s."integrate.auto_merge"]
+tip = "Look-alike concept notes that are clearly one concept merge by themselves (Undo in the morning line)."
+when = "Turn it off to be asked about every pair. It only ever merges notes Kurooto wrote."
+
+[s."integrate.auto_merge_min"]
+tip = "How alike two notes must be (0.92 to 1) to merge without asking."
+when = "Raise it if merges surprise you; it never goes below 0.92."
+needs = "`integrate.auto_merge`."
+
+[s."integrate.notation"]
+tip = "A Notation table when a second source writes a concept differently."
+when = "Turn it off if you don't want notation tables on concept notes."

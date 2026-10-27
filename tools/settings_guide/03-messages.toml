@@ -1,0 +1,188 @@
+title = "Messages and where they reach you"
+page = "messages-it-sends.md"
+intro = """Where Kurooto's messages go (Telegram, the phone app, this computer's notifications), how many come by
+themselves in a day (Calm), the offline and back-online messages, and questions waiting for your answer. Answers to
+what you asked are never held or counted; the alarm, approvals, your own reminders and deadlines under 12 hours never
+wait."""
+cost = "Messages go out through Telegram's servers to your chat, or sealed through your call line to the phone app; desktop notifications stay on this computer. Calm's records (state/calm.db, 45 days) stay here."
+needs = "Nothing: core settings, always there."
+
+[parent."notify.calm"]
+tip = "Calm: why each message came, Less of this, and how many come by themselves in a day."
+
+[parent."notify.presence"]
+tip = "The \"going offline\" and \"back online\" messages, and who sends them while this computer can't."
+
+[s."notify.calm.on"]
+tip = "Calm: each message Kurooto sends by itself says why, has Why? and Less of this, and there's a daily limit."
+when = "Turn it off to have everything come as it happens, with no buttons and nothing recorded, exactly as before Calm existed."
+cost = "Nothing leaves. On, what was sent and why is recorded on this computer for 45 days."
+
+[s."notify.calm.messages"]
+tip = "How many messages a day may come by themselves; the rest wait for the evening bundle."
+values = "A whole number."
+when = "Raise it if useful things keep waiting until evening; lower it for a quieter day. The first time a day the limit holds one, a line says so with Send them as they come today / Raise to 12 / Fine."
+needs = "`notify.calm.on`."
+
+[s."notify.calm.calls"]
+tip = "How many calls a day may come by themselves; one past it waits in the evening bundle as a call link."
+values = "A whole number; 0: none by themselves."
+when = "Raise it if you like being called for reminders and check-ins; set 0 to be called only when you asked. The alarm and calls you asked for never count."
+needs = "`notify.calm.on`, Phone calls."
+
+[s."notify.calm.evening_at"]
+tip = "When the evening bundle comes with everything that waited today."
+when = "Move it to when you usually look at your phone in the evening. After this time, messages come as they are."
+needs = "`notify.calm.on`."
+
+[s."notify.calm.evening"]
+tip = "Kinds of message that always wait for the evening bundle."
+values = "A list of message kinds, e.g. `[\"research\", \"weekly\"]`; filled by Less of this → Another time."
+when = "Usually set by tapping Less of this → Another time. Remove a kind to get it as it happens again."
+needs = "`notify.calm.on`."
+
+[s."notify.calm.fewer"]
+tip = "Kinds of message limited to a number a day; more wait for the evening."
+values = "A JSON object, kind → number: `{\"quiz\": 1}`; filled by Less of this → Fewer."
+when = "Usually set by tapping Less of this → Fewer. Raise or remove a kind's number to get more of it."
+needs = "`notify.calm.on`."
+
+[s."notify.calm.habituate"]
+tip = "After this many of a kind go unanswered in a row, they wait for the evening until you answer one."
+values = "A JSON object, kind → number; set by Dreaming, with Undo."
+when = "Dreaming fills it in from what you leave unanswered. Remove a kind to have it always come as it happens."
+needs = "`notify.calm.on`; Dreaming tunes it."
+
+[s."notify.calm.windows"]
+tip = "Hours a kind of message may come in; outside them it waits for the evening bundle."
+values = "A JSON object, kind → `\"10:00-18:00\"`; set by Dreaming, with Undo."
+when = "Dreaming sets it from when you actually answer; edit or remove a kind to change its hours."
+needs = "`notify.calm.on`; Dreaming tunes it."
+
+[s."notify.calm.stopped"]
+tip = "Kinds of message you stopped with Less of this → Stop."
+values = "A list of kinds."
+when = "Remove a kind to start getting it again (or use Undo on the message that stopped it)."
+needs = "`notify.calm.on`. Used only for kinds whose feature has no switch of its own."
+
+[s."notify.calm.lighter_after"]
+tip = "After an exam or a heavy day, the next day's limit is halved."
+when = "Turn it off if you'd rather have the same flow every day."
+needs = "`notify.calm.on`."
+
+[s."notify.calm.monthly"]
+tip = "Once a month, it names a kind of question you hardly ever answer and offers to turn it off."
+when = "Turn it off if you don't want the monthly suggestion. Nothing is turned off without your tap either way."
+needs = "`notify.calm.on`."
+
+[s."notify.presence.on"]
+tip = "Tell you when Kurooto goes offline, and again when it's back with what it caught up on."
+what = "A clean stop says so before it exits; coming back says how long it was away and what it caught up on. Never a call; at night it waits for the morning."
+when = "Turn it off if you don't care when the computer sleeps or restarts."
+
+[s."notify.presence.after_min"]
+tip = "How long Kurooto must be away before going offline or coming back is worth a message."
+values = "Minutes, at least 1."
+when = "Raise it if short sleeps and network blips cause messages you don't need."
+needs = "`notify.presence.on`."
+
+[s."notify.presence.channels"]
+tip = "Where the offline and back-online messages go."
+values = "A list of `telegram` and `app` (the phone app)."
+when = "Add `app` if you mostly use the phone app; remove `telegram` to keep them off your chat."
+needs = "`notify.presence.on`; a paired phone for `app`."
+
+[s."notify.presence.line"]
+tip = "While this computer can't speak (asleep, crashed, offline), your call line tells you so."
+when = "Turn it off if you don't want messages from the call line while the computer is away."
+cost = "Your call line (on your own Cloudflare account) watches the computer's link and sends the message itself."
+needs = "`notify.presence.on` and a call line (Phone calls)."
+
+[s."notify.presence.line_telegram"]
+tip = "Whether your call line may keep your bot's token, so it can tell you on Telegram while the computer is away."
+values = "none (asked once), on, or off (off deletes the token there at the next sync, within 5 minutes)."
+when = "Answer the question when it comes; change it later here. Off, the call line can only reach the phone app."
+cost = "On, your bot's token is kept on your call line (your own Cloudflare account), so it can send to your chat."
+needs = "`notify.presence.line`."
+
+[s."notify.desktop"]
+tip = "Pop-up notifications on this computer."
+when = "Turn it off if you only want messages on your phone. A message that no other channel took still pops up."
+cost = "Nothing leaves: the system's own notifications."
+
+[s."notify.desktop_kinds"]
+tip = "Which kinds of message pop up on this computer."
+values = "A list of kinds: `call`, `question`, `approval`, `deadline`, `update`, `reminder`, `result`, `info`."
+when = "Add `reminder` if you sit at this computer all day; remove kinds that distract you."
+cost = "Nothing leaves."
+needs = "`notify.desktop`."
+
+[s."notify.app_kinds"]
+tip = "Which kinds of message also reach your phone app."
+values = "A list of kinds: `call`, `question`, `approval`, plus `reminder`, `deadline`, `result`, `info` if you want those."
+when = "Add kinds you want on the phone too; remove `question` and `approval` to keep those on Telegram only."
+cost = "Each one goes sealed with your phone's key through your call line, which can't read it."
+needs = "A paired phone app."
+
+[s."notify.app_chat"]
+tip = "Kurooto's own messages also show in the phone app's chat, not just on Telegram."
+what = "Everything not already in `notify.app_kinds`: reminders, results, information."
+when = "Turn it on where Telegram is blocked or you'd rather use the app's chat."
+cost = "Sealed with your phone's key through your call line."
+needs = "A paired phone app."
+
+[s."ask.expire_hours"]
+tip = "Hours an unanswered question stays open before it expires (unless its asker set another time)."
+when = "Raise it if you often answer days later; lower it so old questions stop lingering."
+cost = "Nothing."
+
+[s."ask.keep_days"]
+tip = "Days answered and expired questions are kept before they're forgotten."
+values = "Days; 0 follows `privacy.keep_days`, and if that's 0 too, 30 days."
+when = "Lower it to forget your answers sooner; raise it if the weekly look back should see more of them."
+cost = "Nothing: kept in the state folder on this computer."
+
+[s."telegram.menu"]
+tip = "The bot's \"/\" menu lists the commands of the features you have on."
+when = "Turn it off if you'd rather keep a menu you set yourself in BotFather: Kurooto removes its own and leaves the menu alone."
+needs = "Telegram."
+
+[s."telegram.silent_kinds"]
+tip = "Kinds of message sent to Telegram without a sound."
+values = "A list of kinds."
+when = "Add kinds you don't want buzzing your phone twice. Only while a phone app is paired (it rings by itself)."
+needs = "Telegram and a paired phone app."
+
+[s."telegram.chat_id"]
+tip = "Your chat with the bot (set when you pair; don't change by hand)."
+when = "Never by hand: pairing sets it. Pair again (`kurooto telegram`) to move to another chat."
+needs = "Telegram. Not shown on the dashboard."
+
+[s."telegram.allowed_users"]
+tip = "The Telegram accounts that may use your bot (set when you pair)."
+values = "A list of Telegram user ids."
+when = "Set by pairing. Anyone not on it is ignored, so don't add accounts you don't own."
+needs = "Telegram. Not shown on the dashboard."
+
+[s."telegram.api_base"]
+tip = "Telegram's API address. Leave it alone."
+when = "Only for tests or a Bot API server of your own."
+cost = "Every Telegram message goes to this address."
+needs = "Telegram. Not shown on the dashboard."
+
+[s."keep.ask"]
+tip = "On day 10, then at most monthly: Keep / Quiet / Off for features you don't use."
+what = "From use counted on this computer. Nothing is turned down without your tap."
+when = "Turn it off if you never want the question. `/keep` shows the counts either way."
+cost = "Nothing: counted on this computer."
+
+[s."turnon.offer"]
+tip = "When you ask for something a feature that's off would do, offer to turn it on."
+when = "Turn it off to have such requests go straight to your AI instead."
+cost = "Nothing: rules only."
+needs = "Telegram or the phone app (where a button can be tapped)."
+
+[s."repair.on"]
+tip = "When a short request could mean either of two things, ask which with both as buttons."
+when = "Turn it off if you'd rather it went to your AI than asked."
+cost = "Nothing: rules on this computer."

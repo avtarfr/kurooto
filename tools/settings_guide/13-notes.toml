@@ -1,0 +1,158 @@
+title = "Notes, files and sync"
+page = "notes-and-concept-graph.md"
+intro = """How your notes folder is laid out and linked, where files outside it go, Notes sync to a private GitHub
+repository, the sorter that files notes from a scratch folder, and Find files. Kurooto writes only inside its own
+blocks in your notes and never rewrites your text."""
+cost = "Nothing leaves this computer, except with Notes sync (your notes go to your own private GitHub repository) and the sorter's short question to your AI."
+needs = "Nothing: core settings, always there."
+
+[s."notes.layout"]
+tip = "How your notes folder is laid out: Kurooto's folders, or a Zettelkasten."
+values = "`kurooto` (journal/, about-me/, a folder per subject) or `zettelkasten` (dailies/, master/, sources/, zettel/)."
+when = "Pick the one closest to how you already keep notes. The setup page's Notes step reads your folder and moves Kurooto's own notes to fit, with Undo."
+
+[s."notes.paths"]
+tip = "Your own place for a kind of note, over the layout's."
+values = "A JSON object, kind → path: `{\"daily\": \"journal/{date}.md\", \"doubts\": \"school/doubts.md\"}`."
+when = "When one kind of note should live somewhere else than the layout puts it. New notes of that kind go there."
+
+[s."notes.links"]
+tip = "How Kurooto links notes: `[[wikilinks]]` or Markdown links."
+values = "`wiki` (`[[path|Name]]`) or `markdown` (`[Name](path.md)`, relative)."
+when = "Pick `markdown` if you read your notes outside Obsidian (GitHub, a static site). Only new links change; old ones stay."
+
+[s."notes.open_with"]
+tip = "The program that opens a note from the dashboard; empty uses the system's."
+values = "A command, with `{path}` for the note: `kitty nvim {path}`."
+when = "Set it to open notes in your own editor."
+
+[s."files.folder"]
+tip = "A folder for files outside your notes (course files, PDFs); empty keeps them inside the notes."
+values = "A full folder path, or empty."
+when = "Set it to keep big files out of your notes (and out of Notes sync's repository)."
+
+[s."files.links"]
+tip = "How notes link to files outside the notes folder."
+values = "Empty (the layout's way), `relative`, or `file` (`file://` links)."
+when = "Pick `file` if your note app can't follow relative links out of the notes folder."
+needs = "`files.folder`."
+
+[s."notes_sync.repo"]
+tip = "The private GitHub repository your notes sync to."
+values = "`owner/name`. Kurooto refuses a public repository."
+when = "Set during Notes sync's setup, with a token for just that repository."
+cost = "Your whole notes folder is copied to that private repository on GitHub, and kept in step."
+needs = "Notes sync."
+
+[s."notes_sync.every"]
+tip = "How often your notes sync."
+when = "Shorten it if you edit on several devices; lengthen it to sync less often."
+cost = "Changed notes go up to GitHub each time."
+needs = "Notes sync."
+
+[s."notes_sync.after_jobs"]
+tip = "Minutes after an AI request finishes that the notes it wrote go up; 0 waits for the timer."
+when = "Set 0 to sync only on the timer."
+needs = "Notes sync."
+
+[s."notes_sync.on_conflict"]
+tip = "When a note changed in two places at once: keep both versions, or stop and wait for you."
+values = "`keep both` (this computer's copy goes next to it as a conflict note) or `stop` (sync stops, changes nothing, tells you once)."
+when = "Pick `stop` if you'd rather sort out every clash yourself. Nothing is lost either way."
+needs = "Notes sync."
+
+[s."notes_sync.branch"]
+tip = "The branch your notes sync to (filled in from the repository)."
+when = "Only if you keep notes on another branch than the repository's default."
+needs = "Notes sync."
+
+[s."notes_sync.share_with_calls"]
+tip = "Let your call line read notes from your repository during a call while this computer is off."
+when = "Turn it off if calls shouldn't read your notes at all while the computer is away."
+cost = "Your call line reads notes from GitHub during a call, with the sync token."
+needs = "Notes sync and Phone calls."
+
+[s."notes_sync.api"]
+tip = "The Git host's API address. Leave it alone."
+when = "Only for GitHub Enterprise or tests."
+cost = "Sync talks to this address."
+needs = "Notes sync."
+
+[s."notes_sync.remote"]
+tip = "For tests only: a local repository instead of GitHub."
+when = "Never in normal use."
+needs = "Notes sync."
+
+[s."sorter.folder"]
+tip = "The scratch folder inside your notes: what lands here is sorted into place."
+values = "A folder inside your notes."
+when = "Point it at the folder you already dump notes into."
+needs = "The Notes sorter."
+
+[s."sorter.at"]
+tip = "When the nightly sorting pass runs (`/sort now` runs one any time)."
+when = "Move it to when the computer is on and you're not writing."
+needs = "The Notes sorter."
+
+[s."sorter.per_night"]
+tip = "The most notes the sorter moves in one day."
+when = "Raise it to clear a big backlog; lower it to keep each morning's list short."
+needs = "The Notes sorter."
+
+[s."sorter.min_conf"]
+tip = "How sure a guess must be (0 to 1) before a note is moved; below it, you get Move buttons."
+when = "Raise it if notes land in the wrong place; lower it if too many wait for you."
+needs = "The Notes sorter."
+
+[s."sorter.ai"]
+tip = "Ask your AI about a note the rules can't place; off, rules only."
+when = "Turn it off to keep notes away from the AI; unplaced notes then wait for you."
+cost = "The note's first lines and your folder names go to your AI, one short request per note."
+needs = "The Notes sorter."
+
+[s."sorter.settle_min"]
+tip = "A note touched in the last this-many minutes is left alone (you may still be writing it)."
+when = "Raise it if notes get moved while you're writing."
+needs = "The Notes sorter."
+
+[s."sorter.learn"]
+tip = "A note you move again after it was filed teaches the sorter where such notes go."
+when = "Turn it off if you move notes around for other reasons."
+needs = "The Notes sorter."
+
+[s."sorter.recheck"]
+tip = "Weekly: a note it moved that now clearly fits another folder moves once more (with Undo)."
+when = "Turn it off if notes should stay where they were first put."
+needs = "The Notes sorter."
+
+[s."sorter.duplicates"]
+tip = "A note in the scratch folder that copies one you have is asked about, not filed."
+when = "Turn it off to file copies like any other note."
+needs = "The Notes sorter."
+
+[s."sorter.read_files"]
+tip = "Documents dropped in the scratch folder (PDF, Word, slides, text) become notes."
+when = "Turn it on to drop documents in and get notes out."
+needs = "The Notes sorter."
+
+[s."sorter.read_mb"]
+tip = "The biggest file the sorter reads, in MB."
+when = "Raise it for big documents."
+needs = "`sorter.read_files`."
+
+[s."finder.folders"]
+tip = "The folders Find files indexes and searches (`/find add <folder>` adds one)."
+values = "A list of full paths (`~` allowed)."
+when = "Add folders you look for files in. Keys, passwords and hidden folders are never read."
+cost = "Nothing leaves: the index stays on this computer. A file is sent only when you tap Send (to your own Telegram)."
+needs = "Find files."
+
+[s."finder.max_files"]
+tip = "The most files Find files indexes."
+when = "Raise it for big folders; lower it to keep the index small."
+needs = "Find files."
+
+[s."finder.read_mb"]
+tip = "Files bigger than this (MB) have their name indexed but not their text."
+when = "Raise it to search inside bigger PDFs (slower indexing)."
+needs = "Find files."
