@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.9 (unreleased)
+
+- **The being** (the dashboard's board now; `look.board`): Kurooto drawn as one body on its live data. Sparks in the
+  brain region that does each kind of work, a heart that beats with how busy it is, blood carrying work to the organ
+  doing it and back, the senses (the coil is this computer, with every core's bar), your notes as memory, laid out by
+  their links, and each feature a point of light. Drag turns everything, and each organ on its own; click any part
+  (a brain region, a heart part, a sense, a neighbourhood, a note, a feature) and the view flies to it, it brightens and
+  the rest dims; Esc goes back. A region shows its Brain parts and their switches, a feature its switch and every
+  setting, a note its preview. Mute works; H hides the hints (`look.being_hints`). The three-pane and classic boards stay
+  in the panes menu.
+- **The talk box** (`look.talk_box`, Alt+K): a small box on every board to talk to Kurooto as on Telegram.
+- For developers: `tools/dash_preview.py` runs a working copy's dashboard against a running Kurooto.
+
 ## 0.8.8 (unreleased)
 
 - **Voice: talk and listen** (a new feature, off; Features → Voice: talk and listen → Set up): Kurooto speaks through

@@ -49,8 +49,11 @@ register_defaults("look", {"design": "new"})  # the dashboard's design: new, or 
 register_defaults(
     "look",
     {
-        "board": "three",  # the board: three (NOTES, SYSTEMS, BRAIN on top; 0.8.3) or classic (STATUS down the left)
+        "board": "being",  # the board: being (Kurooto as one body, 0.8.9), three (0.8.3) or classic (STATUS left)
         "brain_monitor": "shown",  # BRAIN's part monitor: shown beside the model, or a drawer behind a tab
+        "being_theme": "void",  # the being's colours: void (white on black) or theme (the page's palette)
+        "being_hints": True,  # the being's hints: what to click, what each part is (H on the board toggles it)
+        "talk_box": True,  # the small box over the board to talk to Kurooto in plain English (Alt+K)
     },
 )
 LAYOUTS = ("dense", "roomy")
@@ -68,6 +71,8 @@ TYPES = {
     ".png": "image/png",
     ".ico": "image/x-icon",
     ".woff2": "font/woff2",
+    ".bin": "application/octet-stream",
+    ".vol": "application/octet-stream",
 }
 
 
@@ -88,7 +93,11 @@ def static(name: str) -> bytes | None:
     if (
         not re.fullmatch(r"(?:vendor/xterm/|views/)?[a-z0-9_-]+\.(html|js|css|svg|png|ico)", name)
         and not re.fullmatch(r"fonts/[a-z0-9_-]+\.woff2", name)
-        and not re.fullmatch(r"vendor/three/three\.min\.js", name)
+        and not re.fullmatch(  # three.js, and its bloom passes for the being (being.js)
+            r"vendor/three/(?:three\.min|CopyShader|LuminosityHighPassShader|EffectComposer|RenderPass|ShaderPass|UnrealBloomPass)\.js",
+            name,
+        )
+        and not re.fullmatch(r"body/(?:anatomy\.bin|cerebrum\.vol)", name)  # its anatomy (tools/gen_body_meshes.py)
         and not re.fullmatch(r"vendor/katex/(?:katex\.min\.(?:js|css)|fonts/KaTeX_[A-Za-z0-9_-]+\.woff2)", name)
     ):  # vendor: terminals, katex (recall maths); views: SYSTEMS and NOTES (the phone app's too); fonts: the typeface
         return None

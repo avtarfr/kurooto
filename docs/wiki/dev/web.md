@@ -408,9 +408,33 @@ test_every_feature_is_listed_in_the_wizard_and_dashboard` enforces it.
 (`static/vendor/three/three.min.js`, MIT, allow-listed in `web/server.static`). `home.js`: `#pane-brain` in `PANES`
 (`PKEY.brain` "b"); `mountBrainPane` loads both scripts only when `paneShown("brain")` (and `applyPanes` mounts it when the pane
 comes back); `update` on each poll. The frame loop skips drawing while `document.hidden` or the host has no width. Brain off:
-`home()` shows a note and the part toggles are inert (`DATA.on`). Settings: `look.board` (`three`, `classic` = `classicGrid`,
+`home()` shows a note and the part toggles are inert (`DATA.on`). Settings: `look.board` (`being` since 0.8.9, `three`, `classic` = `classicGrid`,
 the pre-0.8.3 board) and `look.brain_monitor` (`shown` pins the side panel, `.b3.pin`; `drawer` is the 0.8.5 tab). Tests:
 `tests/unit/test_brain_view.py`, `tests/unit/test_panes.py`.
+
+## The being (0.8.9)
+
+`static/being.js` exposes `beingMount(host, {api, hoodOf, pal, theme, hints, talkWidth, talkRoom})` (async: it fetches
+`body/anatomy.bin` and `body/cerebrum.vol`, made once by `tools/gen_body_meshes.py`) and returns
+`{update(body), event(ev), graph(g), voice(m), body(b), typed(text, who), setHints(on), stop()}`. `home.js` mounts it in
+`#pane-being` when `beingBoard()` (dense, `look.board` "being", not Study mode, no pane filled); it loads three.js and the
+named bloom passes from `vendor/three/` (allow-listed one by one in `web/server.static`) and feeds it the stream's `graph`,
+`body`, `event` and `voice` messages. Everything it shows comes from the stream or the API: `/api/settings` (the panel's
+editor, nested values flattened to dotted keys, `choices` as selects), `modules/enable|disable`, `/api/brain3d` (a
+region's parts and their switches), `/api/note` and `open-note`, `/api/voice` and `voice/mute`.
+
+- **Picking:** invisible stand-ins (`userData.pick`) for the organs, senses and features, ray-cast on hover at most every
+  40 ms; the cortex and heart meshes only on a click, mapped to the nearest `REGIONS`/`HEART_PARTS` point.
+- **Focus:** `FOCUS` is the organ; `SUB` the part (`region`, `heart`, `sense`, `hood`, `note`, `feature`): `subFocus` aims
+  the camera from the side the part faces and tracks it; the `flesh` shader's `fp/fr/fk` brighten around the part and dim
+  the rest, `dm` dims whole sense organs, notes and features scale their alpha. Esc: `back()`.
+- **Memory:** neighbourhoods come from the NOTES map (`hoodOf` → `mind.nodes`/`mind.hoods`, so names and members match);
+  the 3D force layout runs in `static/being-layout.js` (a Worker: grid repulsion capped at 40 neighbours, springs per link,
+  via links at half strength, a pull to each neighbourhood's centre), posting positions every 12 steps; positions are kept
+  by id so a new graph settles from where it was.
+- `look.being_theme`, `look.being_hints` (H), `look.talk_box` (the talk box, `askKurooto`, shared with the chat tab).
+- `tools/dash_preview.py`: a worktree's dashboard against the running Kurooto (its key from its page, never printed).
+- Tests: `tests/unit/test_being.py`.
 
 ## Threaded jobs (0.8.6)
 

@@ -76,6 +76,35 @@ name and version, a short status line ("12 features on · 0 AI requests running 
 when something isn't working, an **update** badge when a new version is ready, and the **setup** link (the new design;
 classic shows it only in the roomy layout and keeps **study** and **panes ▾** in the board's top-right corner).
 
+### The being (the board since 0.8.9)
+
+The board shows Kurooto as one body, drawn from what it's really doing; the panes below are still a click away (the
+**panes ▾** menu: **board** being, three or classic, or any one pane filling the board, with Esc back to the being).
+
+- **The mind** (the brain): each kind of work sparks in its own region: AI requests in the prefrontal cortex, plans
+  beside it, what may reach you in the orbitofrontal cortex, speaking in Broca's area, memory in the hippocampus, and so on
+  (the colours' key is top left). Click the brain to open it; click a region for its Brain parts (each with its switch)
+  and the features that live there.
+- **The heart** beats faster the busier Kurooto has been in the last ten minutes. Its parts: the pacemaker (what runs
+  next), the ventricles (AI requests running), the atria (answers), the aorta (the call line), the coronaries (upkeep:
+  backups, updates, sync). Blood carries work out to the organ doing it and back when it reports.
+- **The senses**: the eye (your screen and activity), the coil (this computer: click it for every core, memory, swap,
+  graphics, disks, battery and temperatures, live), the cilia (your phone in your hand), the cochlea (hearing: the call
+  line and Voice), the canals (your phone's motion).
+- **Memory** is your notes, in the NOTES map's neighbourhoods and colours, laid out by their links (the ones through a
+  "Seen in" or a reading list too, a little fainter). Point at a note for its title; click it for a preview and **open it**.
+- **Points of light** are the features, on the organ that does their work; they flare when the feature does something.
+  Click one for its switch and all its settings, editable right there.
+
+**Turning it:** drag turns the whole body; with an organ open, drag on it turns that organ. Wheel zooms, right-drag pans.
+**Every part focuses:** click a region, a heart part, a sense, a neighbourhood, a note or a feature and the view flies to
+it, it brightens and the rest dims; Esc (or a click on empty space) goes back one level. **H** (or **hints** top right)
+hides the hints: the lines under each name, the help line and the colours' key (`look.being_hints`). **Mute** stops Voice
+hearing and speaking. `look.being_theme`: `void` (white light on black) or `theme` (the page's palette).
+
+**The talk box** (bottom right, on every board; **Alt+K**): type to Kurooto as on Telegram; the answer prints in it.
+Turn it off with `look.talk_box`.
+
 ### STATUS: this computer
 
 A monitor like the program btop, the same as [`kurooto top`](#kurooto-top-the-board-in-a-terminal):

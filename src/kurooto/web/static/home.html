@@ -23,6 +23,7 @@
   <section class="pane" id="pane-brain" data-pane="brain"><h3><span class="t" title="fill the board with it (or double-click its border); Esc or a click again: back">BRAIN<i class="mx"></i></span><span class="meta" id="brain-meta"></span></h3><div id="brain-mount" class="b3-host"></div></section>
   <section class="pane" id="pane-vault" data-pane="notes"><h3><span class="t" title="fill the board with it (or double-click its border); Esc or a click again: back">NOTES<i class="mx"></i></span><span class="meta" id="mind-meta"></span></h3><canvas id="mind" tabindex="0" aria-label="Notes map. Arrow keys: move between linked notes; Enter: open the note; Escape: let go"></canvas>
     <input id="mind-search" class="hidden" placeholder="find a note…  (Enter: go · Esc: close)" spellcheck="false"><div id="mind-card" class="card hidden" aria-live="polite"></div></section>
+  <section class="pane" id="pane-being" aria-label="the being: Kurooto as one body"><div id="being-mount"></div></section>
   <section class="pane" id="pane-study" aria-label="study"><h3><span class="t">STUDY</span></h3><div id="sm-body" class="board sm"></div></section>
   <section class="pane wide" id="pane-tabs" data-pane="terminal">
     <nav class="tabs" id="tabs"></nav>
@@ -30,6 +31,7 @@
   </section>
   <section class="pane ov hidden" id="pane-page" aria-label="page"><nav class="tabs" id="page-nav"></nav><div class="page" id="ov-body"></div></section>
 </main>
+<div id="talk" class="talk hidden" role="complementary" aria-label="talk to Kurooto"><div class="talk-log" id="talk-log" aria-live="polite"></div><div class="talk-in"><input id="talk-input" placeholder="talk to Kurooto · Enter (Alt+K)" spellcheck="true" autocomplete="off" aria-label="talk to Kurooto in plain English"><button id="talk-fold" title="fold or open the talk box">▾</button></div></div>
 <div id="guide" class="cmdk guide hidden" role="dialog" aria-label="what the board shows"><h3>What the board shows</h3>
 <h4>SYSTEMS</h4>
 <p><b>The core</b> in the middle is Kurooto itself. It beats faster when it's busier (each beat runs out through its rims), and the line beneath is its heartbeat.</p>
@@ -37,6 +39,10 @@
 <p><b>A dot along a nerve</b> is something happening: travelling into the core, something arrived (a message, a sync); out to a cell, Kurooto is doing something with it (sending, ringing, writing). A ripple from the core is news that belongs to no one feature.</p>
 <p><b>Point at a cell</b> for its card; <b>click it</b> (or Tab to it and press Enter) for its menu: <b>ping</b> sends a pulse there and back, <b>sync now</b> and <b>quiet</b> (it keeps working but stops messaging you, with an undo) where the feature has them, its <b>settings</b> and its <b>activity</b>. Click the core to do something (Ctrl+K). Drag to turn the ring, scroll to zoom; both spring back.</p>
 <p><b>The corners</b> hold today, what's due, your AI and recent events, folded to one line; point at one to open it, or press L for all.</p>
+<h4>THE BEING</h4>
+<p>The board "being" (the panes menu, or Settings → look.board) draws Kurooto as one body, on what is really happening. <b>The mind</b>: sparks fire in the region that does each kind of work. <b>The heart</b> beats faster the busier Kurooto is, and blood carries work out to the organ doing it, and back when it reports. <b>The senses</b>: the eye is your screen and activity, the cochlea hearing (calls, voice), the cilia your phone in your hand, the canals its motion, the coil this computer. <b>Memory</b> is your notes, coloured by neighbourhood. Each <b>point of light</b> is a feature, on the organ that does its work.</p>
+<p><b>Drag</b> turns everything; with an organ open, drag on it turns that organ. <b>Wheel</b> zooms, <b>right-drag</b> pans. <b>Click</b> an organ to look into it, a part of it for its Brain parts, features and settings, a point of light for its feature, a note for its preview. Esc or empty space goes back. <b>Mute</b> stops Voice hearing and speaking.</p>
+<p><b>The talk box</b> (Alt+K) talks to Kurooto from any board, as on Telegram; Settings → look.talk_box turns it off.</p>
 <h4>NOTES</h4>
 <p><b>Each dot</b> is a note, bigger the more links it has; <b>lines</b> are links. <b>Colours</b> are neighbourhoods: each course or subject folder is one, maps and projects are the hub, and any other note joins the one most of its links go to.</p>
 <p><b>R</b> lights up notes changed lately; <b>/</b> finds a note; double-click opens it; drag to move, scroll to zoom. Point at anything for its card.</p>

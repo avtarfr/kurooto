@@ -433,3 +433,24 @@ body.dense #sm-body { padding-top: 18px; }
 .al-card { white-space: pre-wrap; font: inherit; font-size: 13px; margin: 6px 0; }
 .al-row, .al-pending { margin: 8px 0; }
 .card2 .tag-off { margin-left: 6px; padding: 0 5px; border: 1px solid var(--ok); border-radius: 2px; color: var(--ok); font: 11px var(--mono); vertical-align: 1px; } /* an official add-on (home.js officialBlock) */
+
+/* the being (look.board "being", 0.8.9; being.js draws it) */
+#pane-being { display: none; }
+body.dense.being-board #pane-being { display: block; grid-area: being; padding: 0; overflow: hidden; background: #000; }
+#being-mount { position: absolute; inset: 0; }
+/* the talk box (look.talk_box, 0.8.9): over the board, bottom right */
+.talk { position: fixed; right: 16px; bottom: 16px; width: 380px; max-width: calc(100vw - 32px); z-index: 7; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 30px rgba(0, 0, 0, .35); overflow: hidden; }
+.talk.hidden { display: none; }
+.talk-log { max-height: 180px; overflow: auto; padding: 8px 12px 0; font-size: 12.5px; line-height: 1.45; }
+.talk-log:empty { display: none; }
+.talk-log p { margin: 0 0 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.talk-log .q { color: var(--fg); font-weight: 600; } .talk-log .a { color: var(--fg); } .talk-log .w, .talk-log .d { color: var(--dim, #8a8a84); }
+.talk-log .x { color: var(--bad); }
+.talk.fold .talk-log { display: none; }
+.talk-in { display: flex; gap: 6px; padding: 8px; }
+.talk-in input { flex: 1; min-width: 0; background: transparent; color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: inherit; }
+.talk-in button { background: transparent; color: var(--fg); border: 1px solid var(--line); border-radius: 8px; width: 30px; cursor: pointer; }
+.talk.fold .talk-in button { transform: rotate(180deg); }
+.panes-menu .boards { display: flex; gap: 4px; flex-wrap: wrap; }
+.panes-menu .boards button.on, .panes-menu button[data-max].on { outline: 1px solid var(--accent-text); }

@@ -4198,6 +4198,14 @@ whether the note belongs with a new concept, and orders them by the model's own 
 installed (no extra download) and costs no AI requests; where there's none, candidates keep their keyword and
 embedding order.
 
+## What 0.8.9 changed
+
+- **The being** is the dashboard's board: Kurooto as one body on its live data, every part clickable, focused and
+  editable (Dashboard → The being). **Undo:** `look.board` back to `three` (or `classic`), or the panes menu → board.
+- **`look.being_hints`** (on): the hints on the being; H toggles them. **Undo:** set it back.
+- **`look.being_theme`** (`void`): `theme` uses the page's palette. **Undo:** set it back.
+- **The talk box** (`look.talk_box`, on; Alt+K): talk to Kurooto from any board. **Undo:** turn `look.talk_box` off.
+
 ## What 0.8.7 added to Brain
 
 - **Brain's whole past** (`mind.backfill.on`, off; one switch per source, `mind.backfill.events`, `jobs`, `deadlines`,
@@ -4209,7 +4217,7 @@ embedding order.
 
 ## What 0.8.6 changed
 
-- **`look.board`:** `three` (default) or `classic`, the dashboard board from before 0.8.3. **Undo:** set it back.
+- **`look.board`:** `three` (the default until 0.8.9, now `being`) or `classic`, the board from before 0.8.3. **Undo:** set it back.
 - **`look.brain_monitor`:** `shown` (default) or `drawer`. **Undo:** set it back.
 - **The BRAIN pane:** hide it from the panes menu (top right); hidden, it isn't loaded. **Undo:** tick it again.
 - **Fixes:** stopping and updating no longer wait for a long job; Brain's imported past keeps only deadline moves for the read.

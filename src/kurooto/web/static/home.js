@@ -56,11 +56,15 @@ let HIDDEN_F = new Set(); // features taken off the Features page (look.hidden_f
 const inTerm = (el) => !!(el && el.closest && el.closest(".xterm")); // a terminal keeps its own keys
 const cleanHide = (v) => { const s = new Set((Array.isArray(v) ? v : []).filter((p) => PANES[p])); return s.size >= Object.keys(PANES).length ? new Set() : s; };
 const hideList = () => Object.keys(PANES).filter((p) => HIDE.has(p));
-const shownPanes = () => (STUDY ? new Set(["notes"]) : new Set(Object.keys(PANES).filter((p) => (MAX ? p === MAX : !HIDE.has(p)))));
+const shownPanes = () => (STUDY ? new Set(["notes"]) : beingBoard() ? new Set() : new Set(Object.keys(PANES).filter((p) => (MAX ? p === MAX : !HIDE.has(p)))));
 // on screen (not hidden, filled over or under a page); in Study mode only the notes map
 const paneShown = (p) => (STUDY ? p === "notes" && !(DENSE && PAGE) : !DENSE || (!PAGE && shownPanes().has(p)));
 // the grid for the panes that show: NOTES, SYSTEMS, BRAIN on top; STATUS (split in two) and TERMINAL below
 let BOARD = "three", BRAIN_MON = "shown"; // look.board, look.brain_monitor (0.8.6)
+const BOARDS = ["being", "three", "classic"], boardOf = (v) => (BOARDS.includes(v) ? v : "being");
+try { BOARD = boardOf(localStorage.getItem("kurooto.dash.board")); } catch { /* fine */ }
+// the being (0.8.9) fills the board on its own; a pane filled from the panes menu, Study mode and roomy still show panes
+const beingBoard = () => DENSE && BOARD === "being" && !STUDY && !MAX;
 // the board before 0.8.3: STATUS down the left; SYSTEMS, NOTES (and BRAIN) on top and TERMINAL below, on the right
 function classicGrid(vis) {
   const st = vis.has("status"), top = ["systems", "notes", "brain"].filter((p) => vis.has(p)), rows = [];
@@ -110,14 +114,18 @@ function applyPanes() {
   }
   $("#pane-study").classList.remove("tr");
   $("#pane-page").classList.toggle("hidden", !(DENSE && PAGE)); grid.classList.toggle("paged", DENSE && !!PAGE);
-  if (!DENSE) { grid.style.gridTemplateAreas = grid.style.gridTemplateColumns = grid.style.gridTemplateRows = ""; closeMenu(); return; }
-  const g = STUDY ? { areas: '"notes study"', cols: "minmax(0, 1fr) minmax(400px, 31%)", rows: "minmax(0, 1fr)" } : paneGrid(vis);
+  if (!DENSE) { grid.style.gridTemplateAreas = grid.style.gridTemplateColumns = grid.style.gridTemplateRows = ""; closeMenu(); document.body.classList.remove("being-board"); stopBeing(); talkShow(); return; }
+  const being = beingBoard(); document.body.classList.toggle("being-board", being); $("#pane-being").classList.remove("tr");
+  const g = STUDY ? { areas: '"notes study"', cols: "minmax(0, 1fr) minmax(400px, 31%)", rows: "minmax(0, 1fr)" }
+    : being ? { areas: '"being"', cols: "minmax(0, 1fr)", rows: "minmax(0, 1fr)" } : paneGrid(vis);
   Object.assign(grid.style, { gridTemplateAreas: g.areas, gridTemplateColumns: g.cols, gridTemplateRows: g.rows });
   // the pane in the board's top-right corner leaves room in its border for the panes menu
-  $(STUDY ? "#pane-study" : PANES[["brain", "notes", "systems", "terminal", "status"].find((p) => vis.has(p))]).classList.add("tr");
+  $(STUDY ? "#pane-study" : being ? "#pane-being" : PANES[["brain", "notes", "systems", "terminal", "status"].find((p) => vis.has(p))]).classList.add("tr");
   grid.style.setProperty("--ctlw", `${$("#panes-ctl").offsetWidth}px`);
   renderMenu(); renderNav();
   if (paneShown("brain") && !B3) mountBrainPane();
+  if (being && !PAGE) mountBeing(); else if (!being) stopBeing();
+  talkShow();
   requestAnimationFrame(refit);
 }
 function maxPane(p) { if (STUDY) return; MAX = MAX === p || !PANES[p] ? null : p; applyPanes(); }
@@ -136,8 +144,8 @@ const pageTabs = () => Object.keys(DLABEL).map((k) => `<button class="tab${PAGE 
 function renderMenu() {
   const m = $("#panes-menu"); if (m.classList.contains("hidden")) return;
   const left = Object.keys(PANES).filter((p) => !HIDE.has(p)).length, NAMES = { status: "STATUS", systems: "SYSTEMS", brain: "BRAIN", notes: "NOTES", terminal: "TERMINAL" };
-  m.innerHTML = `<div class="mh">panes</div>${Object.entries(NAMES).map(([p, l]) => `<label><input type="checkbox" data-pane="${p}"${HIDE.has(p) ? "" : " checked"}${!HIDE.has(p) && left === 1 ? ' disabled title="one pane always stays"' : ""}> ${l}${MAX === p ? ' <span class="d">fills the board</span>' : ""}</label>`).join("")}
-    ${MAX || HIDE.size ? '<button data-all="1">show them all</button>' : ""}<p class="d">Click a pane's name or double-click its border and it fills the board; Esc brings the others back.</p>
+  m.innerHTML = `<div class="mh">board</div><div class="boards">${BOARDS.map((b) => `<button data-board="${b}"${BOARD === b ? ' class="on"' : ""}>${b}</button>`).join("")}</div><div class="mh">panes</div>${BOARD === "being" && !STUDY ? `${Object.entries(NAMES).map(([p, l]) => `<button data-max="${p}"${MAX === p ? ' class="on"' : ""}>${l}</button>`).join("")}<p class="d">The being fills the board; a pane picked here fills it instead, and Esc brings the being back.</p>` : `${Object.entries(NAMES).map(([p, l]) => `<label><input type="checkbox" data-pane="${p}"${HIDE.has(p) ? "" : " checked"}${!HIDE.has(p) && left === 1 ? ' disabled title="one pane always stays"' : ""}> ${l}${MAX === p ? ' <span class="d">fills the board</span>' : ""}</label>`).join("")}
+    ${MAX || HIDE.size ? '<button data-all="1">show them all</button>' : ""}<p class="d">Click a pane's name or double-click its border and it fills the board; Esc brings the others back.</p>`}
     <div class="mh">study</div><button data-study-toggle><span>study mode</span><span class="d">alt+m</span></button>
     <div class="mh">look</div><button data-design-toggle><span>${NEW ? "classic look (monospace)" : "new look"}</span><span class="d">look.design</span></button>
     <div class="mh">pages</div>${Object.keys(DLABEL).map((k) => `<button data-pg="${k}"><span>${mnem(k)}</span><span class="d">alt+${PKEY[k]}</span></button>`).join("")}`;
@@ -153,6 +161,8 @@ $("#panes-menu").onchange = (e) => { if (e.target.dataset.pane) setHidden(e.targ
 $("#panes-menu").onclick = (e) => {
   const b = e.target.closest("button"); if (!b) return;
   if (b.dataset.all) { HIDE = new Set(); MAX = null; savePanes(); applyPanes(); }
+  if (b.dataset.board) { setBoard(b.dataset.board); renderMenu(); }
+  if (b.dataset.max) { MAX = MAX === b.dataset.max ? null : b.dataset.max; applyPanes(); }
   if (b.dataset.pg) openPage(b.dataset.pg);
 };
 document.addEventListener("click", (e) => { if (!e.target.closest("#panes-ctl")) closeMenu(); });
@@ -209,8 +219,11 @@ function loadLook() {
   api("settings").then((r) => {
     const look = ((r && r.sections) || []).find((s) => s.section === "look"); if (!look) return;
     HIDDEN_F = new Set(Array.isArray(look.values.hidden_features) ? look.values.hidden_features : []);
-    const b = look.values.board === "classic" ? "classic" : "three", m = look.values.brain_monitor === "drawer" ? "drawer" : "shown";
-    if (b !== BOARD) { BOARD = b; applyPanes(); }
+    const b = boardOf(look.values.board), m = look.values.brain_monitor === "drawer" ? "drawer" : "shown";
+    if (b !== BOARD) setBoard(b, false);
+    BEING_THEME = look.values.being_theme === "theme" ? "theme" : "void";
+    BEING_HINTS = look.values.being_hints !== false; if (BEING) BEING.setHints(BEING_HINTS);
+    if ((look.values.talk_box !== false) !== TALK.on) { TALK.on = look.values.talk_box !== false; talkShow(); }
     if (m !== BRAIN_MON) { BRAIN_MON = m; if (B3 && B3.setMonitor) B3.setMonitor(m); }
     const v = cleanHide(look.values.panes);
     if (Object.keys(PANES).filter((p) => v.has(p)).join() !== hideList().join()) { HIDE = v; MAX = null; applyPanes(); }
@@ -872,6 +885,62 @@ async function mountBrainPane() {
     updateBrainMeta(data);
   } catch (e) { host.innerHTML = '<p class="d">The Brain could not load.</p>'; console.error(e); }
 }
+// The being (look.board "being", 0.8.9): Kurooto as one body on the live stream, filling the board (being.js). Drag
+// turns it, a click looks into an organ, a part of it shows its Brain parts, features and settings; pages open over it.
+let BEING = null, BEING_LOADING = false, BEING_THEME = "void", BEING_HINTS = true, GRAPH = null;
+function setBoard(b, save = true) {
+  BOARD = boardOf(b); MAX = null;
+  try { localStorage.setItem("kurooto.dash.board", BOARD); } catch { /* fine */ }
+  if (save) api("settings", { key: "look.board", value: BOARD }).catch(() => {});
+  applyPanes();
+}
+function stopBeing() { if (BEING) { BEING.stop(); BEING = null; } }
+async function mountBeing() {
+  if (BEING || BEING_LOADING) return;
+  const host = $("#being-mount"); if (!host) return;
+  BEING_LOADING = true;
+  try {
+    if (!window.THREE) await loadScript("/static/vendor/three/three.min.js?v=r128");
+    for (const f of ["CopyShader", "LuminosityHighPassShader", "EffectComposer", "RenderPass", "ShaderPass", "UnrealBloomPass"])
+      if (!(window.THREE && THREE[f])) await loadScript(`/static/vendor/three/${f}.js?v=r128`);
+    if (!window.beingMount) await loadScript("/static/being.js?v=1");
+    if (!beingBoard()) return; // the board changed while it loaded
+    const hoodOf = (id) => { const n = mind.nodes && mind.nodes.get(id), k = n && n.neighborhood, h = k && mind.hoods && mind.hoods.get(k); return k ? { key: k, label: h ? h.label : k } : null; };
+    const b = await window.beingMount(host, { api, hoodOf, pal: PAL, theme: BEING_THEME, hints: BEING_HINTS, talkWidth: TALK.on ? 400 : 190, talkRoom: TALK.on ? 230 : 150 });
+    if (!beingBoard()) { b.stop(); return; }
+    BEING = b;
+    if (last) BEING.update(last);
+    if (GRAPH) try { BEING.graph(GRAPH); } catch (e) { console.error(e); }
+    for (const e of feed.slice(0, 12).reverse()) BEING.event(e);
+  } catch (e) { host.innerHTML = '<p class="d" style="padding:20px">The being could not load (it needs WebGL 2). Pick another board in the panes menu.</p>'; console.error(e); }
+  finally { BEING_LOADING = false; }
+}
+// The talk box (look.talk_box, 0.8.9): a small box over the board, on every board, to talk to Kurooto in plain
+// English as on Telegram; the answer prints in it. Alt+K goes to it. Hidden while a page is open.
+const TALK = { on: true, fold: false, log: [] };
+try { TALK.fold = localStorage.getItem("kurooto.dash.talkfold") === "1"; } catch { /* fine */ }
+function talkShow() {
+  const el = $("#talk"); if (!el) return;
+  el.classList.toggle("hidden", !TALK.on || (DENSE && !!PAGE));
+  el.classList.toggle("fold", TALK.fold);
+}
+function talkAdd(text, c = "a") {
+  TALK.log.push({ c, text }); if (TALK.log.length > 60) TALK.log.splice(0, 20);
+  const el = $("#talk-log"); if (!el) return;
+  el.innerHTML = TALK.log.map((l) => `<p class="${l.c}">${esc(l.text)}</p>`).join(""); el.scrollTop = el.scrollHeight;
+  if (BEING && (c === "q" || c === "a")) BEING.typed(text.slice(0, 400), c === "q" ? "you" : "kurooto");
+}
+async function talkSend(text) {
+  if (TALK.fold) { TALK.fold = false; talkShow(); }
+  talkAdd(text, "q");
+  await askKurooto(text, talkAdd);
+}
+(function talkInit() {
+  const inp = $("#talk-input"); if (!inp) return;
+  inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { const v = inp.value.trim(); inp.value = ""; if (v) talkSend(v); } else if (e.key === "Escape") inp.blur(); });
+  $("#talk-fold").onclick = () => { TALK.fold = !TALK.fold; try { localStorage.setItem("kurooto.dash.talkfold", TALK.fold ? "1" : "0"); } catch { /* fine */ } talkShow(); };
+  window.addEventListener("keydown", (e) => { if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === "KeyK" && !inTerm(e.target) && TALK.on) { e.preventDefault(); e.stopPropagation(); if (PAGE) closePage(); TALK.fold = false; talkShow(); inp.focus(); } }, true);
+})();
 async function renderBrain(body) {
   if (DENSE) { maxPane("brain"); return; }
   mountBrainPane();
@@ -1605,22 +1674,26 @@ async function chatSend(text) {
     } catch { chatAdd("Kurooto didn't answer (is it running?).", "x"); }
     return;
   }
+  await askKurooto(text, chatAdd);
+}
+// plain English to Kurooto, as on Telegram (POST /api/say); add(text, kind) prints each line: the chat tab, the talk box
+async function askKurooto(text, add) {
   let r;
-  try { r = await api("say", { text }); } catch { chatAdd("Kurooto didn't answer (is it running?).", "x"); return; }
-  if (!r.ok) { chatAdd(r.error || "That didn't work.", "x"); return; }
-  if (!r.job) { chatAdd((r.replies || []).join("\n") || "Done."); return; }
-  chatAdd("working on it; the answer prints here", "w");
+  try { r = await api("say", { text }); } catch { add("Kurooto didn't answer (is it running?).", "x"); return; }
+  if (!r.ok) { add(r.error || "That didn't work.", "x"); return; }
+  if (!r.job) { add((r.replies || []).join("\n") || "Done."); return; }
+  add("working on it; the answer prints here", "w");
   for (let i = 0; i < 900; i++) {
     await sleep(2000);
     let j; try { j = await api(`job?id=${encodeURIComponent(r.job)}`); } catch { continue; }
-    if (j.ok === false) { chatAdd(j.error || "That request is gone.", "x"); return; }
+    if (j.ok === false) { add(j.error || "That request is gone.", "x"); return; }
     if (j.status === "ok" || j.status === "failed") {
-      chatAdd(`── ${text.slice(0, 60)}${j.status === "failed" ? " (failed)" : ""}`, "d");
-      chatAdd(String(j.answer || "").trim() || "(no answer)", j.status === "ok" ? "a" : "x");
+      add(`── ${text.slice(0, 60)}${j.status === "failed" ? " (failed)" : ""}`, "d");
+      add(String(j.answer || "").trim() || "(no answer)", j.status === "ok" ? "a" : "x");
       return;
     }
   }
-  chatAdd("No answer after 30 minutes; it may still be going (the jobs tab).", "d");
+  add("No answer after 30 minutes; it may still be going (the jobs tab).", "d");
 }
 
 // ------------------------------------------------------------------------------------------------ Study mode
@@ -1822,16 +1895,17 @@ function connect() {
   const es = new EventSource(`/api/stream?t=${encodeURIComponent(TOKEN)}`);
   es.onmessage = (ev) => {
     let m; try { m = JSON.parse(ev.data); } catch { return; }
-    if (m.t === "graph") mind.update(m);
+    if (m.t === "graph") { mind.update(m); GRAPH = m; if (BEING) try { BEING.graph(m); } catch (e) { console.error(e); } }
+    else if (m.t === "voice") { if (BEING) BEING.voice(m); }
     else if (m.t === "body") {
       const first = !last; last = m; LIGHT = m.sys.profile === "light" || matchMedia("(prefers-reduced-motion: reduce)").matches;
-      body.update(m); renderStatus(m);
+      body.update(m); renderStatus(m); if (BEING) BEING.update(m);
       if (B3 && paneShown("brain")) { api("brain3d").then(d => { B3.update(d); updateBrainMeta(d); }).catch(() => {}); }
       if (current() === "jobs" || current() === "schedule") renderTab();
       if (first && DENSE) { renderNav(); if (dtab === "kurooto") chatDraw(); }
     }
     else if (m.t === "event") {
-      SEEN.set(m, performance.now() / 1000); feed.unshift(m); feed.length = Math.min(feed.length, 200); body.event(m); if (current() === "activity") renderTab();
+      SEEN.set(m, performance.now() / 1000); feed.unshift(m); feed.length = Math.min(feed.length, 200); body.event(m); if (BEING) BEING.event(m); if (current() === "activity") renderTab();
       if (m.kind === "study_mode") setStudy(!!m.on, false); // /study mode on|off, or the timer's end
       else if (m.kind === "setting_changed" && m.key === "look.design") loadDesign(); // changed somewhere else
       else if (STUDY && /^(study|deadline|quiz|setting_changed)/.test(m.kind)) smSoon();
@@ -1847,7 +1921,10 @@ function settingChanged(key, value) {
   if (key === "look.design") applyDesign(value);
   if (key === "look.palette") setTimeout(() => location.reload(), 300); // the canvases take their colours at load
   if (key === "look.panes") { HIDE = cleanHide(value); MAX = null; try { localStorage.setItem("kurooto.dash.panes", JSON.stringify(hideList())); } catch { /* fine */ } applyPanes(); }
-  if (key === "look.board") { BOARD = value === "classic" ? "classic" : "three"; applyPanes(); }
+  if (key === "look.board") setBoard(boardOf(value), false);
+  if (key === "look.being_theme") { BEING_THEME = value === "theme" ? "theme" : "void"; stopBeing(); applyPanes(); }
+  if (key === "look.talk_box") { TALK.on = value !== false; talkShow(); }
+  if (key === "look.being_hints") { BEING_HINTS = value !== false; if (BEING) BEING.setHints(BEING_HINTS); }
   if (key === "look.brain_monitor") { BRAIN_MON = value === "drawer" ? "drawer" : "shown"; if (B3 && B3.setMonitor) B3.setMonitor(BRAIN_MON); }
   if (key === "look.hidden_features") HIDDEN_F = new Set(Array.isArray(value) ? value : []);
   if (key === "look.study_mode") setStudy(!!value, false);

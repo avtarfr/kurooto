@@ -14,9 +14,11 @@ EMB = [["auto", "auto"], ["ollama", "ollama: a model on this computer"], ["gemin
 
 CHOICES: dict[str, list[list[str]]] = {
     "look.board": [
+        ["being", "being: Kurooto as one living body, its work lighting up as it happens (0.8.9)"],
         ["three", "three: NOTES, SYSTEMS and BRAIN on top, STATUS and TERMINAL below"],
         ["classic", "classic: STATUS down the left (before 0.8.3)"],
     ],
+    "look.being_theme": [["void", "void: white light on black"], ["theme", "theme: the page's palette"]],
     "look.brain_monitor": [
         ["shown", "shown: the part monitor stays beside the model"],
         ["drawer", "drawer: it slides out from a tab"],

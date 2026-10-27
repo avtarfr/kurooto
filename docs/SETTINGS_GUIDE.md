@@ -573,7 +573,9 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 
 | Setting | Default | What it does |
 |---|---|---|
-| `look.board` | `"three"` | the board: three (NOTES, SYSTEMS, BRAIN on top; 0.8.3) or classic (STATUS down the left) |
+| `look.being_hints` | `true` | the being's hints: what to click, what each part is (H on the board toggles it) |
+| `look.being_theme` | `"void"` | the being's colours: void (white on black) or theme (the page's palette) |
+| `look.board` | `"being"` | the board: being (Kurooto as one body, 0.8.9), three (0.8.3) or classic (STATUS left) |
 | `look.brain_monitor` | `"shown"` | BRAIN's part monitor: shown beside the model, or a drawer behind a tab |
 | `look.design` | `"new"` | the dashboard's design: new, or classic (the monospace look of 0.5.18) |
 | `look.hidden_features` | `[]` | features hidden from the Features list (they still run if on) |
@@ -583,6 +585,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `look.panes` | `[]` | the dense board's hidden panes: status, systems, notes, terminal (empty: none hidden) |
 | `look.projects` | `[]` | folders of git repositories the PROJECTS box shows (empty: Research's repositories) |
 | `look.study_mode` | `false` | the dashboard in Study mode: the notes map, the study timer and what's due (Alt+M, /study mode) |
+| `look.talk_box` | `true` | the small box over the board to talk to Kurooto in plain English (Alt+K) |
 | `look.theme_file` | `""` | the pages' colours (core/palette.py, themes.py) |
 
 ### `mail_digest`

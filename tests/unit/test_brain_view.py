@@ -39,7 +39,7 @@ def test_switches_and_numbers_follow_the_settings(app):
     assert d["parts_on"] == sum(c[2] for c in comps.values())
 
 
-def test_the_pages_files_are_served_and_three_js_is_only_the_one_file():
+def test_the_pages_files_are_served_and_three_js_only_with_its_named_passes():
     assert static("vendor/three/three.min.js") and b"THREE" in static("vendor/three/three.min.js")[:4000] + b"THREE"
     assert b"brain3dMount" in static("brain3d.js")
     assert static("vendor/three/other.js") is None and static("vendor/three/../../server.py") is None
@@ -65,7 +65,7 @@ def test_the_page_has_its_board_and_monitor_switches_and_an_off_state():
     home = static("home.js").decode()
     assert "classicGrid" in home and "look.brain_monitor" in home and '!paneShown("brain")' in home
     d = _DEFAULTS
-    assert d["look"]["board"] == "three" and d["look"]["brain_monitor"] == "shown"
+    assert d["look"]["board"] == "being" and d["look"]["brain_monitor"] == "shown"  # 0.8.9: the being by default
 
 
 def test_opening_a_page_does_not_stop_the_brain_pane():
