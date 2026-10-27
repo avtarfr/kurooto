@@ -34,7 +34,8 @@ import java.util.regex.Pattern;
  *   being    the dashboard's board, static/being.js on views/being.html (being-phone.js sets it for touch): the Systems
  *            copy's "being" block and the Notes map's graph. Needs WebGL 2 and Chrome BEING_MIN_CHROME; without them
  *            the page says so (/state?gl=0) and ViewsTab shows Systems.
- *   brain    the Brain console (views/brainconsole.js, from the brain-console part) on views/brain.html, its copy "brain"
+ *   brain    the Brain console: the brain-console part's views/brain.html and brainconsole.js, its copy "brain"
+ *            handed in with KurootoView.take as for Systems; watched like Systems (/view/watch?kind=brain)
  *   systems  SYSTEMS on views/phone.html          notes  the Notes map on views/phone.html
  * The main screen's Views tab (ViewsTab, a button group) picks one: page(). ViewsActivity, the screen of its own from
  * before, still opens Systems or the Notes map with its two buttons: build(). It opens on the one you looked at last
@@ -261,8 +262,9 @@ public class ViewsPane {
     /** The kind of copy the drawing shown reads: the being reads Systems' (and the Notes map's, keptNotes). */
     private String kind() { return "being".equals(mode) ? "systems" : mode; }
 
-    /** This phone's copy of the drawing shown (Demo's made-up one in demo). */
+    /** This phone's copy of the drawing shown (Demo's made-up one in demo; Demo has none of the Brain: its page says so). */
     private JSONObject kept() {
+        if (demo && "brain".equals(mode)) return new JSONObject();
         if (demo) {
             JSONObject d = Demo.INSTANCE.view(kind());
             if (d != null) return d;
@@ -366,7 +368,8 @@ public class ViewsPane {
             if (!shown || web == null || demo) return; // demo: nothing to fetch
             final String m = mode, k = kind();
             final boolean live = "systems".equals(k), being = "being".equals(m);
-            final boolean ping = live && System.currentTimeMillis() - lastWatch >= WATCH_MS;
+            final boolean brain = "brain".equals(m); // the Brain is sent only while watched, as Systems is
+            final boolean ping = (live || brain) && System.currentTimeMillis() - lastWatch >= WATCH_MS;
             final boolean withNotes = being && !notesFetched;
             if (!busy) {
                 busy = true;
@@ -374,7 +377,7 @@ public class ViewsPane {
                 if (withNotes) notesFetched = true;
                 final JSONObject before = last;
                 new Thread(() -> {
-                    if (ping) Views.watch(a);
+                    if (ping) Views.watch(a, brain ? "brain" : "systems");
                     if (ping) try { Thread.sleep(1500); } catch (InterruptedException ignored) { } // its first copy
                     JSONObject d = Views.fetch(a, k);
                     if (being) d = carry(before, d);
@@ -389,7 +392,7 @@ public class ViewsPane {
                 }).start();
             }
             if (live) h.postDelayed(this, last != null && "offline".equals(last.optString("computer")) ? WATCH_MS : POLL_MS);
-            else if ("brain".equals(m)) h.postDelayed(this, BRAIN_MS);
+            else if (brain) h.postDelayed(this, BRAIN_MS);
         }
     };
 
@@ -431,7 +434,7 @@ public class ViewsPane {
         sent = text;
         if (newNotes) notesSent = noteSnap;
         String all = newNotes ? text.substring(0, text.length() - 1) + ",\"notes\":" + noteSnap + "}" : text;
-        String fn = "being".equals(mode) ? "KurootoBeing" : "brain".equals(mode) ? "KurootoBrain" : "KurootoView";
+        String fn = "being".equals(mode) ? "KurootoBeing" : "KurootoView"; // the Brain's page takes it as Systems' does
         web.evaluateJavascript("window." + fn + " && " + fn + ".take(" + JSONObject.quote(all) + ")", null);
     }
 

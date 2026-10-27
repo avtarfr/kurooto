@@ -587,9 +587,10 @@ mem, swap, gpu, 3 disks, battery, 4 temps, cpu_name, load), `events` (the last 4
 comps as `[id, name, on, state, [], key, ""]`) only when their digest changed, `SETTINGS_S` (60) passed, or a phone
 started watching (`watch(m)` resets `being_sent` for a device new to the stretch, `watchers`). With 13 features a copy
 is ~7.5 KB of JSON (2 KB gzipped) with the settings, ~5.5 KB (1.5 KB) without.
-The app (`ViewsPane`, `ViewsTab`): modes `being` (`views/being.html`), `brain` (`views/brain.html`, the brain-console
-part's `brainconsole.js` through `brain-phone.js`: `brainConsoleMount(host, {phone, palette}).update(copy)`, the copy
-`view-brain.json` from `GET /view?kind=brain`, every `BRAIN_MS` 8 s), `systems`, `notes` (`phone.html`). Being watches
+The app (`ViewsPane`, `ViewsTab`): modes `being` (`views/being.html`), `brain` (the brain-console part's
+`views/brain.html` and `brainconsole.js`, handed its copy with `KurootoView.take` as Systems is; the copy
+`view-brain.json` from `GET /view?kind=brain` every `BRAIN_MS` 8 s, watched with `POST /view/watch?kind=brain` every
+`WATCH_MS`, since the Brain is sent only while watched; demo builds hand it no copy), `systems`, `notes` (`phone.html`). Being watches
 and fetches as Systems does, fetches the Notes map once per opening, and keeps the last `settings`/`brain` in the kept
 copy when a new one comes without them (`carry`). `serve` adds the being's files at the dashboard's paths
 (`/static/being*.js`, `/static/vendor/three/*.js`, `/static/body/anatomy.bin|cerebrum.vol`, copied by

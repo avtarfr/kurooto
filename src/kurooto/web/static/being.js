@@ -788,7 +788,7 @@ window.beingMount = async function (host, opts) {
   async function shape(text) { try { const r = await api("voice/shape", { text }); if (r && r.samples) return r.samples; } catch { /* the estimate below */ }
     const out = []; for (const ch of text.toLowerCase()) { const v = "aeiou".includes(ch) ? .85 : "lmnryw".includes(ch) ? .5 : "szfhxc".includes(ch) ? .25 : "pbtdkgq".includes(ch) ? .9 : ch === " " ? .03 : /[.,!?;:]/.test(ch) ? 0 : .3; const n = /[.!?]/.test(ch) ? 12 : 3; for (let i = 0; i < n; i++) out.push(v * (.6 + .4 * Math.sin(Math.PI * (i + .5) / n))); } return out; }
   function lane(c, y, h, L, lab, sub) {
-    const x0 = UI ? UI.x0 : 40, x1 = W - (UI ? UI.x0 : opts.talkWidth || 190); // phone: edge to edge c.font = "600 10px Inter,sans-serif"; c.fillStyle = P.mute; c.fillText(lab, x0, y - h / 2 - 8); c.font = "400 10px Inter,sans-serif"; c.fillText(sub, x0 + 74, y - h / 2 - 8);
+    const x0 = UI ? UI.x0 : 40, x1 = W - (UI ? UI.x0 : opts.talkWidth || 190); /* phone: edge to edge */ c.font = "600 10px Inter,sans-serif"; c.fillStyle = P.mute; c.fillText(lab, x0, y - h / 2 - 8); c.font = "400 10px Inter,sans-serif"; c.fillText(sub, x0 + 74, y - h / 2 - 8);
     c.globalAlpha = .15; c.fillStyle = P.ink; c.fillRect(x0, y, x1 - x0, 1); c.globalAlpha = 1; if (!L) return;
     const S = L.s, N = S.length, prog = Math.min(1, (NOW - L.t) / Math.max(1.2, N / 50)), shown = Math.floor(N * prog), dx = (x1 - x0) / Math.max(N, 120);
     for (let i = 0; i < shown; i++) { const v = S[i] * h / 2; c.globalAlpha = .3 + .7 * Math.max(0, 1 - (shown - i) / N * 1.4); c.fillRect(x0 + i * dx, y - v, Math.max(1, dx * .6), Math.max(1, v * 2)); } c.globalAlpha = 1;
@@ -833,7 +833,8 @@ window.beingMount = async function (host, opts) {
   function tag(v, dx, dy, title, sub, alpha, mine) {
     if (!HINTS) sub = "";
     const [x, y, z] = proj(v); if (z > 1) return;
-    if (UI) return UI.tag(c2, x, y, dx, dy, title, sub, alpha ?? 1, mine, W, H, P); // phone: shorter leads, larger words const lx = x + dx, ly = y + dy; c2.save(); c2.globalAlpha = alpha ?? 1; c2.strokeStyle = P.mute; c2.beginPath(); c2.moveTo(x, y); c2.lineTo(x + dx * .35, ly); c2.lineTo(lx, ly); c2.stroke(); c2.fillStyle = P.ink; c2.beginPath(); c2.arc(x, y, 2, 0, 6.3); c2.fill();
+    if (UI) return UI.tag(c2, x, y, dx, dy, title, sub, alpha ?? 1, mine, W, H, P); // phone: shorter leads, larger words
+    const lx = x + dx, ly = y + dy; c2.save(); c2.globalAlpha = alpha ?? 1; c2.strokeStyle = P.mute; c2.beginPath(); c2.moveTo(x, y); c2.lineTo(x + dx * .35, ly); c2.lineTo(lx, ly); c2.stroke(); c2.fillStyle = P.ink; c2.beginPath(); c2.arc(x, y, 2, 0, 6.3); c2.fill();
     c2.textAlign = dx < 0 ? "right" : "left"; c2.lineJoin = "round"; c2.lineWidth = 4; c2.strokeStyle = P.bg; const tx = lx + (dx < 0 ? -6 : 6);
     c2.font = "600 10px Inter,sans-serif"; c2.strokeText(title.toUpperCase(), tx, ly - 4); c2.fillText(title.toUpperCase(), tx, ly - 4);
     if (sub) { c2.font = "400 10.5px Inter,sans-serif"; c2.fillStyle = P.mute; c2.strokeText(sub, tx, ly + 11); c2.fillText(sub, tx, ly + 11); } c2.restore();

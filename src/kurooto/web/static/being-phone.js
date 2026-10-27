@@ -9,7 +9,7 @@
                        whose "being" block calls/views.py being_snapshot makes, and the Notes map's when it's new),
                        back() for the back button. The page can't call into the app; it asks through two addresses
                        the app answers itself (ViewsPane.serve): /ask (a setting, a feature on or off, a note's
-                       preview, mute: sealed call-line requests, BeingAsk.java) and /state (how deep you are, WebGL 2).
+                       preview, mute: sealed call-line requests, BeingRules.java) and /state (how deep you are, WebGL 2).
    Nothing here reaches the network: the page's CSP allows only the app's own files. */
 (function () {
 "use strict";
@@ -183,17 +183,22 @@ window.beingPhone = {
     // the name, its pulse, how fresh this copy is, the hints, and the colours' key in three columns
     header(c, s) {
       const P = s.P; BOXES.length = 0; // a new frame: no labels placed yet
+      WIDE = s.W > s.H * 1.2; // turned sideways: too short for the colours' key; the hints beside the name
       c.textAlign = "left"; c.font = `400 11px ${FONT}`; c.fillStyle = P.mute; c.fillText("KUROOTO", 16, 26);
       c.font = `300 21px ${FONT}`; c.fillStyle = P.ink; c.fillText("the being", 16, 50);
       c.font = `400 11px ui-monospace,monospace`; c.fillStyle = P.mute;
       c.fillText(`${Math.round(s.BPM)} / min · ${s.n} events${STATE.status ? " · " + STATE.status : ""}`, 16, 70);
       if (STATE.warn) { c.fillStyle = "#e9b98f"; c.fillText(STATE.warn, 16, 86); }
       let y = STATE.warn ? 104 : 88;
-      if (s.HINTS) { c.font = `400 11.5px ${FONT}`; c.fillStyle = P.mute; c.fillText(s.focus ? "drag to turn it · tap a part · back goes up" : "drag an organ to turn it · pinch to zoom · tap one to look in", 16, y); }
+      if (s.HINTS && WIDE) { c.font = `400 11.5px ${FONT}`; c.fillStyle = P.mute; c.fillText(s.focus ? "drag to turn · tap a part · back goes up" : "drag to turn · pinch · tap to look in", 128, 50); y -= 18; }
+      else if (s.HINTS) { c.font = `400 11.5px ${FONT}`; c.fillStyle = P.mute; c.fillText(s.focus ? "drag to turn it · tap a part · back goes up" : "drag an organ to turn it · pinch to zoom · tap one to look in", 16, y); }
       const mode = document.querySelector(".being .bmode"), top = (s.HINTS ? y + 12 : y - 6) + "px"; // Solid · Cutaway · X-ray under the words
       if (mode && mode.style.top !== top) mode.style.top = top;
-      if (!s.HINTS || s.focus) return; // in an organ its parts are named: the colours' key waits for the whole body
+      TOP = WIDE ? 20 : y + 10; // labels stay below the words above, and below the mode bar when it shows
+      if (mode && mode.style.display === "flex") TOP = parseFloat(top) + (mode.offsetHeight || 40) + 6;
+      if (!s.HINTS || s.focus || WIDE) return; // in an organ its parts are named: the colours' key waits for the whole body
       y += 18; const keys = Object.keys(s.PROC), cols = 3, cw = (s.W - 32) / cols; c.font = `400 10.5px ${FONT}`;
+      TOP = y + Math.ceil(keys.length / cols) * 15 - 5; // and below the colours' key
       keys.forEach((k, i) => {
         const x = 16 + (i % cols) * cw, yy = y + Math.floor(i / cols) * 15;
         c.fillStyle = "#" + new THREE.Color(s.PROC[k].c).getHexString(); c.beginPath(); c.arc(x + 3, yy - 3.5, 3, 0, 6.3); c.fill();
@@ -205,20 +210,27 @@ window.beingPhone = {
     // the name only where it's yours to read (the organs at the start, or the part you picked)
     tag(c, x, y, dx, dy, title, sub, alpha, mine, W, H, P) {
       const k = clampN(W / 760, .4, 1);
-      const spot = mine === undefined && SPOTS[title]; // the four organs at the start: stacked in the height a phone has
+      const spot = mine === undefined && (WIDE ? SPOTS_WIDE : SPOTS)[title]; // the four organs at the start: kept apart
       if (spot) { dx = spot[0]; dy = spot[1]; }
       else { dx *= k; dy *= k; if (Math.abs(dx) < 28) dx = dx < 0 ? -28 : 28; }
       if (mine === false) sub = "";
       sub = words(sub);
+      if (spot && sub) { // the first words only, and not too wide: four labels share a small screen
+        c.font = `400 12px ${FONT}`; sub = clip(c, sub.split(/ · |: /)[0], Math.min(170, W * .42));
+      }
       const crowd = mine !== undefined; // an organ's parts: no label on top of another (the one you picked always shows)
       c.save(); c.globalAlpha = alpha;
       c.font = `600 12px ${FONT}`; const T = title.toUpperCase(), wt = c.measureText(T).width;
       c.font = `400 12px ${FONT}`; const ws = sub ? c.measureText(sub).width : 0, w = Math.max(wt, ws) + 8;
       if (spot) { /* never flipped: their places don't cross */ } else if (dx > 0 && x + dx + w > W - 8) dx = -dx; else if (dx < 0 && x + dx - w < 8) dx = -dx;
-      const lx = dx < 0 ? Math.max(x + dx, Math.min(x - 8, w + 14)) : Math.min(x + dx, Math.max(x + 8, W - w - 14)), ly = clampN(y + dy, 20, H - 20); // kept on the screen
+      const lx = dx < 0 ? Math.max(x + dx, Math.min(x - 8, w + 14)) : Math.min(x + dx, Math.max(x + 8, W - w - 14)), ly = clampN(y + dy, Math.max(20, TOP + 16), H - 20); // kept on the screen, under the header
       const box = [dx < 0 ? lx - 6 - w : lx + 6, ly - 16, dx < 0 ? lx - 6 : lx + 6 + w, ly + (sub ? 16 : 2)];
       if (crowd && !mine && BOXES.some((b) => b[0] < box[2] && box[0] < b[2] && b[1] < box[3] && box[1] < b[3])) { c.restore(); return; }
-      BOXES.push(box);
+      if (spot && sub && dx > 0) { // an organ's line stops short of a lead it would cross
+        const stop = Math.min(W, ...BOXES.filter((q) => q[4] > lx + 6 && q[5] <= box[3] && q[6] >= box[1]).map((q) => q[4]));
+        sub = clip(c, sub, stop - lx - 20);
+      }
+      box.push(x, Math.min(y, ly), Math.max(y, ly)); BOXES.push(box); // [left, top, right, bottom, the lead's x, its top, its bottom]
       c.strokeStyle = P.mute; c.lineWidth = 1; c.beginPath(); c.moveTo(x, y); c.lineTo(x + dx * .35, ly); c.lineTo(lx, ly); c.stroke();
       c.fillStyle = P.ink; c.beginPath(); c.arc(x, y, 2.5, 0, 6.3); c.fill();
       c.textAlign = dx < 0 ? "right" : "left"; c.lineJoin = "round"; c.lineWidth = 4; c.strokeStyle = P.bg; const tx = lx + (dx < 0 ? -6 : 6);
@@ -242,7 +254,10 @@ function rewordPanel(el, kind) { // its own words only: never a note's title or 
   for (const b of el.querySelectorAll("[title]")) b.removeAttribute("title"); // no hovering on a phone
 }
 const BOXES = []; // the labels placed this frame
-const SPOTS = { Mind: [14, -96], Senses: [14, -56], Memory: [-14, -64], Core: [14, 62] };
+let TOP = 90, WIDE = false; // where the words over the drawing end (the mode bar's bottom when it shows); sideways
+// the four organs at the start: Mind and Senses above, Memory beside the brain, Core below (being.js draws Mind first)
+const SPOTS = { Mind: [14, -96], Senses: [14, -66], Memory: [-10, -50], Core: [14, 62] };
+const SPOTS_WIDE = { Mind: [40, -6], Senses: [-80, 24], Memory: [30, -30], Core: [40, 30] }; // sideways: around the body
 function clip(c, s, w) { if (w < 30) return ""; let t = s; while (t.length > 4 && c.measureText(t).width > w) t = t.slice(0, -2); return t === s ? s : t + "…"; }
 
 /* ======================================== the page: what the app hands in ======================================== */
@@ -261,9 +276,11 @@ function message(text, small) {
   el.innerHTML = text ? `<p>${text}</p>${small ? `<p class="small">${small}</p>` : ""}` : "";
   el.classList.toggle("hidden", !text);
 }
-function webgl2() { try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2")); } catch (err) { return false; } }
+function webgl2() { // asked once; the probe's context is let go at once (a phone has only a few)
+  try { const g = document.createElement("canvas").getContext("webgl2"); if (!g) return false; const x = g.getExtension("WEBGL_lose_context"); if (x) x.loseContext(); return true; } catch (err) { return false; }
+}
 
-// a request to your computer, through the app (ViewsPane answers /ask with BeingAsk: sealed over your call line)
+// a request to your computer, through the app (ViewsPane answers /ask with BeingRules: sealed over your call line)
 async function ask(op, args) {
   if (PV.demo) return demoAsk(op, args);
   const r = await fetch(`/ask?op=${encodeURIComponent(op)}&a=${encodeURIComponent(JSON.stringify(args || {}))}&n=${Math.random().toString(36).slice(2)}`, { cache: "no-store" });

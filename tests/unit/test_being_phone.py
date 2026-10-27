@@ -171,3 +171,31 @@ def test_the_app_serves_exactly_what_being_html_loads():
     gradle = (ANDROID / "build.gradle.kts").read_text(encoding="utf-8")
     for f in ("being.js", "being-layout.js", "being-phone.js", "body/anatomy.bin", "body/cerebrum.vol", "vendor/three"):
         assert f in gradle, f
+
+
+def test_no_code_is_hidden_in_a_line_comment():
+    # 0.8.10 review: a "// phone: ..." note put in the middle of a line once commented out the dashboard's own drawing
+    # (tag's lead lines, then a ReferenceError on every frame: the dashboard's being stopped at mount). A line comment
+    # must hold words, never statements.
+    code = re.compile(r";\s*[A-Za-z_$][\w$.]*\s*(\(|=)")
+    for name in ("being.js", "being-phone.js", "being-layout.js"):
+        for i, line in enumerate((STATIC / name).read_text(encoding="utf-8").splitlines(), 1):
+            m = re.search(r"(?<![:\"'`\\])//(.*)$", line)
+            assert not (m and code.search(m.group(1))), f"{name}:{i}: {line.strip()[:120]}"
+    js = (STATIC / "being.js").read_text(encoding="utf-8")
+    for statement in (  # the dashboard's lead lines and the lanes' words, each starting its own code
+        "\n    const lx = x + dx, ly = y + dy; c2.save();",
+        '/* phone: edge to edge */ c.font = "600 10px Inter,sans-serif"; c.fillStyle = P.mute; c.fillText(lab,',
+    ):
+        assert statement in js, statement
+
+
+def test_the_brain_choice_uses_the_brain_consoles_own_page_and_is_watched():
+    # the brain-console part writes views/brain.html and brainconsole.js (KurootoView.take, as Systems); the Brain is
+    # sent only while a phone watches it (/view/watch?kind=brain)
+    pane = (ANDROID / "src/io/github/avtarfr/kurooto/ViewsPane.java").read_text(encoding="utf-8")
+    views_java = (ANDROID / "src/io/github/avtarfr/kurooto/Views.java").read_text(encoding="utf-8")
+    assert '"being".equals(mode) ? "KurootoBeing" : "KurootoView"' in pane
+    assert 'Views.watch(a, brain ? "brain" : "systems")' in pane and "(live || brain)" in pane
+    assert '"?kind=brain"' in views_java
+    assert not (STATIC / "views" / "brain-phone.js").exists()
