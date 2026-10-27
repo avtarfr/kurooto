@@ -184,12 +184,12 @@ def _dates(t: str) -> str:
     t = re.sub(r"(?<![\w.-])(\d{4})-(\d{2})-(\d{2})(?:(T)(?=\d{2}:\d{2})|(?![\w-]))", iso, t)
     # 27/10/2026, 27-10-26; with dots only a four-figure year, or 1.10.12 (a version) would be a date
     t = re.sub(
-        r"(?<![\w./-])(\d{1,2})([/-])(\d{1,2})\2(\d{4}|\d{2})(?![\w./-])",
+        r"(?<![\w./-])(\d{1,2})([/-])(\d{1,2})\2(\d{4}|\d{2})(?![\w/-]|\.\d)",  # a full stop after it is fine
         lambda m: _date(m, int(m.group(1)), int(m.group(3)), m.group(4)),
         t,
     )
     t = re.sub(
-        r"(?<![\w.])(\d{1,2})\.(\d{1,2})\.(\d{4})(?![\w.]|\.\d)",
+        r"(?<![\w.])(\d{1,2})\.(\d{1,2})\.(\d{4})(?!\w|\.\d)",
         lambda m: _date(m, int(m.group(1)), int(m.group(2)), m.group(3)),
         t,
     )

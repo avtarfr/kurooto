@@ -34,6 +34,9 @@ CASES = [
     # dates: day first, as in India
     ("27/10/2026", "the twenty-seventh of October twenty twenty-six"),
     ("on the 27/10/2026", "on the twenty-seventh of October twenty twenty-six"),
+    ("Lab on 27/10/2026.", "Lab on the twenty-seventh of October twenty twenty-six."),
+    ("Due 27.10.2026.", "Due the twenty-seventh of October twenty twenty-six."),
+    ("Due 2026-10-27.", "Due the twenty-seventh of October twenty twenty-six."),
     ("1-1-26", "the first of January twenty twenty-six"),
     ("27.10.2026", "the twenty-seventh of October twenty twenty-six"),
     ("2026-10-27", "the twenty-seventh of October twenty twenty-six"),
