@@ -178,11 +178,11 @@ values = "`relaxed`, `normal`, `strict`."
 when = "Strict if a lot of people are around; relaxed if it keeps asking you again in a noisy room."
 
 [s."voice.speaker_id.threshold"]
-tip = "0: worked out from your own samples when you train. A number from 0.3 to 0.9 overrides it."
+tip = "0: worked out from your own samples when you train. A number overrides it, held to 0.30 to 0.95."
 when = "Leave it at 0 unless the Test step on the Your voice page shows it gets it wrong."
 
 [s."voice.speaker_id.margin"]
-tip = "The 'not sure' band just below the threshold. Not sure always counts as not you."
+tip = "The 'not sure' band just below the threshold, at most 0.2 wide. Not sure always counts as not you."
 when = "Widen it to be safer; narrow it if you're asked to repeat yourself too often."
 
 [s."voice.speaker_id.min_speech_s"]

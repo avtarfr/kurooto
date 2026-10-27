@@ -29,6 +29,12 @@ The phone app, rebuilt around chat (the Rail design), and the remaining requeste
 - **Face presence** (off): with OpenCV's face models on this computer, Kurooto learns your face (a guided enrolment,
   training and live test), greets you by voice when you sit down after a while and listens for your reply; it can hold
   calls while you're away. No picture is ever kept; your face is an encrypted template, forgotten with one command.
+- **Voice ID and Face presence, Start over and Undo:** both can be enrolled again from nothing while the old one keeps
+  working, and Undo puts the previous one back (`/voice enrol again`; the Face page's Start over). Voice ID's own
+  threshold setting is held to 0.30 to 0.95 and its "not sure" band to 0.2, so no setting can make a stranger you;
+  conversation mode notices another voice with the gate off too; a second face that stays in view keeps Kurooto out of
+  your conversation for as long as it's there. How often it's wrong, measured on 146 recorded speakers, is on the Voice
+  page (`tools/voiceid_eval.py`).
 - The remaining older phone screens (questions, quick note, share, places) are Compose sheets in the same style.
 - For developers: `KUROOTO_NO_DESKTOP=1` keeps a scratch run off the real desktop.
 

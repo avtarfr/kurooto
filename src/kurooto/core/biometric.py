@@ -254,13 +254,19 @@ class TemplateStore:
     def save(self, payload: dict, status: dict | None = None) -> None:
         """The template, sealed and written atomically (owner-only), and its status file (counts and dates)."""
         self.dir.mkdir(parents=True, exist_ok=True)
+        try:
+            os.chmod(self.dir, 0o700)
+        except OSError:
+            pass
         blob = self.seal(payload)
         tmp = self.file.with_name(f"{self.file.name}.tmp{os.getpid()}")
-        with open(tmp, "wb") as f:
-            f.write(blob)
-        if os.name != "nt":
-            os.chmod(tmp, 0o600)
-        os.replace(tmp, self.file)
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)  # owner-only from the start, not after
+        try:
+            with os.fdopen(fd, "wb") as f:
+                f.write(blob)
+            os.replace(tmp, self.file)
+        finally:
+            tmp.unlink(missing_ok=True)
         if status is not None:
             jsave(self.status_file, status)
 

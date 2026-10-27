@@ -434,8 +434,10 @@ class VoiceID:
             return f"Busy: {self.capturing}."
         return ""
 
-    def start_session(self, own_words: bool = False, conds: list[str] | None = None) -> dict:
-        """Start (or continue) enrolment. Samples kept for later are resumed; conds: just these (Add samples)."""
+    def start_session(self, own_words: bool = False, conds: list[str] | None = None, fresh: bool = False) -> dict:
+        """Start (or continue) enrolment. Samples kept for later are resumed; conds: just these (Add samples).
+        fresh: start over (re-enrol), the whole plan from nothing; the voice print in use stays in use until the new
+        one is built, and Undo puts it back."""
         with self.lock:
             if self.session is not None and self.session.state not in ("done", "stopped", "kept"):
                 if self.session.state == "paused":
@@ -448,10 +450,13 @@ class VoiceID:
             if self.locked_why:
                 return {"ok": False, "message": "Voice ID's key can't be read: forget and enrol again."}
             existing = []
-            if t and t.get("model") == self.model():
+            if t and t.get("model") == self.model() and not fresh:
                 existing = [{"e": sid.from_b64(x["e"]), "s": sid.from_b64(x["s"]) if x.get("s") else None,
                              "cond": x.get("cond"), "day": x.get("day")} for x in t.get("samples") or []]  # fmt: skip
-            if existing and conds is None and t and t.get("report"):  # enrolled: Add samples, not all over again
+            again = fresh or bool(t and t.get("reenrol"))  # starting over, or going on with a start-over kept
+            if fresh:
+                conds = None
+            if existing and conds is None and t and t.get("report") and not again:  # enrolled: Add samples
                 conds = ["other"]
             lang = str(self.v.setting("listen.language") or "")
             self.capturing = "enrolling your voice"
@@ -473,6 +478,7 @@ class VoiceID:
                 conds=conds,
                 existing=existing,
             )
+            self.session.fresh = again  # type: ignore[attr-defined]
             self._thread = threading.Thread(target=self._run_session, args=(self.session, close), daemon=True,
                                             name="voice-enrol")  # fmt: skip
             self._thread.start()
@@ -507,11 +513,17 @@ class VoiceID:
         if t.get("centroid") and t.get("report") and t.get("model") == self.model():
             keys = ("centroid", "centroid_enrolled", "thresholds", "calibrated", "genuine", "report", "adapted")
             built = {k: t[k] for k in (*keys, "drift_stopped") if k in t}
-        self._save({**self._base(t), **built, "samples": samples, "report": built.get("report")})
+        again = bool(getattr(s, "fresh", False))  # a start-over kept for later: its samples replace the old ones
+        if again and t.get("report") and not t.get("reenrol"):
+            self.previous = t  # Undo (this run) brings the old samples back too
+        self._save({**self._base(t), **built, "samples": samples, "report": built.get("report"),
+                    **({"reenrol": True} if again else {})})  # fmt: skip
 
     def session_cmd(self, action: str, own_words: bool = False) -> dict:
         if action in ("start", "continue"):
             return self.start_session(own_words)
+        if action == "again":  # start over (re-enrol)
+            return self.start_session(own_words, fresh=True)
         s = self.session
         if s is None:
             return {"ok": False, "message": "No enrolment is going on."}

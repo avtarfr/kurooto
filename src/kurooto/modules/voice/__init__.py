@@ -79,7 +79,7 @@ register_defaults(
             "mode": "owner_only_acts",  # owner_only_acts (others may chat) or owner_only_at_all (others: one line)
             "model": "campplus-en",  # campplus-en (English, most accurate) or campplus-multi; a change: enrol again
             "strictness": "normal",  # relaxed, normal or strict (turns you away more often; strangers almost never)
-            "threshold": 0.0,  # 0: worked out from your own samples; a number (0.3 to 0.9) overrides it
+            "threshold": 0.0,  # 0: worked out from your own samples; a number overrides it (held to 0.30 to 0.95)
             "margin": 0.05,  # the "not sure" band just below the threshold; not sure counts as not you
             "min_speech_s": 1.0,  # shorter than this is too short to tell (it counts as not sure)
             "carry": True,  # a short reply right after a turn it knew was you counts as you (not if clearly not)
@@ -546,8 +546,9 @@ class Voice(Module):
 
         With Voice ID on, the voice is checked too (voiceid.py). With its gate (voice.speaker_id.gate) that comes
         first: someone else's voice that isn't calling Kurooto, with no conversation open, is dropped as chatter and
-        never written out (only its first and last two seconds are, to hear the name). Without it, only turns the gate
-        calls addressed are checked."""
+        never written out (only its first and last two seconds are, to hear the name). With conversation mode
+        (voice.listen.conversation_mode) every stretch of speech is checked too, so another voice is noticed even with
+        the gate off; with both off, only turns the gate calls addressed are checked."""
         if self.blocked() or not self.app.is_on(self.id):
             return None
         self.portal.close_s = float(self.setting("listen.close_s") or 8)
@@ -560,9 +561,10 @@ class Voice(Module):
             self.portal.tell_guests = bool(vid.s("tell_guests", True))
             if not h.speech_s:
                 h.speech_s = sum(1 for f in flags if f) * 512 / 16000 if flags else h.seconds
-        if on and vid.s("gate", True) and h.speech and audio is not None:  # (voice id) who, before the words
-            who = vid.check(audio, h.speech_s, h.voices)
-            if who.decision != "owner" and not h.wake and not self.portal.open:
+        gate_first = bool(vid.s("gate", True))
+        if on and (gate_first or self.setting("listen.conversation_mode")) and h.speech and audio is not None:
+            who = vid.check(audio, h.speech_s, h.voices)  # (voice id) who, before the words
+            if gate_first and who.decision != "owner" and not h.wake and not self.portal.open:
                 g = self.gate()
                 edges = _edges(audio)
                 heard = self._write_out(edges)
@@ -850,7 +852,8 @@ class Voice(Module):
                 "voice",
                 "Voice: what it's doing; mute, unmute, stop (stop speaking), say <text>; id (Voice ID), enrol",
                 self._cmd,
-                usage="/voice [mute|unmute|stop|say <text>|id [test|retrain|undo today|undo all|forget]|enrol [stop]]",
+                usage="/voice [mute|unmute|stop|say <text>|id [test|retrain|undo today|undo all|forget]|"
+                "enrol [again|stop]]",
             )
         ]
 
@@ -937,7 +940,7 @@ class Voice(Module):
         a = (arg or "").strip().lower()
         if a in ("stop", "keep", "pause"):
             return self.voiceid.session_cmd(a)["message"]
-        r = self.voiceid.start_session(own_words="own" in a)
+        r = self.voiceid.start_session(own_words="own" in a, fresh="again" in a.split())  # again: start over
         if not r.get("ok"):
             return r["message"]
         return (

@@ -324,7 +324,7 @@ class Watcher:
                 n_other += 1
             del e  # a stranger's or an unsure face's numbers go with the frame
         others = sum(1 for f in faces if f.score >= SCORE_OTHER) >= 2
-        if others != self.others:
+        if others != self.others or others:  # while it lasts, every frame refreshes it (core/nearby.py's STALE_S)
             self.others = others
             self.emit("others", on=others)
         if best is None:

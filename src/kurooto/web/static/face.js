@@ -110,7 +110,7 @@
       <tr><td>Model</td><td>${esc(m.model)} · made ${day(m.created)} · trained ${day(m.trained)}</td></tr>
       <tr><td>Last test</td><td>${test}</td></tr></table>
       ${adv ? `<ul>${adv}</ul>` : ""}
-      <p><button class="primary" data-test>Test</button> <button data-start="add">Add samples</button> <button data-retrain>Retrain</button>
+      <p><button class="primary" data-test>Test</button> <button data-start="add">Add samples</button> <button data-retrain>Retrain</button> <button data-start="new">Start over</button>${S.st.can_undo ? ' <button data-untrain>Undo the last training</button>' : ""}
       Strictness <select data-strict>${["loose", "normal", "strict"].map((k) => `<option${k === S.st.strictness ? " selected" : ""}>${k}</option>`).join("")}</select></p>
       <p class="d">Training here is honest: no network is trained. Your template is the centroid of SFace's numbers for your samples, and the cut-off is calibrated on your held-out samples against a set of made-up impostor faces, never below OpenCV's published 0.363.</p>
       <p><button data-forget>Forget everything</button></p><p data-said></p>`;
@@ -220,6 +220,7 @@
     if (d.stop !== undefined) { await post("face/test/stop", { session: S.sid }); S.sid = ""; load(); return; }
     if (d.retrain !== undefined) { const r = await post("face/retrain"); await load(); said(r.ok ? `Retrained: grade ${r.grade || (r.report || {}).grade || "?"}.` : r.message, !r.ok); return; }
     if (d.undo !== undefined) { const r = await post("face/learn/undo"); await load(); said(r.message); return; }
+    if (d.untrain !== undefined) { const r = await post("face/undo"); await load(); said(r.message, !r.ok); return; }
     if (d.unlearn !== undefined) { const r = await post("face/learn/forget"); await load(); said(r.message); return; }
     if (d.forget !== undefined) { // data.delete: a confirm first
       const box = document.createElement("p");

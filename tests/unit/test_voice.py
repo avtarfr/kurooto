@@ -654,6 +654,7 @@ def test_someone_else_not_calling_it_is_never_transcribed(vid):
 def test_without_the_gate_only_addressed_turns_are_checked(vid):
     v = vid.v
     v.app.settings.set("voice.speaker_id.gate", False)
+    v.app.settings.set("voice.listen.conversation_mode", False)  # (it checks every voice, below)
     v.judge.answers = ['{"class": "chatter", "confidence": 0.9}']
     before = vid.emb.calls
     hear(v, "no I'll get the snacks later", who_voice=55)
@@ -676,6 +677,29 @@ def test_conversation_mode_stays_out_unless_called_by_name(vid):
     assert "conversation: staying out" in v.line()
     v.app.settings.set("voice.listen.conversation_mode", False)
     assert not vid.conversation()
+
+
+def test_conversation_mode_notices_another_voice_with_the_gate_off_too(vid):
+    """The two switches are separate: without the gate everything is written out as before, but another voice still
+    puts Kurooto in conversation mode; with conversation mode off too, nothing is checked until it's addressed."""
+    v = vid.v
+    v.app.settings.set("voice.speaker_id.gate", False)
+    v.judge.answers = ['{"class": "chatter", "confidence": 0.9}'] * 3
+    before = vid.emb.calls
+    hear(v, "are you coming to the lab tomorrow", who_voice=55)
+    assert vid.emb.calls == before + 1 and vid.conversation()
+    assert vid.stt_fake.calls[-1] == len(sound(55, 1, 3.0)[0])  # without the gate: written out in full, as before
+    hear(v, "can you check when the lab is", utt=7)  # the owner, not by name: staying out
+    assert v.portal.send.got == []
+    hear(v, "Kurooto, when is the lab?", utt=9)
+    assert v.portal.send.got == [("when is the lab?", "owner")]
+
+
+def test_the_gate_drops_others_with_conversation_mode_off(vid):
+    v = vid.v
+    v.app.settings.set("voice.listen.conversation_mode", False)
+    hear(v, "did you see the match last night, it was something", who_voice=55, seconds=8.0)
+    assert v.portal.send.got == [] and v.heard[CHATTER] == 1 and not vid.conversation()
 
 
 def test_voice_id_commands_refuse_voice(vid):

@@ -206,6 +206,7 @@ Only the owner's voice can make Kurooto act; any other voice, or one it isn't su
 | `providers/context.py` | `guest_context(app)` |
 | `web/static/voiceid.html`, `voiceid.js` | the page `/voice-id` |
 | `tools/voiceid_bank.py` | builds `data/voiceid/impostors-<model>.bin` (dev tool, never imported) |
+| `tools/voiceid_eval.py` | the offline evaluation (dev tool, never imported): false accepts and rejects on held-out LibriSpeech speakers through `enrol.Session`, `calibrate()` and `Verifier.check()` |
 | `tests/unit/test_voiceid.py`, `tests/unit/test_guest.py`, `tests/unit/test_voice.py` (its Voice ID part) | fakes only |
 
 ### The model
@@ -226,7 +227,9 @@ with voice.speaker_id.on and .gate (default):
     not owner, no wake word, portal closed:
       Whisper on the first and last 2 s only (_edges); its name not called -> chatter, dropped, never written out
   Whisper (all of it) -> Gate.decide(heard, ctx + conversation) -> portal.take(..., who=who)
-with .gate off: Whisper -> Gate -> addressed only: who = voiceid.check(pcm) -> portal.take(..., who)
+with .gate off and voice.listen.conversation_mode on (default): who = voiceid.check(pcm) for every stretch of speech
+  (so another voice still starts conversation mode), then Whisper (all of it) -> Gate -> portal.take(..., who)
+with both off: Whisper -> Gate -> addressed only: who = voiceid.check(pcm) -> portal.take(..., who)
 ```
 
 `Heard.speech_s` is the VAD's speech time (the listener now passes per-frame flags as a 4th argument to `on_speech`),
@@ -254,12 +257,52 @@ for short, plus Kokoro's 30 synthetic vectors when Kokoro is set up); per set `a
 1% / 0.2% / 0 (strict: `max(I) + 0.03`), clamped to [0.30, 0.85]; `unsure = min(quantile(I, .99), accept - margin)`.
 Grade: good (FRR_long <= 5%, FRR_short <= 15%, median genuine - accept >= 0.12), fair (FRR_long <= 15%), weak (saved
 only with Use it anyway). `threshold > 0` overrides accept for both, applied at check time from the stored calibration
-so it takes effect at once; strictness and margin need a Retrain.
+so it takes effect at once; strictness and margin need a Retrain. The override is held to `OVERRIDE` (0.30 to 0.95)
+and the margin to 0..`MARGIN_MAX` (0.2) wherever they're read (`override()`, `band()`, `margin_of()`): a typed 0.05
+can't make a stranger "you", and a wide margin can't let any short reply carry.
 
 **The bank.** `tools/voiceid_bank.py` over LibriSpeech dev/test (146 speakers x 4 utterances x {whole, 3 s, 1.5 s}, about
 1,750 rows; optionally Common Voice's India and South Asia accents with `--cv`), float16, one file per model with the
 model's sha256 in its header. Train refuses when it's missing or for another model. **Not in this commit:** building it
 needs LibriSpeech (about 1.3 GB) and the two model files downloaded; see "Not verified".
+
+### Evaluation (`tools/voiceid_eval.py`)
+
+```
+uv run --with onnxruntime --with kaldi-native-fbank --with soundfile --with numpy python tools/voiceid_eval.py \
+    --librispeech DIR --model <the .onnx> --cache <scratch dir> --groups 12 [--out results.json]
+```
+
+Each LibriSpeech dev/test speaker is enrolled through `enrol.Session` (stt off) from his largest chapter, the conditions
+made from the clean reading (quiet -14 dB; far -10 dB and a synthetic room, RT60 0.45 s; noise: pink at 10 dB under
+the speech, VAD flags from the speech before the noise, as Silero would find it; short requests 1.2-2.5 s; free 11 s),
+then `calibrate()` at each strictness and `Verifier.check()` for 8 held-out utterances per speaker (another chapter where
+there is one), whole (up to 8 s) and cut to 2, 1.5 and 0.8 s, against every stranger in its group. The impostor set is
+built with `voiceid_bank.py`'s recipe from the speakers *not* being tested ("halves": dev vs test; "groups": K groups,
+each against a set from the other K-1, pooled over 4 groupings). Vectors are cached in the scratch folder.
+
+campplus-en, groups (12), 146 speakers, 4,668 own and 52,179 stranger trials per row (2026-10-27):
+
+| strictness | accept, long (median, range) | you: long / 2 s / 1.5 s | stranger passes: long / 2 s / 1.5 s | same gender, long | carry (0.8 s after you): you / stranger |
+|---|---|---|---|---|---|
+| relaxed | 0.385 (0.30-0.53) | 99.3 / 98.5 / 89.5 % | 1.36 / 1.59 / 1.11 % | 2.49 % | 95.2 / 1.88 % |
+| normal | 0.439 (0.30-0.67) | 99.3 / 98.4 / 89.2 % | 0.56 / 0.62 / 0.43 % | 1.02 % | 91.6 / 0.83 % |
+| strict | 0.506 (0.33-0.71) | 98.9 / 97.3 / 87.2 % | 0.13 / 0.19 / 0.14 % | 0.26 % | 0 / 0 % |
+
+The four groupings alone, stranger passes on a long turn at normal: 0.90, 0.34, 0.46, 0.52 %; a 0.8 s turn alone is
+never "you" (min_speech_s). campplus-multi: normal 0.51 % (relaxed 1.17, strict 0.16), you 99.2 % on long turns.
+Grades: 581 good, 3 fair at normal. Enrolment: every speaker finished; 116 samples rejected as too short (of 2,894
+tries), 2 as identical, 2 as not sounding like the rest. 30 of the 146 have one chapter only, so their own turns come
+from the chapter they enrolled from (an easier test for them).
+
+What it says: the targets in `FAR` (1 %, 0.2 %) are per impostor *row*, but a few look-alike voices carry most of the
+misses, and a set of 146 speakers can't place a cut-off at 1 in 500 of the whole population (that needs more speakers,
+not more rows): relaxed and normal pass strangers about 1.4 and 2.8 times as often as their targets. With fewer
+speakers in the set it gets worse (18, 36, 73 speakers: 2.2, 1.1, 0.58 % at normal, halves). The defaults weren't
+changed: the miss rate is set by how many speakers the set has, the owner-side cost of a higher cut-off can't be
+measured on clean audiobook speech, and strict (0.13 %) is there for a room with strangers. A bigger impostor set (more
+speakers, e.g. Common Voice with `--cv`) is the real fix. Limits: read speech, mostly clean, one microphone a chapter;
+simulated conditions; strangers, not relatives.
 
 ### Adapter
 
@@ -288,7 +331,7 @@ Whoever merges second adapts; there must be one `core/biometric.py`.
 | Route | Body | Answer |
 |---|---|---|
 | `GET /api/voice/id` | | on, mode, model, enrolled, locked, grade, samples {total, by_cond}, thresholds, calibrated, report (numbers; a 24-bin histogram), pending, last_test, adapt {on, count, cap, today, last, drift_stopped}, mic {enrolled, now}, ready, missing, bank, who (counts), session |
-| `POST /api/voice/id/session` | `{action: start\|continue\|pause\|stop\|keep, own_words?, conds?}` | `{ok, message, session}` |
+| `POST /api/voice/id/session` | `{action: start\|again\|continue\|pause\|stop\|keep, own_words?, conds?}` (again: start over, the whole plan from nothing; the template in use stays until the new one is built; a kept start-over is marked `reenrol` and resumes with the whole plan) | `{ok, message, session}` |
 | `POST /api/voice/id/skip` | `{cond}` | the session |
 | `POST /api/voice/id/train` | `{use_anyway?}` | `{ok, saved, report, message}` |
 | `POST /api/voice/id/undo` | | back to the template before the last build |
@@ -333,12 +376,11 @@ then `pactl` on Linux, else "can't tell". Subprocesses it starts are its own chi
 
 ## Not verified
 
-Voice ID (0.8.10) ran only with fakes and synthetic data: a fake embedder, fake banks, a fake microphone and
-transcriber. Never run: the CAM++ model itself (the optional test needs `KUROOTO_TEST_MODELS`), kaldi-native-fbank's
-features, a real microphone, a real voice, and the shipped impostor banks, which aren't built yet (LibriSpeech and the
-models weren't downloaded: the network was a metered hotspot); until they are, Train says "the impostor set for this
-model isn't in this version of Kurooto yet". The thresholds' real numbers (about 0.45 to 0.5 for long turns) are the
-spec's expectation, not measured here.
+Voice ID (0.8.10): the unit tests use fakes and synthetic data only (a fake embedder, fake banks, a fake microphone
+and transcriber). The CAM++ models, kaldi-native-fbank's features, the enrolment session, the calibration and the
+decision ran on real recorded speech through `tools/voiceid_eval.py` (above: LibriSpeech, every speaker); the impostor
+banks are built by `tools/voiceid_bank.py` from the same data. Never run: a real microphone in a real room, Silero's
+VAD on a live stream, a live voice, the Kokoro synthetic check, and anyone who isn't an audiobook reader.
 
 Written against the published APIs of kokoro-onnx 0.4, piper-tts 1.2/1.3, faster-whisper 1.1, openwakeword 0.6,
 Silero VAD v5 and sounddevice 0.5, but run only with fakes: no real microphone, speaker or model was used in the
