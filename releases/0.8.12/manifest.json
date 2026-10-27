@@ -1,0 +1,25 @@
+{
+ "doc": {
+  "version": "0.8.12",
+  "notes": "The being made visible; hooks for add-ons in Face presence, Voice and Brain",
+  "created": 1793109788.930838,
+  "files": {
+   "kurooto-0.8.12.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.8.12/kurooto-0.8.12.tar.gz",
+    "sha256": "3e9c34d65afbaa2711b62542e0593e4a8d3210a8565f14df4c45dcaeba49d480",
+    "size": 12006858
+   }
+  },
+  "android": {
+   "file": "kurooto.apk",
+   "url": "https://avtarfr.github.io/kurooto/releases/0.8.12/kurooto.apk",
+   "sha256": "4f5c189a1da2ccfa05edcdf45dc8a340a80b4dd3e1ca6e96e1c1eeb1b2599127",
+   "size": 6717220,
+   "versionCode": 80129,
+   "versionName": "0.8.12",
+   "cert_sha256": "bad55b2e9de40d31a40d19767bf6e53ac372fb9e8e67e63d01d21e3d3ef8d325",
+   "source": "f1d010407cb2d7b1deb1bea9514ab020538606669a9ac7f5a0c4603eb2bc2a02"
+  }
+ },
+ "sig": "YqYD8Hl3JZ+ntO//yoLXPWuX9H9BKtok2RSNDmgPnboaurp19FwzTxF4XyZsXp3KJY330zBo8lPUU9+fACNWBA=="
+}
