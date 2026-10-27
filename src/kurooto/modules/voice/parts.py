@@ -85,8 +85,9 @@ class ModelFile:
     name: str
     url: str
     mb: float
-    sha256: str = ""  # pinned: checked while it downloads (and for a file installed from disk); "" not pinned (Voice ID's
-    # and Face presence's models are)
+    # pinned: checked while it downloads (and for a file installed from disk); "" not pinned (Voice ID's and Face
+    # presence's models are)
+    sha256: str = ""
 
 
 SV = "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models"  # (sic: the tag's spelling)

@@ -209,13 +209,16 @@ against your voice print, on this computer, and gets one of three answers: **you
 
    Each sample is checked before it counts, and a rejected one says why with its number: too short, too loud
    (clipped), too quiet, too much noise, not the sentence, not the condition ("That sounded as close as before: step
-   back about two metres."), not sounding like your other samples, or identical to an earlier one (a recording). Say
+   back about two metres."; quiet and far count when your voice is 4 dB lower than your normal one, or 4 dB less above
+   the room's noise, so a microphone that evens out loudness still lets them pass), not sounding like your other
+   samples, or identical to an earlier one (a recording). Say
    **stop**, **skip**, **repeat**, **pause** or **continue** during it. Any step but the first can be skipped. Speak
    another language? Tick "Say it in my own words".
 4. **Train** builds it (automatically at the end): **good**, **fair** or **weak**, with the thresholds, how often it
    would turn you away in each condition, and how many of about 1,750 strangers' voice prints would pass. A weak one
    is saved only when you press **Use it anyway**.
-5. **Test**: **Try me** (should be You), **Try as someone else** (ask someone; should be Someone else), **Try a
+5. **Test**: press, then say a sentence or two, starting within 15 seconds (it waits for you to finish). **Try me**
+   (should be You), **Try as someone else** (ask someone; should be Someone else), **Try a
    synthetic voice** (Kokoro's ten voices, if Kokoro is set up). The page shows the score on a dial with the "not
    sure" and "accept" marks.
 

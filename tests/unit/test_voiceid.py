@@ -263,6 +263,16 @@ def test_the_conditions_are_checked_against_the_normal_voice():
     assert enrol.quality(pcm(level=6000, noise=1500), noise, ref).ok
 
 
+def test_a_microphone_that_evens_out_loudness_still_lets_quiet_and_far_pass():
+    """Reported: the quiet step never passed. Automatic gain lifts a quiet voice back to the normal level, and the
+    room's noise with it: the speech's height above the noise is what drops."""
+    ref = enrol.Ref(level_db=enrol.stats(pcm())["level_db"], noise_db=enrol.stats(pcm())["noise_db"])
+    quiet, far = enrol.BY_KEY["quiet"], enrol.BY_KEY["far"]
+    lifted = pcm(level=6000, noise=200)  # as loud as before, the noise floor 10 dB up
+    assert enrol.quality(lifted, quiet, ref).ok and enrol.quality(lifted, far, ref).ok
+    assert "more quietly" in enrol.quality(pcm(level=6000, noise=80), quiet, ref).reason  # 2.5 dB: not quiet
+
+
 def test_the_phrase_check_uses_the_transcript():
     p = "Seven bright orange kites drifted over the quiet harbour."
     assert enrol.quality(pcm(), NORMAL, transcript="seven bright orange kites drifted over a harbour", prompt=p).ok
@@ -786,6 +796,46 @@ def test_a_session_through_the_api_builds_the_template(vid):
     assert all(m.get("kind", "").startswith(("voice", "voiceid")) for m in vid.app.live.sent)
     for m in vid.app.live.sent:
         assert not any(isinstance(v, list) and len(v) > 16 for v in m.values())
+
+
+def test_a_sentence_still_going_at_the_timeout_is_waited_for(vid, monkeypatch):
+    """Reported: the test said it heard nothing. Speech that began inside the window was dropped when the window
+    closed before the sentence ended; now it's waited for to its end."""
+    import time
+
+    from kurooto.modules.voice import audio
+
+    def frames(n, amp):
+        r = random.Random(n)
+        return [array.array("h", [int(amp * math.sin(i / 3) + r.gauss(0, 30)) for i in range(audio.FRAME)]).tobytes()
+                for _ in range(n)]  # fmt: skip
+
+    class SlowMic:  # quiet, then 1.6 s of loud "speech" over about 0.6 s, then quiet
+        def __init__(self, device=""):
+            self.closed = False
+
+        def frames(self):
+            for f in frames(5, 0):
+                yield f
+            for f in frames(50, 6000):
+                time.sleep(0.012)
+                yield f
+            while not self.closed:
+                time.sleep(0.005)
+                yield frames(1, 0)[0]
+
+        def close(self):
+            self.closed = True
+
+    monkeypatch.setattr(audio, "Mic", SlowMic)
+    monkeypatch.setattr(vid.v.parts, "has_model", lambda key: False)  # the energy VAD
+    vid.capture_with = None
+    capture, close = vid._mic_capture(15)
+    try:
+        cut = capture(0.2, threading.Event())  # speech starts inside 0.2 s and ends well after it
+    finally:
+        close()
+    assert cut is not None and cut.speech_s > 1.0
 
 
 def test_the_test_step_scores_me_and_someone_else(vid):

@@ -366,8 +366,13 @@ class VoiceID:
         from kurooto.modules.voice import audio
 
         q: queue.Queue = queue.Queue(maxsize=2)
+        began = [0.0]  # when the stretch being heard now began (0: none)
+
+        def on_start() -> None:
+            began[0] = time.monotonic()
 
         def on_speech(pcm: bytes, _woke: bool, _seconds: float, flags: bytes = b"") -> None:
+            began[0] = 0.0
             try:
                 q.put_nowait(enrol.Cut(bytearray(pcm), bytes(flags)))
             except queue.Full:
@@ -379,6 +384,7 @@ class VoiceID:
             vad,
             None,
             on_speech=on_speech,
+            on_start=on_start,
             on_level=self.v._level,  # noqa: SLF001 (the meter on the page)
             hold=self.v.speaker.holding,
         )
@@ -386,8 +392,14 @@ class VoiceID:
         lis.start()
 
         def capture(timeout: float, cancel: threading.Event) -> enrol.Cut | None:
+            """What's said, if it starts within `timeout`: speech that began in time is waited for to its end (a
+            stretch ends after a short quiet, or at MAX_S). Before, a sentence still going at the timeout was lost and
+            the test said it heard nothing."""
             end = time.monotonic() + timeout
-            while time.monotonic() < end and not cancel.is_set():
+            while not cancel.is_set():
+                now = time.monotonic()
+                if now >= end and not (began[0] and now < began[0] + lis.MAX_S + 2):
+                    break
                 if lis.error:
                     raise RuntimeError(lis.error)
                 try:

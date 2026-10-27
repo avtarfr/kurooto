@@ -199,7 +199,7 @@ Only the owner's voice can make Kurooto act; any other voice, or one it isn't su
 | File | What's in it |
 |---|---|
 | `modules/voice/speakerid.py` | pure-Python vector maths (Kurooto has no numpy dependency), `Thresholds`/`Band`, `calibrate()`, `decide()`, `Verdict`, `Ctx`, `Verifier`, `Adapter`, the impostor `Bank` (`read_bank`/`write_bank`), `Embedder` (numpy + onnxruntime + kaldi-native-fbank from Voice's packages) |
-| `modules/voice/enrol.py` | `CONDITIONS`, `PHRASES`, `CALL_PHRASES`, `quality()`, `voice_checks()`, `Cut`, crops, `control_word()`, `Session` (the state machine, driver-agnostic) |
+| `modules/voice/enrol.py` | `CONDITIONS`, `PHRASES`, `CALL_PHRASES`, `quality()` (quiet and far: `softer()`, 4 dB lower or 4 dB less SNR than the normal step's medians, for automatic gain), `voice_checks()`, `Cut`, crops, `control_word()`, `Session` (the state machine, driver-agnostic) |
 | `modules/voice/voiceid.py` | `VoiceID` on `Voice.voiceid`: the template (load/save/forget), `check()`, conversation mode, status for the API, the enrolment thread and its microphone `Listener`, `train()`, `test()`, adapt and its undo, the `vid` button |
 | `core/biometric.py` | `BioStore(app, kind)`: one sealed template per kind; `Locked`; `BIOMETRIC_SECRETS`; `note_others()`/`others_present()` (a shared in-memory "someone else is here" signal a face part can feed) |
 | `core/guest.py` | the guest path: `handle(app, msg)`, `kind()` (match, never run), `prompt()`, the hourly limit |

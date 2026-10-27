@@ -9,6 +9,10 @@
   turn. The step now asks for 1.25 times your front-facing size, or less when the picture has no room for that, and
   shows how far you are; only your eyes, nose and mouth need to stay in view. "Partly out of view" now says which
   edge and which way to move.
+- **Voice ID: the test hears you, and the quiet and far steps pass.** The test gave up 15 seconds after you pressed
+  it even when you were mid-sentence, then said it heard nothing; speech that starts in time is now heard to its
+  end. A microphone that evens out loudness (automatic gain, EasyEffects) lifted a quiet voice back up, so the quiet
+  step never passed; quiet and far now also count when your voice stands less far above the room's noise.
 
 ## 0.8.10 (2026-10-27)
 

@@ -152,7 +152,7 @@ $("#anyway").onclick = async () => { const r = await api("voice/id/train", { use
 $("#undo-build").onclick = async () => { const r = await api("voice/id/undo", {}); $("#tmsg").textContent = r.message || ""; load(); };
 document.querySelectorAll("[data-test]").forEach((b) => b.onclick = async () => {
   const as = b.dataset.test;
-  $("#xmsg").textContent = as === "synthetic" ? "Scoring Kokoro's voices…" : as === "other" ? "Listening… someone else, say a sentence. It should be Someone else." : "Listening… say anything.";
+  $("#xmsg").textContent = as === "synthetic" ? "Scoring Kokoro's voices…" : as === "other" ? "Listening… someone else, say a sentence. It should be Someone else." : "Listening… say a sentence or two.";
   const r = await api("voice/id/test", { as });
   $("#xmsg").textContent = r.ok ? "" : (r.message || "");
   if (r.ok) dial({ ...r, as });

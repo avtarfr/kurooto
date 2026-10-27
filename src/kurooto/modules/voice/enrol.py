@@ -199,6 +199,15 @@ class Ref:
     noise_db: float | None = None
 
 
+def softer(n: dict, ref: Ref) -> bool:
+    """Quieter or farther than the normal voice: 4 dB lower, or 4 dB less above the room's noise. A microphone that
+    evens out loudness (automatic gain, or an input effect such as EasyEffects') lifts a quiet voice back to the usual
+    level, and the room's noise with it, so only the second shows it (reported: the quiet step never passed)."""
+    if n["level_db"] <= ref.level_db - 4:
+        return True
+    return ref.noise_db is not None and n["snr_db"] <= (ref.level_db - ref.noise_db) - 4
+
+
 def quality(
     cut: Cut,
     cond: Condition,
@@ -229,7 +238,7 @@ def quality(
         if want and sum(1 for w in want if w in heard) / len(want) < 0.5:
             return Check(False, "I didn't hear the sentence (heard something else): try again.", n)
     ref = ref or Ref()
-    if cond.key in ("quiet", "far") and ref.level_db is not None and n["level_db"] > ref.level_db - 4:
+    if cond.key in ("quiet", "far") and ref.level_db is not None and not softer(n, ref):
         if cond.key == "quiet":
             return Check(False, "That sounded as loud as your normal voice: say it more quietly.", n)
         return Check(False, "That sounded as close as before: step back about two metres.", n)
