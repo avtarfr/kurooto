@@ -43,7 +43,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
 - [Brain](#brain): 91 settings
-- [Voice and voice notes](#voice-and-voice-notes): 53 settings
+- [Voice and voice notes](#voice-and-voice-notes): 54 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
@@ -5809,11 +5809,30 @@ stays open at least this long after an answer.
 
 Within about 10 seconds of the conversation opening or of Kurooto speaking: it stops speaking, closes the conversation
 and doesn't reply. It notes a misfire (the rule that opened it, never your words) and, with voice.listen.learn_nightly,
-a training row of numbers for the night's learning. While Kurooto is speaking the microphone is held (so it doesn't hear
-itself): say it as soon as it stops, or use /voice stop.
+a training row of numbers for the night's learning. With voice.listen.barge_in you can say it over Kurooto while it
+speaks; without it, say it as soon as it stops, or use /voice stop.
 
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off if one of those phrases is something you often say to Kurooto as a request.
+
+### `voice.listen.barge_in`
+
+Talk over Kurooto while it speaks to stop it: "stop", a new question, or anything you want to say.
+
+While Kurooto speaks it keeps listening, but never takes its own voice coming back through the room for you. A stretch
+of speech counts as you cutting in when Voice ID (on and enrolled) recognises your voice in it (at least about 0.6
+seconds of speech, closer to your voice print than to Kurooto's own, which is made once in memory from a phrase its
+voice says silently), or when it's clearly louder than the echo of what's playing just then and its words, written out
+here, aren't Kurooto's own. Then it stops speaking at once (on this computer, or on another device an add-on plays it
+on), and what you said is: a told-off phrase ("stop", "never mind"): it just stops; a question or a request: a new turn
+in the same conversation; anything else: it stops and listens. Limits: on a speakerphone or at a high volume its echo
+can drown you out, so speak up or come closer; without Voice ID only the loudness check works; and with Voice ID only
+your voice can cut in by voice (a guest has to be louder than its echo). Nothing extra is kept: the sound stays in
+memory as for any stretch, and the event says only how it was noticed and what came of it.
+
+- **Values:** `true` (default), `false` (the microphone is dropped while it speaks, as before; /voice stop still stops
+  it). **Default:** on.
+- **When to change it:** Turn it off if Kurooto stops for the TV or other people talking loudly near it while it speaks.
 
 ### `voice.listen.learn_nightly`
 

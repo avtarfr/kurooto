@@ -362,7 +362,9 @@ class Wake:
 # ------------------------------------------------------------------------------------------------- listener
 class Listener:
     """Cuts the microphone's sound into stretches of speech and hands each one on (with whether the wake word fired),
-    on a thread of its own. `hold()` true (Kurooto speaking): sound is dropped, so it doesn't hear itself."""
+    on a thread of its own. `hold()` true (Kurooto speaking): sound is dropped, so it doesn't hear itself; unless
+    `barge` (barge.py, voice.listen.barge_in) wants it: then each frame and its speech probability go there instead,
+    which tells Kurooto's own voice coming back from you talking over it."""
 
     START, STOP = 0.5, 0.35  # speech probability to start a stretch, and below which counts as quiet
     END_MS = 700  # this much quiet ends a stretch
@@ -379,10 +381,12 @@ class Listener:
         on_start: Callable[[], None] | None = None,
         hold: Callable[[], bool] = lambda: False,
         wake_threshold: float = 0.5,
+        barge=None,
     ):
         self.mic, self.vad, self.wake = mic, vad, wake
         self.on_speech, self.on_level, self.on_start, self.hold = on_speech, on_level, on_start, hold
         self.wake_threshold = wake_threshold
+        self.barge = barge
         self.thread: threading.Thread | None = None
         self.error = ""
         self._stop = threading.Event()
@@ -406,12 +410,26 @@ class Listener:
         quiet = 0
         wake_buf = bytearray()
         woke_at = 0.0
+        barging = False
         try:
             for frame in self.mic.frames():
                 if self._stop.is_set():
                     break
                 if self.on_level is not None:
                     self.on_level(frame)
+                if self.barge is not None and self.barge.wants():  # Kurooto speaking: barge.py hears for it
+                    if not barging:
+                        pre.clear()
+                        buf, quiet, flags = None, 0, bytearray()
+                        wake_buf.clear()
+                        self.vad.reset()
+                        barging = True
+                    if self.barge.feed(frame, self.vad.prob(frame)):
+                        self.vad.reset()
+                    continue
+                if barging:
+                    barging = False
+                    self.vad.reset()
                 if self.hold():
                     pre.clear()
                     buf, quiet = None, 0

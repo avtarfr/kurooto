@@ -757,6 +757,7 @@
 "voice.addons.listen": "Let an add-on take one stretch of speech at a time through the microphone (written out here, never sent).",
 "voice.listen": "Listening through the microphone, all on this computer.",
 "voice.listen.after_speak_s": "Seconds after it spoke during which a question counts as an answer to it.",
+"voice.listen.barge_in": "Talk over Kurooto while it speaks to stop it: \"stop\", a new question, or anything you want to say.",
 "voice.listen.calls": "Keep listening while you're on a phone call (off: listening pauses during calls).",
 "voice.listen.careful_name": "When someone else may be talking, its name wakes Kurooto only said first, as a call (\"Kurooto, what's ...\").",
 "voice.listen.chatter_s": "Speech here that wasn't to Kurooto (any voice) this many seconds ago makes it careful with its name.",

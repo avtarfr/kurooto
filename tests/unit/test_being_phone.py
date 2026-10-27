@@ -243,5 +243,5 @@ def test_the_memory_page_frames_the_notes_as_they_lie_and_only_on_the_phone():
     assert "PH && PH.room ? PH.room(H) : 1" in frame
     assert "if (OM) { memRing(); memFrame(); }" in js  # the lights placed: on the ring, only on an organ page
     assert 'if (OM && name === "memory") memFrame();' in js  # Back and switching pages frame it again
-    phone = (STATIC / "being-phone.js").read_text(encoding="utf-8")
-    assert "room(h) {" in phone and "S.cover = " in phone
+    pjs = (STATIC / "being-phone.js").read_text(encoding="utf-8")
+    assert "room(h) {" in pjs and "S.cover = " in pjs

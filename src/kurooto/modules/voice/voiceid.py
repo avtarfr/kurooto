@@ -213,8 +213,9 @@ class VoiceID:
         return ""
 
     # -------------------------------------------------------------------------------------------- hearing
-    def check(self, pcm: bytes, speech_s: float, voices: int | None = None) -> sid.Verdict:
-        """One stretch of speech: owner, unsure or guest. The sound isn't kept; the score never leaves here."""
+    def check(self, pcm: bytes, speech_s: float, voices: int | None = None, adapt: bool = True) -> sid.Verdict:
+        """One stretch of speech: owner, unsure or guest. The sound isn't kept; the score never leaves here. adapt
+        False: never learned from (a stretch spoken over Kurooto's own voice, barge.py)."""
         p = self.v.portal
         ctx = sid.Ctx(
             portal_session=p.session,
@@ -239,7 +240,7 @@ class VoiceID:
             self._others.append(time.monotonic())
             if self.v.setting("listen.conversation_mode"):
                 biometric.note_others(self.app, float(self.v.setting("listen.conversation_s") or 60))
-        if t is not None and ver.last is not None and self.s("adapt"):
+        if t is not None and ver.last is not None and adapt and self.s("adapt"):
             self._adapt(t, ver.last, v, voices)
         self._face_last = (list(ver.last), v, voices) if v.assisted and ver.last is not None else None
         ver.last = None

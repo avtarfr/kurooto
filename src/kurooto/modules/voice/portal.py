@@ -134,6 +134,18 @@ class Portal:
         self.last_reply = text
         self.state("addressed", "greeting")
 
+    def listen_on(self, why: str, who: str = "") -> None:
+        """(barge-in) It stopped because it was talked over, with nothing to send: open (or kept open) as after an
+        answer, so what the same voice says next within follow_s (or close_s) counts. who: the decision word."""
+        if not self.open:
+            self._set(True, why)
+            self.opener = who
+        self.awaiting = False
+        self.last_who = who
+        self.answered = True
+        self.last = self.spoke_at = self.clock()
+        self.state("addressed", why)
+
     def tick(self) -> None:
         """Called every second or so: close_s of nothing said to it closes it."""
         hold = max(self.close_s, self.follow_s) if self.answered else self.close_s

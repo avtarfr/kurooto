@@ -1171,6 +1171,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.addons.chat` | `true` | Let an add-on have Kurooto chat with someone who isn't you, the guest way: no tools, none of your data. ([guide](wiki/user/settings-guide.md#voiceaddonschat)) |
 | `voice.addons.listen` | `true` | Let an add-on take one stretch of speech at a time through the microphone (written out here, never sent). ([guide](wiki/user/settings-guide.md#voiceaddonslisten)) |
 | `voice.listen.after_speak_s` | `6` | Seconds after it spoke during which a question counts as an answer to it. ([guide](wiki/user/settings-guide.md#voicelistenafterspeaks)) |
+| `voice.listen.barge_in` | `true` | Talk over Kurooto while it speaks to stop it: "stop", a new question, or anything you want to say. ([guide](wiki/user/settings-guide.md#voicelistenbargein)) |
 | `voice.listen.calls` | `false` | Keep listening while you're on a phone call (off: listening pauses during calls). ([guide](wiki/user/settings-guide.md#voicelistencalls)) |
 | `voice.listen.careful_name` | `true` | When someone else may be talking, its name wakes Kurooto only said first, as a call ("Kurooto, what's ..."). ([guide](wiki/user/settings-guide.md#voicelistencarefulname)) |
 | `voice.listen.chatter_s` | `60` | Speech here that wasn't to Kurooto (any voice) this many seconds ago makes it careful with its name. ([guide](wiki/user/settings-guide.md#voicelistenchatters)) |
