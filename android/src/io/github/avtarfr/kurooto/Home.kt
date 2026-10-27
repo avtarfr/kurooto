@@ -1,205 +1,403 @@
 package io.github.avtarfr.kurooto
 
-import android.content.Intent
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.background
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.SeekableTransitionState
+import androidx.compose.animation.core.Transition
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.FloatingToolbarDefaults
-import androidx.compose.material3.HorizontalFloatingToolbar
-import androidx.compose.material3.Surface
-import androidx.compose.ui.draw.clip
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ShortNavigationBar
-import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TwoRowsTopAppBar
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.CancellationException
 
-/** The main screen: pairing, or the tabs. */
+/** The main screen: pairing, or the panes. */
 @Composable
 fun Home(a: MainActivity, ui: HomeState) {
-    if (ui.paired || ui.demo) Tabs(a, ui) else Pairing(a, ui)
+    if (ui.paired || ui.demo) Panes(a, ui) else Pairing(a, ui)
 }
 
-/** A navigation bar destination: a page here (`page`: 0 Today, 1 Inbox, 2 Phone, as HomeState.tab), or another
- *  screen it opens (`opens`, e.g. a WebView activity for the dashboard's SYSTEMS view and the notes map). The bar
- *  takes up to five; a fourth goes in its place in this list (Today, Inbox, Views, Phone). */
-private class Tab(val label: String, val icon: Int, val page: Int, val opens: Class<*>? = null)
-
-private val TABS = listOf(
-    Tab("Today", R.drawable.ic_nav_today, 0),
-    Tab("Inbox", R.drawable.ic_nav_inbox, 1),
-    // your computer's Systems and Notes map, drawn by the dashboard's own code (0.7.0), now a page of this screen (0.8.0: the bar
-    // stays); ViewsPane switches between the two at its top and opens on the one you looked at last
-    Tab("Views", R.drawable.ic_nav_views, 3),
-    Tab("Phone", R.drawable.ic_nav_phone, 2),
-)
-
-/** The navigation bar (Material 3 Expressive's short bar: icon over label, a badge on Inbox) and the selected tab
- *  above it. Switching is a quick cross-fade from the motion scheme (none with "Remove animations"); each tab keeps
- *  where it was scrolled to; Back on Inbox or Phone goes to Today first (with the predictive back gesture). */
+/**
+ * The panes (0.8.10): Chat, where the app opens, and Today, Alarms, Views and Settings under the floating toolbar (KNav).
+ * One SharedTransitionLayout holds them all, so the move between Chat and another pane is one piece: Chat slides out to
+ * the left (its rail rows staggered, Modifier.paneStagger) while the next pane comes in from the right and KNav's upright
+ * form at the rail's foot morphs into the horizontal bar; back to Chat reverses it. Between the other panes the bar
+ * stays and its pill slides; the pages fade through with a slight scale. Every move is the motion scheme's (springs,
+ * no durations of our own), and none with "Remove animations". Back from any pane returns to Chat (the predictive back
+ * gesture scrubs the move with your thumb); back from Chat leaves the app. Each pane keeps where it was scrolled to.
+ */
 @Composable
-private fun Tabs(a: MainActivity, ui: HomeState) {
+private fun Panes(a: MainActivity, ui: HomeState) {
     val reduced = LocalReducedMotion.current
+    val ms = MaterialTheme.motionScheme
     val holder = rememberSaveableStateHolder()
-    val waiting = ui.waiting?.size ?: 0
-    val floating = Prefs.floatingBar(a)
-    val fade = MaterialTheme.motionScheme.fastEffectsSpec<Float>()
-    BackHandler(enabled = ui.tab != 0) { ui.tab = 0 }
-    // the sky: strongest behind Today, quieter behind Inbox and Phone; its parallax follows Today's scroll
-    val strength by animateFloatAsState(if (ui.tab == 0) 1f else 0.35f, MaterialTheme.motionScheme.slowEffectsSpec(), label = "sky")
+    val tr = rememberBackTransition(ui.pane, Pane.CHAT, ui.pane != Pane.CHAT, "pane") { ui.pane = Pane.CHAT }
+    // the sky: strongest behind Today, quieter elsewhere; its parallax follows Today's scroll (read in its draw only)
+    val strength by animateFloatAsState(if (ui.pane == Pane.TODAY) 1f else 0.35f, ms.slowEffectsSpec(), label = "sky")
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Sky(a, strength = { strength }, scroll = { ui.todayScroll * ((strength - 0.35f) / 0.65f) }, modifier = Modifier.fillMaxSize(), fixedHour = ui.demoHour)
-        Scaffold(
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onBackground, // a transparent container has no "on" colour of its own
-            contentWindowInsets = WindowInsets(0),
-            bottomBar = {
-                if (!floating) DockedBar(a, ui, waiting)
-            },
-        ) { pad ->
-            Box(Modifier.fillMaxSize()) {
-                // the page, clear of the bar: its own height when docked; room for the floating toolbar over the content
-                val room = if (floating) PaddingValues(bottom = pad.calculateBottomPadding() + FLOAT_ROOM) else pad
-                AnimatedContent(
-                    targetState = ui.tab,
-                    transitionSpec = { if (reduced) EnterTransition.None togetherWith ExitTransition.None else fadeIn(fade) togetherWith fadeOut(fade) },
-                    label = "tab",
-                ) { tab ->
-                    holder.SaveableStateProvider(tab) {
-                        when (tab) {
-                            0 -> TodayPage(a, ui, room)
-                            1 -> InboxPage(a, ui, room)
-                            3 -> ViewsTab(a, ui, room)
-                            else -> PhonePage(a, ui, room)
-                        }
-                    }
+        SharedTransitionLayout(Modifier.fillMaxSize()) {
+            val spatial = ms.defaultSpatialSpec<androidx.compose.ui.unit.IntOffset>()
+            tr.AnimatedContent(
+                modifier = Modifier.fillMaxSize(),
+                contentKey = { it == Pane.CHAT },
+                transitionSpec = {
+                    when {
+                        reduced -> EnterTransition.None togetherWith ExitTransition.None
+                        // back to Chat: it comes in from the left, the pane leaves to the right
+                        targetState == Pane.CHAT -> slideInHorizontally(spatial) { -it } togetherWith
+                            (slideOutHorizontally(spatial) { it } + fadeOut(ms.slowEffectsSpec()))
+                        // leaving Chat: it goes out to the left, the pane comes in from the right
+                        else -> slideInHorizontally(spatial) { it } togetherWith
+                            (slideOutHorizontally(spatial) { -it } + fadeOut(ms.slowEffectsSpec()))
+                    } using SizeTransform(clip = false)
+                },
+            ) { p ->
+                CompositionLocalProvider(LocalNavShared provides this@SharedTransitionLayout, LocalNavPane provides this) {
+                    if (p == Pane.CHAT) holder.SaveableStateProvider(Pane.CHAT) { ChatPane(a, ui, PaddingValues()) }
+                    else Others(a, ui, p, holder)
                 }
-                if (floating) FloatingBar(a, ui, waiting, Modifier.align(Alignment.BottomCenter))
             }
+        }
+        if (ui.waitingSheet) WaitingSheet(a, ui)
+    }
+}
+
+/** Today, Alarms, Views and Settings under the horizontal bar, which stays while they change under it. */
+@Composable
+private fun Others(a: MainActivity, ui: HomeState, pane: Pane, holder: androidx.compose.runtime.saveable.SaveableStateHolder) {
+    val reduced = LocalReducedMotion.current
+    val ms = MaterialTheme.motionScheme
+    val floating = Prefs.floatingBar(a)
+    val nav = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    // the page, clear of the bar: room for the floating toolbar over the content, or the docked bar's height
+    val room = PaddingValues(bottom = nav + if (floating) FLOAT_ROOM else DOCK_ROOM)
+    Box(Modifier.fillMaxSize()) {
+        AnimatedContent(
+            targetState = pane,
+            transitionSpec = {
+                if (reduced) EnterTransition.None togetherWith ExitTransition.None
+                else (fadeIn(ms.defaultEffectsSpec()) + scaleIn(ms.fastSpatialSpec(), initialScale = 0.96f)) togetherWith
+                    fadeOut(ms.fastEffectsSpec())
+            },
+            label = "pane",
+        ) { p ->
+            holder.SaveableStateProvider(p) {
+                when (p) {
+                    Pane.TODAY -> TodayPane(a, ui, room)
+                    Pane.ALARMS -> AlarmsPane(a, ui, room)
+                    Pane.VIEWS -> ViewsTab(a, ui, room)
+                    else -> SettingsPane(a, ui, room)
+                }
+            }
+        }
+        KNav(a, ui, vertical = false, modifier = Modifier.align(Alignment.BottomCenter))
+    }
+}
+
+/** How much room a page leaves at its end for the floating toolbar (its height plus the gap below it), or the docked bar. */
+private val FLOAT_ROOM = 96.dp
+private val DOCK_ROOM = 72.dp
+
+/**
+ * A transition that follows `target`, and that the predictive back gesture scrubs towards `back` while `enabled` (your
+ * thumb moves it; let go and it finishes with `onBack`, or springs back if you cancel). Android 13 and older: a plain
+ * back, then the move. The panes (to Chat) and Settings (to its grid) use it.
+ */
+@Composable
+fun <T> rememberBackTransition(target: T, back: T, enabled: Boolean, label: String, onBack: () -> Unit): Transition<T> {
+    val state = remember { SeekableTransitionState(target) }
+    val reduced = LocalReducedMotion.current
+    LaunchedEffect(target) { if (reduced) state.snapTo(target) else state.animateTo(target) }
+    PredictiveBackHandler(enabled = enabled) { progress ->
+        try {
+            progress.collect { e -> if (!reduced) state.seekTo(e.progress, back) }
+            onBack()
+        } catch (e: CancellationException) {
+            state.animateTo(state.currentState)
+        }
+    }
+    return rememberTransition(state, label = label)
+}
+
+/** What's waiting for you (Inbox's content) in a sheet over any pane: WaitingBar on Chat, Today's Waiting tile. Drag it
+ *  down, tap outside or go back to close it. */
+@Composable
+private fun WaitingSheet(a: MainActivity, ui: HomeState) {
+    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    ModalBottomSheet(onDismissRequest = { ui.waitingSheet = false }, sheetState = sheet) {
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 32.dp),
+        ) {
+            Text(waitingTitle(ui), style = MaterialTheme.typography.headlineSmallEmphasized, modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
+            InboxContent(a, ui)
         }
     }
 }
 
-/** How much room a page leaves at its end for the floating toolbar (its height plus the gap below it). */
-private val FLOAT_ROOM = 104.dp
+// ---------------------------------------------------------------------------------------------- the bento panes' kit
 
-private fun openTab(a: MainActivity, ui: HomeState, t: Tab) {
-    if (t.opens != null) a.startActivity(Intent(a, t.opens).putExtra("demo", ui.demo)) else ui.tab = t.page
+/**
+ * A bento pane (Today, Alarms, Settings): a two-column grid of rounded tonal cards under a big title, pull to refresh with
+ * the expressive loading indicator, clear of the bar (`room`) and of the status bar (a soft scrim over it, so cards
+ * scrolling under the clock stay readable), at most 640dp wide.
+ */
+@Composable
+fun PaneGrid(
+    a: MainActivity,
+    ui: HomeState,
+    room: PaddingValues,
+    state: LazyGridState = rememberLazyGridState(),
+    refresh: Boolean = true,
+    onScroll: ((Float) -> Unit)? = null,
+    content: LazyGridScope.() -> Unit,
+) {
+    val pull = rememberPullToRefreshState()
+    val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    if (onScroll != null) LaunchedEffect(state) {
+        snapshotFlow { if (state.firstVisibleItemIndex == 0) state.firstVisibleItemScrollOffset.toFloat() else 2000f }.collect { onScroll(it) }
+    }
+    PullToRefreshBox(
+        isRefreshing = ui.refreshing,
+        onRefresh = { if (refresh) a.pull() },
+        state = pull,
+        modifier = Modifier.fillMaxSize(),
+        indicator = {
+            if (refresh) PullToRefreshDefaults.LoadingIndicator(
+                state = pull, isRefreshing = ui.refreshing, modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding(),
+            )
+        },
+    ) {
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            state = state,
+            modifier = Modifier.align(Alignment.TopCenter).widthIn(max = 640.dp).fillMaxSize().imePadding(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = top + 8.dp, bottom = room.calculateBottomPadding() + 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = content,
+        )
+        Box(
+            Modifier.fillMaxWidth().height(top + 8.dp).background(
+                Brush.verticalGradient(listOf(MaterialTheme.colorScheme.background.copy(alpha = 0.85f), Color.Transparent)),
+            ),
+        )
+    }
 }
 
-/** Material 3 Expressive's floating toolbar (0.7.5): a rounded pill that floats above the page, the sky showing around it,
- *  holding the four tabs. The tab you're on shows its label in a coloured pill; the others are icons. Docked: Look → Bar. */
-@Composable
-private fun FloatingBar(a: MainActivity, ui: HomeState, waiting: Int, modifier: Modifier = Modifier) {
-    HorizontalFloatingToolbar(
-        expanded = true,
-        modifier = modifier.navigationBarsPadding().padding(bottom = 12.dp),
-        colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
-        content = {
-            TABS.forEach { t ->
-                val on = t.opens == null && ui.tab == t.page
-                Row(
-                    Modifier.clip(CircleShape).background(if (on) MaterialTheme.colorScheme.primary else Color.Transparent)
-                        .clickable { openTab(a, ui, t) }.padding(horizontal = if (on) 16.dp else 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    BadgedBox(badge = { if (t.page == 1 && t.opens == null && waiting > 0) Badge { Text(if (waiting > 99) "99+" else "$waiting") } }) {
-                        Icon(
-                            painterResource(t.icon), contentDescription = t.label,
-                            tint = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    if (on) {
-                        Spacer(Modifier.width(8.dp))
-                        Text(t.label, color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelLarge)
-                    }
-                }
+/** A grid item across both columns. */
+fun LazyGridScope.wide(key: String, type: String = key, content: @Composable () -> Unit) =
+    item(key = key, span = { GridItemSpan(maxLineSpan) }, contentType = type) { content() }
+
+/** A pane's big title (and the line over it, e.g. the month), with what goes at its end. */
+fun LazyGridScope.paneTitle(title: String, over: String? = null, actions: @Composable RowScope.() -> Unit = {}) =
+    wide("title") {
+        Row(Modifier.fillMaxWidth().padding(start = 4.dp, top = 12.dp, bottom = 4.dp), verticalAlignment = Alignment.Bottom) {
+            Column(Modifier.weight(1f)) {
+                if (over != null) Text(over, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    title,
+                    style = if (over != null) MaterialTheme.typography.displayLargeEmphasized else MaterialTheme.typography.displayMediumEmphasized,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
-        },
+            actions()
+        }
+    }
+
+/** A bento card: Material's extra-large rounded shape in a tonal colour; pressed, it sinks a little (a spring on its
+ *  scale, in the draw phase). `onClick` null: not a button. */
+@Composable
+fun Tile(
+    color: Color,
+    content: Color,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    border: BorderStroke? = null,
+    padding: Dp = 18.dp,
+    body: @Composable ColumnScope.() -> Unit,
+) {
+    val src = remember { MutableInteractionSource() }
+    val pressed by src.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.96f else 1f, MaterialTheme.motionScheme.fastSpatialSpec(), label = "press")
+    val m = modifier.graphicsLayer { scaleX = scale; scaleY = scale }
+    if (onClick != null) {
+        Surface(onClick = onClick, shape = TILE, color = color, contentColor = content, border = border, interactionSource = src, modifier = m) {
+            Column(Modifier.padding(padding), content = body)
+        }
+    } else {
+        Surface(shape = TILE, color = color, contentColor = content, border = border, modifier = m) { Column(Modifier.padding(padding), content = body) }
+    }
+}
+
+val TILE = RoundedCornerShape(28.dp)
+
+/** A card's small heading: an icon and a word in capitals ("WAITING"). */
+@Composable
+fun TileLabel(text: String, icon: Int? = null, color: Color = Color.Unspecified) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (icon != null) {
+            Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+        }
+        Text(
+            text.uppercase(),
+            style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 1.2.sp),
+            color = color,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** A neutral card's colour: the surface container, a little translucent so the sky shows at its edges. */
+@Composable
+fun tileColor(): Color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.94f)
+
+// ------------------------------------------------------------------------------------------- the apricot palette
+
+/**
+ * Look → Colours → Apricot and plum (0.8.10, the Rail design's palette): apricot and plum on near-black (a warm paper
+ * in light mode), a sage green beside them, beside Material You. Kept here with the shell for now; it belongs in
+ * Theme.kt's Palettes when the 0.8.10 parts are merged. ApricotTheme wraps the screen inside KurootoTheme (which still
+ * gives Kurooto's own colours and "Remove animations"), so only the colour scheme changes.
+ */
+object Apricot {
+    const val NAME = "apricot"
+    val dark = darkColorScheme(
+        primary = Color(0xFFFFB873), onPrimary = Color(0xFF4A2800),
+        primaryContainer = Color(0xFF6B3F05), onPrimaryContainer = Color(0xFFFFDCBE),
+        inversePrimary = Color(0xFF8A5100),
+        secondary = Color(0xFFB8D48F), onSecondary = Color(0xFF253500),
+        secondaryContainer = Color(0xFF2F4A14), onSecondaryContainer = Color(0xFFD4F0A8),
+        tertiary = Color(0xFFE0B6FF), onTertiary = Color(0xFF45175F),
+        tertiaryContainer = Color(0xFF4E2A63), onTertiaryContainer = Color(0xFFF2DAFF),
+        background = Color(0xFF14110E), onBackground = Color(0xFFEDE0D5),
+        surface = Color(0xFF14110E), onSurface = Color(0xFFEDE0D5),
+        surfaceVariant = Color(0xFF2A241F), onSurfaceVariant = Color(0xFFD3C4B6),
+        surfaceTint = Color(0xFFFFB873),
+        inverseSurface = Color(0xFFEDE0D5), inverseOnSurface = Color(0xFF322C27),
+        error = Color(0xFFFFB4AB), onError = Color(0xFF690005),
+        errorContainer = Color(0xFF93000A), onErrorContainer = Color(0xFFFFDAD6),
+        outline = Color(0xFF9C8E80), outlineVariant = Color(0xFF4F453B),
+        surfaceBright = Color(0xFF3B342E), surfaceDim = Color(0xFF14110E),
+        surfaceContainerLowest = Color(0xFF0E0C0A), surfaceContainerLow = Color(0xFF1B1714),
+        surfaceContainer = Color(0xFF221D19), surfaceContainerHigh = Color(0xFF2C2622),
+        surfaceContainerHighest = Color(0xFF37302B),
+    )
+    val light = lightColorScheme(
+        primary = Color(0xFF8A5100), onPrimary = Color(0xFFFFFFFF),
+        primaryContainer = Color(0xFFFFDCBE), onPrimaryContainer = Color(0xFF2C1600),
+        inversePrimary = Color(0xFFFFB873),
+        secondary = Color(0xFF4B6628), onSecondary = Color(0xFFFFFFFF),
+        secondaryContainer = Color(0xFFCCEDA0), onSecondaryContainer = Color(0xFF121F00),
+        tertiary = Color(0xFF7A4C93), onTertiary = Color(0xFFFFFFFF),
+        tertiaryContainer = Color(0xFFF2DAFF), onTertiaryContainer = Color(0xFF2F0546),
+        background = Color(0xFFFFF8F4), onBackground = Color(0xFF211A14),
+        surface = Color(0xFFFFF8F4), onSurface = Color(0xFF211A14),
+        surfaceVariant = Color(0xFFF2DFD1), onSurfaceVariant = Color(0xFF51443A),
+        surfaceTint = Color(0xFF8A5100),
+        inverseSurface = Color(0xFF372F28), inverseOnSurface = Color(0xFFFDEEE3),
+        error = Color(0xFFBA1A1A), onError = Color(0xFFFFFFFF),
+        errorContainer = Color(0xFFFFDAD6), onErrorContainer = Color(0xFF410002),
+        outline = Color(0xFF837468), outlineVariant = Color(0xFFD5C3B5),
+        surfaceBright = Color(0xFFFFF8F4), surfaceDim = Color(0xFFE6D7CC),
+        surfaceContainerLowest = Color(0xFFFFFFFF), surfaceContainerLow = Color(0xFFFFF1E8),
+        surfaceContainer = Color(0xFFFAEBE0), surfaceContainerHigh = Color(0xFFF4E5DA),
+        surfaceContainerHighest = Color(0xFFEEDFD4),
     )
 }
 
-/** The docked navigation bar (Look → Bar: Docked): Expressive's short bar, tonal and nearly opaque (a hint of the sky, never
- *  the page scrolling under it). */
 @Composable
-private fun DockedBar(a: MainActivity, ui: HomeState, waiting: Int) {
-    ShortNavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.97f)) {
-        TABS.forEach { t ->
-            ShortNavigationBarItem(
-                selected = t.opens == null && ui.tab == t.page,
-                onClick = { openTab(a, ui, t) },
-                icon = {
-                    BadgedBox(badge = { if (t.page == 1 && t.opens == null && waiting > 0) Badge { Text(if (waiting > 99) "99+" else "$waiting") } }) {
-                        Icon(painterResource(t.icon), contentDescription = null)
-                    }
-                },
-                label = { Text(t.label) },
-            )
-        }
-    }
+fun ApricotTheme(content: @Composable () -> Unit) {
+    MaterialExpressiveTheme(colorScheme = if (isSystemInDarkTheme()) Apricot.dark else Apricot.light, content = content)
 }
 
 /**

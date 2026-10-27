@@ -103,7 +103,8 @@ final class Alarms {
         boolean exact = true;
         try {
             if (!exact(c)) throw new SecurityException("no exact alarms");
-            PendingIntent show = PendingIntent.getActivity(c, CODE + 1, new Intent(c, MainActivity.class), PendingIntent.FLAG_IMMUTABLE);
+            // the status bar's alarm opens the Alarms pane (0.8.10)
+            PendingIntent show = PendingIntent.getActivity(c, CODE + 1, new Intent(c, MainActivity.class).putExtra("tab", "alarms"), PendingIntent.FLAG_IMMUTABLE);
             am.setAlarmClock(new AlarmManager.AlarmClockInfo(next * 1000, show), pi);
         } catch (SecurityException e) { // Android 12+ without the permission: as close as it allows
             exact = false;

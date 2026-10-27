@@ -340,7 +340,7 @@ folder, files you save and commits you make in your projects, and a browser redu
 never a URL. Raw events last 7 days; then only totals ("2 h on glacier-flow"). It is **never used to check up on you**: a sentence like "you said you'd study,
 but my data shows otherwise" is removed before it can be sent, always.
 
-**Your phone's sensors** (each off until you switch it on, in the Phone tab of the app *and* here with `mind.senses.phone.<sensor>`): screen on and unlocks,
+**Your phone's sensors** (each off until you switch it on, in the app's Settings → Senses *and* here with `mind.senses.phone.<sensor>`): screen on and unlocks,
 charging, whether you're still, walking or in a vehicle (worked out on the phone), steps, room light (dark, dim, bright), arriving at and leaving your saved
 places, headphones, Do Not Disturb, your next alarm, which Wi-Fi (a code the phone makes itself; you say once what it is: `/senses wifi label <code> home`)
 and total screen time a day (never per app). The microphone is not a sense. The phone takes a reading every 15 minutes (Android batches it, so it's

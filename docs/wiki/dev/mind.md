@@ -760,7 +760,7 @@ is the price of the probe; `probe_words` is at least 3. (6) The demonstration so
 Code: `mind/senses/` (`store.py`, `intero.py`, `activity.py`, `phone.py`); `modules/mind.py` jobs `intero` (1m), `activity` (1m), `activity_poll` (5m),
 `senses_roll` (04:30) and `/senses`; `modules/calls/chat.py` `take` passes `{"senses": ...}` to `phone.ingest`; the gate's `AUDIT` lint; `measure.health` reads
 `intero.last_fine`; stage 12's demos read the store. Android: `Senses.java` (alarm, readings, held bins, sealed send via `Chat.sendSenses`),
-`SensesRules.java` (the pure rules), `SensesTest.java`, a Senses group in the Phone tab, `Places.entered` -> `Senses.place`. Tests: `test_mind_senses.py` (15),
+`SensesRules.java` (the pure rules), `SensesTest.java`, a Senses group in Settings (`SettingsPane.kt`, 0.8.10; the Phone tab before), `Places.entered` -> `Senses.place`. Tests: `test_mind_senses.py` (15),
 `SensesTest`. Switches: `mind.senses.intero` (on), `mind.senses.activity` (off), `mind.senses.phone.<sensor>` (11, each off).
 
 `store`: `<state>/mind-senses/senses.db`, `events` (7 days) and `days` (totals); `rollup` folds old events into totals; `forget` per sensor. `intero.sample` reads psutil and

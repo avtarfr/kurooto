@@ -1684,7 +1684,7 @@ part>` is your hand on it. Every belief keeps a source (said, saw, inferred, ima
 
 **What it senses (Brain, `/senses`).** Its own machine every minute (temperature, memory, battery, disk, AI limits: on with Brain); what you are working on
 (window class, hashed titles, saves and commits in your projects: `mind.senses.activity`, off, never keystrokes, screen or URLs); and, each off by default and
-switched on both in the app's Phone tab and here, the phone's screen, charging, motion, steps, light, places, headphones, Do Not Disturb, next alarm, Wi-Fi code and
+switched on both in the app (Settings → Senses) and here, the phone's screen, charging, motion, steps, light, places, headphones, Do Not Disturb, next alarm, Wi-Fi code and
 total screen time (sealed on the phone, 7 days raw then totals, never used to nag or to check up on you). `/senses off <name>` switches one off and deletes it.
 *Undo:* the switches; Delete Brain's data removes it all.
 
@@ -3390,19 +3390,28 @@ language is downloaded for on-device recognition (in the phone's language or spe
    apps" list in Settings → Battery, or calls may not ring.
 5. Test: dashboard → Phone → **Ring my phone**.
 
-**The app's screen** (0.7.0) has four tabs at the bottom: **Today** (the date, **Call** and **Chat**, your day),
-**Inbox** (check-in and quiz cards answered in place, questions, approvals and messages, and what's waiting for your
-computer; a number on the tab says how much waits for you), **Views** (Systems and the Notes map, below) and **Phone** (the checklist, location reminders, ringtones,
-bedside mode, and this phone with **Unpair**). Pull a tab down to look again. It's Material 3 Expressive, in your
+**The app's panes** (0.8.10; four tabs from 0.7.0): it opens on **Chat**; a bar floating at the bottom has **Chat**,
+**Today**, **Alarms**, **Views** and **Settings** (in Chat the same icons stand upright at the foot of the chat's rail and
+stretch out into the bar as you leave it). **Chat** has the only call button, and a "waiting for you" bar that opens
+what's waiting (check-in and quiz cards answered in place, questions, approvals and messages, what waits for your
+computer) in a sheet; the Chat icon counts it with unread messages. **Today** is a grid of cards: the class you're in with
+a ring of the time left, Waiting and Due soon, the day as a strip, what Kurooto asked you, Next and Alarm, then what's
+due, reminders and open threads. **Alarms**: the next wake-up alarm as a big card with **Ring on this phone too** and its
+tone, the later ones two to a row, the ringtones and bedside mode. **Views**: Systems and the Notes map (below).
+**Settings**: every setting the app has in groups (Look, Notifications, Chat, Calls, Places, Senses, Bedside, This phone:
+the checklist, pairing, **Unpair**, the version and update) under a search field that finds any of them; Kurooto's own
+settings stay on the computer's dashboard. Back from any pane goes to Chat. Pull Today down to look again. **Look →
+Colours** adds **Apricot and plum** (the app's own warm palette) beside Material You. Where each setting moved:
+[Your phone](wiki/user/phone-app.md#the-apps-panes-0810). It's Material 3 Expressive, in your
 wallpaper's colours on Android 12+, with a slow living background (a cell and its nerves, as the dashboard's SYSTEMS
 view, tinted by the hour) that holds still with **Remove animations** on. Since 0.8.7 bedside mode and the call screen are
 in the same style (the ringing screen over the sky with its buttons in a floating bar; bedside mode on black with floating
 cards, warm at night).
 
 The app looks for a new version each time you open it (at most every 2 minutes) and shows an **Update** button at the
-end of Today; it opens the download.
+end of Today and in Settings → This phone; it opens the download.
 
-**Today** (0.6.0): on the Today tab under Call and Chat, your day as your computer last sent it ("As of 14:05"), also while it's off:
+**Today** (0.6.0): on the Today pane, your day as your computer last sent it ("As of 14:05"), also while it's off:
 the alarm, classes and calendar events, what's due with parts done ("4/7"), reminders and open threads. Tap something
 due for **+1** and **Done** (as on Telegram; with the computer off they wait on your call line). The list goes to your
 call line sealed for each Android phone with a key only that phone has; the call line can't read it. Events are in
@@ -3412,7 +3421,7 @@ the app with the internet on, which sends its key again (0.6.1).
 phone from it.
 
 **Systems and the Notes map** (0.7.0, Android, off by default): the dashboard's SYSTEMS and NOTES map on the phone's
-**Views** tab, drawn by the same code (two buttons at the top switch between them): tap a feature or a note for its card (no note contents), drag, pinch; read-only. Systems is
+**Views** pane, drawn by the same code (two buttons at the top switch between them): tap a feature or a note for its card (no note contents), drag, pinch; read-only. Systems is
 live while it's open (the app tells your computer every 20 s; your computer sends a copy every few seconds), the
 Notes map follows your notes (at most every few minutes, up to 5,000 best-linked notes, `calls.views_notes`). With the computer asleep the
 last copy shows "as of" its time. Both go to your call line sealed for each Android phone; the call line can't read
@@ -3423,8 +3432,8 @@ in the Android app**. *Undo:* turn it off: the call line drops its copies.
 Android's alarm clock, so it rings with Stop and Snooze even when your computer, your call line or the internet can't
 be reached. The call for the same alarm and the phone's alarm ring as one; the first Stop, Snooze or Answer counts for
 both (Stop turns the call down, Snooze snoozes it). Android 12+: allow exact alarms (the checklist's Fix), or it can
-ring a few minutes late. *Undo:* tap **Ring on this phone too** (**On** / **Off**) in Today's alarm group to turn the
-phone's copy off.
+ring a few minutes late. *Undo:* turn off **Ring on this phone too** (the switch on the Alarms pane's big card) to turn
+the phone's copy off.
 
 **Buttons on notifications** (0.6.0): with `"reminder"` or `"deadline"` in `notify.app_kinds`, a reminder comes with
 **Done**, **+10 min**, **+1 h**, a deadline with **+1**, **Done**, **Snooze 3 h**: the same as on Telegram (a
@@ -3441,17 +3450,17 @@ stays in the box.
 *Undo:* remove the widget or the tile. *Leaves your computer:* nothing new; the note travels like a shared file, and
 the 2x1 widget asks your call line what's waiting as the app does.
 
-**The app's switches** (0.7.2, Phone tab → Switches): **Connect straight to your call line** (off: ntfy.sh only) and
-**Moving background** (off: a still picture). 0.8.7: **New call screen** (on; off: the call screen from before 0.8.7;
+**The app's switches** (0.7.2; since 0.8.10 in Settings → Calls and Settings → Look): **Connect straight to your call
+line** (off: ntfy.sh only) and **Moving background** (off: a still picture). 0.8.7: **New call screen** (on; off: the call screen from before 0.8.7;
 the next call opens with it). *Undo:* tap the switch again.
 
 **Bedside mode** (0.6.0): an old Android phone on a charger as a dock. A big clock, the date, the next alarm (Kurooto's
 wake-up call, or the phone's own alarm), the calls due next, and one big **Talk to Kurooto** button that starts a voice
-call (the same call screen as the app's Call button), with **Chat** and **Close** below it. It shows over the lock
+call (the same call screen as the chat's call button), with **Chat** and **Close** below it. It shows over the lock
 screen, so Talk works on a locked phone; Chat asks you to unlock first, and with a PIN or pattern the calls' reasons
 stay hidden until you unlock. The screen dims by the hour: the phone's own brightness by day, lower from 20:00, as dim as
 it goes and in warm red-orange from 22:00 to 06:00 (tap the screen to brighten it for 15 s). A call or the wake-up call
-rings there full screen. Open it from the app's **Phone** tab (**Bedside mode** → **Open bedside mode**).
+rings there full screen. Open it from the app's **Alarms** pane (the **Bedside** card) or **Settings → Bedside**.
 - **Open by itself while charging**: off by default; pick the hours (say 22:00 to 07:00). Plugging in within them, or
   the hours starting while it charges, opens it; unplugging closes it again. On Android 10 and newer it opens through a
   full-screen notification (by itself with the screen off; with the phone in use, tap the notice).
@@ -4384,7 +4393,7 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | The bot says it's paused | `/resume`; or it's on battery with `power.on_battery` set to `pause`: plug in, or choose `saver`. |
 | The AI doesn't answer, or something broke and you don't know what | `/fixme` (or `kurooto fixme` in a terminal): what fails, matched by rules to the troubleshooting page and known issues, with Fix buttons; it needs no AI. `/fixme <what you see>` finds the rows for it. |
 | "needs a look" on the dashboard, or a "Needs a look" line in the weekly summary | `/health` (or the Features tab) says what and offers a Fix button where Kurooto can fix it; a sign-in that ended needs you (the line says where). |
-| "Your alarm ... might not ring" | Set your phone's own alarm for tonight, then: Phone calls set up and linked (`kurooto doctor`), a phone paired (Phone tab). The Fix button reconnects or plans the alarm again. |
+| "Your alarm ... might not ring" | Set your phone's own alarm for tonight, then: Phone calls set up and linked (`kurooto doctor`), a phone paired (the dashboard's Phone tab). The Fix button reconnects or plans the alarm again. |
 | A reminder didn't reach my phone while the lid was shut | `kurooto doctor`: the "Reminders with the lid shut" line says what your call line holds and for how many phones. "No phone can open them yet": update the Android app and open it once. Also check the app's checklist (notifications, **Battery: unrestricted**) and that the phone was online. Reminders set in the last seconds before the lid shut on a Mac come when it wakes. |
 | A message came only in the evening bundle, or not at all | More than `notify.calm.messages` (6) came by themselves that day, it's exam season, you chose Fewer, Another time or Stop for that kind, or Dreaming tuned that kind (`/dream policy`). `/why` on the next one (or its Why? button) says which; `/calm` lists what's turned down, with buttons to start it again. `/calm off` restores the old behaviour. |
 | Requests run at a different effort than before, the fallback AI answers first, or Start-by sizes changed | Dreaming tuned it from what was recorded (one change a night, said in the morning message). `/dream policy` shows what's tuned and why; the morning line's Undo puts it back, or remove the entry from `brain.effort_map`, `brain.fallback_first` or `startby.sizes`. `dreaming.tune_effort`, `tune_fallbacks` or `tune_sizing` = false stops that area. |

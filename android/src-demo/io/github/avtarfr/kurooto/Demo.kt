@@ -11,7 +11,7 @@ import java.util.TimeZone
 /**
  * Made-up data for looking at the screens without pairing (debug and dev builds only; release builds have the empty
  * Demo in src-nodemo): adb shell am start -n io.github.avtarfr.kurooto.dev/io.github.avtarfr.kurooto.MainActivity
- * --ez demo true [--es tab inbox] (BedsideActivity and CallActivity take the same extra, 0.8.7). Nothing here is sent anywhere: in demo, Call, Chat, answers, Done and +1 only say so;
+ * --ez demo true [--es tab today|alarms|settings|inbox] (BedsideActivity and CallActivity take the same extra, 0.8.7). Nothing here is sent anywhere: in demo, Call, Chat, answers, Done and +1 only say so;
  * the Views tab shows made-up copies of Systems and the Notes map (view()).
  */
 object Demo {
@@ -24,10 +24,7 @@ object Demo {
             .put("v", 1)
             .put("date", SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(now))
             .put("day", SimpleDateFormat("EEEE d MMMM", Locale.ENGLISH).format(now))
-            .put("classes", JSONArray()
-                .put(JSONObject().put("time", "09:30").put("name", "Linear algebra"))
-                .put(JSONObject().put("time", "11:30").put("name", "Chemistry lab").put("skipping", true))
-                .put(JSONObject().put("time", "14:00").put("name", "Topology seminar")))
+            .put("classes", demoClasses())
             .put("events", JSONArray().put("16:30 Study group, library").put("19:00 Call with Sam"))
             .put("due", JSONArray()
                 .put(JSONObject().put("id", "d1").put("title", "Problem set 4 (Linear algebra)").put("when", "tomorrow")
@@ -35,12 +32,37 @@ object Demo {
                 .put(JSONObject().put("id", "d2").put("title", "Lab report").put("when", "Fri").put("acts", JSONArray().put("done")))
                 .put(JSONObject().put("id", "d3").put("title", "Midterm (Topology)").put("when", "Mon 03 Nov").put("exam", true)))
             .put("reminders", JSONArray().put(JSONObject().put("when", "Sat 18:00").put("what", "Return the library books")))
-            .put("alarm", JSONObject().put("next", "Tomorrow 07:00").put("daily", "07:00")
-                .put("at", JSONArray().put(now.time / 1000 + 36000)))
+            .put("alarm", JSONObject().put("next", "Tomorrow 07:00").put("daily", "07:00").put("reason", "First class at 08:30")
+                .put("at", demoAlarms()))
             .put("threads", JSONArray().put(JSONObject().put("text", "Ask about the project deadline"))
                 .put(JSONObject().put("text", "Find a room for the study group")))
             .put("questions", 2)
         return JSONObject().put("list", list).put("at", iso.format(Date(now.time - 12 * 60_000))).put("computer", "online")
+    }
+
+    /** The day's classes (0.8.10: with their ends, as your computer sends them): one on now, one gone by, one skipped,
+     *  one still to come, so Today's big card and its strip both have something to show at any hour. */
+    private fun demoClasses(): JSONArray {
+        val c = java.util.Calendar.getInstance()
+        val h = c.get(java.util.Calendar.HOUR_OF_DAY)
+        fun span(from: Int, to: Int) = String.format(Locale.ROOT, "%02d:00–%02d:00", (from + 24) % 24, (to + 24) % 24)
+        return JSONArray()
+            .put(JSONObject().put("time", span(h - 3, h - 2)).put("name", "Linear algebra"))
+            .put(JSONObject().put("time", span(h - 1, h + 1)).put("name", "Waves and oscillations"))
+            .put(JSONObject().put("time", span(h + 1, h + 2)).put("name", "Chemistry lab").put("skipping", true))
+            .put(JSONObject().put("time", span(h + 3, h + 4)).put("name", "Topology seminar"))
+    }
+
+    /** The wake-up alarms still to ring (0.8.10: several, for the Alarms pane): tomorrow 06:50, then three more. */
+    private fun demoAlarms(): JSONArray {
+        val c = java.util.Calendar.getInstance()
+        fun at(days: Int, h: Int, m: Int): Long {
+            val x = c.clone() as java.util.Calendar
+            x.add(java.util.Calendar.DAY_OF_YEAR, days)
+            x.set(java.util.Calendar.HOUR_OF_DAY, h); x.set(java.util.Calendar.MINUTE, m); x.set(java.util.Calendar.SECOND, 0)
+            return x.timeInMillis / 1000
+        }
+        return JSONArray().put(at(1, 6, 50)).put(at(2, 7, 0)).put(at(3, 7, 30)).put(at(4, 9, 0)).put(at(5, 7, 0))
     }
 
     fun waiting(): List<JSONObject> = listOf(
