@@ -15,13 +15,16 @@
 .bc [role="button"], .bc [role="tab"], .bc [role="switch"] { cursor: pointer; -webkit-user-select: none; user-select: none; }
 .bc [tabindex]:focus { outline: none; }
 .bc [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
-.bc h2, .bc h3, .bc h4 { padding: 0; color: var(--fg); font-family: inherit; text-transform: none; letter-spacing: normal; line-height: 1.3; }
+/* the dashboard styles every heading in a pane (.pane h3: flex, padding, a fixed height, a rule under it, its own
+   font); these win over it (three classes beat body[data-design] .pane h3) */
+.bc.bc.bc h2, .bc.bc.bc h3, .bc.bc.bc h4 { display: block; height: auto; margin: 0; padding: 0; border: 0; color: var(--fg);
+  font: inherit; text-transform: none; letter-spacing: normal; line-height: 1.3; justify-content: normal; }
 .bc code { font-family: var(--mono, "JetBrains Mono", Consolas, monospace); font-size: 0.86em; background: none; padding: 0; border: 0; color: inherit; }
 
 /* the head: the title and its status, the search */
 .bc-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; padding: 2px 0 10px; }
 .bc-title { min-width: 0; margin-right: 16px; }
-.bc-title h2 { margin: 0; font-size: 1.25em; font-weight: 650; letter-spacing: -0.01em; }
+.bc.bc.bc .bc-title h2 { margin: 0; font-size: 1.25em; font-weight: 650; letter-spacing: -0.01em; }
 .bc-status { display: block; margin-top: 2px; color: var(--dim); font-size: 0.86em; }
 .bc-live { color: var(--accent-text, var(--accent)); font-weight: 600; }
 .bc-live::before { content: ""; display: inline-block; width: 6px; height: 6px; margin: 0 6px 1px 0; border-radius: 50%;
@@ -47,20 +50,26 @@
 .bc.bc-detail-open .bc-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 440px); grid-column-gap: 18px; }
 .bc-detail { position: -webkit-sticky; position: sticky; top: 0; align-self: start; max-height: calc(100vh - 150px); overflow-y: auto;
   padding: 14px 16px 16px; border: 1px solid var(--bc-rule); border-radius: var(--bc-r); background: var(--bc-surface); }
+/* a narrow page (the dashboard's roomy layout): the decision goes above the list instead of squeezing it */
+@media (max-width: 980px) {
+  .bc.bc-detail-open:not(.bc-phone) .bc-wrap { display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; }
+  .bc.bc-detail-open:not(.bc-phone) .bc-detail { -webkit-order: -1; order: -1; -webkit-align-self: stretch; align-self: stretch; position: static;
+    max-height: none; margin-bottom: 14px; }
+}
 .bc-dhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .bc-back { display: inline-block; color: var(--accent-text, var(--accent)); font-weight: 600; }
-.bc-dtitle { margin: 0 0 2px; font-size: 1.12em; font-weight: 650; overflow-wrap: anywhere; }
-.bc-ev { margin: 18px 0 6px; font-size: 0.78em; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim); }
+.bc.bc.bc .bc-dtitle { margin: 0 0 2px; font-size: 1.12em; font-weight: 650; overflow-wrap: anywhere; }
+.bc.bc.bc .bc-ev { margin: 18px 0 6px; font-size: 0.78em; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim); }
 
 /* cards and grids */
 .bc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); grid-gap: 12px; align-items: start; }
 .bc-card { padding: 12px 14px; border: 1px solid var(--bc-rule); border-radius: var(--bc-r); background: var(--bc-surface); min-width: 0; }
-.bc-card h3 { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 8px; font-size: 0.92em; font-weight: 650; }
+.bc.bc.bc .bc-card h3 { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 8px; font-size: 0.92em; font-weight: 650; }
 .bc-card.bc-flat { margin-bottom: 12px; }
 .bc-detail .bc-card { background: transparent; padding: 10px 0 4px; border: 0; border-top: 1px solid var(--bc-rule); border-radius: 0; }
 .bc-island { margin-bottom: 22px; }
-.bc-island > h3 { display: flex; align-items: center; margin: 0 0 10px; font-size: 1em; font-weight: 650; }
-.bc-island > h3 .bc-dim { margin-left: 8px; font-weight: 400; font-size: 0.88em; }
+.bc.bc.bc .bc-island > h3 { display: flex; align-items: center; margin: 0 0 10px; font-size: 1em; font-weight: 650; }
+.bc.bc.bc .bc-island > h3 .bc-dim { margin-left: 8px; font-weight: 400; font-size: 0.88em; }
 .bc-link { color: var(--accent-text, var(--accent)); font-size: 0.86em; font-weight: 500; }
 .bc-link:hover { text-decoration: underline; }
 
@@ -162,7 +171,7 @@ body.phone-brain { background: var(--bg); color: var(--fg); font: 15px/1.45 "Pub
 #brain { height: 100%; }
 .bc-phone { --bc-r: 18px; display: flex; flex-direction: column; height: 100%; }
 .bc-phone .bc-head { flex: 0 0 auto; display: block; padding: 12px 16px 6px; }
-.bc-phone .bc-title h2 { font-size: 1.3em; }
+.bc.bc.bc.bc-phone .bc-title h2 { font-size: 1.3em; }
 .bc-phone .bc-find { display: block; margin-top: 10px; min-width: 0; }
 .bc-phone .bc-find input { padding: 11px 16px; border: 0; border-radius: 999px; font-size: 1em; }
 .bc-phone .bc-tabs { flex: 0 0 auto; padding: 4px 12px 10px; margin: 0; border: 0; }

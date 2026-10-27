@@ -232,6 +232,8 @@
         opts.api(`view=decision&id=${encodeURIComponent(id)}`).then((d) => { if (S.open && S.open.id === id) { S.open.d = d && d.id ? d : { missing: true }; drawDetail(); } }).catch(() => {});
       } else S.open.d = local ? Object.assign({}, local, { evidence: null }) : { missing: true };
       drawDetail();
+      // a narrow dashboard puts it above the list: bring it into sight
+      if (!phone && detail.scrollIntoView && detail.getBoundingClientRect().top < 0) detail.scrollIntoView({ block: "start" });
     }
     function evRows(rows) {
       if (!rows || !rows.length) return empty("Nothing in the log then.");
@@ -365,7 +367,7 @@
       const stops = `${(st.spans || []).length ? `<ul class="bc-list bc-tight">${st.spans.map((s) => `<li class="bc-row"><span class="bc-time">${esc(when(s.start))}</span><span class="bc-main"><b>${esc(s.kind.replace(/_/g, " "))} for ${esc(dur(s.end - s.start))}</b><span class="bc-sub">its drive was frozen; stopping is fine</span></span></li>`).join("")}</ul>` : empty("No stops in the last 30 days.")}<p class="bc-note">${num(st.crashes)} crash${st.crashes === 1 ? "" : "es"} in the last 30 days.</p>`;
       const limits = (m.limits || []).length ? kv(m.limits.map((r) => [r[0], esc(r[1])])) : empty("The gate is off.");
       const pc = pr.counts || {};
-      const prom = `<p>${chip(`${num(pc.open)} open`)} ${chip(`${num(pc.kept)} kept`, "bc-ok")} ${chip(`${num(pc.broken)} broken`, pc.broken ? "bc-bad" : "")} ${chip(`${num(pc.renegotiated)} renegotiated`)}</p>${(pr.rows || []).length ? `<ul class="bc-list bc-tight">${pr.rows.map((r) => `<li class="bc-row"><span class="bc-time">${esc(when(r.due))}</span><span class="bc-main"><b>${esc(r.text)}</b></span><span class="bc-tags">${chip(r.state, r.state === "kept" ? "bc-ok" : r.state === "broken" ? "bc-bad" : "")}</span></li>`).join("")}</ul>` : ""}`;
+      const prom = `<p>${chip(`${num(pc.open)} open`)} ${chip(`${num(pc.kept)} kept`, pc.kept ? "bc-ok" : "")} ${chip(`${num(pc.broken)} broken`, pc.broken ? "bc-bad" : "")} ${chip(`${num(pc.renegotiated)} renegotiated`)}</p>${(pr.rows || []).length ? `<ul class="bc-list bc-tight">${pr.rows.map((r) => `<li class="bc-row"><span class="bc-time">${esc(when(r.due))}</span><span class="bc-main"><b>${esc(r.text)}</b></span><span class="bc-tags">${chip(r.state, r.state === "kept" ? "bc-ok" : r.state === "broken" ? "bc-bad" : "")}</span></li>`).join("")}</ul>` : ""}`;
       const jour = (m.journal || []).length ? `<ul class="bc-list bc-tight">${m.journal.map((j) => `<li class="bc-row"><span class="bc-main"><b>${esc(dayName(j.day))}</b><span class="bc-sub">${num(j.lines)} line${j.lines === 1 ? "" : "s"} from ${num(j.facts)} facts${j.rejected ? `, ${num(j.rejected)} reworded to the fixed words` : ""}</span></span></li>`).join("")}</ul>` : empty("No journal yet.");
       const story = (m.story || []).length ? `<ul class="bc-list bc-tight">${m.story.map((c) => `<li class="bc-row"><span class="bc-main"><b>Week ${esc(c.week)}</b><span class="bc-sub">${num(c.lines)} line${c.lines === 1 ? "" : "s"}${c.struck ? `, ${num(c.struck)} struck` : ""}${c.quoted ? `, ${num(c.quoted)} quoted` : ""}</span></span></li>`).join("")}</ul>` : empty("No chapters yet.");
       return `<div class="bc-grid">${card("What it forgot", forgot)}${card("Stops", stops)}${card("Limits today", limits)}${card("Promises", prom)}
@@ -384,7 +386,7 @@
       for (const r of (d.experiments || {}).lab || []) if (has(r.project) || has(r.objective)) other.push({ in: "experiments", text: r.project, note: r.protocol });
       for (const isl of d.islands || []) for (const p of isl.parts) {
         if (has(p.name) || has(p.desc)) other.push({ in: "parts", text: p.name, note: p.state, part: p.id });
-        for (const s of p.settings) if (has(s.key) || has(s.tip)) other.push({ in: "settings", text: s.key, note: String(s.value), part: p.id });
+        for (const s of p.settings) if (has(s.key) || has(s.tip)) other.push({ in: "settings", text: s.key, note: typeof s.value === "boolean" ? (s.value ? "on" : "off") : String(s.value), part: p.id });
       }
       return { q: q, log: log, other: other.slice(0, 60) };
     }
@@ -408,7 +410,17 @@
 
     // --------------------------------------------------------------------------------------------- drawing
     const DRAW = { now: tabNow, timeline: tabTimeline, decisions: tabDecisions, parts: tabParts, beliefs: tabBeliefs, experiments: tabExperiments, skills: tabSkills, plans: tabPlans, model: tabModel, memory: tabMemory };
-    function render() {
+    // what has the keyboard's focus in the body, so a redraw can give it back
+    const FOCUS = ["data-key", "data-f", "data-bsrc", "data-dec", "data-seq", "data-more", "data-goto-tl", "data-goto-part", "data-tab"];
+    function focusSel() {
+      const a = document.activeElement;
+      if (!a || a === body || !body.contains(a)) return "";
+      for (const k of FOCUS) if (a.hasAttribute(k)) return `[${k}="${String(a.getAttribute(k)).replace(/["\\]/g, "\\$&")}"]`;
+      return "";
+    }
+    // soft: a fresh copy arrived (every few seconds). It waits while a filter of the body is in use (redrawing would
+    // close its list under the hand) and draws when that filter lets go of the focus.
+    function render(soft) {
       if (S.stopped) return;
       head();
       const searching = S.q.trim().length >= 2;
@@ -428,7 +440,16 @@
       else if (searching) html = tabSearch();
       else html = DRAW[S.tab]();
       const sig = (searching ? "?" + S.q : S.tab) + "|" + html.length + "|" + html;
-      if (sig !== S.sig.body) { S.sig.body = sig; show(body, html); }
+      if (sig !== S.sig.body) {
+        const a = document.activeElement;
+        if (soft && a && a.tagName === "SELECT" && body.contains(a)) S.waiting = true;
+        else {
+          const f = focusSel();
+          S.sig.body = sig; S.waiting = false; show(body, html);
+          const back = f ? body.querySelector(f) : null;
+          if (back && back.focus) back.focus();
+        }
+      }
       if (S.sticky.part && S.tab === "parts" && !searching) {
         const el = body.querySelector(`#bc-part-${S.sticky.part}`);
         if (el && el.scrollIntoView) el.scrollIntoView({ block: "center" });
@@ -480,6 +501,7 @@
         e.preventDefault(); e.target.click();
       }
     });
+    body.addEventListener("focusout", (e) => { if (S.waiting && e.target.tagName === "SELECT") setTimeout(() => { if (S.waiting) render(); }, 0); });
     detail.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) { S.open = null; drawDetail(); } });
     const onKey = (e) => { if (e.key === "Escape" && S.open && root.isConnected) { e.preventDefault(); e.stopPropagation(); S.open = null; drawDetail(); } };
     window.addEventListener("keydown", onKey, true);
@@ -490,7 +512,7 @@
       S.data = data;
       if (S.open && !S.open.d && !opts.api) openDecision(S.open.id);
       if (!opts.api && S.q.trim().length >= 2) S.found = localSearch(S.q.trim());
-      render();
+      render(true);
     }
     function refresh() {
       if (!opts.api || S.stopped) return;
@@ -550,8 +572,8 @@
       view.set({ computer: d.computer || "", reach: d.reach !== false });
       const snap = d.snap && typeof d.snap === "object" ? d.snap : null;
       if (snap) { had = true; view.update(snap); }
+      else if (d.off) { had = false; view.update({ off: true, why: "Turned off on your computer: on its dashboard, Phone → Show on the phone." }); } // nothing of it stays
       else if (had) return true; // nothing new: the last copy stays
-      else if (d.off) view.update({ off: true, why: "Turned off on your computer: on its dashboard, Phone → Show on the phone." });
       else view.update({ off: true, why: d.reach === false ? "Can't reach your call line, and there's no copy on this phone yet." : "Nothing here yet. Your computer sends the Brain while you watch it, when it's on and Brain is on." });
       return true;
     }

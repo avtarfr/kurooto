@@ -100,7 +100,8 @@ def brain(app, monkeypatch):
     jsave(
         s / "mind-workspace.json",
         {"winners": [{"item_id": "deadline:dl2", "kind": "deadline", "text": "Essay draft", "salience": 0.7},
-                     {"item_id": "read:today", "kind": "read", "text": PRIVATE_LINE, "salience": 0.5, "private": True}]},
+                     {"item_id": "read:today", "kind": "read", "text": PRIVATE_LINE, "salience": 0.5,
+                      "private": True}]},
     )  # fmt: skip
     jsave(s / "mind-forget.json", {"forgets": 2, "uses": {}})
     improve = {"rows": [{"id": "c1", "layer": "L1", "title": "Shorter digest", "status": "shadow"}]}
@@ -122,7 +123,8 @@ def brain(app, monkeypatch):
         {"day": day, "lines": [{"text": "I sent one reminder about a deadline.", "seqs": [seqs[3]], "struck": False}]},
     )
     (s / "mind-story" / "weeks").mkdir(parents=True, exist_ok=True)
-    jsave(s / "mind-story" / "weeks" / "2026-W43.json", {"week": "2026-W43", "lines": [{"text": PRIVATE_LINE}], "quoted": []})
+    chapter = {"week": "2026-W43", "lines": [{"text": PRIVATE_LINE}], "quoted": []}
+    jsave(s / "mind-story" / "weeks" / "2026-W43.json", chapter)
     return {"seqs": seqs, "decision": dec["id"]}
 
 
@@ -149,7 +151,7 @@ def test_a_decision_opens_to_its_reasons_and_evidence(app, brain):
     assert d["id"] == brain["decision"] and d["action"] == "message:deadline" and d["outcome"] == "acted"
     assert d["reason"] == "calm.deadline_soon" and d["candidates"][1] == {"action": "wait", "score": 0.3}
     code, full = console.view(app, {"view": "decision", "id": brain["decision"]})
-    assert code == 200 and full["claim"]["setpoint"] == "deadlines_met"
+    assert code == 200 and full["claim"] == {"setpoint": "deadlines_met", "effect": "+", "by": "2026-11-01"}
     ev = full["evidence"]
     assert [r["kind"] for r in ev["before"]][-1] == "deadline_added"  # what set it off
     assert ev["after"][0]["kind"] == "gate_receipt" and "outcome" in [r["kind"] for r in ev["after"]]
@@ -229,6 +231,8 @@ def test_search_finds_the_log_and_the_rest(app, brain):
     assert r["other"][0]["in"] == "model"
     _, r = console.view(app, {"view": "search", "q": "max_per_hour"})
     assert any(x["in"] == "settings" and x["part"] == "gate" for x in r["other"])
+    _, r = console.view(app, {"view": "search", "q": "mind.gate.on"})  # a switch reads on or off, not True
+    assert next(x for x in r["other"] if x["text"] == "mind.gate.on")["note"] in ("on", "off")
     _, r = console.view(app, {"view": "search", "q": "100%"})  # a wildcard is a character here
     assert r["log"] == []
 

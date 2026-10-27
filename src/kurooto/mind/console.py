@@ -367,9 +367,20 @@ def _decision_row(seq, ts, raw, outcomes: dict) -> dict:
             if isinstance(c, dict)
         ],
         "setpoints": [clean_text(s, 60) for s in (b.get("setpoints") or [])[:12]],
-        "claim": b.get("claim") if isinstance(b.get("claim"), dict) else None,
+        "claim": _claim(b.get("claim")),
         "outcome": oc[-1]["result"] if oc else "",
         "outcomes": oc,
+    }
+
+
+def _claim(c) -> dict | None:
+    """A decision's pre-registered claim: the setpoint it named, which way, by when (cleaned like the rest)."""
+    if not isinstance(c, dict) or not c.get("setpoint"):
+        return None
+    return {
+        "setpoint": clean_text(c.get("setpoint"), 60),
+        "effect": "+" if c.get("effect") == "+" else "-",
+        "by": clean_text(c.get("by"), 40),
     }
 
 
@@ -1075,7 +1086,8 @@ def search(app: App, q: str, limit: int = SEARCH_MAX) -> dict:
     other = []
     for r in beliefs(app)["rows"]:
         if ql in r["text"].lower() or ql in r["topic"].lower():
-            other.append({"in": "beliefs", "text": r["text"], "note": f"{r['source']}, {r['confidence']}"})
+            sure = f", {round(float(r['confidence']) * 100)}% sure" if isinstance(r["confidence"], (int, float)) else ""
+            other.append({"in": "beliefs", "text": r["text"], "note": f"{r['source']}{sure}"})
     for r in model(app, 600)["rows"]:
         if ql in r["claim"].lower() or ql in r["subject"].lower():
             other.append({"in": "model", "text": r["claim"], "note": f"{r['part']}, {r['source']}"})
@@ -1094,7 +1106,9 @@ def search(app: App, q: str, limit: int = SEARCH_MAX) -> dict:
                 other.append({"in": "parts", "text": p["name"], "note": p["state"], "part": p["id"]})
             for st in p["settings"]:
                 if ql in (st["key"] + " " + st["tip"]).lower():
-                    other.append({"in": "settings", "text": st["key"], "note": str(st["value"]), "part": p["id"]})
+                    v = st["value"]
+                    word = ("on" if v else "off") if isinstance(v, bool) else str(v)
+                    other.append({"in": "settings", "text": st["key"], "note": word, "part": p["id"]})
     return {"q": q, "log": log, "other": other[:limit]}
 
 
