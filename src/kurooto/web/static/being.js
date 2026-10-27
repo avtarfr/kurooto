@@ -562,7 +562,7 @@ window.beingMount = async function (host, opts) {
     placeLinks();
     const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(p, 3)); geo.setAttribute("a", new THREE.BufferAttribute(a, 1)); geo.setAttribute("col", new THREE.BufferAttribute(col, 3));
     const pts = new THREE.Points(geo, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, uniforms: { map: { value: dot() } },
-      vertexShader: `attribute float a;attribute vec3 col;varying float va;varying vec3 vc;void main(){va=a;vc=col;vec4 m=modelViewMatrix*vec4(position,1.);gl_PointSize=((1.1+2.6*max(0.,min(a,1.)-.5))*(4./-m.z)+1.)*${DPR.toFixed(2)};gl_Position=projectionMatrix*m;}`,
+      vertexShader: `attribute float a;attribute vec3 col;varying float va;varying vec3 vc;void main(){va=a;vc=col;vec4 m=modelViewMatrix*vec4(position,1.);gl_PointSize=((1.1+2.6*max(0.,min(a,1.)-.5))*(4./-m.z)+1.)*${(DPR * (OM ? 1.3 : 1)).toFixed(2)};gl_Position=projectionMatrix*m;}`, // an organ page: notes you can see on a phone
       // dimmed by alpha, not by darkening: a darkened hue reads as grey (0.8.11)
       fragmentShader: `uniform sampler2D map;varying float va;varying vec3 vc;void main(){float t=texture2D(map,gl_PointCoord).r;if(t<.02)discard;gl_FragColor=vec4(vc*(.68+.22*min(2.5,va)),t*min(1.,.25+va*1.1));}` }));
     pts.userData.notes = true; memory.g.add(pts);
@@ -579,7 +579,7 @@ window.beingMount = async function (host, opts) {
       m.multiplyScalar(1 / Math.max(1, n));
       return { key: k, name: label.get(h) || h, at: b < 0 ? [0, 0, 0] : [p[b * 3], p[b * 3 + 1], p[b * 3 + 2]], centre: m, hub: b < 0 ? "" : nodes[b].title || nodes[b].id, links: bd, n };
     });
-    memory.hoods = hoodsNow();
+    memory.hoods = hoodsNow(); memFit();
     // settle in the worker; each step it sends moves the notes and their links, so you see them pull together
     if (LAYOUT) LAYOUT.terminate();
     try {
@@ -587,11 +587,39 @@ window.beingMount = async function (host, opts) {
       const flat = new Float32Array(ctr.length * 3); ctr.forEach((c, k) => flat.set([c.x, c.y, c.z], k * 3));
       w.onmessage = (e) => {
         if (memory.p !== p) return; p.set(e.data.p); placeLinks(); geo.attributes.position.needsUpdate = true; lg.attributes.position.needsUpdate = true;
-        if (e.data.done) { w.terminate(); if (LAYOUT === w) LAYOUT = null; memory.hoods = hoodsNow(); for (let i = 0; i < N; i++) POS.set(nodes[i].id, [p[i * 3], p[i * 3 + 1], p[i * 3 + 2]]); }
+        if (e.data.done) { w.terminate(); if (LAYOUT === w) LAYOUT = null; memory.hoods = hoodsNow(); for (let i = 0; i < N; i++) POS.set(nodes[i].id, [p[i * 3], p[i * 3 + 1], p[i * 3 + 2]]); memFit(); }
       };
       w.postMessage({ p: p.slice(), li: LI, lw: Float32Array.from(LW), hood, ctr: flat, iters: fresh > N * .2 ? 220 : 50 });
     } catch (err) { console.error("the notes' layout", err); }
   };
+  // the Memory page (an organ page, 0.8.13): framed on where the notes really are (a few dozen settle into a small knot,
+  // thousands into a wide cloud), between the app's bars, with the features' lights on a ring just outside them, never
+  // off the screen; it was framed on a fixed ring of lights, so a small vault sat tiny in the middle
+  const MEM_FIT = { c: V(0, 0, 0), r: .5 };
+  function memFit() {
+    const p = memory.p, n = p ? p.length / 3 : 0; if (!OM || !n) return;
+    const c = V(0, 0, 0); for (let i = 0; i < n; i++) { c.x += p[i * 3]; c.y += p[i * 3 + 1]; c.z += p[i * 3 + 2]; } c.multiplyScalar(1 / n);
+    const d = new Float32Array(n); for (let i = 0; i < n; i++) d[i] = Math.hypot(p[i * 3] - c.x, p[i * 3 + 1] - c.y, p[i * 3 + 2] - c.z); d.sort();
+    MEM_FIT.c.copy(c); MEM_FIT.r = Math.max(.12, d[Math.min(n - 1, Math.floor(n * .95))]); // a stray note or two may sit outside
+    memRing(); memFrame();
+  }
+  const memRingR = () => MEM_FIT.r * 1.3 + .12;
+  function memRing() { // the features' lights round the notes (their lines from the cloud's edge)
+    const ids = Object.keys(ORG).filter((id) => ORG[id].org === "memory"), c = MEM_FIT.c, R = memRingR();
+    ids.forEach((id, k) => {
+      const o = ORG[id], ang = k / ids.length * 6.283 + .4, dir = V(Math.cos(ang), Math.sin(ang) * .8, 0), pos = c.clone().add(dir.clone().multiplyScalar(R)).add(V(0, 0, .1));
+      o.g.position.copy(pos); if (o.g.parent !== memory.g) memory.g.add(o.g); // a new graph took the old lights off
+      if (o.line) { const a = c.clone().add(dir.multiplyScalar(MEM_FIT.r * .95)); o.line.geometry.setFromPoints([a, pos]); if (o.line.parent !== memory.g) memory.g.add(o.line); }
+    });
+  }
+  function memFrame() { // the whole cloud and its ring in what the bars leave of the screen
+    if (!OM || ONLY !== "memory" || FOCUS !== "memory" || SUB) return;
+    memory.g.updateMatrixWorld(); const w = MEM_FIT.c.clone().applyMatrix4(memory.g.matrixWorld), rw = (memRingR() + .12) * memory.g.scale.x;
+    const t = Math.tan(cam.fov * Math.PI / 360), room = PH && PH.room ? PH.room(H) : 1;
+    goal.tx = w.x; goal.ty = w.y; goal.tz = w.z; goal.d = Math.max(.4, rw / Math.min(t * room, t * cam.aspect) * 1.05);
+  }
+  let MEM_ROOM = 0; // the app's bars measured (or turned sideways) after the notes came: framed again
+  if (OM && PH && PH.room) ticks.push(() => { const r = PH.room(H) + cam.aspect; if (Math.abs(r - MEM_ROOM) > .01) { MEM_ROOM = r; memFrame(); } });
   const fires = [];
   ticks.push((t) => {
     if (!memory.a) return; const a = memory.a, n = a.length, far = .3 + .7 * (OPEN.memory || 0); // seen from afar, the packed notes are dimmer
@@ -628,10 +656,12 @@ window.beingMount = async function (host, opts) {
         else if (org === "memory") { const ang = k / list.length * 6.283; pos = V(Math.cos(ang) * 1.7, Math.sin(ang) * 1.3, .3); parent = memory.g; anchor = V(0, 0, 0); col = PROC.memory.c; }
         else { const ang = k / list.length * 6.283 + .3; pos = V(Math.cos(ang) * 1.15, Math.sin(ang) * .9, .3); parent = heart.g; anchor = V(0, 0, 0); col = 0xf0a0a0; }
         const g = lightPoint(c.on, col); g.position.copy(pos); parent.add(g); g.userData.hitbox.userData.pick = { feature: c.id };
-        parent.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(new THREE.CatmullRomCurve3([anchor, anchor.clone().lerp(pos, .5).add(V(0, .05, 0)), pos]).getPoints(16)), new THREE.LineBasicMaterial({ color: P.vein, transparent: true, opacity: c.on ? .22 : .06, blending: THREE.AdditiveBlending, depthWrite: false })));
-        ORG[c.id] = { g, flash: -9, title: c.title, org, part, on: c.on, act: c.act || 0, col };
+        const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(new THREE.CatmullRomCurve3([anchor, anchor.clone().lerp(pos, .5).add(V(0, .05, 0)), pos]).getPoints(16)), new THREE.LineBasicMaterial({ color: P.vein, transparent: true, opacity: c.on ? .22 : .06, blending: THREE.AdditiveBlending, depthWrite: false }));
+        parent.add(line);
+        ORG[c.id] = { g, line, flash: -9, title: c.title, org, part, on: c.on, act: c.act || 0, col };
       });
     }
+    if (OM) { memRing(); memFrame(); }
   }
   ticks.push((t) => {
     for (const id in ORG) { const o = ORG[id], u = o.g.userData, fl = Math.max(0, 1 - (t - o.flash) / 1.6), tw = o.on ? .75 + .25 * Math.sin(t * (1 + 3 * o.act) + o.g.id) : 1; const mine = SUB && SUB.kind === "feature" && SUB.key === id, other = SUB && SUB.kind === "feature" && !mine;
@@ -690,6 +720,7 @@ window.beingMount = async function (host, opts) {
     FOCUS = name; SUB = null; hintUntil = NOW + 3;
     if (!name) Object.assign(goal, HOME);
     else { const T = TARGETS[name]; goal.tx = T.c.x; goal.ty = T.c.y; goal.tz = T.c.z; goal.d = OM ? ONLY_D[name] : T.d; }
+    if (OM && name === "memory") memFrame(); // the Memory page: on the notes as they lie
   }
   // an organ page: the organ fills the phone's width (the dashboard's distances frame it among the others); a part
   // picked comes nearer than the dashboard brings it, for the same reason
@@ -1200,6 +1231,7 @@ window.beingMount = async function (host, opts) {
     for (const k of Object.keys(TARGETS)) OPEN[k] = (OPEN[k] || 0) + ((FOCUS === k ? 1 : 0) - (OPEN[k] || 0)) * Math.min(1, dt * 4);
     for (const f of ticks) f(t, dt);
     bloom.strength = .7 - .45 * (OPEN.memory || 0) - .25 * (OPEN.mind || 0); // thousands of notes would bloom into one white cloud
+    bloom.radius = OM && ONLY === "memory" ? .1 : .5; // the Memory page: the widest blur showed as a pale box round the notes
     composer.render();
     const c = c2; c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, W, H);
     if (OM) { /* an organ page: the app shows its name and parts */ } else if (UI) UI.header(c, { W, H, BPM, n: recent.length, HINTS, PROC, P, focus: FOCUS }); // phone: its own header and key

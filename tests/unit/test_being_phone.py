@@ -230,3 +230,18 @@ def test_the_organ_pages_call_only_what_the_page_offers_and_have_a_switch():
     for more in ("systems", "notes", "brain"):
         assert f'"{more}" to "' in organs  # and the rest of Views behind More
     assert "LocalReducedMotion.current" in organs and ".organs(reduced)" in organs
+
+
+def test_the_memory_page_frames_the_notes_as_they_lie_and_only_on_the_phone():
+    """0.8.13: Memory framed a fixed ring of feature lights, so a small vault sat tiny in the middle and a light's name
+    ran off the screen. It now frames the notes' own extent between the app's bars; the dashboard is unchanged."""
+    js = (STATIC / "being.js").read_text(encoding="utf-8")
+    fit = js[js.index("function memFit()") : js.index("const memRingR")]
+    assert "if (!OM || !n) return;" in fit and "memRing(); memFrame();" in fit
+    frame = js[js.index("function memFrame()") : js.index("let MEM_ROOM")]
+    assert 'if (!OM || ONLY !== "memory" || FOCUS !== "memory" || SUB) return;' in frame  # a part picked keeps its view
+    assert "PH && PH.room ? PH.room(H) : 1" in frame
+    assert "if (OM) { memRing(); memFrame(); }" in js  # the lights placed: on the ring, only on an organ page
+    assert 'if (OM && name === "memory") memFrame();' in js  # Back and switching pages frame it again
+    phone = (STATIC / "being-phone.js").read_text(encoding="utf-8")
+    assert "room(h) {" in phone and "S.cover = " in phone

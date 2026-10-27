@@ -9,6 +9,9 @@
 - **Face presence: a phone's camera fed in by an add-on works.** Kurooto's own programs no longer count as "another
   program using the camera", a virtual camera can be read while it's fed, and with no camera chosen, one in use
   leaves the next free. A new `face.camera.device` takes effect within seconds instead of after a restart.
+- **The phone app's Memory page shows your notes properly.** It framed a fixed ring of feature lights, so the notes
+  sat small in the middle and a feature's name ran off the edge; it now frames the notes as they lie, between the
+  app's bars, a little larger, with the lights on a ring just round them.
 
 ## 0.8.12 (2026-10-27)
 

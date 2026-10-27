@@ -84,6 +84,7 @@ function sheetWire(panel) {
 
 window.beingPhone = {
   dpr: 1.5, // the 3D drawing's pixels per CSS pixel (the dashboard's cap too)
+  room(h) { return h > 0 ? Math.max(.3, Math.min(1, (h - (S.cover || 0)) / h)) : 1; }, // an organ page: the share of its height the app's bars leave
   // a phone held upright sees as wide as the dashboard does (its camera's 30° high on a board about 1.7 times as wide as
   // it's tall): the same framing of every organ and part, with the extra height above and below
   fov(aspect) { return aspect >= 1.7 ? 30 : 2 * Math.atan(Math.tan(15 * Math.PI / 180) * 1.7 / aspect) * 180 / Math.PI; },
@@ -427,7 +428,7 @@ function setting(key, value) { if (organ()) organ().setting(String(key), value);
 function feature(id, on) { if (organ()) organ().feature(String(id), !!on); return true; }
 function mode(m) { if (organ()) organ().mode(String(m)); return true; }
 function inset(top, bottom) { // CSS pixels the app's bars cover at the top and bottom: the organ sits centred between them
-  S.organ = true; S.inset = Math.round(((+bottom || 0) - (+top || 0)) / 2); TOP = Math.max(0, +top || 0); kick(); return true;
+  S.organ = true; S.inset = Math.round(((+bottom || 0) - (+top || 0)) / 2); TOP = Math.max(0, +top || 0); S.cover = Math.max(0, +top || 0) + Math.max(0, +bottom || 0); kick(); return true;
 }
 
 /* ---- demo (dev builds' made-up data: the app hands in demo: true): the rest of a being beside Demo's Systems ---- */

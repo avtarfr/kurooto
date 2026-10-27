@@ -759,6 +759,12 @@ filled, scrolled into sight when picked on the drawing), and the part in full (r
 the yes-or-no settings as `Switch`es: `pane.setting`, `pane.feature`, sealed through `/ask` as before; a neighbourhood's
 notes; a note's text). Taps call `pane.pick(kind, key)`. The bars' heights go to the page as `pane.inset(top, bottom)`
 in dp, re-sent when the page loads. Depth on an organ page is 0 or 1 (a part), so Back leaves from the organ.
+Memory's framing (0.8.13, `being.js` `memFit`/`memRing`/`memFrame`, organ pages only): the notes' centroid and 95th
+percentile radius (group units) after each build and when the layout worker finishes; the feature lights on a ring at
+`1.3 r + .12` (their lines from the cloud's edge, re-added if a rebuild took them off); the camera on the centroid at
+the distance that fits the ring in `beingPhone.room(H)` (the share of the height the bars leave, from `inset`) and the
+width, again when that share or the aspect changes and on Back. Notes draw 1.3 times larger there, and the bloom's
+radius is .1.
 
 ## The settings guide in the app (0.8.10)
 

@@ -418,6 +418,10 @@ the dashboard's words over it. Views opens on the page you looked at last.
   best-linked notes, a note's first lines. Tap a feature's name for the feature itself. Tap the part again, or
   **Back**, for the whole organ; Back again leaves Views. On **Brain**, **Solid · Cutaway · X-ray**; on **Memory**,
   **Features** lists its features.
+- **Memory fills the screen with your notes** (0.8.13): it frames the notes as they really lie, a few dozen or a few
+  thousand, centred between the bars, with its features' lights on a ring just round them and their names on screen.
+  Before, it framed a fixed ring of lights, so a small set of notes sat tiny in the middle with a name cut off at the
+  edge.
 - **Switches work from the phone**, sealed to your computer over your call line and checked there as on the dashboard
   (below). Other settings are shown there; change them on the dashboard, or in the whole being (next).
 
