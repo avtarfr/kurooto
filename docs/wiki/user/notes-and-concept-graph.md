@@ -219,7 +219,7 @@ These rules hold for Kurooto itself, for every skill and for the AI's tools:
 - **No private details.** Skills keep health and medical details, money, passwords and other people's private
   details out of your notes, and say what they left out.
 
-What the AI may read and write on your computer is on [AI brains](ai-brains.md).
+What the AI may read and write on your computer is on [AI models](ai-brains.md).
 
 ---
 

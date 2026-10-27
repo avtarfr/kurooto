@@ -6,8 +6,8 @@ Words this wiki uses, in plain terms. Back to the [wiki's front page](index.md).
 |---|---|
 | **About you profile** | A note in your notes folder (`about-me/profile.md`) that Kurooto builds from what your other AI accounts know about you. Its **In brief** part goes along with every AI request. See [Teaching Kurooto](teaching-kurooto.md). |
 | **Add-on** | Your own extra features, skills or prompts, loaded from a folder you name. Optional, for people who write code. See [Add-ons and scripts](add-ons.md). Not the same as an optional feature such as Exam season, which is part of Kurooto and simply off until you turn it on. |
-| **agy (Antigravity)** | Google's AI agent program that runs on your computer. One of the [AI brains](ai-brains.md) you can pick. |
-| **AI brain** | The AI service that answers your messages and does tasks for Kurooto: a Gemini API key, agy, Claude Code, a local Ollama model, or another OpenAI-compatible service. See [AI brains](ai-brains.md). |
+| **agy (Antigravity)** | Google's AI agent program that runs on your computer. One of the [AI models](ai-brains.md) you can pick. |
+| **AI model** | The AI service that answers your messages and does tasks for Kurooto: a Gemini API key, agy, Claude Code, a local Ollama model, or another OpenAI-compatible service. See [AI models](ai-brains.md). |
 | **API key** | A long secret code a service gives you so a program can use it on your behalf. Kurooto keeps keys in your computer's keychain. |
 | **Approval** | A message that asks for your OK before Kurooto does something (Approve / Deny, or choices like Send / Edit / Discard). Nothing is ever approved for you. |
 | **Bot / Telegram bot** | Your own Telegram account for Kurooto, made with @BotFather. It answers only you. |
@@ -16,10 +16,10 @@ Words this wiki uses, in plain terms. Back to the [wiki's front page](index.md).
 | **Call line** | A small program Kurooto puts on your own free Cloudflare account. Your phone talks to it for calls; it can ring your phone while your computer sleeps. See [Phone calls](calls.md). |
 | **Calm** | The rules that keep Kurooto quiet: every message that comes by itself says why, and at most 6 messages and 1 call a day come by themselves. See [Messages Kurooto sends by itself](messages-it-sends.md). |
 | **Case / test case** | A plain-English request Kurooto got wrong (or didn't understand), kept so you can teach it what you meant. See [Teaching Kurooto](teaching-kurooto.md). |
-| **Chat** | The feature that sends free text to your AI brain. Without it, only commands and instant requests work. |
+| **Chat** | The feature that sends free text to your AI model. Without it, only commands and instant requests work. |
 | **Check-in** | A message (or call) at a time you choose asking how the day is going; your reply goes to your journal. |
 | **Class pack** | A small file with a class section's timetable, term dates and recurring quizzes, which classmates import into their own Kurooto. |
-| **Claude Code** | Anthropic's AI agent program. One of the [AI brains](ai-brains.md); needs a paid Claude plan. |
+| **Claude Code** | Anthropic's AI agent program. One of the [AI models](ai-brains.md); needs a paid Claude plan. |
 | **Cloudflare** | A company whose free plan hosts your call line. You make the account; it's yours. |
 | **Concept graph** | The feature that reads a finished book and weaves its ideas into your notes as linked concept notes. See [Notes and the concept graph](notes-and-concept-graph.md). |
 | **Daily note** | One note per day in your notes folder (`journal/<date>.md` by default) that holds your journal, the day's plan, check-in answers and study hours. |

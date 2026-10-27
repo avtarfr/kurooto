@@ -27,7 +27,7 @@ These belong to Kurooto itself and answer whichever features are on.
 | `/help`, `/start` | everything I can do, as an index: one line per group with its commands and its page in this wiki, then the features that are off. `/help <group>` (talking, voice, face, reminders, classes, study, quiz, calls, checkins, notes, projects, skills, research, google, teaching, privacy, settings) shows one group in full, `/help all` every group, `/help <word>` finds a command or feature, on or off | [Talking to Kurooto](talking-to-kurooto.md) |
 | `/status` | what's going on: calls held or allowed, focus, what's coming up, open questions, today's check-ins, what's due soon, the alarm, recent AI requests, the features that are on (answers even with Telegram off, from a terminal) | [Talking to Kurooto](talking-to-kurooto.md) |
 | `/q` (or `/questions`) | the open questions Kurooto asked you, each with its buttons; reply to one to answer it | [Talking to Kurooto](talking-to-kurooto.md#questions-and-approvals) |
-| `/jobs` | what the AI is working on and what waits, with Cancel buttons, and the last few that finished; `/jobs cancel <id>` or `/jobs cancel all` | [AI brains](ai-brains.md) |
+| `/jobs` | what the AI is working on and what waits, with Cancel buttons, and the last few that finished; `/jobs cancel <id>` or `/jobs cancel all` | [AI models](ai-brains.md) |
 | `/proposals` · `/proposals 2` · `/proposals apply\|discard\|undo <id>` | the AI's changes to your files waiting for your OK (Apply, Change, Discard), and what you applied lately (Undo); a number shows one with its diff | [Projects and proposals](proposals.md) |
 | `/aboutme` | the In-brief part of your profile and a link to edit it | [Teaching Kurooto](teaching-kurooto.md) |
 | `/persona` · `/persona tone: plain, no pep talk` · `/persona clear [line]` | your persona card (what to call you, tone, length, things to avoid; empty to start): show it, set a line, clear it. Feelings, a backstory or "I missed you" are left out, and it says so | [Teaching Kurooto](teaching-kurooto.md#your-persona-card) |
@@ -66,7 +66,7 @@ More: [Talking to Kurooto](talking-to-kurooto.md).
 | `/brain` | which AI answers, and whether it's working |
 | `/usage`, `/usage 14` | AI requests per day (7 days by default, up to 60), limits hit, today's limits and when they reset |
 
-More: [AI brains](ai-brains.md), [Talking to Kurooto](talking-to-kurooto.md#chat-with-your-ai).
+More: [AI models](ai-brains.md), [Talking to Kurooto](talking-to-kurooto.md#chat-with-your-ai).
 
 ### Voice
 
@@ -313,7 +313,7 @@ equally close to two of them, gets both as buttons ("Did you mean ...?") instead
 ([Talking to Kurooto](talking-to-kurooto.md#what-happens-to-a-message)).
 
 **Effort prefixes.** Start a message for the AI with `low:`, `medium:` or `high:` to choose how hard it thinks. See
-[AI brains](ai-brains.md).
+[AI models](ai-brains.md).
 
 ## Terminal commands (`kurooto ...`)
 

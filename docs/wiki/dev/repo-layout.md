@@ -40,7 +40,7 @@ One line per folder or important file. Paths are relative to the repository root
 | `runcompare.py` | run compare (the Research add-on): `kurooto runlog diff` and `/runs compare` |
 | `popup.py` | `kurooto ask --popup`, the Quick ask window (Tk); `Asker` is its logic, testable without a window |
 | `core/` | shared services: settings, secrets, paths, scheduler, jobs, events, notify, Calm, ask, availability, power, presence, quota, health, tools, MCP, places, layout, the concept graph's engine, ... ([core.md](core.md)) |
-| `providers/` | AI brains: `base.py` (interface), `agy.py`, `claude.py`, `openai_compat.py`, `effort.py`, `context.py`, registry in `__init__.py` ([brains.md](brains.md)) |
+| `providers/` | AI models: `base.py` (interface), `agy.py`, `claude.py`, `openai_compat.py`, `effort.py`, `context.py`, registry in `__init__.py` ([brains.md](brains.md)) |
 | `modules/` | one file (or package) per feature, `base.py` (the `Module` class), `catalog.py` (the list) ([modules.md](modules.md)) |
 | `modules/telegram/` | the Telegram channel and a stdlib Bot API client (`api.py`) |
 | `modules/calls/` | phone calls: connector, deploy, fallback, crypto (`line.py`), phone app channel, post-call review ([calls-and-phone.md](calls-and-phone.md)) |

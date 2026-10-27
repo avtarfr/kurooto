@@ -224,7 +224,7 @@ Dashboard → Settings → **Your computer** shows what was found and lets you c
 **What it does.** Small AI models on your computer, through [Ollama](https://ollama.com), picked for its hardware:
 they decide quickly how hard a request is, make the notes brain's index, read handwriting on bigger cards, and can
 summarise confidential mail on this computer. Private and offline. The main answers still come from the AI you picked
-(see [AI brains](ai-brains.md)).
+(see [AI models](ai-brains.md)).
 
 **Turn it on.** Dashboard → Features → Local AI models. It installs Ollama and the models for your profile. Not offered
 on computers without a usable graphics card or Apple Silicon.

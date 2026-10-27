@@ -1,11 +1,11 @@
-# AI brains
+# AI models
 
-The "brain" is the AI that reads your messages and does tasks: answering questions, writing notes, filing files,
+The AI model is the AI that reads your messages and does tasks: answering questions, writing notes, filing files,
 running skills. Kurooto doesn't come with one; you pick one in the setup page's AI step, and you can change it any
-time (Dashboard → Settings → brain, or the setup page). Instant requests ("remind me at 9", "what's due?") never need
-the brain: they run on your computer without any AI.
+time (Dashboard → Settings → AI model, or the setup page). Instant requests ("remind me at 9", "what's due?") never need
+the AI model: they run on your computer without any AI.
 
-- [The brains you can choose](#the-brains-you-can-choose)
+- [The AI models you can choose](#the-ai-models-you-can-choose)
 - [Main and fallback](#main-and-fallback)
 - [Two Claude accounts](#two-claude-accounts)
 - [How hard it thinks (effort)](#how-hard-it-thinks-effort)
@@ -15,9 +15,9 @@ the brain: they run on your computer without any AI.
 - [What goes along with every request](#what-goes-along-with-every-request)
 - [Settings](#settings)
 
-## The brains you can choose
+## The AI models you can choose
 
-| Brain | Cost | Good for | Setup |
+| AI model | Cost | Good for | Setup |
 |---|---|---|---|
 | **Antigravity (agy)** (marked ★ on the setup page) | free with a Google account | Google's agent program, run on your computer: it can read your notes and act within strict limits. Higher limits than a free key. | Install agy → Open the sign-in window → sign in with Google → Test it |
 | **Gemini API key** | free tier, or paid | the simplest, and the way Google recommends for tools like this. Also what phone calls, voice notes and the alarm always use. | Google AI Studio → Create API key → paste it (starts with `AIza`) → Save and test |
@@ -32,7 +32,7 @@ Google account. For tools like Kurooto, Google recommends a Gemini API key.
 **About a free Gemini key.** On the free tier, Google may use what you send and what it answers to improve its
 products, and human reviewers may read it. You must be 18 or older. In the EEA, the UK and Switzerland you need a paid
 key (billing on). Free keys have small daily limits; the setup page warns that they run out quickly, so they're best
-kept for calls and voice notes, with agy or another brain for everything else. Phone calls and voice notes always go
+kept for calls and voice notes, with agy or another AI model for everything else. Phone calls and voice notes always go
 through Gemini, whichever AI answers your messages; if you don't want Google's free-tier terms there, use a paid key.
 
 **About Claude Code.** Each request run by Claude Code gets only what Kurooto gives it, for that request: Kurooto's
@@ -51,8 +51,8 @@ Nothing is saved in Claude Code's own settings, and your own Claude Code hooks, 
 requests, `sonnet` for the rest).
 
 **Ollama** runs models on your computer. Without a graphics card (or Apple Silicon) it's too slow to be your main
-brain. With **Local AI models** on (see [your-computer.md](your-computer.md)), a small model on your computer answers
-the quick "how hard is this?" question and makes the notes index; your main brain still does the real work. A small
+AI model. With **Local AI models** on (see [your-computer.md](your-computer.md)), a small model on your computer answers
+the quick "how hard is this?" question and makes the notes index; your main AI model still does the real work. A small
 model that can't use tools just answers without them.
 
 **Reading pictures.** Photo to dates ([reminders-and-deadlines.md](reminders-and-deadlines.md#photo-to-dates)) needs
@@ -65,10 +65,10 @@ it can't read pictures, the answer says so.
 another AI in Settings → AI. An AI set up with an earlier version as "FreeLLMAPI" keeps working and shows as "Another
 OpenAI-compatible service".
 
-**Checking it works:** `/brain` on Telegram lists the main and fallback brain and whether each is ready. The setup
+**Checking it works:** `/brain` on Telegram lists the main and fallback AI model and whether each is ready. The setup
 page's **Test it** asks the AI for a reply and says what to do if it fails:
 
-| Brain | When the test fails |
+| AI model | When the test fails |
 |---|---|
 | Gemini key | Copy the key again from Google AI Studio (all of it; it starts with `AIza`). "Limit": wait a minute, or use a paid key. |
 | agy, Claude Code | Open the sign-in window again, finish signing in, close it, test again. |
@@ -79,7 +79,7 @@ page's **Test it** asks the AI for a reply and says what to do if it fails:
 
 - `brain.main`: the AI that handles requests.
 - `brain.fallback`: another one that takes over when the main one is at its limit, signed out, refused the request,
-  failed or gave no answer. Empty means none. Set it in Dashboard → Settings → brain.
+  failed or gave no answer. Empty means none. Set it in Dashboard → Settings → AI model.
 
 When the fallback answers, the answer says so in one line. Three more rules:
 
@@ -104,7 +104,7 @@ When the fallback answers, the answer says so in one line. Three more rules:
   same family answers (`gemini-flash-latest`, `gemini-flash-lite-latest`, `gemini-2.5-flash`, `gemini-2.5-flash-lite`).
   Smaller or older models answer less well, so the answer says which one it was: "(Answered with ...: ...'s free limit
   for today was used up.)"
-- **Last resort:** if your main brain is a Gemini key and nothing else can answer, the request goes to an agent
+- **Last resort:** if your main AI model is a Gemini key and nothing else can answer, the request goes to an agent
   program (agy or Claude Code) that is installed and has worked on this computer before. The other way round happens
   only at a limit, in the automatic order: a refusal, an empty answer or an error from an agent
   program doesn't go to your free Gemini key, because its limit is small and kept for calls.
@@ -177,7 +177,7 @@ the day's limit for what you're waiting on: calls, voice notes, the morning plan
   tried last, after your fallback.
 - **One plain line instead of an error:** "Google's free limit for today is used up, resets at 12:30; your calls and
   alarm still work." Calls use a different Gemini model with its own limit.
-- **`/usage`** lists AI requests per day over the last 7 days (`/usage 14` for two weeks, up to 60), per brain, how
+- **`/usage`** lists AI requests per day over the last 7 days (`/usage 14` for two weeks, up to 60), per AI model, how
   often a limit was hit, today's limits ("143 of 250 requests (57%); background work waits from 175. Resets at
   12:30.") and how many background requests wait for a reset. If agy is on this computer, it also counts agy's own runs
   from agy's logs (only counted; nothing in the logs is read out). Quick checks (how hard a request is, grading a quiz
@@ -353,7 +353,7 @@ Both are yours to edit: see [teaching-kurooto.md](teaching-kurooto.md). Answers 
 
 ## Settings
 
-Dashboard → Settings → brain (and quota, jobs, you):
+Dashboard → Settings → AI model (and quota, jobs, you):
 
 | Setting | Default | Effect |
 |---|---|---|
@@ -362,7 +362,7 @@ Dashboard → Settings → brain (and quota, jobs, you):
 | `brain.claude_accounts` | `{}` | your extra Claude accounts, each its own AI `claude:<name>` ([Two Claude accounts](#two-claude-accounts)); change them in Settings → Claude accounts |
 | `brain.fallback_on` | `["rate_limited"]` | what moves a request on to the automatic order: `rate_limited`, `auth`, `timeout` (`[]`: off) |
 | `brain.classify` | `rules` | who judges how hard a request is: `rules`, `main` or `ollama` |
-| `brain.models` | `{}` | models per brain and effort, e.g. `{"custom": {"low": "...", "medium": "...", "high": "..."}}`, `{"claude": {"high": "opus"}}` |
+| `brain.models` | `{}` | models per AI and effort, e.g. `{"custom": {"low": "...", "medium": "...", "high": "..."}}`, `{"claude": {"high": "opus"}}` |
 | `brain.base_urls` | `{}` | override a preset's address |
 | `brain.timeout_min.low` / `.medium` / `.high` | `10` / `15` / `30` | minutes a request may run |
 | `brain.agy.io_mode` | `pipe` | how Kurooto talks to agy (leave it unless agy gives no output) |

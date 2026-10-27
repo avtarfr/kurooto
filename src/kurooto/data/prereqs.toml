@@ -11,7 +11,7 @@
 
 [agy]
 title = "Antigravity (agy)"
-why = "The AI brain 'agy': free with a Google account."
+why = "The AI model 'agy': free with a Google account."
 size_gb = 0.2
 programs = ["agy"]
 dirs.windows = ["%LOCALAPPDATA%/agy/bin"]
@@ -97,7 +97,7 @@ install.linux = { kind = "bun-global", spec = "github:garrytan/gbrain#v0.60.299.
 
 [claude]
 title = "Claude Code"
-why = "The AI brain 'Claude Code', for people with a Claude plan (Advanced)."
+why = "The AI model 'Claude Code', for people with a Claude plan (Advanced)."
 size_gb = 0.25
 programs = ["claude"]
 owns.macos = ["~/.local/share/claude"]

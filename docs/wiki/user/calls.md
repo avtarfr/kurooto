@@ -51,7 +51,7 @@ booked for the next 24 hours (up to 30).
 
 **What it needs.**
 - A Gemini API key (free from Google AI Studio). If your main AI is something else, the setup asks for one; calls,
-  voice notes and the alarm always use it. See [AI brains](ai-brains.md).
+  voice notes and the alarm always use it. See [AI models](ai-brains.md).
 - A free Cloudflare account. You can make one during setup.
 - About 350 MB of disk, once: Node.js (about 120 MB, inside Kurooto's own folder) and the call line's packages (about
   230 MB).
@@ -314,7 +314,7 @@ first.
 
 **Limits.** It needs a main AI set. It runs in the background lane, so it waits behind nothing you asked for, and it
 counts as background work for free limits (it can wait past 70% of a known daily limit; see
-[AI brains](ai-brains.md)).
+[AI models](ai-brains.md)).
 
 **What leaves your computer.** The transcript and the call's tool results go to the AI you picked, like any request.
 

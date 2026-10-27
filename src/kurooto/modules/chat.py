@@ -74,7 +74,7 @@ class Chat(Module):
     def ready(self):
         main = self.app.settings.get("brain.main")
         if not main:
-            return False, "pick an AI brain first"
+            return False, "pick an AI model first"
         brain = providers.build(self.app, main)
         ok, why = brain.available() if brain else (False, "unknown brain")
         return (True, "") if ok else (False, f"{providers.label(main, main)}: {why}")
@@ -245,7 +245,7 @@ class Chat(Module):
             ok, why = b.available() if b else (False, "unknown")
             out.append(f"{role}: {providers.label(which, which)} ({'ready' if ok else why})")
         if not out:
-            return "No AI brain is set up yet."
+            return "No AI model is set up yet."
         extra = providers.claude_accounts.accounts(self.app)
         if extra:
             out.append("Claude accounts: Claude Code, " + ", ".join(a.label for a in extra))

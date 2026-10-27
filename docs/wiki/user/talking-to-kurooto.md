@@ -119,7 +119,7 @@ notes, then answering (about 40 s with agy)." It's a guess from what's known bef
 words about your notes, things it remembers), not a promise. Never on a call, never for background work; turn it off
 with `jobs.plan_line` = `false`. See [ai-brains.md](ai-brains.md#the-plan-line).
 
-**Turn it on.** Features → Chat with your AI (in Starter). Needs a working AI brain.
+**Turn it on.** Features → Chat with your AI (in Starter). Needs a working AI model.
 
 **From Telegram:**
 

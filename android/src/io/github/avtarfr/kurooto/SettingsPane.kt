@@ -304,7 +304,7 @@ private fun index(a: MainActivity): List<Hit> {
         Hit("Call ringtone", "Alarms", null, Pane.ALARMS, "ringtone tone sound calls"),
         Hit("Wake-up alarm tone", "Alarms", null, Pane.ALARMS, "ringtone tone sound alarm"),
         Hit("Ring the alarm on this phone too", "Alarms", null, Pane.ALARMS, "wake alarm phone switch"),
-        Hit("Kurooto's own settings", "On your computer's dashboard", null, null, "kurooto computer dashboard ai brain features"),
+        Hit("Kurooto's own settings", "On your computer's dashboard", null, null, "kurooto computer dashboard ai model brain features"),
     )
     SensesList.forEach { out.add(h(SetGroup.SENSES, Senses.label(it), "senses sense $it " + Senses.note(it))) }
     return out

@@ -23,7 +23,7 @@ What a user sees and is told to do is in [../user/troubleshooting.md](../user/tr
   on stderr says no zip could be made; the exception is the bug, so run `python -c "from kurooto.app import App; App()"`
   in a scratch `KUROOTO_HOME` to see it.
 - Rows (`diagnostics.checks`): Python, OS, the folders writable, free space (at least 5 GB), running
-  (`<state>/daemon.json` pid), time zone (`timezone_check`), the AI brain, each enabled module's `health()` (for
+  (`<state>/daemon.json` pid), time zone (`timezone_check`), the AI model, each enabled module's `health()` (for
   calls, `call_line()` when doctor runs outside the daemon), `more_checks` (Telegram `getMe`, agent export, add-ons'
   `doctor_checks()`), `health_rows` (`working: <feature>` from `app.health.evaluate(net=True, save=False)`),
   `layout_checks` (notes layout and files folder), `setup_rows` (a `--` note per setup step skipped for now,

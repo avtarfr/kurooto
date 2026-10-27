@@ -33,7 +33,7 @@ No. Everything is done through Telegram, the dashboard and the setup page. The t
 The setup page marks **Antigravity (agy)** with ★: it's free with a Google account and has higher limits than a free
 key. A **Gemini API key** is the simplest, it's what Google recommends for tools like this, and phone calls, voice notes
 and the alarm need one anyway; its free tier runs out quickly, so set the other as a fallback. See
-[AI brains](ai-brains.md).
+[AI models](ai-brains.md).
 
 ## Everyday use
 
@@ -125,7 +125,7 @@ accounts. See [Privacy](privacy.md).
 
 **What does the free Gemini tier mean for my data?**
 Google may use what you send on the free tier to improve its products, and human reviewers may read it. Use a paid key
-if that matters (it's required in the EEA, UK and Switzerland). See [AI brains](ai-brains.md).
+if that matters (it's required in the EEA, UK and Switzerland). See [AI models](ai-brains.md).
 
 **Does it read all my email?**
 No. The mail digest reads only the senders, domains or labels you choose; the rest is only counted. Mail marked

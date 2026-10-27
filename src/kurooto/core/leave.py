@@ -66,7 +66,7 @@ New keys for your call line, for a lost phone or a backup with your keys that go
   - the phone notification key and channel, and the Web Push keys
 Your call line is deployed again with them (a minute or two; the same address). It then forgets every paired phone,
 so you pair the phones you still have again. Reminders, scheduled calls and your notes stay as they are.
-If your Gemini key got out too, paste a new one first (Settings → AI brain): this takes it to your call line."""
+If your Gemini key got out too, paste a new one first (Settings → AI model): this takes it to your call line."""
 
 
 @dataclass
@@ -185,7 +185,7 @@ def credentials_by_hand(app) -> list[str]:
         out.append(REPLACE.get(c.id) or f"{c.title}: {c.help or 'replace it where you set it up.'}")
     if app.secrets.get("gemini.api_key"):
         out.append(
-            f"Gemini key: delete it at {GEMINI_KEYS} and paste a new one (Settings → AI brain); after this, Settings "
+            f"Gemini key: delete it at {GEMINI_KEYS} and paste a new one (Settings → AI model); after this, Settings "
             "→ Features → Phone calls → Set up takes it to your call line."
         )
     return out

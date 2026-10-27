@@ -23,7 +23,7 @@ from kurooto.core.state import jload, jsave
 if TYPE_CHECKING:
     from kurooto.app import App
 
-STEPS = ("you", "notes", "computer", "brain", "about", "features", "telegram", "finish")
+STEPS = ("you", "notes", "computer", "brain", "about", "features", "mind", "telegram", "finish")
 TITLES = {  # as the setup page's list says them (setup.js LABELS)
     "you": "You",
     "notes": "Notes",
@@ -31,6 +31,7 @@ TITLES = {  # as the setup page's list says them (setup.js LABELS)
     "brain": "AI",
     "about": "About you",
     "features": "Features",
+    "mind": "Inner life",  # (0.8.14) optional: turn Brain on, with a plain explanation; off is a fine answer
     "telegram": "Chat",
     "finish": "Done",
 }
@@ -65,6 +66,8 @@ def finished(app: App, step: str) -> bool | None:
         main = app.settings.get("brain.main")
         b = providers.build(app, main) if main else None
         return bool(b and b.available()[0])
+    if step == "mind":  # a choice either way: never left as "skipped" on the dashboard or in doctor
+        return True
     if step == "about":
         return bool(app.about.profile_file.exists() or app.about.reports())
     if step == "telegram":

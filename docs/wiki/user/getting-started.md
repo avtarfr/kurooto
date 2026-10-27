@@ -7,7 +7,7 @@ wrong.
 - [What you need](#what-you-need)
 - [Install](#install)
 - [The setup wizard, step by step](#the-setup-wizard-step-by-step)
-- [Choosing an AI brain](#choosing-an-ai-brain)
+- [Choosing an AI model](#choosing-an-ai-model)
 - [Your first 15 minutes](#your-first-15-minutes)
 - [Used Kurooto before?](#used-kurooto-before)
 - [Where to go next](#where-to-go-next)
@@ -21,7 +21,7 @@ wrong.
 | A computer with Windows 10 or 11, macOS 12 or newer, or Linux | Kurooto runs on it. No graphics card is needed: the AI runs in the cloud unless you choose otherwise. |
 | About 1 GB of free disk space, plus what your features need | The installer checks for at least 2 GB free. The setup page shows the total before installing anything, and Kurooto always leaves some space spare (it skips local AI models rather than fill your disk). |
 | Telegram on your phone or computer (free), or the Kurooto phone app | This is where you talk to Kurooto. The phone app instead of Telegram needs Phone calls (a free Gemini key and a free Cloudflare account); see [step 7](#7-chat-telegram-or-the-phone-app). |
-| A Google account (free) | For an AI brain: agy signs in with it, and a Gemini API key is made with it. |
+| A Google account (free) | For an AI model: agy signs in with it, and a Gemini API key is made with it. |
 
 Kurooto only works while the computer is on and awake. If you want it reachable all day, leave the computer on and
 plugged in (see [Stay awake on charger](your-computer.md)).
@@ -288,7 +288,7 @@ on, and starts. Anything that isn't ready is listed as "Not turned on yet" with 
 dashboard. If you chose Phone calls, a QR code appears to pair your phone (it works for 15 minutes; `/phone` on
 Telegram makes a new one). Then **Open the dashboard**.
 
-## Choosing an AI brain
+## Choosing an AI model
 
 Short version:
 

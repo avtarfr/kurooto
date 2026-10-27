@@ -4,10 +4,10 @@
 const TOKEN = document.querySelector('meta[name="kurooto-token"]').content;
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
-const STEPS = ["you", "notes", "computer", "brain", "about", "features", "telegram", "finish"];
-const LABELS = ["You", "Notes", "Computer", "AI", "About you", "Features", "Chat", "Done"];
+const STEPS = ["you", "notes", "computer", "brain", "about", "features", "mind", "telegram", "finish"];
+const LABELS = ["You", "Notes", "Computer", "AI", "About you", "Features", "Inner life", "Chat", "Done"];
 const HINTS = ["Your name and time zone", "Fit in with your notes", "What it found here", "Who answers you", "Optional: what other AIs know",
-  "What it does for you", "Telegram or the phone app", "Install and turn on"];
+  "What it does for you", "Optional: let it grow a mind", "Telegram or the phone app", "Install and turn on"];
 let state = null;
 let step = 0;
 let chosen = new Set();
@@ -146,7 +146,7 @@ function show(i) {
   $(".eyebrow", sec).textContent = `Step ${step + 1} of ${STEPS.length}`;
   shownAt = Date.now();
   if (STEPS[step] === "features") renderCalm();
-  ({ notes: renderNotes, computer: renderComputer, brain: renderBrains, about: renderAbout, features: renderFeatures, telegram: renderTelegram, finish: renderFinish }[STEPS[step]] || (() => {}))();
+  ({ notes: renderNotes, computer: renderComputer, brain: renderBrains, about: renderAbout, features: renderFeatures, mind: renderMind, telegram: renderTelegram, finish: renderFinish }[STEPS[step]] || (() => {}))();
   navHint();
   gloss(sec);
   window.scrollTo(0, 0);
@@ -162,6 +162,7 @@ function navHint() {
   hint.textContent = {
     brain: brain && brain.ready ? "" : "Not working yet? You can go on and finish it later: this page opens again from the dashboard.",
     about: "Optional.",
+    mind: "Optional: Next leaves it as it is.",
     notes: $(".fit-more:not([open])") ? "" : "Next keeps the layout in use; nothing moves without Use this layout.",
     features: `${chosen.size} of ${state.modules.length} on.`,
     telegram: channelOk() ? "" : state.channel === "app" ? "Phone calls isn't set up yet? Skip it for now and finish it later."
@@ -464,6 +465,23 @@ function renderPower() {
     el("p", { class: "note" }, "You can also pause it by hand (/pause on Telegram), or turn it off completely from the dashboard."));
 }
 function chip(k, v) { return el("span", { class: "chip" }, `${k}: `, el("b", {}, v)); }
+
+// --------------------------------------------------------------------------------------------- inner life
+// (0.8.14) Let it grow an inner life: an optional step that turns Brain on (it goes on with the rest at Finish setup,
+// as a ticked feature does). Off is a fine answer, and the step is never listed as unfinished.
+function renderMind() {
+  const box = $("#mind-panel"), m = state.modules.find((x) => x.id === "mind");
+  if (!m) { box.replaceChildren(el("p", { class: "note" }, "This version of Kurooto has no Brain.")); return; }
+  if (!renderFeatures.seeded) renderFeatures();  // what's ticked so far, so this choice joins it
+  const on = chosen.has("mind");
+  const pick = (yes) => { if (yes) chosen.add("mind"); else chosen.delete("mind"); renderMind(); navHint(); };
+  box.replaceChildren(
+    el("div", { class: "presets" },
+      el("button", { type: "button", class: "preset" + (on ? " on" : ""), "aria-pressed": on ? "true" : "false", onclick: () => pick(true) }, "Let it grow an inner life"),
+      el("button", { type: "button", class: "preset" + (on ? "" : " on"), "aria-pressed": on ? "false" : "true", onclick: () => pick(false) }, "Not now")),
+    el("p", { class: on ? "ok" : "note" }, on ? "Brain goes on with your other features when you finish setup. Each of its parts has its own switch, and turning it off asks whether to delete what it kept."
+      : "Brain stays off. You can turn it on any time: dashboard → Features → Brain."));
+}
 
 // --------------------------------------------------------------------------------------------- brain
 function renderBrains() {
