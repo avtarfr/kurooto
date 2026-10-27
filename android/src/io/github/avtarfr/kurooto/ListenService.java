@@ -270,8 +270,8 @@ public class ListenService extends Service {
                 sealed(m);
                 return;
             }
-            if (tagStr.contains("\"chat\"")) {
-                chat(m);
+            if (tagStr.contains("\"chat\"") || tagStr.contains("\"chat-update\"") || tagStr.contains("\"status\"") || tagStr.contains("\"sessions\"")) {
+                chat(m); // 0.8.10: a change to a message, a chat's "working", the chat list come the same way
                 return;
             }
             if (tagStr.contains("\"outbox\"")) {
@@ -525,48 +525,21 @@ public class ListenService extends Service {
         ((NotificationManager) c.getSystemService(NOTIFICATION_SERVICE)).notify(tag, ID_SEALED, b.build());
     }
 
-    /** A chat message from Kurooto: into the chat, and a notification that opens it (unless it's open already). */
+    /** A chat push from Kurooto (Chat.incoming, 0.8.10: a message in a session, a change to one, a session's
+     *  "working", the session list): into the chat, and a new message's notification (ChatNotes; none for the chat on
+     *  screen, which catches up with the whole text in order instead). */
     private void chat(JSONObject m) {
         try {
-            JSONObject msg = new JSONObject().put("id", m.optString("id")).put("from", "kurooto").put("text", m.optString("message"))
-                    .put("at", m.optLong("time")).put("re", m.optString("re")).put("reply", m.optBoolean("reply"))
-                    .put("buttons", m.optJSONArray("buttons") == null ? new JSONArray() : m.optJSONArray("buttons"));
-            if (m.optString("id").isEmpty()) return;
-            Chat.put(this, msg);
-            if (ChatActivity.visible) { new Thread(() -> Chat.sync(this)).start(); return; } // the whole text, in order
-            chatNote(this, m.optString("id"), m.optString("message"), m.optJSONArray("buttons"), false);
+            JSONObject msg = Chat.incoming(this, m);
+            if (ChatStore.getVisible() != null && msg != null) { new Thread(() -> Chat.sync(this)).start(); }
+            if (msg != null) ChatNotes.incoming(this, msg);
         } catch (Exception ignored) { }
     }
 
-    /** The chat's notification: Kurooto's newest message. Its quick buttons (Buttons: "+1", Done, the snoozes of a
-     *  reminder or deadline) are actions there too, tapped like the chat's own (Chat.tap: through the outbox while
-     *  your computer is off); one that snoozes without a Done gets a Done that only takes it down. quiet: shown again
-     *  after such a tap, without a sound. */
+    /** The chat's notification again after one of its quick buttons was tapped (ActionReceiver.chatTap), quietly,
+     *  saying how it went, with `buttons` offered again (a +1's) or none. */
     static void chatNote(Context c, String id, String text, JSONArray buttons, boolean quiet) {
-        int flags = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
-        Notification.Builder b = builder(c, CH_MSG)
-                .setSmallIcon(R.drawable.ic_stat)
-                .setContentTitle(Prefs.assistant(c))
-                .setContentText(text)
-                .setStyle(new Notification.BigTextStyle().bigText(text))
-                .setCategory(Notification.CATEGORY_MESSAGE)
-                .setOnlyAlertOnce(quiet)
-                .setContentIntent(PendingIntent.getActivity(c, 5, new Intent(c, ChatActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), flags))
-                .setAutoCancel(true);
-        String[] labels = Inbox.labels(buttons);
-        int room = Buttons.MAX;
-        if (Buttons.addDone(labels)) {
-            Intent done = new Intent(c, ActionReceiver.class).setAction(ActionReceiver.NOTE_DONE).putExtra("tag", "chat").putExtra("id", ChatActivity.ID_NOTE);
-            b.addAction(new Notification.Action.Builder(null, "Done", PendingIntent.getBroadcast(c, (id + ":done").hashCode(), done, flags)).build());
-            room--;
-        }
-        for (int i : Buttons.pick(labels, room)) {
-            JSONObject x = buttons.optJSONObject(i);
-            Intent tap = new Intent(c, ActionReceiver.class).setAction(ActionReceiver.CHAT_TAP).putExtra("msg", id)
-                    .putExtra("n", i).putExtra("label", x.optString("label")).putExtra("buttons", buttons.toString());
-            b.addAction(new Notification.Action.Builder(null, x.optString("label"), PendingIntent.getBroadcast(c, (id + ":t" + i).hashCode(), tap, flags)).build());
-        }
-        ((NotificationManager) c.getSystemService(NOTIFICATION_SERVICE)).notify("chat", ChatActivity.ID_NOTE, b.build());
+        ChatNotes.again(c, id, text, buttons);
     }
 
     /** Answers and files that waited on the call line reached your computer: say so quietly (chat messages just

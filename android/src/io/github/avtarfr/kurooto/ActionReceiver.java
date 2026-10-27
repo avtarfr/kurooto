@@ -57,6 +57,10 @@ public class ActionReceiver extends BroadcastReceiver {
             Inbox.send(c.getApplicationContext(), i, goAsync());
             return;
         }
+        if (ChatNotes.REPLY.equals(a) || ChatNotes.READ.equals(a)) { // a chat's notification: Reply, Mark read (0.8.10)
+            ChatNotes.handle(c, i, goAsync());
+            return;
+        }
         if (CHAT_TAP.equals(a)) {
             chatTap(c.getApplicationContext(), i, goAsync());
             return;

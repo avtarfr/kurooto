@@ -102,10 +102,19 @@
             android:exported="false"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode" />
 
-        <!-- the chat with Kurooto, beside Telegram -->
+        <!-- the old way in to the chat (notifications, the Talk widget, bedside mode): hands over to the main screen's
+             Chat pane at once (0.8.10), so it draws nothing -->
         <activity android:name=".ChatActivity"
             android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!-- the chat's files for other apps (0.8.10): open, share, and the camera's photo; only what the chat hands out -->
+        <provider android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.chatfiles"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/chat_files" />
+        </provider>
 
         <activity android:name=".ShareActivity"
             android:exported="true"

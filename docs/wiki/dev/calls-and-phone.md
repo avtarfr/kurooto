@@ -694,6 +694,55 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     the network for Gradle's first run; `smoke.sh` is unchanged.
 - `build.sh --test` also runs `test/LinkTest.java` (0.7.0: `LinkRules`, and `WebSock` against a local server:
   handshake, fragments, ping/pong, masking, close, a 404) on a plain JVM.
+- The Chat pane (0.8.10, the "Rail" design; `ChatPane.kt`, `ChatRail.kt`, `ChatThread.kt`, `ChatComposer.kt`,
+  `ChatModel.kt`, `ChatFiles.kt`, `ChatNotes.kt`, `ChatRules.java`, the store in `Chat.java`):
+  - **Store.** `chat.json` gains `v: 2`, `sessions` (the computer's list, kept), `commands`, `read` (session → the local
+    number `ln` read up to; unread = Kurooto's messages after it), `archived` (this phone only), `hidden` (deleted on
+    this phone, never brought back by a sync) and `ln` on each message. `Chat.migrate` puts every message from before
+    into `main`. At most 300 messages per session and 1500 in all. `Chat.putAll` writes a batch in one go (sync used
+    to rewrite the file per message). `Chat.demo`: the whole store in memory (`--ez demo true`; `src-demo/ChatDemo.kt`).
+  - **Sending** (the protocol is the computer's, "The chat's protocol (0.8.10)"). Everything to the call line runs on
+    `Chat.IO`, one thread, in order (a new session's op before its first message). Fields sent (sealed k1 as before):
+    `session` (left out for `main`), `reply` (any message's id; plus the old `to` when the quoted message is Kurooto's,
+    so old computers and the features that asked still get it), `file {fid, name, mime, size}` (and `voice: true` for
+    a voice note) after the bytes went up through `/upload?…&id=<fid>&chat=<session>` in 512 KB parts, and ops as
+    `{"op", "args": {…}}`: `session.new {session, title?}`, `session.rename {session, title}`, `session.delete
+    {session}`, `session.pin {session, on}`, `msg.edit {target, text}`, `msg.delete {target}`, `msg.pin {target, on}`,
+    `read {session, upto}`, `sync {}`. An op's answer is applied at once (its `sessions` list, its changed `msg`); a
+    refusal's `note` shows as a snackbar (`Chat.say`). A session id is `Chat.newId()` (16 hex).
+  - **Receiving.** `ListenService.chat` hands every push tagged `chat`, `chat-update`, `status` or `sessions` to
+    `Chat.incoming`: `kind: "status"` sets `Chat.working` (not stored; ten minutes at most without an "idle"),
+    `kind: "sessions"` replaces the list (`Chat.setSessions`: a session made here in the last ten minutes stays until
+    the computer lists it; one the computer no longer lists goes, with its messages) and, when the list or the commands
+    aren't inline, syncs; anything else is a message, new or changed, merged by id (`message` maps the push's `message`
+    / `time` and keeps `session`, `quote`, `file`, `edited`, `deleted`, `pinned`, `re`, `reply`, `buttons`). `Chat.sync`
+    asks `GET /chat?after=<seq>&sessions=1` (every chat's messages, `sessions`, `commands`, `switches`, `status` as
+    `{session: {state, job}}`). The computer's `switches` hide what's off: "+" and New chat (`chat_sessions`), attach,
+    camera and voice notes (`chat_files_inline`), Edit (`chat_edit`). A Kurooto message's Open button whose url is its
+    `file.url` is hidden (the file shows instead); Kurooto's answers carry `re`, shown as a quote only when the message
+    they answer isn't right above.
+  - **Drawing.** `ChatStore.read` turns the store into immutable values off the main thread (sessions with unread and
+    working, each thread's rows newest first with date separators and sender runs worked out), coalescing reloads;
+    the pane only reads `ChatStore.snap`. The thread is a reversed `LazyColumn` with keys and content types; the rail's
+    drag and the drawer are a `DraggableState` settled with `animate` and the motion scheme's `defaultSpatialSpec`
+    (the fling's speed carried; `snap()` with Remove animations); the drawer and the bubbles move with `offset {}` /
+    `graphicsLayer`; the active avatar morphs (`Morph` of its `MaterialShapes` shape into `Square`) in the layer.
+    Markdown is `ChatRules.blocks` / `inline` (test/ChatTest.java). Photos decode at their drawn size on
+    `Dispatchers.IO` into a 24 MB `LruCache`, in a fixed 4:3 frame so the list never jumps.
+  - **Files from the computer**: `file.url` is the f1 link; `ChatFiles.local` fetches `<line>/sealed/<i>` and opens it
+    (AES-256-GCM, key from the fragment) into `cache/chat/`; open and share go through the FileProvider
+    `${applicationId}.chatfiles` (`res/xml/chat_files.xml`: only `cache/chat-open/` and the camera's `cache/chat-cam/`).
+    Voice notes: `MediaRecorder` AAC in `.m4a`, sent as `audio/mp4`.
+  - **Notifications** (`ChatNotes`): one per session, tag `chat` for `main` (the old one) and `chat:<id>` otherwise, id 9;
+    `MessagingStyle` (Android 7+; 6 gets BigText) with the unread messages, Reply (`RemoteInput`, action
+    `CHAT_REPLY`) and Mark read (`CHAT_READ`) through `ActionReceiver`, and the newest message's quick buttons as before
+    (`ListenService.chatNote` now calls `ChatNotes.again`). None for the session on screen (`ChatStore.visible`).
+  - **Ways in.** `ChatActivity` (translucent, no UI) starts MainActivity with `chat_open` (a session) and `chat_type`;
+    `ChatOpen` (one `OnNewIntentListener` per activity) brings the pane to Chat and opens it. Notifications, the Talk
+    widget, bedside mode and old shortcuts keep working.
+  - **Switches** (`ChatPrefs`, preferences file `chat`, shown by `ChatSettings` in Settings → Chat): notify,
+    inline_reply, swipe_reply, markdown, fold, auto_photos, commands, enter_sends (off), haptics.
+  - `build.sh --test` runs `test/ChatTest.java` (`ChatRules`).
 - Bedside mode (0.6.0): `BedsideActivity` (theme `Kurooto.Call`, `showWhenLocked`, immersive): clock, date, next
   alarm (the first `alarm` call from `GET /upcoming`, or `AlarmManager.getNextAlarmClock()` if earlier), up to three
   calls (reasons hidden while a secure keyguard is locked), the waiting count, and the Talk button (`Line.callLink` then
@@ -710,8 +759,8 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   (`PhoneTab.kt`; the hours dialog is `BedsideActivity.hours`); `MainActivity` with the extra `bedside` opens it
   (`smoke.sh` uses that).
 - Components: `MainActivity` (Kotlin, Compose: the tabs or pairing, below), `PairActivity`,
-  `CallActivity` (WebView with the `KurootoApp` JS bridge), `AnswerActivity`, `ChatActivity` (the chat; its store and
-  the outbox's waiting list are `Chat`, `chat.json` in the app's files), `ShareActivity` (share to Kurooto, with the
+  `CallActivity` (WebView with the `KurootoApp` JS bridge), `AnswerActivity`, `ChatActivity` (0.8.10: only a way in that hands
+  over to MainActivity's Chat pane; the chat's store and the outbox's waiting list are `Chat`, `chat.json` in the app's files), `ShareActivity` (share to Kurooto, with the
   device key so it can wait on the line),
   `ListenService` (foreground, type `remoteMessaging`, holds the line's own connection, `Direct`, and the ntfy stream),
   `BootReceiver`, `ActionReceiver`,
@@ -744,7 +793,7 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   said. No Play services; nothing about where the places are leaves the phone.
 - Widgets, Quick note and the tile (0.6.0), no laptop or Worker changes:
   - `TalkWidget` (1x1, `res/xml/widget_talk.xml`, layout `widget_talk.xml`) opens `ChatActivity` with the extra
-    `type` (focus the box, keyboard up). `TalkWideWidget` (2x1, a subclass only because Android tells providers apart
+    `type` (focus the box, keyboard up; ChatActivity passes it on to the Chat pane, 0.8.10). `TalkWideWidget` (2x1, a subclass only because Android tells providers apart
     by component) adds the newest item of `GET /pending` (`Line.waiting`, what the Inbox tab lists), kept in `Prefs.widgetLine`. It looks it up in `onUpdate` (`updatePeriodMillis` 30 min, `goAsync`), on
     `TalkWidget.refreshSoon` (debounced 3 s: `Inbox.show`, `Inbox.cancel`, `Prefs.savePairing`), and takes
     MainActivity's own fetch through `TalkWidget.waiting(c, items)`; with no 2x1 placed nothing is fetched.
@@ -767,8 +816,7 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
 - The main screen (0.7.0) is Jetpack Compose with Material 3 Expressive. Since 0.7.6 so are `AnswerActivity`,
   `QuickNoteActivity`, `ShareActivity` and `PairActivity` (small floating sheets: `Sheets.kt`'s `SheetActivity` and `Sheet` over a
   dimmed screen, window theme `Kurooto.Sheet`: translucent, tap outside to close), and `PlacesActivity` and `ChatActivity` (full pages
-  over the sky: `PageActivity` / `Page`, and the chat's own `LazyColumn` of bubbles, with links via `LinkAnnotation`;
-  `ChatActivity.visible` and `ID_NOTE` stay static for `ListenService`). Since 0.8.7 so are bedside mode and the call screen,
+  over the sky: `PageActivity` / `Page`; the chat became the main screen's Chat pane in 0.8.10, below). Since 0.8.7 so are bedside mode and the call screen,
   each keeping its Java activity as the entry point with every rule, intent extra and lifecycle hook (`ViewsActivity` is a thin
   wrapper too, see Views below), and everything else (services, receivers, calls, alarms, crypto, notifications, widgets) stays
   framework Java:
@@ -865,8 +913,6 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     LinearLayout params and a small gap above, so `col.addView(v)` is enough. A new screen: declare it with
     `android:theme="@style/Kurooto"` (or leave it to the app's default) and start `onCreate` with
     `LinearLayout col = Ui.page(this);`.
-  - The chat (`ChatActivity`) is built from `Ui` too: your messages on `k_primary_container`, Kurooto's on `k_card`,
-    20dp corners, dp spacing, tonal buttons under a message, a pill-shaped box and a 56dp Send.
   - The launcher icon is `public/icon.svg`'s motif: on Android 8+ the adaptive `mipmap-anydpi-v26/ic_launcher.xml`
     (background `k_call_bg`, foreground `drawable/ic_launcher_fg.xml` with icon.svg's 24 units in the middle 72dp,
     monochrome `ic_launcher_mono.xml` for themed icons); on 6 and 7 the plain vector `mipmap/ic_launcher.xml`.
