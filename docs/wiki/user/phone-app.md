@@ -64,7 +64,7 @@ open one in a filled pill; off: the bar sits on the bottom edge as before). View
 Since 0.8.7: **New call screen** (on: the ringing screen and the call in the new style, below; off: the call screen from before
 0.8.7, kept while the new one gets used for real calls).
 
-**The smaller screens (0.7.6)** match: the question you answer from a notification, Quick note, Share to Kurooto and the pairing window are rounded sheets floating over a dimmed screen (tap outside to close), and Places and Chat are full pages over Kurooto's sky, with floating message bubbles and a rounded message box. They use the same colours as the rest of the app (the **Vivid colours** switch).
+**The smaller screens** match (0.8.10, the Rail look): the question you answer from a notification, Quick note, Share to Kurooto and the pairing window are rounded sheets floating at the bottom of the screen over a dimmed background. They slide up when they open; to close one, tap outside, drag it down by its handle (or fling it), or swipe back (on Android 14 and newer the sheet shrinks as you swipe, and you can change your mind). The question shows Kurooto's message as a chat bubble, its choices as round buttons and a box with a round Send; Share to Kurooto lists what's going with each file's kind (PDF, PNG, LINK...), its size, and a tick when it's sent (a clock while it waits for your computer). **Places** is a page of rounded cards: each place's pin in a shape of its own colour, its reminders as pills you can remove, a box with a round Add, and **Every time I arrive** as a chip. With **Remove animations** on, nothing slides.
 
 **Install and pair.**
 1. On the pairing page, tap **Download the app**, open the downloaded file and tap **Install**.
@@ -147,7 +147,7 @@ another pane (what's waiting opens Chat with its sheet; the alarm in the status 
 again by itself after the phone restarts or the app updates ("Listening for calls" stays as a quiet notification).
 
 **Its look** follows the phone: light or dark as the phone is set, and on Android 12 and newer in your wallpaper's
-colours (Material You). Older phones get Kurooto's own greens. The main screen is Material 3 Expressive (Android 16's
+colours (Material You). Older phones get Kurooto's own greens. **Colours (0.8.10):** Material You stays the default; you can pick the app's own **Apricot** palette instead, apricot and plum on near-black (on warm cream when the phone is in light mode), or **Kuro** (the dashboard's olive). **Vivid colours** still tints the cards and rows. The main screen is Material 3 Expressive (Android 16's
 style: rounded groups of rows, large buttons that change shape as you press them, big titles that fold away as you
 scroll). The ringing screen is always dark, like the call itself; the other screens keep their cards and rounded
 buttons, and the chat has a bar at the top with a back arrow. Behind the main screen is a living background in the

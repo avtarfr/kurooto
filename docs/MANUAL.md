@@ -3423,6 +3423,14 @@ cards, warm at night).
 The app looks for a new version each time you open it (at most every 2 minutes) and shows an **Update** button at the
 end of Today and in Settings → This phone; it opens the download.
 
+**Colours and the smaller screens (0.8.10).** Besides **Material You** (the default, as before), the app has its own
+**Apricot** palette (apricot and plum on near-black, warm cream in light mode) and **Kuro** (the app's Look settings).
+The question window, Quick note, Share to Kurooto and pairing are sheets floating at the bottom of the screen: tap
+outside, drag the handle down or swipe back to close them. Share to Kurooto lists each item with its size and a tick
+when it's sent. Places is a page of rounded cards (each place with its reminders, a box to add one, **Every time I
+arrive** as a chip). *Undo:* pick **Material You** in Look for the colours from before (nothing changes them until you
+pick another); the screens' layout has no switch (it's the app's design, not a feature).
+
 **Today** (0.6.0): on the Today pane, your day as your computer last sent it ("As of 14:05"), also while it's off:
 the alarm, classes and calendar events, what's due with parts done ("4/7"), reminders and open threads. Tap something
 due for **+1** and **Done** (as on Telegram; with the computer off they wait on your call line). The list goes to your
