@@ -914,6 +914,8 @@ class Voice(Module):
             return False, "Voice is off"
         if self.muted():
             return False, "Voice is muted"
+        if _drowsing(self.app):  # (Brain, 0.8.14) asleep or nearly: nothing is said aloud by itself (mind/sleep.py)
+            return False, "Kurooto is asleep"
         tts, why = self.tts()
         if tts is None:
             return False, why or "Voice can't speak"
@@ -1270,6 +1272,17 @@ class Voice(Module):
             + (f"\nLearned: {self.learned_line()}." if self.learned_line() else "")
             + "\n/voice mute, /voice unmute, /voice stop, /voice say <text>; /voice id (Voice ID), /voice enrol"
         )  # fmt: skip
+
+
+def _drowsing(app) -> bool:
+    try:
+        from kurooto.mind import sleep
+    except ImportError:
+        return False
+    try:
+        return sleep.state(app) in ("asleep", "drowsy") or sleep.resting(app)
+    except Exception:
+        return False
 
 
 def pause_after(tts, part: str, sr: int) -> bytes:

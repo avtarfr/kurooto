@@ -460,6 +460,7 @@ by itself waits for one message each evening until then; the alarm, approvals an
 | **`/hold`**, a class, a calendar event | held ("Held a call until 18:02 (class: ...)") and placed by itself when it ends | not affected |
 | **Paused** (`/pause`) | your call line still places scheduled calls (the alarm rings) | reminders and other messages wait until you resume |
 | **On a call** | nothing else rings; wake-up calls still do | not affected |
+| **Kurooto asleep** (with [Brain](mind.md#kurooto-sleeps), 0.8.14: your night, following your bedtime, alarm and phone) | as the night | what it starts by itself waits for the morning; reminders and calls you set, close deadlines, approvals and answers still come |
 
 See [calls.md](calls.md) for the night, bedtime and no-call rules, and
 [talking-to-kurooto.md](talking-to-kurooto.md#status-pause-hold-and-focus) for pause, hold and focus.

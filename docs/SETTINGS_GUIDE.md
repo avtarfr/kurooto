@@ -756,7 +756,12 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.senses.phone` | `"(computed)"` | Each of your phone's sensors, off until you switch it on (here and in the phone app). ([guide](wiki/user/settings-guide.md#mindsensesphone)) |
 | `mind.skills.from_demos` | `false` | Also offer skills from what you do over and over (asked once). ([guide](wiki/user/settings-guide.md#mindskillsfromdemos)) |
 | `mind.skills.on` | `true` | Solved tasks become tested, reusable skills; each new one starts out asking first. ([guide](wiki/user/settings-guide.md#mindskillson)) |
+| `mind.sleep.follow_owner` | `true` | Its sleep follows yours: bedtime to the alarm, refined by your phone (screen off, dark, charging; first use). ([guide](wiki/user/settings-guide.md#mindsleepfollowowner)) |
+| `mind.sleep.on` | `true` | Kurooto sleeps in your sleep window: nothing it starts by itself is sent or said aloud until morning. ([guide](wiki/user/settings-guide.md#mindsleepon)) |
+| `mind.sleep.wake_minutes` | `20` | Woken by its name or a message at night, it dozes off again after this many quiet minutes. ([guide](wiki/user/settings-guide.md#mindsleepwakeminutes)) |
+| `mind.sleep.window` | `""` | Set Kurooto's sleep by hand, like 00:30-08:00 (empty: follow your night). ([guide](wiki/user/settings-guide.md#mindsleepwindow)) |
 | `mind.stimulation.addons` | `true` | Let an add-on feed another device's sensors into its body (light, motion, battery, loudness...). ([guide](wiki/user/settings-guide.md#mindstimulationaddons)) |
+| `mind.stimulation.jolt` | `true` | Something sudden (a pickup, something close, a loud room) is felt at once: a jolt, and a fresh look at its mind. ([guide](wiki/user/settings-guide.md#mindstimulationjolt)) |
 | `mind.stimulation.on` | `true` | Its senses felt as a body (heat, load, touch), for its feelings and the dashboard. ([guide](wiki/user/settings-guide.md#mindstimulationon)) |
 | `mind.story.on` | `true` | One life story every part of Kurooto reads first: a fixed core, then its recent weeks. ([guide](wiki/user/settings-guide.md#mindstoryon)) |
 | `mind.story.tokens` | `800` | The life story's summary is at most this many tokens (about 4 characters each). ([guide](wiki/user/settings-guide.md#mindstorytokens)) |
@@ -771,6 +776,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.workspace.capacity` | `3` | How many things can be on Brain's mind at once (1 to 3). ([guide](wiki/user/settings-guide.md#mindworkspacecapacity)) |
 | `mind.workspace.cycle_s` | `30` | The least gap in seconds between two cycles (events poke it sooner). ([guide](wiki/user/settings-guide.md#mindworkspacecycles)) |
 | `mind.workspace.on` | `true` | A small "now" stage that parts compete to enter; only what wins may start a message or act on its own. ([guide](wiki/user/settings-guide.md#mindworkspaceon)) |
+| `mind.yield.on` | `true` | The Brain's heavy work waits while your jobs use the graphics card, during a call, on battery or when hot. ([guide](wiki/user/settings-guide.md#mindyieldon)) |
+| `mind.yield.prefer_sleep` | `true` | The Brain's nightly work also waits for Kurooto to be asleep (until that night's window ends). ([guide](wiki/user/settings-guide.md#mindyieldprefersleep)) |
 
 ### `modules`
 

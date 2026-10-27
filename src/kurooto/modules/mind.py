@@ -41,6 +41,7 @@ from kurooto.mind import (
     pest,
     promises,
     signals,
+    sleep,
     stimulation,
     story,
     tone,
@@ -143,16 +144,20 @@ class Mind(Module):
         self.every("beliefs", "hourly", lambda p: beliefs.sync(self.app) if mind.on(self.app) else 0)
         # stage 11: the overnight lab (on the charger, lid open) and its morning note
         workspace.register_bidder("lab", lab_report.bid)
-        self.every("lab", "daily 01:30", lambda p: lab_runner.nightly(self.app) and None, thread=True)
+        self.every("lab", "daily 01:30", lambda p: self._heavy("lab", "gpu", lab_runner.nightly, True), thread=True)
         self.every("lab_digest", "daily 07:40", self._lab_digest, thread=True)
         # stage 17: free-time play (off by default) and its Sunday note; case law is asked about when a call comes up
-        self.every("play", "daily 02:10", lambda p: mind_play.run_session(self.app) and None, thread=True)
+        self.every(
+            "play", "daily 02:10", lambda p: self._heavy("play", "cpu", mind_play.run_session, True), thread=True
+        )
         self.every("play_digest", "weekly sun 19:30", lambda p: mind_play.weekly(self.app) and None)
         # stage 15: week-scale plans, remade each morning; one line on Sunday evening at most
-        self.every("plans", "daily 06:10", lambda p: mind_plans.run(self.app) and None, thread=True)
+        self.every("plans", "daily 06:10", lambda p: self._heavy("plans", "cpu", mind_plans.run), thread=True)
         self.every("plans_weekly", "weekly sun 19:20", lambda p: mind_plans.weekly(self.app) and None, thread=True)
         # stage 14: the model of their mind (what they know, believe, want, prefer, attend to) and false-belief checks
-        self.every("tom_sync", "hourly", self._tom_sync, thread=True)
+        self.every(
+            "tom_sync", "hourly", lambda p: self._heavy("tom_sync", "light", lambda a: self._tom_sync()), thread=True
+        )
         self.every("tom_check", "every 30m", lambda p: tom_beliefs.check(self.app) and None)
         # stage 13: a body: its own machine every minute, the activity stream (opt-in), the totals kept 7 days raw
         workspace.register_bidder("body", senses_intero.bids)
@@ -161,17 +166,44 @@ class Mind(Module):
         self.every("activity_poll", "every 5m", lambda p: senses_activity.poll(self.app) and None, thread=True)
         self.every("senses_roll", "daily 04:30", lambda p: senses_store.rollup(self.app) and None, thread=True)
         # stage 12: skills from tasks that worked out, the ones it noticed you repeat, retirement, the weekly fine-tune
-        self.every("skills_distill", "daily 03:10", lambda p: skill_distill.nightly(self.app) and None, thread=True)
+        self.every(
+            "skills_distill",
+            "daily 03:10",
+            lambda p: self._heavy("distill", "cpu", skill_distill.nightly, True),
+            thread=True,
+        )
         self.every("skills_offer", "daily 18:20", lambda p: skill_demos.offer(self.app) and None)
         self.every("skills_retire", "daily 04:20", lambda p: skill_library.retire_stale(self.app) and None, thread=True)
-        self.every("finetune", "daily 03:40", lambda p: skill_finetune.run(self.app) and None, thread=True)
+        self.every(
+            "finetune", "daily 03:40", lambda p: self._heavy("finetune", "gpu", skill_finetune.run, True), thread=True
+        )
         # stage 09: the hidden harness, nightly and on the charger only
         self.every(
             "harness",
             "daily 02:40",
-            lambda p: harness_run.nightly(self.app) if mind.on(self.app) else None,
+            lambda p: self._heavy("harness", "cpu", harness_run.nightly, True) if mind.on(self.app) else None,
             thread=True,
         )
+        # 0.8.14: Kurooto sleeps in your sleep window; its heavy work yields to yours and prefers its sleep
+        self.every("sleep", "every 1m", lambda p: sleep.tick(self.app) and None)
+        self.every("yield", "every 5m", lambda p: senses_intero.retry(self.app) and None, thread=True)
+        self.every("contention", "every 1m", lambda p: senses_intero.contention_tick(self.app) and None, thread=True)
+        gates = getattr(getattr(self.app, "jobs", None), "gates", None)
+        if gates is not None and self._job_gate not in gates:
+            gates.append(self._job_gate)
+
+    def _heavy(self, name: str, cost: str, fn, nightly: bool = False) -> None:
+        """The Brain's own heavy work: it starts when the body allows (mind/senses/intero.py: gated), else later."""
+        senses_intero.gated(self.app, name, cost, lambda: fn(self.app), nightly=nightly)
+
+    def _job_gate(self, info: dict) -> float | None:
+        """core/jobs.py asks before automatic work starts: the Brain's own requests (why "mind.") wait for the body;
+        on the model on this computer they're GPU work, else light."""
+        if not str(info.get("why") or "").startswith("mind.") or not senses_intero.yield_on(self.app):
+            return None
+        brain = info.get("brain") or self.app.settings.get("brain.main") or ""
+        go, _ = senses_intero.ok(self.app, "gpu" if brain == "ollama" else "light")
+        return None if go else time.time() + 600
 
     def _signals(self, payload: dict | None = None) -> int:
         """Hourly: the day's numbers go to the scorekeeper, then today's read is made from them."""
@@ -182,6 +214,9 @@ class Mind(Module):
         return n
 
     def stop(self) -> None:
+        gates = getattr(getattr(self.app, "jobs", None), "gates", None)
+        if gates is not None and self._job_gate in gates:
+            gates.remove(self._job_gate)
         if self._unsub is not None:
             self._unsub()
             self._unsub = None
@@ -212,6 +247,8 @@ class Mind(Module):
             workspace.poke(self.app, f"event:{kind}", "event", kind.replace("_", " "))
         if mlog.mirrored(kind) and mind.on(self.app):
             mind.connect(self.app).report(kind, rec)
+        if kind in sleep.EVENTS:  # you waking it, or getting up (mind/sleep.py)
+            sleep.on_event(self.app, rec)
 
     # ------------------------------------------------------------------------------------------ the process
     def hardened(self) -> bool:
@@ -790,6 +827,7 @@ class Mind(Module):
         if a:
             when = _when(a.get("at"))
             lines.append(f"Last anchor: #{a['seq']} {str(a['hash'])[:12]}{f', {when}' if when else ''}.")
+        lines += [sleep.line(self.app), senses_intero.yield_line(self.app)]
         scored = sum(st["scores"].values())
         lines.append("Scores: none yet." if not scored else f"Scores: {scored} kept.")
         if st["waiting"]:
@@ -855,6 +893,7 @@ def button(app, ref: str, act: str) -> str:
         "mind-play.json",
         "mind-pest.json",
         "mind-stimulation.json",
+        "mind-sleep.json",
     ):  # the gate's, the read's, the tone's, its promises' and its acts' own files
         (app.paths.state / f).unlink(missing_ok=True)
     app.events.emit("mind_deleted", records=n)

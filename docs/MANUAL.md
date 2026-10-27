@@ -1677,6 +1677,15 @@ part>` is your hand on it. Every belief keeps a source (said, saw, inferred, ima
 "It looks like ... (65% sure)" or "A guess: ...", and `/beliefs <topic>` shows them with their Brier scores. *Undo:* `mind.workspace.on`, `mind.attention.on`,
 `mind.beliefs.on` off; Delete Brain's data removes the files.
 
+**It sleeps, and its heavy work yields to yours (0.8.14).** Kurooto sleeps while you do: bedtime to the alarm, else the night
+hours, refined by your phone's screen, light and charging sensors when they're on. Asleep, nothing it starts by itself is sent
+or said aloud; it waits for the morning. Reminders and calls you set, close deadlines, approvals and answers still come. Its
+name, a message, a tap or a call wakes it; it answers and dozes off again after 20 quiet minutes. Its own heavy work (lab,
+play, plans, skills, harness, fine-tune) waits while your programs use the graphics card, during a call, on battery or when
+hot, and the nightly part waits for its sleep; what you ask never waits. Something sudden (a phone pickup, something close, a
+loud room) gives an orienting jolt. `/mind` shows its sleep and the week's contention minutes. *Undo:* `mind.sleep.on`,
+`mind.yield.on`, `mind.yield.prefer_sleep`, `mind.stimulation.jolt` off; Delete Brain's data removes `mind-sleep.json`.
+
 **Values as case law, and play (Brain, `/precedents`, `/play`; both off by default).** When a call between two of your values comes up it asks once and keeps your ruling as a precedent to follow in alike situations (never for anything on the always-ask list); `/precedents` lists, edits and deletes them. Play is 20 minutes a night of its own curiosity on your topics (charger only), credited only for what transfers; its outputs are never shown unprompted. *Undo:* `mind.precedents.on`, `mind.play.on` off.
 
 **How it forgets (Brain, `/forget`, `/memory`).** Old memories fade from use (a half-life by kind; `/memory` shows a bar and "fading") but stay on record until you forget them; a miss older than six weeks isn't brought up again (its own mistakes stay in its journal); and `/forget` now also removes what Brain kept of that stretch from every store (the read, the model of your mind, senses, skills' origins, the journal as a tombstone, the fine-tune's examples). Its log keeps only that a forget happened. *Undo:* `mind.forget.on` off (fading and old-miss retirement stop; `/forget` still removes the usual things).

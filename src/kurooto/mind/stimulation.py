@@ -57,6 +57,12 @@ never as a reward: only the tone of its own body (heat, load, pain, nourishment)
 quiet, place, warmth) are shown, and raise arousal, but never move its mood, so nothing in it prefers him to behave one
 way (I-14). The dashboard reads it at GET /api/body (numbers only). It stays on this computer:
 `<state>/mind-stimulation.json`, the latest state only.
+
+The orienting jolt (0.8.14, `mind.stimulation.jolt`): something sudden (the phone picked up, something close to an
+add-on's device, a loud room) is felt at once rather than at the next minute's tick. `jolt(app, kind)` (add-ons and
+senses call it; feed() does for closeness, handled and loudness past JOLT_AT) raises arousal to the jolt's strength,
+fading with PHASIC_TAU_S, and runs the workspace's cycle now. `arousal(app)` is the body's arousal with any jolt in it
+(the status stream reads it). Kinds and numbers only, in memory; a kind jolts at most once a JOLT_GAP_S.
 """
 
 from __future__ import annotations
@@ -83,6 +89,7 @@ register_defaults(
         "stimulation": {
             "on": True,  # its senses felt as a body (heat, load, touch, pain...), for its feelings and the dashboard
             "addons": True,  # an add-on may feed another device's sensors in (light, motion, battery...): feed()
+            "jolt": True,  # a pickup, something close or a loud room: an orienting jolt (arousal, a workspace look)
         }
     },
 )
@@ -341,6 +348,11 @@ SOURCE = re.compile(r"^[\w .'-]{1,30}$")
 _fed: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()  # app -> {channel: {x, peak, t, src}}: memory only
 _live_at: dict[tuple[int, str], float] = {}
 _fed_lock = threading.Lock()
+JOLT_AT = {"closeness": 0.7, "handled": 1.0, "loudness": 75.0}  # an add-on's channel past this jolts (feed())
+JOLT_KINDS = {"closeness": "close", "handled": "pickup", "loudness": "loud"}
+JOLT_GAP_S = 60.0
+KIND = re.compile(r"^[a-z_]{1,20}$")
+_jolts: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()  # app -> {kind: {t, x}}: memory only
 
 
 def _ok(readings: dict) -> dict[str, float]:
@@ -417,6 +429,9 @@ def feed(app: App, source: str, readings: dict) -> bool:
             was = fed.get(name)
             peak = max(val, float(was["peak"])) if was and t - was["t"] < FED_S else val  # phasic: the strongest
             fed[name] = {"x": val, "peak": peak, "t": t, "src": src}
+    for name, at in JOLT_AT.items():  # something sudden is felt at once (0.8.14)
+        if x.get(name, 0.0) >= at:
+            jolt(app, JOLT_KINDS[name])
     key = (id(app), src)
     live = getattr(app, "live", None)
     if live is not None and time.monotonic() - _live_at.get(key, 0.0) >= LIVE_S:
@@ -526,7 +541,43 @@ def report(app: App) -> str:
     return "\n".join(lines)
 
 
+def jolt(app: App, kind: str, strength: float = 1.0) -> bool:
+    """An orienting jolt (a pickup, something close, a loud room): arousal at once, and the workspace looks now. For
+    add-ons and senses. False, with nothing done, when it's off, the kind isn't a short word, or it jolted lately."""
+    if not on(app) or not app.settings.get("mind.stimulation.jolt") or not KIND.match(str(kind or "")):
+        return False
+    t = time.time()
+    x = max(0.0, min(1.0, float(strength)))
+    with _fed_lock:
+        js = _jolts.setdefault(app, {})
+        was = js.get(kind)
+        if was and t - was["t"] < JOLT_GAP_S:
+            return False
+        js[kind] = {"t": t, "x": x}
+    try:
+        from kurooto.mind import workspace
+
+        workspace.cycle(app, force=True)
+    except Exception:  # noqa: S110 (the jolt is felt all the same)
+        pass
+    app.events.emit("mind_jolt", kind=kind)
+    return True
+
+
+def arousal(app: App) -> float:
+    """The body's arousal now, 0..1: the minute's reading, or a recent jolt fading with PHASIC_TAU_S if higher."""
+    if not on(app):
+        return 0.0
+    base = float(state(app).get("arousal") or 0.0)
+    t = time.time()
+    with _fed_lock:
+        js = list((_jolts.get(app) or {}).values())
+    j = max((v["x"] * math.exp(-max(0.0, t - v["t"]) / PHASIC_TAU_S) for v in js), default=0.0)
+    return round(max(0.0, min(1.0, max(base, j))), 4)
+
+
 def forget(app: App) -> None:
     (app.paths.state / FILE).unlink(missing_ok=True)
     with _fed_lock:
         _fed.pop(app, None)
+        _jolts.pop(app, None)

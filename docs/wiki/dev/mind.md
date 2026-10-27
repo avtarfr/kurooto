@@ -1102,3 +1102,64 @@ elements, because the dashboard's stylesheets hide every `section` and style eve
 Tests: `tests/unit/test_brain_console.py` (a made-up log and stores: decisions and evidence, part and day filters, paging, search,
 nothing named for money or health, part settings, the phone's copy), `tests/unit/test_brain_phone.py` (the sealed copy while
 watched, off copies, the page files), `test_views.py` (Chrome 58 build of `brainconsole.js`), `test_panes.py` (the page key).
+
+## 0.8.14: sleep, the body-aware job gate, the orienting jolt
+
+### Sleep (`mind/sleep.py`, `mind.sleep.on`)
+**The window** (`window(app, t=None) -> (start, end) | None`, naive local times: the one `t` is in, else the next).
+`mind.sleep.window` ("HH:MM-HH:MM") wins. Otherwise the candidates are the alarm's nights (`app.availability._sleep_windows()`,
+bedtime to the alarm, only with `follow_owner`) and the fixed night hours (`availability.night` from/to, even when it doesn't
+hold calls) of the nights starting yesterday, today and tomorrow that no alarm night overlaps. Each is refined (`_refine`) by
+`phone_now()` when `follow_owner` is on and the phone's sensors are: `down_since` (screen `on_min`/`unlocks` 0, light band
+`dark`, charging `on` 1, every one of them fresh within 15 min, unbroken since) at least `DOWN_MIN` (20) minutes ago moves the
+start earlier (at most `EARLY_H`, 2 h); otherwise the screen in use in the last 15 minutes holds the start back to 15 minutes
+after that use (at most `LATE_H`, 2 h); the phone's `alarm` reading (ms) within 3 h of the end becomes the end; the screen in
+use in the last `UP_MIN` (90) minutes (and at least an hour in) ends it; so does `up_at` ("I'm up", the alarm ringing). Note:
+`phone.clean` keeps one number per bin, so a screen bin is stored as `on_min` (15 while interactive) when both fields come.
+
+**The state** (`state(app, t=None)`): `asleep` inside the window unless `woke_until` is in the future, `drowsy` in the
+`DROWSY_MIN` (30) before it, else `awake`. `resting()` is "inside the window" (woken or not): what holds messages. `wake(app,
+why, minutes=20)` sets `woke_until = max(old, now + minutes)` and counts a wake when it was asleep; `up(app, why)` sets `up_at`
+and releases. `on_event` (called from `Mind._mirror` for `sleep.EVENTS`): `message_in`, `button_tapped`, `call_answered` and a
+`voice_portal` opened by "its name" or "the wake word" wake it while resting; `alarm_up_now` and `alarm_rang` are `up`.
+`_changed` pushes `{"t": "mind", "kind": "sleep", "state"}` live and emits `mind_sleep` once per change; `tick` (every 1 m)
+calls it and releases once the window is over.
+
+**Holding** (`hold(app, msg)`, asked first thing in `Notifier.send`, inside a try that lets the message go on any error): an
+unprompted message (`why` set and not `asked`) that isn't exempt (`kind` call, approval or reminder, `urgent`, or Calm's
+`exempt()`: own reminders and calls, close deadlines) is kept in `mind-sleep.json` `held` (at most 200) while `resting()`.
+`release()` (not resting, or the part off) sends each through `notifier.send` again, so the gate, Calm and the workspace
+arbiter apply as usual; an `ask` whose question closed meanwhile is dropped. Voice: `Voice.greet` returns
+`(False, "Kurooto is asleep")` while asleep, drowsy or resting (`modules/voice/__init__.py:_drowsing`); nothing else in Voice
+changed. Group A's arbiter and D's status read `state()`; with the arbiter off this hold still keeps the night quiet.
+
+### The job gate (`mind/senses/intero.py`, `mind.yield.on`)
+`ok(app, cost, action="") -> (bool, why)`: `light` waits only while the minute's reading is past `HOT_C`; `gpu` and `cpu` wait
+during a call (`availability.on_call_until()`), on battery (`app.power.on_ac()`), while `gpu_holders(app)` > 0 (compute
+processes from `nvidia-smi --query-compute-apps` holding at least `FOREIGN_MB` that aren't in Kurooto's process tree nor
+named like `SHARED_GPU`, Ollama), and when `would_overheat(app, action, last)` says the action's learned temperature rise takes
+it past `HOT_C` (`gpu` also on the card's own temperature). `gated(app, name, cost, fn, nightly=False)` runs `fn()` or defers
+it: in memory (`_pending`) and in `mind-intero.json` `pending` (since, cost, why); `nightly` work also waits, with
+`mind.yield.prefer_sleep`, until Kurooto is asleep, as long as tonight's window hasn't ended. `retry` (every 5 m, one at a time)
+starts what may go now and gives up after `PENDING_H` (12 h). `contention_tick` (every 1 m) counts a minute in which gated work
+is running while `gpu_holders` > 0; `contention(app, days=7)` and `yield_line` (in `/mind`) show minutes, deferred, given up
+and waiting. Wrapped in `modules/mind.py` (`Mind._heavy`): lab (gpu, nightly), play (cpu, nightly), plans (cpu), tom_sync
+(light), skills distill (cpu, nightly), harness (cpu, nightly), finetune (gpu, nightly). Dreaming (group C) should call
+`gated` the same way. The voice learner (`voice:learn`) is Voice's and isn't wrapped.
+
+**The job queue** (`core/jobs.py`): `Jobs.gates`, a list of `fn(info) -> epoch | None` (`info`: id, lane, why, title,
+brain), asked in `_claim` for automatic work only (lane not `you`, no reply target); a job held gets `yield_until` (a new
+column, at least a minute ahead, part of `_READY`) and `job_yielded`. A gate that raises lets the job run. `Mind._job_gate`
+holds the Brain's own requests (`why` starting `mind.`) for 10 minutes when `ok()` says no (cost `gpu` on Ollama, else
+`light`).
+
+### The orienting jolt (`mind/stimulation.py`, `mind.stimulation.jolt`)
+`jolt(app, kind, strength=1.0) -> bool` (kind `[a-z_]{1,20}`, at most once per `JOLT_GAP_S` 60 s a kind): a decaying arousal
+peak (`PHASIC_TAU_S`), a forced `workspace.cycle`, and a `mind_jolt` event. `feed()` jolts for `closeness` >= 0.7, `handled`
+>= 1 and `loudness` >= 75 dB; `phone.ingest` jolts `pickup` for a screen bin in use within 10 minutes. `arousal(app)` is the
+minute's arousal or the jolt's, whichever is higher (for the status stream).
+
+Tests: `tests/unit/test_mind_sleep.py` (the window from the night hours, by hand and from the alarm; onset, up late and up
+early from the phone; the phone's alarm; woken by name and by a message and dozing again; holding and the exempt kinds; up
+ends the night; Voice's greeting; the gate for a foreign GPU process, a call, battery and heat, deferral and retry, giving up,
+the asleep preference, contention minutes, the job queue's gate and the Brain's; the jolt and the pickup).

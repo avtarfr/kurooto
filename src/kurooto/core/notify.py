@@ -130,6 +130,13 @@ class Notifier:
         """Deliver now (or queue it during focus). Returns the Telegram message id when there is one. Calm may hold
         it for the evening bundle (or drop a kind you stopped): then None."""
         msg = Message(str(text), **kw)
+        try:  # (Brain, 0.8.14) Kurooto is asleep: what it starts by itself waits for the morning (mind/sleep.py)
+            from kurooto.mind import sleep
+
+            if sleep.hold(self.app, msg):
+                return None
+        except Exception as e:  # never loses a message: it goes as before
+            self.app.events.emit("mind_sleep_failed", error=f"hold: {type(e).__name__}"[:60])
         verdict, msg, _receipt = self.gate(msg)  # Brain's gate, when it's on (mind/gate.py): only ever quieter
         if verdict != "send":
             return None
