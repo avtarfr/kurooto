@@ -843,9 +843,9 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     fully rounded `TextField` with a placeholder and room for a trailing action) and `RoundAction` (a round `FilledIconButton`
     with `IconButtonDefaults.shapes()`). New icons are `ic_sheet_*` and `ic_place_*` (Material icons' paths).
   - `Vivid.kt` (0.7.5, `Prefs.vivid`, default on): a Material colour scheme from `com.materialkolor`'s `SchemeExpressive` made
-    from the wallpaper's primary (`Vivid.seed`; below `MIN_CHROMA` 16 Kurooto's apricot, 0.8.10; before, the olive), used by
-    `KurootoTheme` for the Material You palette on Android 12+ and on Android 11 and older; off: the system's own tonal
-    scheme. `rowColor(accent)` and `KCard(accent)` stain the surfaces with the primary, secondary or tertiary container.
+    from the wallpaper's primary (`Vivid.seed`; below `MIN_CHROMA` 16 Kurooto's olive), used by `KurootoTheme` for the
+    Material You palette on Android 12+ and on Android 11 and older; off: the system's own tonal scheme (Android 11 and
+    older: Kuro). `rowColor(accent)` and `KCard(accent)` stain the surfaces with the primary, secondary or tertiary container.
     `Sky.kt`'s nerves and rim are about twice as strong.
   - `Theme.kt`: `KurootoTheme(palette, dynamic, forceDark)` is `MaterialExpressiveTheme` with the expressive type scale
     (its emphasized display and headline styles a step bolder, semibold, as the phone's Roboto reads medium as regular at
@@ -853,7 +853,8 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     `extraLargeIncreased` 36, `extraExtraLarge` 48) and `MotionScheme.expressive()`, or a scheme of `snap()`s with "Remove
     animations" (so anything that takes its motion from `MaterialTheme.motionScheme` stops by itself; `LocalReducedMotion`
     stays for the rest). `dynamic` (default): the palette chosen in Look, `Palettes.chosen(c)` (`palette` in the app's
-    preferences: `apricot`, the default, `you` for Material You, or `kuro`; `Palettes.choose(c, name)` sets it,
+    preferences, the same key as `Prefs.palette`: `you` for Material You, the default so an update changes nobody's
+    colours, `apricot` or `kuro`; `Palettes.choose(c, name)` sets it,
     `Palettes.choices` lists them for a Settings row); `dynamic = false`: the named `palette` (the dev builds' `palette`
     extra). `Palettes.apricot` is the Rail mockup's dark values (`build-specs/0.8.10/mockups/rail.py`) and, for light mode,
     the same hues' tones (primary 40, containers 90, on-containers 30). `LocalKurooto` adds Kurooto's ok, bad, hot (unread

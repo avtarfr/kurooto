@@ -90,9 +90,11 @@
             android:launchMode="singleTop"
             android:theme="@style/Kurooto.Call" />
 
-        <!-- a question, approval or message, with every way to answer it (tapping its notification) -->
+        <!-- a question, approval or message, with every way to answer it (tapping its notification). Turning the phone
+             doesn't restart it (or Share below): an answer or upload under way would otherwise go twice. -->
         <activity android:name=".AnswerActivity"
             android:enableOnBackInvokedCallback="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
             android:exported="false"
             android:excludeFromRecents="true"
             android:taskAffinity=""
@@ -111,6 +113,7 @@
 
         <activity android:name=".ShareActivity"
             android:enableOnBackInvokedCallback="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
             android:exported="true"
             android:label="${appLabel}"
             android:excludeFromRecents="true"

@@ -29,9 +29,10 @@ import androidx.compose.ui.unit.sp
 
 /**
  * The look of the Compose screens: Material 3 Expressive (the expressive motion scheme, emphasized type, large rounded
- * shapes), coloured by the palette chosen in Look (0.8.10): **Apricot** (the default: apricot and plum on near-black, the
- * Rail design), **Material You** (the wallpaper's colours on Android 12+, Vivid or Calm as before) or **Kuro** (the
- * dashboard's olive). The palettes are [Palettes.all]; [Palettes.chosen] reads the choice and [Palettes.choose] sets it.
+ * shapes), coloured by the palette chosen in Look (0.8.10): **Material You** (the default, as before: the wallpaper's
+ * colours on Android 12+, Vivid or Calm), **Apricot** (apricot and plum on near-black, the Rail design) or **Kuro** (the
+ * dashboard's olive). The default stays Material You so nobody's colours change on an update (the settings' rule: what
+ * people already had doesn't change by itself); app-shell's `Prefs.palette` uses the same key and default. The palettes are [Palettes.all]; [Palettes.chosen] reads the choice and [Palettes.choose] sets it.
  * Besides Material's colour roles, a screen gets Kurooto's own through LocalKurooto: ok and bad (the checklist, "Sent."
  * and errors), hot (unread badges) and a few tonal pairs for shaped badges and tiles ([toneOf]); and whether it's light.
  * The sky behind the screens (Sky) takes its colours from the scheme.
@@ -53,11 +54,11 @@ data class KColors(
 data class Palette(val name: String, val label: String, val light: ColorScheme, val dark: ColorScheme, val lightK: KColors, val darkK: KColors)
 
 object Palettes {
-    /** Material You: the wallpaper's colours (Android 12+; older phones get the Vivid scheme from Kurooto's apricot). */
+    /** Material You: the wallpaper's colours (Android 12+; older phones: the Vivid scheme from Kurooto's olive, or Kuro when Calm). */
     const val YOU = "you"
 
-    /** The Look's choice when nothing is chosen. */
-    const val DEFAULT = "apricot"
+    /** The Look's choice when nothing is chosen: Material You, as before 0.8.10. */
+    const val DEFAULT = YOU
 
     /** The badges' and tiles' tonal pairs (the Rail mockup's settings tiles): bright containers with dark content, which
      *  read on the near-black and on the light cream alike. */
@@ -180,10 +181,10 @@ object Palettes {
     /** Every named palette by name. */
     val all: Map<String, Palette> = linkedMapOf(apricot.name to apricot, kuro.name to kuro)
 
-    /** The Look's choices in order (name to label), for a Settings row: Apricot, Material You, Kuro. */
-    val choices: List<Pair<String, String>> = listOf(apricot.name to apricot.label, YOU to "Material You", kuro.name to kuro.label)
+    /** The Look's choices in order (name to label), for a Settings row: Material You, Apricot, Kuro. */
+    val choices: List<Pair<String, String>> = listOf(YOU to "Material You", apricot.name to apricot.label, kuro.name to kuro.label)
 
-    fun named(name: String?): Palette = all[name] ?: apricot
+    fun named(name: String?): Palette = all[name] ?: kuro
 
     /** The palette chosen in Look (`palette` in the app's settings): a name in [all], or [YOU]. */
     fun chosen(c: Context): String =
@@ -265,8 +266,8 @@ val LocalVivid = staticCompositionLocalOf { true }
  * Kurooto's theme for a Compose screen, light or dark as the system is (`forceDark`: always dark, the call and bedside
  * screens). `dynamic` (the default): the palette chosen in Look ([Palettes.chosen]); Material You there is the
  * wallpaper's scheme on Android 12+ (Vivid: an Expressive scheme from the wallpaper's colour; Calm: Material You's own)
- * and the Vivid scheme from Kurooto's apricot on older phones. `dynamic = false`: the named `palette` itself (the dev
- * builds' "palette" extra). Motion: Material's expressive springs, or none with "Remove animations".
+ * and, on older phones, the Vivid scheme from Kurooto's olive (Calm: Kuro), as before 0.8.10. `dynamic = false`: the
+ * named `palette` itself (the dev builds' "palette" extra). Motion: Material's expressive springs, or none with "Remove animations".
  */
 @Composable
 fun KurootoTheme(palette: String = Palettes.DEFAULT, dynamic: Boolean = true, forceDark: Boolean = false, content: @Composable () -> Unit) {
@@ -279,11 +280,13 @@ fun KurootoTheme(palette: String = Palettes.DEFAULT, dynamic: Boolean = true, fo
     if (name == Palettes.YOU) {
         k = Palettes.kuro.let { if (dark) it.darkK else it.lightK }
         scheme = if (Build.VERSION.SDK_INT >= 31) {
-            // vivid (0.7.5): an Expressive scheme from the wallpaper's colour (Kurooto's apricot for a grey wallpaper)
+            // vivid (0.7.5): an Expressive scheme from the wallpaper's colour (Kurooto's olive for a grey wallpaper)
             if (vivid) Vivid.scheme(Vivid.seed(dynamicLightColorScheme(c).primary), dark)
             else if (dark) dynamicDarkColorScheme(c) else dynamicLightColorScheme(c)
+        } else if (vivid) {
+            Vivid.scheme(Vivid.BRAND, dark) // Android 11 and older: no wallpaper colours, so Kurooto's olive
         } else {
-            Vivid.scheme(Vivid.BRAND, dark) // Android 11 and older: no wallpaper colours
+            Palettes.kuro.let { if (dark) it.dark else it.light } // ... and Calm there: Kuro itself, as before 0.8.10
         }
     } else {
         val p = Palettes.named(name)

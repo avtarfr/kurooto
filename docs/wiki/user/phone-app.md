@@ -117,7 +117,7 @@ starts listening again by itself after the phone restarts or the app updates ("L
 notification).
 
 **Its look** follows the phone: light or dark as the phone is set, and on Android 12 and newer in your wallpaper's
-colours (Material You) when you choose it. **Colours (0.8.10):** the app's own **Apricot** palette is the default, apricot and plum on near-black (on warm cream when the phone is in light mode); **Material You** (your wallpaper's colours, Vivid or Calm as before; older phones get a scheme made from Kurooto's apricot) and **Kuro** (the dashboard's olive) are the others. **Vivid colours** still tints the cards and rows. The main screen is Material 3 Expressive (Android 16's
+colours (Material You). Older phones get Kurooto's own greens. **Colours (0.8.10):** Material You stays the default; you can pick the app's own **Apricot** palette instead, apricot and plum on near-black (on warm cream when the phone is in light mode), or **Kuro** (the dashboard's olive). **Vivid colours** still tints the cards and rows. The main screen is Material 3 Expressive (Android 16's
 style: rounded groups of rows, large buttons that change shape as you press them, big titles that fold away as you
 scroll). The ringing screen is always dark, like the call itself; the other screens keep their cards and rounded
 buttons, and the chat has a bar at the top with a back arrow. Behind the main screen is a living background in the
