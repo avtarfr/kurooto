@@ -467,6 +467,7 @@ each feature that's **on**. A feature's settings appear once you turn it on.
   that line for its whole entry: what it does, its values and default, when you'd change it, what it costs or sends
   outward, and what it depends on, with a link to it in the [settings guide](settings-guide.md). The search box looks
   through those entries too, so "battery" finds `power.on_battery`, and an entry that matched opens by itself.
+  `look.settings_guide` off hides those lines (and the search keeps to the settings themselves).
 - **Go back to a default:** type the default value back (every default is in the
   [settings guide](settings-guide.md)), or delete that line from `settings.json`.
 - **Starting** has its own choice (when you log in, or on Linux when the computer starts) and says what it did.

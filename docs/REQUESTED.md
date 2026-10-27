@@ -45,9 +45,9 @@ Standing plans, never struck through.
   taken from its comment (0.8.0) and the generated settings guide is one table. Add a proper guide as its own page (user wiki, in the app's help and on the site),
   one entry per setting: what it does in plain words, its values and default, when you would change it, what changes when you do, what it costs or sends
   outward, and what it depends on or switches off with it; grouped by feature, searchable, linked from each setting's tooltip. Tooltips for every setting on the
-  dashboard and in the phone app (long-press), written for a person and not copied from a code comment, with a test that fails when a setting has no entry. (0.8.10: the user wiki's Settings guide, 706 entries in 26 feature groups (every setting, the phone app's own included),
+  dashboard and in the phone app (long-press), written for a person and not copied from a code comment, with a test that fails when a setting has no entry. (0.8.10: the user wiki's Settings guide, 707 entries in 26 feature groups (every setting, the phone app's own included),
   written from tools/settings_guide/ by tools/gen_settings_guide.py; on the dashboard each setting's tip sits under it and opens its whole entry, and the
-  search looks through the entries; the app gets them as an asset with SettingHelp.kt for the Settings pane's long-press; tests fail on a setting with no
+  search looks through the entries (`look.settings_guide` turns both off); the app gets them as an asset with SettingHelp.kt for the Settings pane's long-press; tests fail on a setting with no
   entry or a tip copied from the comment)
 - ~~**Feed the Brain its whole past**~~ (started in 0.8.1, asked 2026-10-26): the Brain only knows what happened since it was switched on. A one-time, resumable, read-only
   backfill of what's already on this computer (Kurooto's event history, AI request history, deadlines, reminders, check-ins, quizzes, call counts, the journal and

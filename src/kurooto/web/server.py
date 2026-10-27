@@ -56,6 +56,8 @@ register_defaults(
         "talk_box": True,  # the small box over the board to talk to Kurooto in plain English (Alt+K)
     },
 )
+# Settings: each setting's guide line under it, which opens its whole entry, and a search through the entries (0.8.10)
+register_defaults("look", {"settings_guide": True})
 LAYOUTS = ("dense", "roomy")
 DESIGNS = ("new", "classic")
 CSP = (

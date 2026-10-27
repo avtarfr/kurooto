@@ -183,5 +183,6 @@ needs = "Reminders with the lid shut."
 
 [s."lidsafe.morning"]
 tip = "When the morning line comes if no wake-up alarm is set."
+cost = "Sealed for each Android phone; your call line holds ciphertext only."
 when = "Set it to when you're usually up. With the alarm set, it comes with the alarm."
 needs = "`lidsafe.today`."

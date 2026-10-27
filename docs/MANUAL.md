@@ -4252,6 +4252,9 @@ embedding order.
 - **After turning a feature on,** the dashboard says what's left to set up; `/health setup` lists it for everything.
 - **`deadlines.skip_notes`:** notes or folders the deadline scan leaves alone.
 - **Settings** have drop-downs where the choices are known and a tooltip on every label.
+- **The settings guide** (0.8.10): each setting on the Settings page has a line saying what it does; click it for its
+  whole entry, also in the user wiki's [settings guide](wiki/user/settings-guide.md); the search looks through the
+  entries. **Undo:** turn `look.settings_guide` off.
 
 ## Your notes: layout and files
 

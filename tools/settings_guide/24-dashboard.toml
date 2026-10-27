@@ -52,6 +52,11 @@ needs = "`look.board` = `being`."
 tip = "A small box over the board to talk to Kurooto in plain English (Alt+K)."
 when = "Turn it off if you use the terminal or Telegram instead."
 
+[s."look.settings_guide"]
+tip = "On the Settings page, a line under each setting that says what it does and opens its whole guide entry."
+what = "With it on, the search box also looks through the entries, so \"battery\" finds `power.on_battery`. Off, the page shows only the settings, with what each does when you hover its name."
+when = "Turn it off once you know your settings and want a shorter page; the guide stays in the user wiki."
+
 [s."look.study_mode"]
 tip = "The dashboard in Study mode: the notes map, the study timer and what's due (Alt+M, `/study mode`)."
 when = "Usually switched with Alt+M rather than here."

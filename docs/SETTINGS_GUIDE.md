@@ -587,6 +587,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `look.palette` | `"kuro"` | The colours of Kurooto's pages and terminals: its own palettes, your desktop's, or a named theme. ([guide](wiki/user/settings-guide.md#lookpalette)) |
 | `look.panes` | `[]` | Panes hidden from the dense board: status, systems, notes, terminal. ([guide](wiki/user/settings-guide.md#lookpanes)) |
 | `look.projects` | `[]` | Folders of git repositories the PROJECTS box shows; empty uses Research's repositories. ([guide](wiki/user/settings-guide.md#lookprojects)) |
+| `look.settings_guide` | `true` | On the Settings page, a line under each setting that says what it does and opens its whole guide entry. ([guide](wiki/user/settings-guide.md#looksettingsguide)) |
 | `look.study_mode` | `false` | The dashboard in Study mode: the notes map, the study timer and what's due (Alt+M, `/study mode`). ([guide](wiki/user/settings-guide.md#lookstudymode)) |
 | `look.talk_box` | `true` | A small box over the board to talk to Kurooto in plain English (Alt+K). ([guide](wiki/user/settings-guide.md#looktalkbox)) |
 | `look.theme_file` | `""` | A colours file of your own (a kitty theme, or matugen or pywal JSON) instead of the desktop's. ([guide](wiki/user/settings-guide.md#lookthemefile)) |

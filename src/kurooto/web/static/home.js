@@ -1569,8 +1569,10 @@ const guideHay = (G, key) => { const e = G.settings[key] || (G.parents && G.pare
 
 async function renderSettings(body) {
   const typing = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.find === "settings";
-  const [{ sections }, G] = await Promise.all([api("settings"), settingsGuide()]);
+  const [{ sections }, guide] = await Promise.all([api("settings"), settingsGuide()]);
   if (stale(body, "settings")) return;
+  const lookSec = sections.find((s) => s.section === "look"); // look.settings_guide off: no guide lines, no search in them
+  const G = lookSec && lookSec.values.settings_guide === false ? { settings: {}, parents: {} } : guide;
   // a section may offer choices for a setting (a list) and a line of help under it; "fixed" shows a value that can't
   // change here, and "post" sends changes to the section's own request (Settings → Starting: /api/autostart);
   // "remove" puts a Remove button by each value that isn't fixed, which asks first (Settings → Claude accounts)
@@ -1648,6 +1650,7 @@ async function renderSettings(body) {
     const r = await api("settings", { key: t.dataset.key, value });
     say(t, r.ok ? "Saved." : r.error, !r.ok);
     if (r.ok) settingChanged(t.dataset.key, value);
+    if (r.ok && t.dataset.key === "look.settings_guide") setTimeout(() => renderSettings(body), 600); // after "Saved." shows
   };
 }
 

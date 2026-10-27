@@ -300,6 +300,11 @@ def build() -> tuple[list[dict], dict[str, dict], list[str]]:
             if phone and "default" not in e:
                 problems.append(f"{key} ({g['file']}) is the phone app's: give its default")
             v = rows.get(key)
+            if phone and not e.get("values"):  # no default in the code to tell its kind: a switch, or say what it takes
+                if str(e.get("default", "")).strip() in ("on", "off"):
+                    v = False
+                else:
+                    problems.append(f"{key} ({g['file']}) is the phone app's and not a switch: give its values")
             entries[key] = {
                 "g": g["id"],
                 "file": g["file"],

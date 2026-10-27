@@ -336,6 +336,7 @@
 "look.palette": "The colours of Kurooto's pages and terminals: its own palettes, your desktop's, or a named theme.",
 "look.panes": "Panes hidden from the dense board: status, systems, notes, terminal.",
 "look.projects": "Folders of git repositories the PROJECTS box shows; empty uses Research's repositories.",
+"look.settings_guide": "On the Settings page, a line under each setting that says what it does and opens its whole guide entry.",
 "look.study_mode": "The dashboard in Study mode: the notes map, the study timer and what's due (Alt+M, `/study mode`).",
 "look.talk_box": "A small box over the board to talk to Kurooto in plain English (Alt+K).",
 "look.theme_file": "A colours file of your own (a kitty theme, or matugen or pywal JSON) instead of the desktop's.",

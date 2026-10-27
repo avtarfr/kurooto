@@ -1570,7 +1570,8 @@ So: register the setting with a comment, add its entry to the group file the err
 
 `home.js` (`renderSettings`) loads `settings-guide.js` once when Settings opens and puts each setting's tip under it as a
 `<details class="set-guide">` line that opens the whole entry, with a link to its anchor on the site's wiki page; the
-search box (`settingsFind`) searches the entries too and opens one whose match is only inside it. A test
+search box (`settingsFind`) searches the entries too and opens one whose match is only inside it. `look.settings_guide`
+(on) is the switch: off, the page renders without the lines and the search keeps to the settings. A test
 (`test_every_setting_has_a_tooltip`) fails if a setting has no tooltip. Some defaults only register after their
 module is imported (`core.autostart`, `core.infer`, `core.palette`, `web.server`, `web.api`); the test imports them.
 `deadlines.skip_notes` (notes or folders the notes scan leaves alone) is one such setting.

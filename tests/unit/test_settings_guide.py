@@ -146,3 +146,28 @@ def test_the_phone_apps_own_settings_are_real_keys(gen):
             assert f'"{rest[7:]}"' in places, key
         else:
             assert f'"{rest}"' in prefs, key
+
+
+def test_every_phone_switch_has_an_entry(gen):
+    """The other way round: each switch the app keeps (a putBoolean in Prefs, each sense, Places' own switch) has its
+    app.<key> entry, so a switch added to the app without one fails here as a computer setting does."""
+    _, entries, _ = gen.build()
+    src = ROOT / "android" / "src" / "io" / "github" / "avtarfr" / "kurooto"
+    prefs = (src / "Prefs.java").read_text(encoding="utf-8")
+    senses = (src / "SensesRules.java").read_text(encoding="utf-8")
+    places = (src / "Places.java").read_text(encoding="utf-8")
+    keys = {f"app.{k}" for k in re.findall(r'putBoolean\("(\w+)"', prefs)}
+    found = re.search(r"SENSORS\s*=\s*\{([^}]*)\}", senses)
+    assert found, "SensesRules.SENSORS moved: update this test"
+    keys |= {f"app.senses.{k}" for k in re.findall(r'"(\w+)"', found[1])}
+    keys |= {f"app.places.{k}" for k in re.findall(r'putBoolean\("(\w+)"', places)}
+    assert {"app.vivid", "app.senses.steps", "app.places.on"} <= keys  # the scan still finds them
+    missing = sorted(keys - set(entries))
+    assert not missing, f"phone settings with no entry in tools/settings_guide/26-phone-app.toml: {missing}"
+
+
+def test_phone_switches_say_on_or_off(gen):
+    _, entries, _ = gen.build()
+    for key, e in entries.items():
+        if key.startswith("app.") and e["default"] in ("on", "off"):
+            assert e["values"] == "On or off.", key

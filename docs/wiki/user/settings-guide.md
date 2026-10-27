@@ -47,7 +47,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 9 settings
-- [Dashboard and terminal](#dashboard-and-terminal): 21 settings
+- [Dashboard and terminal](#dashboard-and-terminal): 22 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 24 settings
 
@@ -1161,6 +1161,7 @@ When the morning line comes if no wake-up alarm is set.
 
 - **Values:** A time of day, 24-hour `HH:MM`. **Default:** `07:30`.
 - **When to change it:** Set it to when you're usually up. With the alarm set, it comes with the alarm.
+- **Costs and what leaves this computer:** Sealed for each Android phone; your call line holds ciphertext only.
 - **Depends on:** `lidsafe.today`.
 
 ## Morning alarm
@@ -5966,6 +5967,17 @@ A small box over the board to talk to Kurooto in plain English (Alt+K).
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off if you use the terminal or Telegram instead.
 
+### `look.settings_guide`
+
+On the Settings page, a line under each setting that says what it does and opens its whole guide entry.
+
+With it on, the search box also looks through the entries, so "battery" finds `power.on_battery`. Off, the page shows
+only the settings, with what each does when you hover its name.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off once you know your settings and want a shorter page; the guide stays in the user
+  wiki.
+
 ### `look.study_mode`
 
 The dashboard in Study mode: the notes map, the study timer and what's due (Alt+M, `/study mode`).
@@ -6114,21 +6126,21 @@ For every setting in this group, unless its entry says otherwise:
 
 Vivid colours from your wallpaper; off uses the wallpaper's quieter colours (Calm).
 
-- **Values:** Text. **Default:** on.
+- **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off for a quieter app.
 
 ### `app.floatingBar`
 
 The navigation bar floats above the screen; off, it sits on the bottom edge.
 
-- **Values:** Text. **Default:** on.
+- **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off if the floating bar covers things you want to tap.
 
 ### `app.moving`
 
 The moving background; off, a still picture.
 
-- **Values:** Text. **Default:** on.
+- **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off to save battery or if motion bothers you (Android's Remove animations stops it
   too).
 
@@ -6136,14 +6148,14 @@ The moving background; off, a still picture.
 
 The new call screen; off, the call screen from before 0.8.7.
 
-- **Values:** Text. **Default:** on.
+- **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off only if the new screen misbehaves on your phone.
 
 ### `app.direct`
 
 Connect straight to your call line; off, calls and messages come through ntfy.sh only.
 
-- **Values:** Text. **Default:** on.
+- **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off only if the straight connection keeps dropping on your network.
 - **Costs and what leaves this computer:** Off, wake-up pushes (no content) go through ntfy.sh.
 
@@ -6173,7 +6185,7 @@ The tone for the wake-up alarm; it plays on the alarm stream, so it rings even o
 
 Open bedside mode by itself while charging between the hours you set.
 
-- **Values:** Text. **Default:** off.
+- **Values:** On or off. **Default:** off.
 - **When to change it:** Turn it on for a phone that lives on a charger by your bed.
 
 ### `app.bedsideFrom`
@@ -6196,14 +6208,14 @@ When bedside mode stops opening by itself.
 
 Keep the screen on while bedside mode is open and charging.
 
-- **Values:** Text. **Default:** on.
+- **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off to let the screen sleep; bedside mode still dims at night.
 
 ### `app.places.on`
 
 Location reminders: "remind me when I reach the library" for the places you saved.
 
-- **Values:** Text. **Default:** off.
+- **Values:** On or off. **Default:** off.
 - **When to change it:** Turn it on (Places) and save your places on the phone.
 - **Costs and what leaves this computer:** Where your places are never leaves the phone; your computer only sees their
   names.
@@ -6213,7 +6225,7 @@ Location reminders: "remind me when I reach the library" for the places you save
 
 Share when the screen is on and how often you unlock (counts only).
 
-- **Values:** Text. **Default:** off.
+- **Values:** On or off. **Default:** off.
 - **When to change it:** Switch it on if you want Brain's timing to know when you're on your phone.
 - **Costs and what leaves this computer:** Sealed with this phone's key, through your call line, every 15 minutes.
 - **Depends on:** Brain on your computer, with `mind.senses.phone` for this sensor.
@@ -6222,7 +6234,7 @@ Share when the screen is on and how often you unlock (counts only).
 
 Share whether the phone is charging.
 
-- **Values:** Text. **Default:** off.
+- **Values:** On or off. **Default:** off.
 - **When to change it:** Switch it on to help Brain tell night from day.
 - **Costs and what leaves this computer:** Sealed with this phone's key, through your call line.
 - **Depends on:** Brain, with `mind.senses.phone`.
@@ -6231,7 +6243,7 @@ Share whether the phone is charging.
 
 Share whether you're still, walking or in a vehicle (worked out on the phone).
 
-- **Values:** Text. **Default:** off.
+- **Values:** On or off. **Default:** off.
 - **When to change it:** Switch it on so messages wait while you're on the move.
 - **Costs and what leaves this computer:** Sealed with this phone's key; the accelerometer's readings never leave the
   phone.
@@ -6241,7 +6253,7 @@ Share whether you're still, walking or in a vehicle (worked out on the phone).
 
 Share your steps a day.
 
-- **Values:** Text. **Default:** off.
+- **Values:** On or off. **Default:** off.
 - **When to change it:** Switch it on if you'd like steps in Brain's picture of your day.
 - **Costs and what leaves this computer:** Sealed with this phone's key, through your call line.
 - **Depends on:** Brain, with `mind.senses.phone`; the physical activity permission.
@@ -6250,7 +6262,7 @@ Share your steps a day.
 
 Share the room's light: dark, dim or bright.
 
-- **Values:** Text. **Default:** off.
+- **Values:** On or off. **Default:** off.
 - **When to change it:** Switch it on to help Brain notice lights-out.
 - **Costs and what leaves this computer:** Sealed with this phone's key, through your call line.
 - **Depends on:** Brain, with `mind.senses.phone`.
@@ -6259,7 +6271,7 @@ Share the room's light: dark, dim or bright.
 
 Share arriving at and leaving your saved places (by name).
 
-- **Values:** Text. **Default:** off.
+- **Values:** On or off. **Default:** off.
 - **When to change it:** Switch it on so Brain knows when you're home or out.
 - **Costs and what leaves this computer:** Only the place's name, sealed; where it is never leaves the phone.
 - **Depends on:** Brain, with `mind.senses.phone`; places saved in the app.
@@ -6268,7 +6280,7 @@ Share arriving at and leaving your saved places (by name).
 
 Share whether headphones are connected.
 
-- **Values:** Text. **Default:** off.
+- **Values:** On or off. **Default:** off.
 - **When to change it:** Switch it on to help timing (a call is fine with headphones in, say).
 - **Costs and what leaves this computer:** Sealed with this phone's key, through your call line.
 - **Depends on:** Brain, with `mind.senses.phone`.
@@ -6277,7 +6289,7 @@ Share whether headphones are connected.
 
 Share whether Do Not Disturb is on.
 
-- **Values:** Text. **Default:** off.
+- **Values:** On or off. **Default:** off.
 - **When to change it:** Switch it on so messages wait while your phone is on Do Not Disturb.
 - **Costs and what leaves this computer:** Sealed with this phone's key, through your call line.
 - **Depends on:** Brain, with `mind.senses.phone`.
@@ -6286,7 +6298,7 @@ Share whether Do Not Disturb is on.
 
 Share when your next phone alarm is.
 
-- **Values:** Text. **Default:** off.
+- **Values:** On or off. **Default:** off.
 - **When to change it:** Switch it on if you set alarms on the phone itself rather than with Kurooto.
 - **Costs and what leaves this computer:** Sealed with this phone's key, through your call line.
 - **Depends on:** Brain, with `mind.senses.phone`.
@@ -6295,7 +6307,7 @@ Share when your next phone alarm is.
 
 Share which Wi-Fi you're on, as a code made on the phone, never its name.
 
-- **Values:** Text. **Default:** off.
+- **Values:** On or off. **Default:** off.
 - **When to change it:** Switch it on, then tell Kurooto once what a code is (`/senses wifi label <code> home`).
 - **Costs and what leaves this computer:** Only the code, sealed; Android asks for location to read the Wi-Fi name,
   which stays on the phone.
@@ -6305,7 +6317,7 @@ Share which Wi-Fi you're on, as a code made on the phone, never its name.
 
 Share your total screen time a day, never per app.
 
-- **Values:** Text. **Default:** off.
+- **Values:** On or off. **Default:** off.
 - **When to change it:** Switch it on if you'd like it in Brain's picture of your day.
 - **Costs and what leaves this computer:** Only the day's total, sealed, through your call line.
 - **Depends on:** Brain, with `mind.senses.phone`; Usage access in Android's settings.
