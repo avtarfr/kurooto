@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.8.12 (unreleased)
+## 0.8.12 (2026-10-27)
+
+The being made visible, and what add-ons can do with Face presence, Voice and Brain.
 
 - **The being: sparks you can see, nerves, joined vessels, colour.** The brain showed no sparks at all: they run
   inside it and the solid cortex hid every one; they now show through it in their own colours, and at rest a low
