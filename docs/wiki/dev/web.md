@@ -133,7 +133,8 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   to the pages with `Live.push`, never through the event log (words and levels aren't logged); [voice.md](voice.md#events-and-the-live-stream).
 - Face presence (0.8.10) pushes `{"t": "face", kind: enrol | test | test_result | session}` to the Face page's `cid`
   only (`Live.push(..., only={cid})`), and `{"t": "face", "kind": "camera", "on"}` to every page (the "● camera"
-  badge, `home.js`). `today_items(app, sched)` (module level) is what `Vitals._today` and the greeting both read;
+  badge, `home.js`); `face_seen` (the owner's place) and, from 0.8.12, `faces` (every face's track id, place, owner
+  flag and micro-movement, at most 10 a second, only while `Live.watched()`) to every page, for the being's eye. `today_items(app, sched)` (module level) is what `Vitals._today` and the greeting both read;
   [face.md](face.md).
 - What one turn costs (0.6.1, a 2,271-note folder, ~500 processes): `snapshot()` about 30 ms, mostly the process
   list; `Graph.scan()` about 11 ms when nothing changed (it names notes with plain strings: a `Path` per note made it

@@ -165,6 +165,13 @@ is and whether it's you; never a picture). Then the card and `/face` say "camera
 A hold lasts at most 10 minutes unless the add-on asks again, and everything in the pause list below still stops it.
 `face.addons.hold` and `face.addons.watch` turn those off.
 
+**Following faces** (`face.track.on`, on): while the camera is open and a dashboard is in sight, the being's eye
+follows whoever is in view, not just you: it looks at one person and moves on to another every few seconds, sooner
+when someone new appears or someone moves more; with one person it follows them closely, small nods and turns
+included. It only knows where each face is and how much it moves (and which one is you); it never works out who
+anyone else is. It looks up to 10 times a second then (`face.track.fps`), which costs roughly a tenth of one
+processor core while it lasts; it never opens the camera by itself. An add-on can follow faces the same way.
+
 **You've arrived** when it recognises you in 3 of 4 frames within 6 seconds, after at least 20 minutes with no sign of
 you (`face.greet.after_absent_min`; a locked screen isn't a sign of you). Unsure frames and other people count for
 nothing. A photo propped up in front of the camera doesn't move, so it waits for movement.
@@ -295,6 +302,7 @@ From a terminal: `kurooto face`, `kurooto face pause 1h`, `kurooto face forget [
 | `face.greet.with_others` | `skip` | `skip`, `short` or `full` |
 | `face.away.on`, `hold_desktop`, `hold_calls` | off | noticing you left, and what waits |
 | `face.learn.on`, `every_h`, `max`, `margin` | off, 6, 30, 0.08 | learning over time |
+| `face.track.on`, `fps` | on, 10 | the being's eye follows every face in view, and how often it looks then |
 | `face.addons.watch`, `hold` | on, on | let add-ons see who's in view, and keep the camera looking while you type |
 
 All of them: [the settings guide](../../SETTINGS_GUIDE.md).

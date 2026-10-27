@@ -413,6 +413,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `face.recognise.min_face_px` | `60` | Faces smaller than this many pixels are ignored: too far away to judge. ([guide](wiki/user/settings-guide.md#facerecogniseminfacepx)) |
 | `face.recognise.strictness` | `"normal"` | How rarely a stranger may pass: loose (1 in 100 frames), normal (1 in 1,000) or strict (1 in 10,000). ([guide](wiki/user/settings-guide.md#facerecognisestrictness)) |
 | `face.recognise.threshold` | `0.0` | 0 uses the calibrated threshold; a score from 0 to 1 overrides it (never below 0.363). ([guide](wiki/user/settings-guide.md#facerecognisethreshold)) |
+| `face.track.fps` | `10` | How many times a second it looks for faces while following them (1 to 15). ([guide](wiki/user/settings-guide.md#facetrackfps)) |
+| `face.track.on` | `true` | While the camera is open, follow every face in view (where it is and how much it moves) for the being's eye. ([guide](wiki/user/settings-guide.md#facetrackon)) |
 | `face.watch.fps` | `1.0` | How many pictures a second it checks while waiting for you (0.2 to 2). ([guide](wiki/user/settings-guide.md#facewatchfps)) |
 | `face.watch.fps_battery` | `0.33` | Frames a second while the computer is on battery. ([guide](wiki/user/settings-guide.md#facewatchfpsbattery)) |
 | `face.watch.idle_s` | `60` | Seconds with no keyboard or mouse before the camera looks; while you type it doesn't need to. ([guide](wiki/user/settings-guide.md#facewatchidles)) |

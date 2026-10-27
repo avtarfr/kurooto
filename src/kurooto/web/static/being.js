@@ -461,7 +461,28 @@ window.beingMount = async function (host, opts) {
   const ptsMat = (col) => new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { map: { value: dot() }, c: { value: new THREE.Color(col) }, dm: { value: 1 } },
     vertexShader: `attribute float a;varying float va;void main(){va=a;vec4 m=modelViewMatrix*vec4(position,1.);gl_PointSize=(1.5+6.*a)*(6./-m.z)*${DPR.toFixed(2)};gl_Position=projectionMatrix*m;}`,
     fragmentShader: `uniform sampler2D map;uniform vec3 c;uniform float dm;varying float va;void main(){gl_FragColor=vec4(c,1.)*texture2D(map,gl_PointCoord)*(.25+va)*dm;}` });
-  const eyes = [], GAZE = { x: 0, y: 0, tx: 0, ty: 0, at: 0 };
+  const eyes = [], GAZE = { x: 0, y: 0, tx: 0, ty: 0, at: 0, fast: 0 };
+  // attention over every face in view (0.8.12, Face presence's "faces": a track id, place, owner flag, micro-movement
+  // m): it looks at one face and moves on to another every 3-8 s, sooner when someone new appears or another face
+  // moves clearly more; alone, one face is followed closely, with a quick small saccade when it moves. The owner gets
+  // no priority. Remove animations or the system's reduced motion: no saccades, a slower smooth gaze.
+  const ATT = { faces: new Map(), at: 0, on: null, since: 0, until: 0, fresh: null, known: new Set(), spike: 0 };
+  const RM = window.matchMedia ? matchMedia("(prefers-reduced-motion: reduce)") : null, calmEye = () => STILL || !!(RM && RM.matches);
+  function attend(now, calm) { // the face looked at now, or null; face_seen alone (tracking off) as before
+    if (!(ATT.faces.size && now - ATT.at < 2000)) return GAZE.at && now - GAZE.at < 3000 ? { x: GAZE.x, y: GAZE.y } : null;
+    const fs = [...ATT.faces.values()]; let cur = ATT.faces.get(ATT.on), to = null;
+    const pick = (not) => { const c = fs.filter((f) => f.id !== not); let tot = 0; const w = c.map((f) => (tot += .4 + f.m)), r = Math.random() * tot; return c[w.findIndex((x) => x >= r)] || c[0] || null; };
+    if (!cur) to = (ATT.fresh && ATT.faces.get(ATT.fresh)) || pick(null);
+    else if (fs.length > 1) {
+      const dwell = now - ATT.since, lively = fs.reduce((a, f) => (f.id !== cur.id && f.m > (a ? a.m : 0) ? f : a), null), fresh = ATT.fresh && ATT.faces.get(ATT.fresh);
+      if (fresh && fresh !== cur && dwell > 700) to = fresh; // someone new
+      else if (lively && lively.m > .3 && lively.m > cur.m + .25 && dwell > 1000) to = lively; // someone moving more
+      else if (now >= ATT.until) to = pick(cur.id);
+    }
+    if (to) { if (ATT.on != null && !calm) GAZE.fast = now + 140; cur = to; ATT.on = to.id; ATT.since = now; ATT.until = now + 3000 + Math.random() * 5000; ATT.fresh = null; }
+    if (fs.length === 1 && !calm && now < GAZE.fast) return { x: cur.x + (cur.x - cur.px) * .5, y: cur.y + (cur.y - cur.py) * .5 }; // a saccade lands a little ahead
+    return cur;
+  }
   {
     const S = senses.g; S.position.copy(SENSE_C); add(S); const O = senses.organs, hit = senses.hit;
     const sight = new THREE.Group(); sight.position.set(...SPOS.sight); S.add(sight); const big = eyeWithLids(.3); sight.add(big); eyes.push(big); const rings = [];
@@ -487,9 +508,11 @@ window.beingMount = async function (host, opts) {
     for (const [k, o] of Object.entries(O)) { const px = new THREE.Mesh(new THREE.SphereGeometry(sizes[k], 12, 8), new THREE.MeshBasicMaterial({ visible: false })); px.userData.pick = { organ: "senses", part: k }; o.add(px); }
     ticks.push((t, dt) => {
       rings[0].rotation.y += dt * .3; rings[1].rotation.x += dt * .22; const mot = Math.min(1, (SENSE.motion || 0) / 15), scr = Math.min(1, (SENSE.screen || 0) / 15);
-      const seen = GAZE.at && performance.now() - GAZE.at < 3000, right = V(1, 0, 0).applyQuaternion(cam.quaternion), upv = V(0, 1, 0).applyQuaternion(cam.quaternion);
-      // the camera faces you and isn't mirrored: your right is the frame's left, so x and y turn round
-      GAZE.tx += ((seen ? -GAZE.x : 0) - GAZE.tx) * Math.min(1, dt * 5); GAZE.ty += ((seen ? -GAZE.y : 0) - GAZE.ty) * Math.min(1, dt * 5);
+      const pn = performance.now(), calm = calmEye(), at = attend(pn, calm), right = V(1, 0, 0).applyQuaternion(cam.quaternion), upv = V(0, 1, 0).applyQuaternion(cam.quaternion);
+      // the camera faces you and isn't mirrored: your right is the frame's left, so x and y turn round; a saccade is
+      // quick, a lone face is followed closely, several are watched a little more slowly, calm is slow and smooth
+      const gk = Math.min(1, dt * (calm ? 1.5 : pn < GAZE.fast ? 22 : ATT.faces.size === 1 ? 9 : 5));
+      GAZE.tx += ((at ? -at.x : 0) - GAZE.tx) * gk; GAZE.ty += ((at ? -at.y : 0) - GAZE.ty) * gk;
       const look = cam.position.clone().add(right.multiplyScalar(GAZE.tx * view.d * .45)).add(upv.multiplyScalar(GAZE.ty * view.d * .3));
       for (const e of eyes) { const u = e.userData; if (Math.abs(t - (hit.sight ?? -9)) < .02 || rnd() < .002) u.blink = t; const bk = Math.max(0, 1 - Math.abs(t - u.blink) / .12); u.set(Math.max(.05, (OPEN.senses ? 1 : .82) - bk)); e.lookAt(look); u.ball.material.uniforms.dil.value = (SENSE.light == null ? .32 : [.42, .32, .2][Math.min(2, Math.max(0, SENSE.light | 0))]) + (SENSE.face ? .06 : 0); }
       senses.level = (senses.level || 0) * Math.exp(-dt * 3); const hh = Math.max(Math.min(1, senses.level * 1.5), 1 - (t - (hit.hearing ?? -9)) / 1.2); for (let i = 0; i < hcN; i++) hca[i] = .15 + hh * Math.max(0, Math.sin(i / hcN * 30 - t * 14)); hcg.attributes.a.needsUpdate = true; cm.uniforms.k.value = hh;
@@ -946,8 +969,22 @@ window.beingMount = async function (host, opts) {
     if (m.kind === "voice_state") muteState();
     if (m.kind === "voice_level" && m.levels) { senses.level = Math.max(senses.level || 0, ...m.levels.map(Number).filter(isFinite)); if (REST.on && senses.level > .15 && NOW - REST.heard > .4) { REST.heard = NOW; mind.fire("hear", NOW, 1); } }
   }
-  function face(m) { // Face presence (t:"face"): where the owner's face is in the camera's frame, nothing else
-    if (m && m.owner && Number.isFinite(+m.x) && Number.isFinite(+m.y)) { GAZE.x = Math.max(-1, Math.min(1, +m.x)); GAZE.y = Math.max(-1, Math.min(1, +m.y)); GAZE.at = performance.now(); }
+  function face(m) { // Face presence (t:"face"): where faces are in the camera's frame (places, an owner flag), nothing else
+    if (!m) return;
+    const cl = (v) => Math.max(-1, Math.min(1, +v)), now = performance.now();
+    if (m.kind === "face_seen" && m.owner && Number.isFinite(+m.x) && Number.isFinite(+m.y)) { GAZE.x = cl(m.x); GAZE.y = cl(m.y); GAZE.at = now; }
+    if (m.kind === "camera" && !m.on) { ATT.faces.clear(); ATT.at = 0; }
+    if (m.kind !== "faces" || !Array.isArray(m.faces)) return;
+    const next = new Map(), had = ATT.faces.size;
+    for (const f of m.faces.slice(0, 16)) {
+      if (!f || !Number.isFinite(+f.x) || !Number.isFinite(+f.y)) continue;
+      const id = String(f.id), old = ATT.faces.get(id), o = { id, x: cl(f.x), y: cl(f.y), m: Math.max(0, Math.min(1, +f.m || 0)), owner: !!f.owner };
+      o.px = old ? old.x : o.x; o.py = old ? old.y : o.y; o.m0 = old ? old.m : 0; next.set(id, o);
+      if (!ATT.known.has(id)) { ATT.known.add(id); if (had) ATT.fresh = id; }
+    }
+    if (ATT.known.size > 500) ATT.known = new Set(next.keys());
+    if (next.size === 1) { const o = [...next.values()][0]; if (o.m - o.m0 > .12 || (o.m > .35 && now - ATT.spike > 300)) { ATT.spike = now; GAZE.fast = now + 120; } } // a quick small saccade toward a movement
+    ATT.faces = next; ATT.at = now;
   }
   async function body(b) { // GET /api/body (0.8.8 stimulation): the phone's latest readings for the senses
     const ch = (b && b.regions && b.regions.hands && b.regions.hands.channels) || {}; if (ch.motion) SENSE.motion = 15 * ch.motion.intensity;

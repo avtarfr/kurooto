@@ -114,6 +114,7 @@ the room in view holds it. All on `Face` (`app.modules["face"]`):
 |---|---|
 | `watch_people(cb) -> unsubscribe()` | `cb(faces)` for every frame the watcher looks at, while `face.addons.watch` is on: a list (empty when nobody's in view) of `{h_px, h, w, x, y, yaw, det, who, score, e}`. `h_px` the box's height in pixels at the capture size, `h`/`w` shares of the frame, `x`/`y` the box's centre in -1..1 (the camera's own picture, not mirrored), `yaw` from `vision.pose` (mirrored: negative = turned to their left), `det` the detector's score. `who` (`owner`, `unsure`, `stranger`), `score` (the template's cosine) and `e` (SFace's 128 floats, a copy) only for faces big and clear enough to judge (score ≥ 0.8, ≥ `recognise.min_face_px`, sharp, lit), else None. Called on the `face-watch` thread between frames: keep it quick; an exception is a `face_failed {part: "an add-on watching"}` event and the next subscriber still runs. Each subscriber gets its own copies |
 | `hold_watch(reason, seconds=600) -> bool` | keeps the camera wanted (`Watcher.held`) for at most `HOLD_MAX_S` = 600 s, renewed by calling again, until `release_watch(reason)`; holds are keyed by `reason` (60 chars). Every pause reason comes first, so a hold never overrides a switch, /face pause, Kurooto paused, battery, a lock, a call, focus, the night, an enrolment or a camera problem. False (nothing held) when `face.addons.hold` is off. `holds()` lists the live ones; `line()` then says "camera on: an add-on is looking (reason)" and `status()["holds"]` has them |
+| `watch_faces(cb) -> unsubscribe()` | `cb(faces)` with the tracker's list (below: `{id, x, y, h, owner, m}`, no identity beyond the owner flag, no numbers) for every frame tracked, and `[]` once when the last face goes or the camera closes; while `face.track.on` and `face.addons.watch` are on. A subscriber alone asks for faces at the recognition rate (`TRACK_SLOW`); a hold whose reason contains "track" (`hold_watch("eye tracking")`) asks for `face.track.fps` (`TRACK_FAST`) and opens the camera as any hold does. Same thread, copies and failure rule (`face_failed {part: "an add-on following faces"}`) as `watch_people` |
 | `owner_desk_height() -> {px, h, n, from} or None` | your face's usual height at the desk: the median of your sightings (the `seen` emit, at most one per 5 s, last 240, in memory; trusted from 10, `from: "seen"`), else the enrolment's front-step median (`baseline.height` over `face.camera.height`, `from: "enrolment"`), else None. Cleared by forget |
 
 Off (no subscriber, no hold) nothing is built: `people()` is false, so `_look` makes no list. The watcher emits
@@ -121,6 +122,68 @@ Off (no subscriber, no hold) nothing is built: `people()` is false, so `_look` m
 (`test_people_events_never_reach_the_event_log_or_the_pages`). The numbers are the add-on's to look after: Kurooto keeps
 none of them. While a hold keeps the camera open, a video call can't take it on Linux; the hold's 10-minute cap and its
 reason on the card are there for that.
+
+## Tracking every face (0.8.12)
+
+So the being's eye (and an add-on's) can follow anyone in view, not just the owner. Switch `face.track.on` (on); rate
+`face.track.fps` (10, at most 15). Tracking never opens the camera: it only works while the watcher's rules have it
+open (idle, a wake, a confirmation, an add-on's hold).
+
+`Face._track_mode()` → `Watcher.tracking` (read once per full tick):
+
+| Mode | When | What runs |
+|---|---|---|
+| `TRACK_OFF` | `face.track.on` off, or nobody wants faces | nothing: no tracks, no list (as 0.8.11) |
+| `TRACK_SLOW` | an add-on holds the camera (any reason) or follows faces (`watch_faces`), no page in sight | tracks updated on the recognition frames only (`watch.fps`) |
+| `TRACK_FAST` | a dashboard page in sight (`Live.watched()`), or a hold whose reason contains "track" | detection-only frames (`Watcher.track_tick`: `Camera.read` + YuNet, never SFace) between the recognition frames, at `track.fps` |
+
+The thread (`Face._run`): a full `tick()` (pause reasons, input, the camera's rules, recognition when due) every
+`TICK_S` = 0.25 s; between, `track_tick()` only; it sleeps `Watcher.wait_s()`: until the next detection frame or full
+tick, never under `WAIT_MIN_S` = 20 ms. A detection-only frame over 60 ms halves the tracking rate (to 1/8 at most);
+30 quick ones in a row undo one halving.
+
+**Tracks** (`Watcher._update_tracks`, positions in memory only, cleared when the camera closes): each frame's faces
+(score ≥ 0.6, any size) are matched to the tracks greedily, nearest centre first, within `TRACK_MATCH` = 1 face
+height; unmatched faces get a new id (counting up from 1 per watcher); a track missing `TRACK_MISS` = 3 frames in a
+row is gone. The owner flag comes from recognition frames: the face recognised as you sets it (on that track only),
+a stranger clears it, unsure and unjudged faces keep it.
+
+**Micro-movement** `m` (`Watcher._move`): against the track as it was `MICRO_WINDOW_S` = 0.4 s ago (the last frame
+when frames are further apart): centre shift + size change + the largest landmark shift relative to the face's
+centre (a nod or a turn moves the nose, a wide mouth movement its corners), in face heights, minus `MICRO_JITTER` =
+0.03, per second, over `MICRO_FULL` = 0.3, clipped to 0..1; it rises 60 % of the way to a new reading at once and
+fades with `MICRO_TAU` = 0.5 s. The jitter and scale are estimates from YuNet's landmark precision at 320 px wide, not
+measured on a camera yet: a still face may read 0.05-0.15 on a noisy webcam. YuNet's five landmarks have no lips, so
+talking shows only as far as it moves the mouth's corners or the head.
+
+The message, to every open page (`Face._on_watch("faces")`, at most one per `FACES_EVERY_S` = 0.09 s, an empty list
+always; only while `Live.watched()`) and to `watch_faces` subscribers (every one):
+
+```json
+{"t": "face", "kind": "faces", "faces": [{"id": 3, "x": -0.21, "y": -0.05, "h": 0.31, "owner": true, "m": 0.18}]}
+```
+
+`x`, `y` the box's centre in -1..1 of the camera's own picture (not mirrored, as `face_seen`), `h` its height's share
+of the frame. Never an event, never kept. `face_seen` is unchanged (owner only, recognition frames, ≤ 5 a second).
+
+**The being's eye** (`static/being.js`, `ATT`/`attend()`): with `faces` fresh (< 2 s) it looks at one face and moves
+to another (picked at random, weighted 0.4 + m) every 3-8 s, after 0.7 s to someone new, after 1 s to a face whose
+m is over 0.3 and 0.25 above the current one's; a switch is a saccade (fast gaze for 140 ms). One face is followed
+closely (gaze rate 9 against 5), with a quick small saccade, landing a little ahead, when its m jumps by 0.12 or
+passes 0.35. The owner has no priority. `STILL` (Remove animations) or the system's reduced motion: no saccades, a
+slow smooth gaze (rate 1.5). Without `faces` (tracking off, an older daemon) it follows `face_seen` as before. The
+phone's Views → Being (`being-phone.js`) runs the same code but gets no face messages.
+
+**Cost, honestly:** YuNet at 320x240 measured about 9 ms on one thread (above), plus `Camera.read` and the resize
+(a few ms), so `TRACK_FAST` at 10 a second is roughly 10-15 % of one core while the camera is open and a dashboard
+is in sight; that's an estimate from the 0.8.10 measurement, not measured with a camera in this release.
+`test_the_watch_thread_sleeps_between_frames_while_tracking` runs the real loop with free fakes for 1.2 s: about 12
+detections and well under 0.3 s of the thread's CPU, so the loop itself doesn't spin. Lower `face.track.fps` or turn
+`face.track.on` off to save it.
+
+Tests: `tests/unit/test_face.py` section 14 (ids across frames and list order, micro-movement still/nod/large/fade,
+rates and passes, the switch, the slow machine, who wants faces, the page rate limit and add-on copies, the real
+loop).
 
 ## Enrolment and the test (`enrol.py`)
 
