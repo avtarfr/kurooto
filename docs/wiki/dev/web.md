@@ -428,6 +428,11 @@ region's parts and their switches), `/api/note` and `open-note`, `/api/voice` an
 - **Focus:** `FOCUS` is the organ; `SUB` the part (`region`, `heart`, `sense`, `hood`, `note`, `feature`): `subFocus` aims
   the camera from the side the part faces and tracks it; the `flesh` shader's `fp/fr/fk` brighten around the part and dim
   the rest, `dm` dims whole sense organs, notes and features scale their alpha. Esc: `back()`.
+- **Glass:** every `flesh` material has `gh` (0 solid, 1 glass: fresnel-weighted alpha, no depth writes). The cortex and the
+  heart have a `twin` (same geometry and uniforms, `#define SOLID`) that draws only the selected part (`fp`, `fr`) opaque, so
+  a region stays whole in front of the glass; whole-mesh parts (deep structures, cerebellum, coronaries, senses) switch
+  `gh` alone. The brain's views: `mind.mode` `solid` | `cut` (the clip planes and the `cerebrum.vol` cap, `mind.cutK`) |
+  `xray` (cortex glass, `mind.deep` solid; clicks then pick deep structures first, `DEEP_OF`).
 - **Memory:** neighbourhoods come from the NOTES map (`hoodOf` → `mind.nodes`/`mind.hoods`, so names and members match);
   the 3D force layout runs in `static/being-layout.js` (a Worker: grid repulsion capped at 40 neighbours, springs per link,
   via links at half strength, a pull to each neighbourhood's centre), posting positions every 12 steps; positions are kept

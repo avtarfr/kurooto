@@ -96,9 +96,12 @@ The board shows Kurooto as one body, drawn from what it's really doing; the pane
 - **Points of light** are the features, on the organ that does their work; they flare when the feature does something.
   Click one for its switch and all its settings, editable right there.
 
-**Turning it:** drag turns the whole body; with an organ open, drag on it turns that organ. Wheel zooms, right-drag pans.
-**Every part focuses:** click a region, a heart part, a sense, a neighbourhood, a note or a feature and the view flies to
-it, it brightens and the rest dims; Esc (or a click on empty space) goes back one level. **H** (or **hints** top right)
+**Turning it:** drag an organ to turn it (a sense on its own); dragging empty space doesn't move anything. Wheel zooms,
+right-drag pans. **Every part focuses:** click a region, a heart part, a sense, a neighbourhood, a note or a feature and the
+view flies to it; it stays solid, glowing in its colour with a fine ring round it, and the rest of its organ turns to faint
+glass so nothing hides it; Esc (or a click on empty space) goes back one level. **The brain's views** (top of the board
+while the brain is open): **Solid** (the default), **Cutaway** (the top lifts off to show the inside) and **X-ray** (the
+cortex as glass, the thalamus, hippocampus, caudate and corpus callosum inside). **H** (or **hints** top right)
 hides the hints: the lines under each name, the help line and the colours' key (`look.being_hints`). **Mute** stops Voice
 hearing and speaking. `look.being_theme`: `void` (white light on black) or `theme` (the page's palette).
 

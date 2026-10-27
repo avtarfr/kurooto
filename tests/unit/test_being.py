@@ -158,7 +158,7 @@ def test_the_layout_worker_settles_a_graph(tmp_path):
         + ";const N=60,hood=new Int32Array(N),p=new Float32Array(N*3);"
         "for(let i=0;i<N;i++){p[i*3]=Math.sin(i*7.1)*.2;p[i*3+1]=Math.cos(i*3.3)*.2;p[i*3+2]=Math.sin(i*1.7)*.2;}"
         "const li=new Int32Array([0,1,2,3]),lw=new Float32Array([1,.5]);"
-        "onmessage({data:{p,li,lw,hood,ctr:new Float32Array([0,0,0]),iters:80}});"
+        "onmessage({data:{p,li,lw,hood,ctr:new Float32Array([0,0,0]),iters:220}});"
         "const d=(a,b)=>Math.hypot(out.p[a*3]-out.p[b*3],out.p[a*3+1]-out.p[b*3+1],out.p[a*3+2]-out.p[b*3+2]);"
         "let u=0;for(let j=4;j<N;j++)u+=d(0,j);"
         "console.log(JSON.stringify({done:out.done,linked:d(0,1),apart:u/(N-4),finite:out.p.every(Number.isFinite)}))"
@@ -167,3 +167,12 @@ def test_the_layout_worker_settles_a_graph(tmp_path):
     f.write_text(harness)
     r = json.loads(subprocess.run([node, str(f)], capture_output=True, text=True, check=True).stdout)
     assert r["done"] and r["finite"] and r["linked"] < r["apart"]
+
+
+def test_a_selection_leaves_only_its_part_solid_and_the_brain_has_three_views():
+    js = static("being.js").decode()
+    assert "#ifdef SOLID" in js and "function twin(mesh)" in js  # the selected part's solid twin; the rest is glass
+    assert "twin(cortex)" in js and "twin(hm)" in js  # the cortex and the heart keep their selected part whole
+    for nm in ("thalamus", "hippocampus", "caudate", "callosum"):
+        assert f'"{nm}"' in js  # the deep structures, shown in X-ray and through the glass
+    assert '["solid", "cut", "xray"]' in js and 'if (p.organ === "mind") setMode("solid")' in js  # opens solid
