@@ -222,6 +222,9 @@ class Jobs:
         self.steps: dict[str, list[dict]] = {}  # a running request's tool log (note_step), dropped when it ends
         self.recalled: dict[str, int] = {}  # a running request's remembered items (core/assembler.py), for its receipt
         self.decided: dict[str, dict] = {}  # a running request's quick decision (its effort): who made it, its model
+        # (0.8.14) the job gate: fn(info) -> a time to look again (epoch seconds), or None to let it run. Asked before
+        # automatic work starts (never your own requests, nor one someone waits for); info: id, lane, why, title, brain
+        self.gates: list = []
         if "background" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # older databases
             self._db.execute("alter table jobs add column background integer default 0")
         if "runner" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # which process runs it
@@ -249,6 +252,7 @@ class Jobs:
             ("model", "text"),
             ("images", "text"),
             ("scratch", "text"),
+            ("yield_until", "real"),
         ):
             if col not in have:  # the lane; the agent program running it; the last sign of life; a try's deadline;
                 # the AI it was pinned to; the run receipt; what picked its effort and your words when you said its
@@ -464,21 +468,51 @@ class Jobs:
     )
 
     # queued, allowed on this power, not waiting for a free limit's reset (core/quota.py) nor for the internet
-    _READY = "status='queued' and (background=0 or ?) and coalesce(not_before, 0) <= ? and coalesce(held_until, 0) <= ?"
+    _READY = (
+        "status='queued' and (background=0 or ?) and coalesce(not_before, 0) <= ? and coalesce(held_until, 0) <= ? "
+        "and coalesce(yield_until, 0) <= ?"
+    )
 
     def _ready_args(self) -> tuple:
         q = self.app.quota  # with the reserve turned off (quota.on = false), work that waited goes at once
-        return int(self.app.power.current == "normal"), q.clock() if q.on() else 1e18, time.time()
+        t = time.time()
+        return int(self.app.power.current == "normal"), q.clock() if q.on() else 1e18, t, t
+
+    def _gated(self, row) -> float | None:
+        """(0.8.14) Automatic work a gate holds back: until when (at least a minute). Your own requests, and any with
+        someone waiting for the answer, never are; a gate that fails lets it run."""
+        jid, lane, why, title, brain, reply_to = row
+        if not self.gates or (lane or "you") == "you" or reply_to is not None:
+            return None
+        info = {"id": jid, "lane": lane, "why": why or "", "title": title or "", "brain": brain or ""}
+        for gate in list(self.gates):
+            try:
+                until = gate(info)
+            except Exception as e:
+                self.app.events.emit("jobs_failed", error=f"gate: {type(e).__name__}: {e}"[:300])
+                continue
+            if until:
+                return max(float(until), time.time() + 60)
+        return None
 
     def _claim(self, lane: str | None = None) -> str | None:
         """Mark the oldest ready job (of one lane, or of any) as running; its id, or None."""
         with self._lock:
             which = " and coalesce(lane, 'you')=?" if lane else ""
-            row = self._db.execute(
+            rows = self._db.execute(
                 # a request with someone waiting for the answer (a reply target) goes before automatic work (0.7.3)
-                f"select id from jobs where {self._READY}{which} order by (reply_to is null), created limit 1",
+                f"select id, lane, why, title, brain_req, reply_to from jobs where {self._READY}{which} "
+                "order by (reply_to is null), created limit 20",
                 (*self._ready_args(), *((lane,) if lane else ())),
-            ).fetchone()
+            ).fetchall()
+            row = None
+            for r in rows:
+                until = self._gated(r)
+                if until is None:
+                    row = r
+                    break
+                self._db.execute("update jobs set yield_until=? where id=?", (until, r[0]))
+                self.app.events.emit("job_yielded", job=r[0], lane=r[1])
             if not row:
                 return None
             t = time.time()
