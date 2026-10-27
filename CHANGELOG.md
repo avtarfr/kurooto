@@ -13,9 +13,11 @@ The phone app, rebuilt around chat (the Rail design), and the remaining requeste
 - **Today, Alarms, Views, Settings** are panes in a floating bar that folds into Chat's rail and stretches back out as
   you move; back goes to Chat. Today, Alarms and Settings are grids of cards; every setting the app has is in Settings,
   searchable, and a long press opens its guide entry. Apricot and plum join Material You in Look.
-- **The being on the phone:** the dashboard's own body of Kurooto in Views (Being · Brain · Systems · Notes), turned with
-  a finger, pinched to zoom, every part focusable; its switches and settings work from the phone, sealed and checked by
-  your computer (`calls.views_being`).
+- **The being on the phone:** the dashboard's own body of Kurooto in Views as four pages, Brain · Heart · Senses ·
+  Memory: each organ alone with the dashboard's meshes, shaders and glow, turned with a finger, pinched to zoom, its
+  parts listed under it with what they're doing; tap one there or on the drawing and it's focused in both, with its
+  switches, sealed and checked by your computer (`calls.views_being`; the whole being in one drawing with
+  `app.viewsOrgans` off). Systems, the Notes map and the Brain console are under More.
 - **The being, in faint organic colour** on the dashboard too, and its eyes look at you when Face presence sees you.
 - **Brain console** (Alt+O, and Brain in the app's Views): what the Brain decided and why, its timeline, search, each
   part's switches next to what it's doing, its beliefs, plans and experiments (`mind.console.on`, `calls.views_brain`).

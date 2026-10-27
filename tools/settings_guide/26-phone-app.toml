@@ -39,6 +39,19 @@ default = "`systems`"
 when = "Pick the one you look at most."
 needs = "`calls.views` on your computer."
 
+[s."app.viewsOrgans"]
+tip = "Views shows the being as four pages, Brain, Heart, Senses and Memory, each organ alone with its parts listed under it."
+default = "on"
+when = "Turn it off to see the whole being in one drawing, with the dashboard's panels, as before 0.8.10's organ pages."
+needs = "`calls.views` and `calls.views_being` on your computer."
+
+[s."app.viewOrgan"]
+tip = "Which organ page Views opens on: the one you looked at last."
+values = "`brain`, `heart`, `senses` or `memory`."
+default = "`brain`"
+when = "Nothing to set: tap another page and Views remembers it."
+needs = "`app.viewsOrgans`."
+
 [s."app.callTone"]
 tip = "The ringtone for Kurooto's calls; empty is the phone's default."
 values = "A ringtone picked from the phone's list."

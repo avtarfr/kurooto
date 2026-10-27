@@ -94,6 +94,12 @@ window.beingMount = async function (host, opts) {
   // the panel as a bottom sheet and the words drawn over the canvas. Every hook is marked "phone:"; with PH null (the
   // dashboard) each one does exactly what it did before.
   const PH = opts.mode === "phone" && window.beingPhone ? window.beingPhone : null, UI = PH ? PH.ui : null;
+  // organ pages: the phone app's Views pages Brain, Heart, Senses, Memory (0.8.10) pass opts.only, the page's name; then
+  // that one organ is drawn alone, framed, with nothing over it (the app lists its parts), and only(name) switches it.
+  // Every change for them is behind OM; without opts.only the being is as it was. still: Remove animations is on.
+  const PAGE_ORGAN = { brain: "mind", heart: "heart", senses: "senses", memory: "memory" };
+  let ONLY = PAGE_ORGAN[opts.only] || null;
+  const OM = !!ONLY, STILL = OM && !!opts.still;
   const THEME = opts.theme === "theme" && opts.pal ? "theme" : "void";
   const PAL = THEME === "theme" ? opts.pal : null;
   const P = THEME === "void"
@@ -135,6 +141,7 @@ window.beingMount = async function (host, opts) {
   const modeB = document.createElement("div"); modeB.className = "bmode"; modeB.innerHTML = ["solid", "cut", "xray"].map((m) => `<button data-mode="${m}">${{ solid: "Solid", cut: "Cutaway", xray: "X-ray" }[m]}</button>`).join("");
   const hintsB = document.createElement("button"); hintsB.className = "mute hints"; hintsB.title = "the hints on the being: what to click, what each part is (H; look.being_hints)";
   host.append(gl, ov, panel, tip, muteB, hintsB, modeB);
+  if (OM) for (const el of [muteB, hintsB, modeB]) el.style.visibility = "hidden"; // the app has its own controls
   // the hints (look.being_hints, H): the lines under each name, how to turn it, the colours' key, the rings on features
   let HINTS = opts.hints !== false;
   function setHints(v, save) {
@@ -333,7 +340,7 @@ window.beingMount = async function (host, opts) {
   }
 
   /* ===================== vessels, nerves, blood ===================== */
-  const FLOW = [];
+  const FLOW = [], LINKS = []; // LINKS: the vessels, nerves and blood between the organs (hidden on an organ page)
   function vessel(name, from, to, nStr, bend, width) {
     const a = from.clone(), mid = a.clone().lerp(to, .5).add(V(gauss() * bend, gauss() * bend * .6 + .2, gauss() * bend * .4));
     const cu = new THREE.CatmullRomCurve3([a, a.clone().lerp(mid, .45).add(V(0, 0, .2)), mid, mid.clone().lerp(to, .6).add(V(0, 0, -.1)), to]); const len = cu.getLength(); PATHS[name] = { cu, len };
@@ -344,7 +351,7 @@ window.beingMount = async function (host, opts) {
       const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { ph: { value: 0 }, len: { value: len }, bpm: { value: 60 }, fade: { value: 1 }, c: { value: new THREE.Color(P.vein) } },
         vertexShader: `attribute float u;varying float vu;void main(){vu=u;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
         fragmentShader: `uniform float ph,len,bpm,fade;uniform vec3 c;varying float vu;void main(){float u=fract(ph-vu*len/${SPEED.toFixed(1)}*bpm/60.);float p=exp(-pow((u-.18)/.05,2.))+.5*exp(-pow((u-.05)/.035,2.));gl_FragColor=vec4(c,(.13+p*.75)*fade);}` });
-      add(new THREE.Mesh(geo, m)); mats.push(m);
+      LINKS.push(add(new THREE.Mesh(geo, m))); mats.push(m);
     }
     ticks.push(() => { const f = 1 - .88 * Math.max(0, ...Object.values(OPEN)); for (const m of mats) { m.uniforms.ph.value = phase; m.uniforms.bpm.value = BPM; m.uniforms.fade.value = f; } }); // faded while you look into an organ
     return cu;
@@ -352,14 +359,14 @@ window.beingMount = async function (host, opts) {
   const NERVES = {};
   function nerve(name, from, to) {
     const mid = from.clone().lerp(to, .5).add(V(gauss() * .3, .5 + gauss() * .2, gauss() * .2)), cu = new THREE.CatmullRomCurve3([from, mid, to]);
-    const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(cu.getPoints(90)), new THREE.LineDashedMaterial({ color: P.nerve, dashSize: .035, gapSize: .03, transparent: true, opacity: .3 })); l.computeLineDistances(); add(l); NERVES[name] = cu;
+    const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(cu.getPoints(90)), new THREE.LineDashedMaterial({ color: P.nerve, dashSize: .035, gapSize: .03, transparent: true, opacity: .3 })); l.computeLineDistances(); LINKS.push(add(l)); NERVES[name] = cu;
     ticks.push(() => { l.material.opacity = .3 * (1 - .9 * Math.max(0, ...Object.values(OPEN))); });
   }
   const CN = 300, cp = new Float32Array(CN * 3), cc = new Float32Array(CN * 3), ca = new Float32Array(CN), cellG = new THREE.BufferGeometry();
   cellG.setAttribute("position", new THREE.BufferAttribute(cp, 3)); cellG.setAttribute("col", new THREE.BufferAttribute(cc, 3)); cellG.setAttribute("a", new THREE.BufferAttribute(ca, 1));
-  add(new THREE.Points(cellG, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { map: { value: dot() } },
+  LINKS.push(add(new THREE.Points(cellG, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { map: { value: dot() } },
     vertexShader: `attribute float a;attribute vec3 col;varying float va;varying vec3 vc;void main(){va=a;vc=col;vec4 m=modelViewMatrix*vec4(position,1.);gl_PointSize=(3.+9.*a)*(6./-m.z)*${DPR.toFixed(2)};gl_Position=projectionMatrix*m;}`,
-    fragmentShader: `uniform sampler2D map;varying float va;varying vec3 vc;void main(){gl_FragColor=vec4(vc,1.)*texture2D(map,gl_PointCoord)*va;}` })));
+    fragmentShader: `uniform sampler2D map;varying float va;varying vec3 vc;void main(){gl_FragColor=vec4(vc,1.)*texture2D(map,gl_PointCoord)*va;}` }))));
   ticks.push((t) => {
     let n = 0;
     for (let i = FLOW.length - 1; i >= 0; i--) { const [cu, t0, dur, col, rev] = FLOW[i], u = (t - t0) / dur; if (u > 1) { FLOW.splice(i, 1); continue; } if (u < 0 || n >= CN) continue; const p = cu.getPoint(rev ? 1 - u : u); cp.set([p.x, p.y, p.z], n * 3); cc.set([col.r, col.g, col.b], n * 3); ca[n] = Math.sin(Math.PI * u) * .9 + .1; n++; }
@@ -584,8 +591,12 @@ window.beingMount = async function (host, opts) {
   function focusOn(name) {
     FOCUS = name; SUB = null; hintUntil = NOW + 3;
     if (!name) Object.assign(goal, HOME);
-    else { const T = TARGETS[name]; goal.tx = T.c.x; goal.ty = T.c.y; goal.tz = T.c.z; goal.d = T.d; }
+    else { const T = TARGETS[name]; goal.tx = T.c.x; goal.ty = T.c.y; goal.tz = T.c.z; goal.d = OM ? ONLY_D[name] : T.d; }
   }
+  // an organ page: the organ fills the phone's width (the dashboard's distances frame it among the others); a part
+  // picked comes nearer than the dashboard brings it, for the same reason
+  const ONLY_D = { mind: 2.6, heart: 1.45, senses: 3.6, memory: 2.3 }, ONLY_SUB = .7;
+  const ONLY_TH = { mind: -.95, heart: .35 }; // seen from three-quarters (the brain from the front shows only its two halves)
   // One part of an organ in focus (SUB): a brain region, a heart part, a sense, a neighbourhood of notes, one note, one
   // feature. The camera flies to it from the side it faces and stays on it while it moves; it brightens and the rest of
   // its organ dims. Esc or a click on empty space goes back to the whole organ.
@@ -593,19 +604,21 @@ window.beingMount = async function (host, opts) {
   function subFocus(s) {
     if (FOCUS !== s.org) FOCUS = s.org;
     SUB = s; hintUntil = NOW + 3; spinning.obj = null;
-    const q = s.pos(); goal.tx = q.x; goal.ty = q.y; goal.tz = q.z; goal.d = s.d;
+    const q = s.pos(); goal.tx = q.x; goal.ty = q.y; goal.tz = q.z; goal.d = OM ? s.d * ONLY_SUB : s.d;
     if (s.from) {
       const dir = q.clone().sub(s.from());
       if (dir.lengthSq() > 1e-6) { dir.normalize(); const th = Math.atan2(dir.x, dir.z); goal.th += ((th - goal.th) % 6.2832 + 9.4248) % 6.2832 - 3.1416; goal.ph = Math.max(.45, Math.min(2.7, Math.acos(Math.max(-1, Math.min(1, dir.y))))); }
     }
   }
-  function back() { const org = SUB ? SUB.org : FOCUS; if (!org) return; focusOn(org); showOrgan(org); }
+  function back() { const org = SUB ? SUB.org : FOCUS; if (!org) return; if (OM) PICKED = null; focusOn(org); showOrgan(org); } // an organ page: no part named after it
   const wpos = (obj) => obj.getWorldPosition(V(0, 0, 0));
   const spinning = { obj: null, vx: 0, vy: 0 };
   let drag = null;
   gl.addEventListener("contextmenu", (e) => e.preventDefault());
   // phone: one finger turns an organ (the view where there's none), pinch zooms, two fingers pan, a tap picks
-  if (PH) PH.touch({ gl, goal, spinning, pickAt, click, focus: () => FOCUS, cam, size: () => [W, H], setDrag: (d) => (drag = d), organ: (on) => (on ? (on.organ === "senses" && on.part ? senses.organs[on.part] : ORGAN_OBJ[on.organ]) : null) });
+  if (PH) PH.touch({ gl, goal, spinning, pickAt, click, focus: () => FOCUS, cam, size: () => [W, H], setDrag: (d) => (drag = d), organ: (on) => (OM ? held() : on ? (on.organ === "senses" && on.part ? senses.organs[on.part] : ORGAN_OBJ[on.organ]) : null), only: () => OM });
+  // an organ page: a finger anywhere turns the organ (a sense picked: that sense), not the view
+  const held = () => (SUB && SUB.kind === "sense" ? senses.organs[SUB.key] : ORGAN_OBJ[ONLY]);
   if (!PH) gl.addEventListener("pointerdown", (e) => { gl.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, b: e.button, moved: false, on: pickAt(e, true) }; });
   if (!PH) gl.addEventListener("pointermove", (e) => {
     if (drag) {
@@ -633,9 +646,10 @@ window.beingMount = async function (host, opts) {
   const proxies = [];
   { const pm = new THREE.Mesh(new THREE.SphereGeometry(.9, 12, 8), new THREE.MeshBasicMaterial({ visible: false })); pm.scale.set(.9, .75, 1.2); pm.userData.pick = { organ: "mind" }; mind.g.add(pm); proxies.push(pm);
     const ph = new THREE.Mesh(new THREE.SphereGeometry(.55, 12, 8), new THREE.MeshBasicMaterial({ visible: false })); ph.userData.pick = { organ: "heart" }; heart.g.add(ph); }
+  const shown = (o) => { for (let x = o; x; x = x.parent) if (x.visible === false) return false; return true; }; // an organ page hides the others
   function pickAt(e, organOnly) {
     const r = gl.getBoundingClientRect(); mouse.set((e.clientX - r.left) / W * 2 - 1, -((e.clientY - r.top) / H) * 2 + 1); ray.setFromCamera(mouse, cam);
-    const list = []; scene.traverse((o) => { if (o.userData.pick && o.parent && o.parent.visible !== false) list.push(o); });
+    const list = []; scene.traverse((o) => { if (o.userData.pick && o.parent && o.parent.visible !== false && (!OM || shown(o))) list.push(o); });
     const hits = ray.intersectObjects(list, false);
     if (!organOnly) for (const h of hits) if (h.object.userData.pick.feature) return h.object.userData.pick;
     if (!organOnly && FOCUS === "memory" && memory.pts) { ray.params.Points.threshold = .025; const nh = ray.intersectObject(memory.pts, false); if (nh.length) return { note: nh[0].index }; }
@@ -656,7 +670,7 @@ window.beingMount = async function (host, opts) {
   }
   function click(e) {
     const p = pickAt(e);
-    if (!p) { if (SUB) back(); else { closePanel(); focusOn(null); } return; }
+    if (!p) { if (SUB) back(); else if (!OM) { closePanel(); focusOn(null); } return; } // an organ page stays on its organ
     if (p.feature) { showFeature(p.feature); return; }
     if (p.note != null) { showNote(memory.nodes[p.note]); return; }
     if (p.organ && p.organ !== FOCUS) { if (p.organ === "mind") setMode("solid"); focusOn(p.organ); showOrgan(p.organ); return; }
@@ -681,8 +695,8 @@ window.beingMount = async function (host, opts) {
   const getSettings = async () => { if (!SETTINGS || performance.now() - SET_AT > 8000) { SETTINGS = await api("settings"); SET_AT = performance.now(); } return SETTINGS; };
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   function say2(text) { let el = panel.querySelector(".said"); if (!el) { el = document.createElement("div"); el.className = "s said"; panel.appendChild(el); } el.textContent = text; }
-  function closePanel() { PICKED = null; panel.style.display = "none"; panel.innerHTML = ""; PANEL = null; if (PH) PH.sheet(panel, false); }
-  function openPanel(html, kind) { panel.innerHTML = `<button class="x" title="close (Esc)">×</button>${html}`; panel.style.display = "block"; PANEL = kind; panel.querySelector(".x").onclick = closePanel; if (PH) PH.sheet(panel, true, closePanel, kind); } // phone: a bottom sheet
+  function closePanel() { PICKED = null; panel.style.display = "none"; panel.innerHTML = ""; PANEL = null; if (OM) organDirty(); else if (PH) PH.sheet(panel, false); }
+  function openPanel(html, kind) { if (OM) { PANEL = kind; organDirty(); return; } panel.innerHTML = `<button class="x" title="close (Esc)">×</button>${html}`; panel.style.display = "block"; PANEL = kind; panel.querySelector(".x").onclick = closePanel; if (PH) PH.sheet(panel, true, closePanel, kind); } // phone: a bottom sheet
   async function settingsHTML(sections) {
     if (!sections.length) return "";
     const S = await getSettings().catch(() => null); if (!S) return "";
@@ -816,7 +830,7 @@ window.beingMount = async function (host, opts) {
     if (PANEL === "pc" && PANEL_SENSE === "heat") { const live = panel.querySelector(".pc"); if (live) live.outerHTML = pcHTML(); }
   }
   function event(e) {
-    const t = NOW, k = KIND[e.kind]; recent.push(performance.now()); const col = k ? new THREE.Color(PROC[k].c) : new THREE.Color(P.a);
+    const t = NOW, k = KIND[e.kind]; recent.push(performance.now()); if (OM && k) KREC.push([performance.now(), k]); const col = k ? new THREE.Color(PROC[k].c) : new THREE.Color(P.a);
     if (k) {
       mind.fire(k, t, ["memory", "speak", "hear", "touch", "feel", "see"].includes(k) ? 3 : k === "hold" ? 3 : 10);
       const ven = col.clone().lerp(new THREE.Color(P.back ?? P.a), .5).multiplyScalar(.55); // returning blood leans blue
@@ -847,6 +861,162 @@ window.beingMount = async function (host, opts) {
     const ch = (b && b.regions && b.regions.hands && b.regions.hands.channels) || {}; if (ch.motion) SENSE.motion = 15 * ch.motion.intensity;
   }
 
+  /* ===================== the phone's organ pages (opts.only, 0.8.10) ===================== */
+  // The app (ViewsTab) lists the organ's parts natively, each with its live state, and the part picked in full: state()
+  // is that as plain data (made again each second, and at once when something is picked), rev() says when it changed.
+  // What the app calls back: pick(kind, key), setting(key, value), feature(id, on), mode(m), only(page).
+  const PAGE_OF = { mind: "brain", heart: "heart", senses: "senses", memory: "memory" };
+  const KREC = [], NOTE_TXT = new Map(); let OSTATE = "{}", OREV = 0, ODIRTY = true, OBUSY = false, OTICK = 0, SAID = "", OTIMER = 0;
+  function organDirty() { ODIRTY = true; }
+  const procOf = (k) => Object.keys(PROC).find((x) => PROC[x].at.join() === REGIONS[k].at.join());
+  const hhmm = (s) => new Date(s * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const pctOf = (v) => `${Math.round((v || 0) * 100)}%`;
+  // the features whose light is on this part (as placeFeatures put them: the ones with no home are the coronaries')
+  const featsAt = (org, part) => Object.keys(ORG).filter((id) => ORG[id].org === org && String(ORG[id].part) === String(part)).map((id) => ({ id, title: ORG[id].title, on: !!ORG[id].on }));
+  async function brainParts(ids) {
+    if (!ids.length) return []; const d = B3 || await brain3(); if (!d) return []; const comps = {}; for (const isl of d.islands) for (const c of isl.comps) comps[c[0]] = c;
+    return ids.filter((id) => comps[id]).map((id) => { const c = comps[id]; return { name: c[1], on: !!c[2], state: c[2] ? String(c[3] || "on") : "off", key: /^mind\.[a-z_.]+$/.test(c[5]) ? c[5] : "" }; });
+  }
+  async function settingRows(sections) { // as settingsHTML walks them: a switch for each yes or no, the rest as words
+    const S = sections.length ? await getSettings().catch(() => null) : null; if (!S) return [];
+    const out = [];
+    for (const sec of sections) {
+      const s = (S.sections || []).find((x) => x.section === sec); if (!s) continue;
+      const flat = []; const walk = (o, pre) => { for (const [k, v] of Object.entries(o)) { if (v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length && pre.split(".").length < 3) walk(v, pre ? `${pre}.${k}` : k); else flat.push([pre ? `${pre}.${k}` : k, v]); } }; walk(s.values, "");
+      for (const [k, v] of flat) {
+        const ch = (s.choices || {})[k], lab = ch && ch.find((c) => String(c[0]) === String(v));
+        out.push({ key: `${sec}.${k}`, group: s.title, name: k, bool: typeof v === "boolean", on: v === true, value: typeof v === "boolean" ? "" : lab ? String(lab[1]) : v && typeof v === "object" ? JSON.stringify(v) : String(v ?? "") });
+      }
+    }
+    return out;
+  }
+  const jobsOf = (k) => ((BODY && BODY.jobs) || []).filter((j) => (k === "ventricles" ? /running|queued/ : /ok|failed/).test(j.status));
+  const linkOf = () => (BODY && BODY.link) || { off: true };
+  const voiceNow = () => { const v = VOICE; return !v || v.error ? "Voice isn't on" : !v.on ? "off" : v.muted ? "muted" : v.state || (v.listening ? "listening" : "on"); };
+  const hottest = () => { const t = SYS && SYS.temps ? Object.values(SYS.temps).flat().map(Number).filter(isFinite) : []; return t.length ? Math.round(Math.max(...t)) : null; };
+  function partLive(kind, k) {
+    if (kind === "region") {
+      const r = REGIONS[k], pk = procOf(k), n = pk ? KREC.filter((x) => x[1] === pk).length : 0, f = featsAt("mind", k), on = f.filter((x) => x.on).length;
+      return [n ? `${n} sparks lately` : "", f.length ? `${on} of ${f.length} features on` : "", r.parts.length ? `${r.parts.length} Brain parts` : ""].filter(Boolean).join(" · ") || "quiet";
+    }
+    if (kind === "heart") {
+      if (k === "pacemaker") return `${Math.round(BPM)} a minute`;
+      if (k === "ventricles") { const n = jobsOf(k).length; return n ? `${n} running or waiting` : "nothing running"; }
+      if (k === "atria") { const n = jobsOf(k).length; return n ? `${n} answered lately` : "nothing answered lately"; }
+      if (k === "aorta") { const L = linkOf(); return L.off ? "Phone calls is off" : L.connected ? "call line connected" : "call line not connected"; }
+      const f = featsAt("heart", k), on = f.filter((x) => x.on).length; return f.length ? `${on} of ${f.length} features on` : "quiet";
+    }
+    if (k === "hearing") return voiceNow();
+    if (k === "touch") return SENSE.screen != null ? `screen on ${Math.round(SENSE.screen)} min` : "no reading from your phone";
+    if (k === "balance") return SENSE.motion != null ? `moving ${Math.round(SENSE.motion)} min of the last 15` : "no reading from your phone";
+    if (k === "heat") { const t = hottest(); return SYS ? `processor ${pctOf(SYS.cpu)}${t != null ? ` · ${t}°C` : ""}` : "waiting for the first reading"; }
+    const f = featsAt("senses", k), on = f.filter((x) => x.on).length; return SENSE.face ? "watching for your face" : f.length ? `${on} of ${f.length} features on` : "quiet";
+  }
+  function heartRows(k) {
+    if (k === "pacemaker") return [["rate", `${Math.round(BPM)} a minute (faster when it's busier)`]].concat(((BODY && BODY.schedule) || []).slice(0, 8).map((s) => [hhmm(s.when), String(s.what || s.key || "")]));
+    if (k === "ventricles" || k === "atria") { const j = jobsOf(k).slice(0, 10); return j.length ? j.map((x) => [String(x.status), String(x.title || "").slice(0, 60)]) : [["now", k === "ventricles" ? "nothing running or waiting" : "nothing answered lately"]]; }
+    if (k === "aorta") return callRowsOf();
+    return [];
+  }
+  function callRowsOf() {
+    const L = linkOf(); if (L.off) return [["call line", "Phone calls is off"]];
+    const calls = (BODY && BODY.calls) || [];
+    return [["call line", L.connected ? "connected" : "not connected"]].concat(L.beat != null ? [["heartbeat", `${Number(L.beat).toFixed(1)} s ago`]] : [], [["calls booked", calls.length ? calls.map((c) => `${hhmm(c.when)} ${c.what}`).join(", ") : "none"]]);
+  }
+  async function senseRows(k) {
+    if (k === "hearing") {
+      try { VOICE = await api("voice"); } catch { VOICE = null; }
+      const v = VOICE, rows = callRowsOf();
+      if (!v || v.error) return rows.concat([["voice", "Voice isn't on this install yet"]]);
+      return rows.concat([["voice", v.on ? String(v.state || (v.listening ? "listening" : "on")) : "off"], ["listening", `${v.listening ? "yes" : "no"}${v.why ? ` (${v.why})` : ""}`], ["portal", v.portal ? "open: it's talking with you" : "closed"], ["muted", v.muted ? "yes" : "no"]], v.speak ? [["speaks with", `${v.speak.engine || ""} ${v.speak.voice || ""}`.trim()]] : []);
+    }
+    if (k === "touch" || k === "balance") return [["moving", SENSE.motion != null ? `${Math.round(SENSE.motion)} min of the last 15` : "no reading"], ["steps", SENSE.steps != null ? String(SENSE.steps) : "no reading"], ["screen on", SENSE.screen != null ? `${Math.round(SENSE.screen)} min` : "no reading"]];
+    if (k === "heat") { const s = SYS; if (!s) return [["now", "waiting for the first reading"]]; const t = hottest(); return [["processor", String(s.cpu_name || "")], ["load", s.load ? s.load.map((x) => Number(x).toFixed(2)).join(" ") : ""]].concat(t != null ? [["hottest", `${t}°C`]] : []).filter((r) => r[1]); }
+    return SENSE.face != null ? [["your face", SENSE.face ? "the camera is watching for it" : "not watching"]] : [];
+  }
+  function sysBars() { // the coil's bars, as pcHTML draws them: [name, 0..1, words]
+    const s = SYS; if (!s) return []; const gb = (b) => ((b || 0) / 1e9).toFixed(1), g = s.gpu && !s.gpu.asleep ? s.gpu : null;
+    const rows = [["cpu", s.cpu || 0, pctOf(s.cpu)], ["mem", s.mem || 0, `${gb(s.mem_used)}/${gb(s.mem_total)} GB`], ["swap", s.swap || 0, pctOf(s.swap)]];
+    if (g) rows.push(["gpu", g.util || 0, `${pctOf(g.util)}${g.temp != null ? ` ${Math.round(g.temp)}°C` : ""}`]);
+    if (g && g.mem_total) rows.push(["vram", (g.mem_used || 0) / g.mem_total, `${gb(g.mem_used)}/${gb(g.mem_total)} GB`]);
+    for (const d of (s.disks || []).slice(0, 3)) rows.push([d.mount, d.pct || 0, `${(d.free / 1e9).toFixed(0)} GB free`]);
+    if (s.battery) rows.push(["battery", (s.battery.percent || 0) / 100, `${Math.round(s.battery.percent || 0)}%${s.battery.ac ? " charging" : ""}`]);
+    return rows.map(([n, v, w]) => ({ name: String(n), v: Math.max(0, Math.min(1, +v || 0)), text: w }));
+  }
+  function noteText(id) {
+    if (NOTE_TXT.has(id)) return NOTE_TXT.get(id);
+    NOTE_TXT.set(id, "loading…");
+    api(`note?id=${encodeURIComponent(id)}`).then((r) => NOTE_TXT.set(id, (r && r.text) || "")).catch(() => NOTE_TXT.set(id, "(couldn't read it)")).finally(organDirty);
+    return "loading…";
+  }
+  async function detail(s) {
+    const k = s.key;
+    if (s.kind === "region") { const r = REGIONS[k], pk = procOf(k); return { title: r.name, sub: r.sub + (pk ? ` · its sparks are ${PROC[pk].name}` : ""), rows: [], parts: await brainParts(r.parts), feats: featsAt("mind", k), settings: [] }; }
+    if (s.kind === "heart") { const r = HEART_PARTS[k]; return { title: r.name, sub: r.sub, rows: heartRows(k), parts: [], feats: featsAt("heart", k), settings: await settingRows(r.sections) }; }
+    if (s.kind === "sense") { const r = SENSES[k]; return { title: r.name, sub: r.sub, rows: await senseRows(k), bars: k === "heat" ? sysBars() : [], parts: await brainParts(r.parts), feats: featsAt("senses", k), settings: await settingRows(r.sections) }; }
+    if (s.kind === "hood") {
+      const h = memory.hoods[k]; if (!h) return null;
+      const top = memory.nodes.map((n, i) => [n, i]).filter(([, i]) => memory.hood[i] === k).sort((x, y) => memory.deg[y[1]] - memory.deg[x[1]]).slice(0, 12);
+      return { title: h.name, sub: `${h.n} notes · its most linked note is ${h.hub} (${h.links} links)`, notes: top.map(([n, i]) => ({ key: String(i), title: n.title || n.id, links: memory.deg[i] })) };
+    }
+    if (s.kind === "note") { const n = memory.nodes[k]; return n ? { title: n.title || n.id, sub: n.id, text: noteText(n.id) } : null; }
+    if (s.kind === "feature") {
+      const f = ORG[k]; if (!f) return null; const c = CELLS.find((x) => x.id === k) || {};
+      const where = f.org === "mind" ? `in the ${REGIONS[f.part].name.toLowerCase()}` : f.org === "senses" ? `a sense: ${SENSES[f.part].name.toLowerCase()}` : f.org === "memory" ? "memory" : "the heart's upkeep";
+      return { title: f.title, sub: where + (c.events != null ? ` · ${c.events} events lately` : ""), feature: { id: k, on: !!f.on }, settings: f.on ? await settingRows([k]) : [] };
+    }
+    return null;
+  }
+  async function describe() {
+    const o = ONLY; while (KREC.length && performance.now() - KREC[0][0] > 600000) KREC.shift();
+    let parts = [];
+    if (o === "mind") parts = Object.entries(REGIONS).map(([k, r]) => ({ kind: "region", key: k, name: r.name, sub: r.sub, live: partLive("region", k) }));
+    if (o === "heart") parts = Object.entries(HEART_PARTS).map(([k, r]) => ({ kind: "heart", key: k, name: r.name, sub: r.sub, live: partLive("heart", k) }));
+    if (o === "senses") parts = Object.entries(SENSES).map(([k, r]) => ({ kind: "sense", key: k, name: r.name, sub: r.sub, live: partLive("sense", k) }));
+    if (o === "memory") parts = memory.hoods.filter((h) => h.n > 0).sort((x, y) => y.n - x.n).slice(0, 40).map((h) => ({ kind: "hood", key: String(h.key), name: h.name, sub: `most linked: ${h.hub}`, live: `${h.n} notes` }));
+    const head = { mind: `${recent.length} events in 10 minutes · ${Math.round(BPM)} a minute`, heart: `${Math.round(BPM)} a minute: faster when it's busier`, senses: "sight, hearing, touch, balance, its own body", memory: `${memory.nodes.length} notes · they light up as they link` }[o];
+    const sel = SUB ? { kind: SUB.kind, key: String(SUB.key) } : null;
+    return { page: PAGE_OF[o], head, mode: mind.mode, sel, parts, detail: SUB ? await detail(SUB) : null, feats: o === "memory" && !SUB ? featsAt("memory", null) : [], said: SAID };
+  }
+  async function organTick() {
+    if (OBUSY) return; OBUSY = true; ODIRTY = false;
+    try { const j = JSON.stringify(await describe()); if (j !== OSTATE) { OSTATE = j; OREV++; } } catch (err) { console.error("the organ page", err); } finally { OBUSY = false; }
+  }
+  if (OM) OTIMER = setInterval(() => { if (ODIRTY || ++OTICK % 4 === 0) organTick(); }, 250);
+  function pick(kind, key) {
+    SAID = "";
+    if (kind === "region" && REGIONS[key]) showRegion(key);
+    else if (kind === "heart" && HEART_PARTS[key]) showHeartPart(key);
+    else if (kind === "sense" && SENSES[key]) showSense(key);
+    else if (kind === "hood" && memory.hoods[+key]) showHood(+key);
+    else if (kind === "note" && memory.nodes[+key]) { NOTE_TXT.delete(memory.nodes[+key].id); showNote(memory.nodes[+key]); }
+    else if (kind === "feature" && ORG[key] && ORG[key].org === ONLY) showFeature(key);
+    else if (SUB) back();
+    organDirty(); return true;
+  }
+  async function setting(key, value) {
+    const r = await api("settings", { key, value }).catch(() => null);
+    SAID = r && r.ok ? "" : (r && r.error) || "That didn't change."; SETTINGS = null; B3 = null; organDirty(); return !!(r && r.ok);
+  }
+  async function feature(id, on) {
+    const r = await api(on ? "modules/enable" : "modules/disable", on ? { ids: [id] } : { id }).catch(() => null);
+    const ok = r && (on ? r.results && r.results[id] && r.results[id].ok : r.ok), msg = r && (on ? r.results && r.results[id] && r.results[id].message : r.message);
+    if (ok && ORG[id]) ORG[id].on = on; SAID = ok ? "" : msg || "That didn't work."; SETTINGS = null; organDirty(); return !!ok;
+  }
+  function only(page) {
+    const o = PAGE_ORGAN[page]; if (!o) return false;
+    ONLY = o; PICKED = null; PANEL = null; spinning.obj = null; SAID = "";
+    for (const [k, g] of Object.entries(ORGAN_OBJ)) g.visible = k === o;
+    for (const l of LINKS) l.visible = false;
+    if (o === "mind") setMode("solid");
+    if (o === "mind") mind.g.rotation.set(0, 0, 0); // it turned by itself while another page showed
+    focusOn(o); goal.th = HOME.th + (ONLY_TH[o] || 0); goal.ph = HOME.ph;
+    Object.assign(view, goal); if (!STILL) view.d = goal.d * 1.35; // it settles in from a little further off, never across the body
+    for (const k of Object.keys(TARGETS)) OPEN[k] = k === o ? 1 : 0;
+    organDirty(); return true;
+  }
+  if (OM) only(opts.only);
+
   /* ===================== the loop ===================== */
   const c2 = ov.getContext("2d"); let last = performance.now(), dead = false, t0 = performance.now();
   const proj = (v) => { const p = v.clone().project(cam); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * H, p.z]; };
@@ -866,18 +1036,19 @@ window.beingMount = async function (host, opts) {
     while (recent.length && now - recent[0] > 600000) recent.shift(); BPM = 52 + Math.min(48, recent.length * 1.2); phase += dt * BPM / 60;
     HINT = HINTS ? Math.max(0, 1 - t / 6, Math.min(1, (hintUntil - t) / 3)) : 0;
     // the camera, eased; a turned organ keeps a little of its spin; unfocused, the mind turns by itself
+    if (STILL && !drag) spinning.obj = null; // Remove animations: a turned organ stops where the finger left it
     if (!drag && spinning.obj) { if (spinning.obj === "cam") goal.th += spinning.vx; else { spinning.obj.rotation.y += spinning.vx; spinning.obj.rotation.x += spinning.vy; } spinning.vx *= .93; spinning.vy *= .93; if (Math.abs(spinning.vx) + Math.abs(spinning.vy) < 1e-4) spinning.obj = null; }
     if (FOCUS !== "mind" && !(spinning.obj === mind.g)) mind.g.rotation.y += dt * .25;
     if (SUB && !(drag && drag.b === 2)) { const q = SUB.pos(); goal.tx = q.x; goal.ty = q.y; goal.tz = q.z; }
     modeB.style.display = FOCUS === "mind" ? "flex" : "none";
-    for (const k of ["th", "ph", "d", "tx", "ty", "tz"]) view[k] += (goal[k] - view[k]) * Math.min(1, dt * 6);
+    for (const k of ["th", "ph", "d", "tx", "ty", "tz"]) view[k] += (goal[k] - view[k]) * (STILL ? 1 : Math.min(1, dt * 6));
     const tg = V(view.tx, view.ty, view.tz); cam.position.set(tg.x + view.d * Math.sin(view.ph) * Math.sin(view.th), tg.y + view.d * Math.cos(view.ph), tg.z + view.d * Math.sin(view.ph) * Math.cos(view.th)); cam.lookAt(tg);
     for (const k of Object.keys(TARGETS)) OPEN[k] = (OPEN[k] || 0) + ((FOCUS === k ? 1 : 0) - (OPEN[k] || 0)) * Math.min(1, dt * 4);
     for (const f of ticks) f(t, dt);
     bloom.strength = .7 - .45 * (OPEN.memory || 0) - .25 * (OPEN.mind || 0); // thousands of notes would bloom into one white cloud
     composer.render();
     const c = c2; c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, W, H);
-    if (UI) UI.header(c, { W, H, BPM, n: recent.length, HINTS, PROC, P, focus: FOCUS }); // phone: its own header and key
+    if (OM) { /* an organ page: the app shows its name and parts */ } else if (UI) UI.header(c, { W, H, BPM, n: recent.length, HINTS, PROC, P, focus: FOCUS }); // phone: its own header and key
     else {
     c.font = "300 11px Inter,sans-serif"; c.fillStyle = P.mute; c.fillText("KUROOTO", 40, 34); c.font = "300 19px Inter,sans-serif"; c.fillStyle = P.ink; c.fillText("the being", 40, 58);
     c.font = "400 10px ui-monospace,monospace"; c.fillStyle = P.mute; c.fillText(`${Math.round(BPM)} / min · ${recent.length} events in 10 min${HINTS ? " · drag an organ to turn it, wheel to zoom, right-drag to pan, click a part to look at it, Esc goes back, H hides these" : ""}`, 40, 76);
@@ -890,10 +1061,10 @@ window.beingMount = async function (host, opts) {
       tag(SENSE_C.clone().add(V(.1, 1.45, 0)), 60, -40, "Senses", "sight, hearing, touch, balance, its own body");
       tag(MEM_C.clone().add(V(-.12, .4, 0)), -40, -50, "Memory", `${memory.nodes.length} notes · they light up as they link`);
     }
-    if (FOCUS === "mind") for (const [k, r] of Object.entries(REGIONS)) { const v = V(...r.at).add(OFF).applyMatrix4(mind.b.matrixWorld); const [x] = proj(v); tag(v, x > W / 2 ? 110 : -110, -16, r.name, r.sub, OPEN.mind * (PICKED && PICKED !== k ? .35 : 1), PICKED === k); }
-    if (FOCUS === "heart") for (const [k, r] of Object.entries(HEART_PARTS)) { const v = V(...r.at).applyMatrix4(heart.g.matrixWorld); const [x] = proj(v); tag(v, x > W / 2 ? 110 : -110, -16, r.name, r.sub, OPEN.heart * (PICKED && PICKED !== k ? .35 : 1), PICKED === k); }
-    if (FOCUS === "senses") for (const [k, o] of Object.entries(senses.organs)) { const v = o.getWorldPosition(V(0, 0, 0)); const [x, y] = proj(v); tag(v, x > W / 2 ? 130 : -130, y > H / 2 ? 40 : -40, SENSES[k].name, SENSES[k].sub, OPEN.senses * (PICKED && PICKED !== k ? .35 : 1), PICKED === k); }
-    if (FOCUS === "memory") for (const h of memory.hoods.filter((x) => x.n >= 5).slice(0, 10)) { const v = V(...h.at).applyMatrix4(memory.g.matrixWorld); const [x] = proj(v); tag(v, x > W / 2 ? 90 : -90, -16, h.name, `${h.n} notes · most linked: ${String(h.hub).slice(0, 28)}`, OPEN.memory * (SUB && SUB.kind === "hood" && SUB.key !== h.key ? .25 : 1), !!(SUB && SUB.kind === "hood" && SUB.key === h.key)); }
+    if (FOCUS === "mind") for (const [k, r] of Object.entries(REGIONS)) { if (OM && PICKED !== k) continue; const v = V(...r.at).add(OFF).applyMatrix4(mind.b.matrixWorld); const [x] = proj(v); tag(v, x > W / 2 ? 110 : -110, -16, r.name, r.sub, OPEN.mind * (PICKED && PICKED !== k ? .35 : 1), PICKED === k); }
+    if (FOCUS === "heart") for (const [k, r] of Object.entries(HEART_PARTS)) { if (OM && PICKED !== k) continue; const v = V(...r.at).applyMatrix4(heart.g.matrixWorld); const [x] = proj(v); tag(v, x > W / 2 ? 110 : -110, -16, r.name, r.sub, OPEN.heart * (PICKED && PICKED !== k ? .35 : 1), PICKED === k); }
+    if (FOCUS === "senses") for (const [k, o] of Object.entries(senses.organs)) { if (OM && PICKED !== k) continue; const v = o.getWorldPosition(V(0, 0, 0)); const [x, y] = proj(v); tag(v, x > W / 2 ? 130 : -130, y > H / 2 ? 40 : -40, SENSES[k].name, SENSES[k].sub, OPEN.senses * (PICKED && PICKED !== k ? .35 : 1), PICKED === k); }
+    if (FOCUS === "memory") for (const h of memory.hoods.filter((x) => x.n >= 5).slice(0, 10)) { if (OM && !(SUB && SUB.kind === "hood" && SUB.key === h.key)) continue; const v = V(...h.at).applyMatrix4(memory.g.matrixWorld); const [x] = proj(v); tag(v, x > W / 2 ? 90 : -90, -16, h.name, `${h.n} notes · most linked: ${String(h.hub).slice(0, 28)}`, OPEN.memory * (SUB && SUB.kind === "hood" && SUB.key !== h.key ? .25 : 1), !!(SUB && SUB.kind === "hood" && SUB.key === h.key)); }
     if (SUB) {
       const q = SUB.pos(), [sx, sy, sz] = proj(q);
       if (sz < 1) {
@@ -904,7 +1075,7 @@ window.beingMount = async function (host, opts) {
       }
     }
     if (FOCUS && (OPEN[FOCUS] || 0) > .3) for (const id in ORG) { const o = ORG[id]; if (o.org !== FOCUS || (o.part !== PICKED && FOCUS !== "memory")) continue; const [x, y, z] = proj(o.g.getWorldPosition(V(0, 0, 0))); if (z > 1) continue; c.save(); c.globalAlpha = OPEN[FOCUS] * (o.on ? .85 : .4); c.font = UI ? UI.small : "400 9px Inter,sans-serif"; c.lineJoin = "round"; c.lineWidth = 3.5; c.strokeStyle = P.bg; c.strokeText(o.title, x + 8, y + 3); c.fillStyle = o.on ? P.ink : P.mute; c.fillText(o.title, x + 8, y + 3); c.restore(); }
-    if (UI) UI.lanes(c, lane, LANES, W, H); // phone: lower and thinner, no talk box
+    if (OM) { /* an organ page: no voice lanes */ } else if (UI) UI.lanes(c, lane, LANES, W, H); // phone: lower and thinner, no talk box
     else {
     lane(c, H - 100, 34, LANES.you, "YOU", LANES.you ? (LANES.you.typed ? "typed to Kurooto" : "heard, and said to Kurooto") : "say its name, or type in the talk box");
     lane(c, H - 48, 44, LANES.me, "KUROOTO", LANES.me ? (LANES.me.typed ? "answered" : "speaking") : "");
@@ -914,9 +1085,11 @@ window.beingMount = async function (host, opts) {
   return {
     update, event, graph, voice, body, typed, setHints, face,
     // phone: the back button goes up one level (as Esc), and how deep you are (0: the whole being)
-    escape() { if (SUB) back(); else if (FOCUS || panel.style.display === "block") { closePanel(); focusOn(null); } else return false; return true; },
-    depth() { return SUB ? 2 : FOCUS || panel.style.display === "block" ? 1 : 0; },
-    stop() { dead = true; if (LAYOUT) LAYOUT.terminate(); ro.disconnect(); removeEventListener("keydown", onKey); R.dispose(); host.innerHTML = ""; host.classList.remove("being"); },
+    escape() { if (OM) { if (!SUB) return false; back(); return true; } if (SUB) back(); else if (FOCUS || panel.style.display === "block") { closePanel(); focusOn(null); } else return false; return true; },
+    depth() { if (OM) return SUB ? 1 : 0; return SUB ? 2 : FOCUS || panel.style.display === "block" ? 1 : 0; },
+    // organ pages (opts.only): what the app reads and calls
+    ...(OM ? { only, pick, setting, feature, mode: (m) => { if (["solid", "cut", "xray"].includes(m)) { setMode(m); organDirty(); } }, state: () => OSTATE, rev: () => OREV } : {}),
+    stop() { dead = true; if (OM) clearInterval(OTIMER); if (LAYOUT) LAYOUT.terminate(); ro.disconnect(); removeEventListener("keydown", onKey); R.dispose(); host.innerHTML = ""; host.classList.remove("being"); },
   };
 };
 })();
