@@ -63,12 +63,10 @@ class MainActivity : ComponentActivity() {
         // debug and dev builds: "palette" (e.g. kuro) shows that palette instead of Material You, to look at it here
         if (Demo.ON) ui.palette = intent.getStringExtra("palette") ?: b?.getString("palette")
         if (Demo.ON && intent.hasExtra("hour")) ui.demoHour = intent.getFloatExtra("hour", 12f)
-        // Look → Colours (0.8.10): Material You, or apricot and plum (Apricot, Home.kt); the debug "palette" extra wins
-        val look = ui.palette ?: Prefs.palette(this)
+        // Look → Colours (0.8.10): Material You, Apricot or Kuro (Theme.kt's Palettes, from the saved choice); the debug
+        // "palette" extra wins
         setContent {
-            KurootoTheme(palette = if (look == "you" || look == Apricot.NAME) "kuro" else look, dynamic = look == "you") {
-                if (look == Apricot.NAME) ApricotTheme { Home(this, ui) } else Home(this, ui)
-            }
+            KurootoTheme(palette = ui.palette ?: Palettes.DEFAULT, dynamic = ui.palette == null) { Home(this, ui) }
         }
         if (intent.getBooleanExtra("bedside", false)) startActivity(Intent(this, BedsideActivity::class.java))
     }

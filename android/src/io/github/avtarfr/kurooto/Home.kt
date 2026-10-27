@@ -343,61 +343,9 @@ fun tileColor(): Color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha =
 
 // ------------------------------------------------------------------------------------------- the apricot palette
 
-/**
- * Look → Colours → Apricot and plum (0.8.10, the Rail design's palette): apricot and plum on near-black (a warm paper
- * in light mode), a sage green beside them, beside Material You. Kept here with the shell for now; it belongs in
- * Theme.kt's Palettes when the 0.8.10 parts are merged. ApricotTheme wraps the screen inside KurootoTheme (which still
- * gives Kurooto's own colours and "Remove animations"), so only the colour scheme changes.
- */
+/** Look → Colours → Apricot and plum (0.8.10, the Rail design's palette): its colours are Theme.kt's Palettes.apricot. */
 object Apricot {
     const val NAME = "apricot"
-    val dark = darkColorScheme(
-        primary = Color(0xFFFFB873), onPrimary = Color(0xFF4A2800),
-        primaryContainer = Color(0xFF6B3F05), onPrimaryContainer = Color(0xFFFFDCBE),
-        inversePrimary = Color(0xFF8A5100),
-        secondary = Color(0xFFB8D48F), onSecondary = Color(0xFF253500),
-        secondaryContainer = Color(0xFF2F4A14), onSecondaryContainer = Color(0xFFD4F0A8),
-        tertiary = Color(0xFFE0B6FF), onTertiary = Color(0xFF45175F),
-        tertiaryContainer = Color(0xFF4E2A63), onTertiaryContainer = Color(0xFFF2DAFF),
-        background = Color(0xFF14110E), onBackground = Color(0xFFEDE0D5),
-        surface = Color(0xFF14110E), onSurface = Color(0xFFEDE0D5),
-        surfaceVariant = Color(0xFF2A241F), onSurfaceVariant = Color(0xFFD3C4B6),
-        surfaceTint = Color(0xFFFFB873),
-        inverseSurface = Color(0xFFEDE0D5), inverseOnSurface = Color(0xFF322C27),
-        error = Color(0xFFFFB4AB), onError = Color(0xFF690005),
-        errorContainer = Color(0xFF93000A), onErrorContainer = Color(0xFFFFDAD6),
-        outline = Color(0xFF9C8E80), outlineVariant = Color(0xFF4F453B),
-        surfaceBright = Color(0xFF3B342E), surfaceDim = Color(0xFF14110E),
-        surfaceContainerLowest = Color(0xFF0E0C0A), surfaceContainerLow = Color(0xFF1B1714),
-        surfaceContainer = Color(0xFF221D19), surfaceContainerHigh = Color(0xFF2C2622),
-        surfaceContainerHighest = Color(0xFF37302B),
-    )
-    val light = lightColorScheme(
-        primary = Color(0xFF8A5100), onPrimary = Color(0xFFFFFFFF),
-        primaryContainer = Color(0xFFFFDCBE), onPrimaryContainer = Color(0xFF2C1600),
-        inversePrimary = Color(0xFFFFB873),
-        secondary = Color(0xFF4B6628), onSecondary = Color(0xFFFFFFFF),
-        secondaryContainer = Color(0xFFCCEDA0), onSecondaryContainer = Color(0xFF121F00),
-        tertiary = Color(0xFF7A4C93), onTertiary = Color(0xFFFFFFFF),
-        tertiaryContainer = Color(0xFFF2DAFF), onTertiaryContainer = Color(0xFF2F0546),
-        background = Color(0xFFFFF8F4), onBackground = Color(0xFF211A14),
-        surface = Color(0xFFFFF8F4), onSurface = Color(0xFF211A14),
-        surfaceVariant = Color(0xFFF2DFD1), onSurfaceVariant = Color(0xFF51443A),
-        surfaceTint = Color(0xFF8A5100),
-        inverseSurface = Color(0xFF372F28), inverseOnSurface = Color(0xFFFDEEE3),
-        error = Color(0xFFBA1A1A), onError = Color(0xFFFFFFFF),
-        errorContainer = Color(0xFFFFDAD6), onErrorContainer = Color(0xFF410002),
-        outline = Color(0xFF837468), outlineVariant = Color(0xFFD5C3B5),
-        surfaceBright = Color(0xFFFFF8F4), surfaceDim = Color(0xFFE6D7CC),
-        surfaceContainerLowest = Color(0xFFFFFFFF), surfaceContainerLow = Color(0xFFFFF1E8),
-        surfaceContainer = Color(0xFFFAEBE0), surfaceContainerHigh = Color(0xFFF4E5DA),
-        surfaceContainerHighest = Color(0xFFEEDFD4),
-    )
-}
-
-@Composable
-fun ApricotTheme(content: @Composable () -> Unit) {
-    MaterialExpressiveTheme(colorScheme = if (isSystemInDarkTheme()) Apricot.dark else Apricot.light, content = content)
 }
 
 /**
