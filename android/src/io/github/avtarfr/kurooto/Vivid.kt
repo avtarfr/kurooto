@@ -8,12 +8,13 @@ import androidx.compose.ui.graphics.toArgb
 import com.materialkolor.dynamiccolor.DynamicColor
 import com.materialkolor.dynamiccolor.MaterialDynamicColors
 import com.materialkolor.hct.Hct
-import com.materialkolor.scheme.SchemeExpressive
+import com.materialkolor.scheme.SchemeContent
 
 /**
- * The vivid look (0.7.5): a Material 3 Expressive colour scheme made from one seed colour, so the containers, the bar and
- * the cards are really coloured instead of a pale tint of the wallpaper. Android's own Material You scheme ("tonal spot") is
- * the quietest of Material's styles; this uses the Expressive one, which keeps the hue and lifts the chroma.
+ * The vivid look (0.7.5): a colour scheme made from one seed colour, so the containers, the bar and the cards are really
+ * coloured instead of a pale tint of the wallpaper. Android's own Material You scheme ("tonal spot") is the quietest of
+ * Material's styles; this uses the Content one, which keeps the wallpaper's own hue and chroma for every role (0.8.10: the
+ * Expressive scheme it used before turned a green wallpaper's cards purple and mauve).
  *
  * Used when Look's palette is Material You (0.8.10; the named palettes, Apricot and Kuro, have their own fixed schemes).
  * The seed is the wallpaper's colour (the system's own scheme's primary, Android 12+). A wallpaper with almost no colour (a
@@ -34,7 +35,7 @@ object Vivid {
 
     /** A full Compose colour scheme, light or dark, from the seed's Expressive scheme. */
     fun scheme(seed: Color, dark: Boolean): ColorScheme {
-        val s = SchemeExpressive(Hct.fromInt(seed.toArgb()), dark, 0.0)
+        val s = SchemeContent(Hct.fromInt(seed.toArgb()), dark, 0.0)
         val m = MaterialDynamicColors()
 
         fun c(d: DynamicColor) = Color(d.getArgb(s))

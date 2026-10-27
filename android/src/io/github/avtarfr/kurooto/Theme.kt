@@ -280,7 +280,7 @@ val LocalVivid = staticCompositionLocalOf { true }
 /**
  * Kurooto's theme for a Compose screen, light or dark as the system is (`forceDark`: always dark, the call and bedside
  * screens). `dynamic` (the default): the palette chosen in Look ([Palettes.chosen]); Material You there is the
- * wallpaper's scheme on Android 12+ (Vivid: an Expressive scheme from the wallpaper's colour; Calm: Material You's own)
+ * wallpaper's scheme on Android 12+ (Vivid: a richer scheme in the wallpaper's own hue; Calm: Material You's own)
  * and, on older phones, the Vivid scheme from Kurooto's olive (Calm: Kuro), as before 0.8.10. `dynamic = false`: the
  * named `palette` itself (the dev builds' "palette" extra). Motion: Material's expressive springs, or none with "Remove animations".
  */
@@ -295,7 +295,7 @@ fun KurootoTheme(palette: String = Palettes.DEFAULT, dynamic: Boolean = true, fo
     if (name == Palettes.YOU) {
         k = Palettes.kuro.let { if (dark) it.darkK else it.lightK }
         scheme = if (Build.VERSION.SDK_INT >= 31) {
-            // vivid (0.7.5): an Expressive scheme from the wallpaper's colour (Kurooto's olive for a grey wallpaper)
+            // vivid (0.7.5): a Content scheme from the wallpaper's colour (Kurooto's olive for a grey wallpaper)
             if (vivid) Vivid.scheme(Vivid.seed(dynamicLightColorScheme(c).primary), dark)
             else if (dark) dynamicDarkColorScheme(c) else dynamicLightColorScheme(c)
         } else if (vivid) {

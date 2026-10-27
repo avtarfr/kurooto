@@ -298,7 +298,7 @@ private fun SmallTile(label: String, big: String, line: String, icon: Int = R.dr
 @Composable
 private fun DayStrip(slots: List<Slot>) {
     val cs = MaterialTheme.colorScheme
-    val colours = listOf(cs.primary, cs.tertiary, cs.secondary, Color(0xFFFF8A65), Color(0xFF81D4FA), cs.inversePrimary)
+    val colours = listOf(cs.primary, cs.tertiary, cs.secondary, cs.primaryContainer, cs.tertiaryContainer, cs.inversePrimary)
     val names = slots.map { it.name }.distinct()
     val colour = { s: Slot -> colours[names.indexOf(s.name) % colours.size] }
     val from = minOf(8 * 60, slots.minOf { it.start } / 60 * 60)
