@@ -136,7 +136,7 @@ window.beingMount = async function (host, opts) {
   const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 1, .05, 80);
   const composer = new THREE.EffectComposer(R);
   composer.addPass(new THREE.RenderPass(scene, cam));
-  const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), .7, .5, .5); composer.addPass(bloom);
+  const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), .55, .45, .62); composer.addPass(bloom);
   const size = () => {
     const r = host.getBoundingClientRect(); W = Math.max(2, r.width | 0); H = Math.max(2, r.height | 0);
     R.setPixelRatio(DPR); R.setSize(W, H, false); composer.setSize(W, H); bloom.setSize(W / 2, H / 2);
@@ -180,8 +180,8 @@ window.beingMount = async function (host, opts) {
       float sc=${(o.scale || 1).toFixed(2)};float e1=abs(fract(dot(w*sc,vec3(.31,.94,.12))*150.+fbm(w*sc*4.)*2.)-.5),e2=abs(fract(dot(w*sc,vec3(-.62,.33,.71))*120.)-.5);
       float etch=smoothstep(.07,.0,e1)*clamp(.85-ndl,0.,1.)+smoothstep(.06,.0,e2)*clamp(.45-ndl,0.,1.);float cont=smoothstep(.035,.0,abs(fract(w.y*sc*34.+fbm(w*sc*2.5)*2.)-.5));
       ${o.fibre ? "float fib=smoothstep(.12,.0,abs(fract((w.y*1.3+atan(w.z,w.x)*.22+fbm(w*3.)*.4)*55.)-.5));" : "float fib=0.;"}
-      vec3 base=c*(.07+.30*ndl+mot*.6);vec3 col=base*(1.-.35*vein)*(1.-.55*etch)*(1.-.3*fib)+c*vein*.25*(1.+2.*k)+c*cont*.07+c*f*(.45+.8*hl)+pow(max(0.,dot(reflect(-L,N),Vv)),40.)*.18;
-      float foc=mix(1.,mix(.22,1.8,smoothstep(fr,fr*.3,distance(w,fp))),fk);gl_FragColor=vec4(col*dm*foc,op);}`,
+      vec3 base=c*(.07+.30*ndl+mot*.6);vec3 col=base*(1.-.35*vein)*(1.-.55*etch)*(1.-.3*fib)+c*vein*.25*(1.+2.*k)+c*cont*.07+c*f*(.28+.45*hl)+pow(max(0.,dot(reflect(-L,N),Vv)),40.)*.18;
+      float foc=mix(1.,mix(.35,1.18,smoothstep(fr,fr*.3,distance(w,fp))),fk);gl_FragColor=vec4(col*dm*foc,op);}`,
     });
   }
 
@@ -230,7 +230,7 @@ window.beingMount = async function (host, opts) {
       fragmentShader: `precision highp sampler3D;uniform sampler3D vol;uniform vec3 lo,size;uniform float range,wm,y;varying vec3 p;${NOISE}
       float D(vec3 q){vec3 u=(q-lo)/size;if(any(lessThan(u,vec3(0.)))||any(greaterThan(u,vec3(1.))))return 1.;return (texture(vol,u).r*255.-128.)/127.5*range;}
       void main(){vec3 q=vec3(p.x,y,-p.y);float d=D(q);if(d>0.)discard;float g=fbm(q*60.)*.12;vec3 grey=vec3(.50,.47,.47)+g,white=vec3(.88,.86,.82)+g*.4;float inG=smoothstep(-wm-.004,-wm+.004,d);vec3 col=mix(white,grey,inG);
-      col*=1.-.4*smoothstep(.006,0.,-d);col+=vec3(1.)*smoothstep(.004,0.,abs(d+wm))*.18;gl_FragColor=vec4(col*.58,1.);}`,
+      col*=1.-.4*smoothstep(.006,0.,-d);col+=vec3(1.)*smoothstep(.004,0.,abs(d+wm))*.18;gl_FragColor=vec4(col*.42,1.);}`,
     });
     const cap = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2.0), capM); cap.rotation.x = -Math.PI / 2; B.add(cap);
     const lid = new THREE.Group(); B.add(lid); const tr = tracts(1500); tr.position.copy(OFF); tr.material.clippingPlanes = [above]; lid.add(tr);
@@ -238,7 +238,7 @@ window.beingMount = async function (host, opts) {
     for (let i = 0; i < 4; i++) {
       const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { t: { value: 0 }, s: { value: i }, c: { value: new THREE.Color(P.a) }, k: { value: 0 } },
         vertexShader: `varying vec3 w;varying vec3 n;varying vec3 v;void main(){w=position;vec4 m=modelViewMatrix*vec4(position,1.);n=normalize(normalMatrix*normal);v=-m.xyz;gl_Position=projectionMatrix*m;}`,
-        fragmentShader: `uniform float t,s,k;uniform vec3 c;varying vec3 w;varying vec3 n;varying vec3 v;${NOISE}void main(){float f=pow(1.-abs(dot(normalize(n),normalize(v))),1.4);float d=fbm(w*3.+vec3(0.,t*.05,t*.03)+s*7.);gl_FragColor=vec4(c,smoothstep(.45,.85,d)*(.035+.045*f)*(1.+.8*k));}` });
+        fragmentShader: `uniform float t,s,k;uniform vec3 c;varying vec3 w;varying vec3 n;varying vec3 v;${NOISE}void main(){float f=pow(1.-abs(dot(normalize(n),normalize(v))),1.4);float d=fbm(w*3.+vec3(0.,t*.05,t*.03)+s*7.);gl_FragColor=vec4(c,smoothstep(.45,.85,d)*(.018+.026*f)*(1.+.6*k));}` });
       const fm = new THREE.Mesh(G.grey, m); fm.position.copy(OFF); fm.scale.setScalar(1.06 + i * .07); B.add(fm); fogs.push(m);
     }
     // sparks: a real event lights its process's region, in its colour
@@ -382,7 +382,7 @@ window.beingMount = async function (host, opts) {
 
   /* ===================== memory: your notes ===================== */
   const MEM_C = V(3.15, .3, -.4), memory = { g: new THREE.Group(), nodes: [], ids: [], hoods: [] };
-  add(memory.g); memory.g.position.copy(MEM_C);
+  add(memory.g); memory.g.position.copy(MEM_C); memory.g.scale.setScalar(.65);
   {
     const px = new THREE.Mesh(new THREE.SphereGeometry(1.15, 12, 8), new THREE.MeshBasicMaterial({ visible: false })); px.userData.pick = { organ: "memory" }; memory.g.add(px);
   }
@@ -444,10 +444,11 @@ window.beingMount = async function (host, opts) {
   };
   const fires = [];
   ticks.push((t) => {
-    if (!memory.a) return; const a = memory.a, n = a.length; a.set(memory.base);
+    if (!memory.a) return; const a = memory.a, n = a.length, far = .3 + .7 * (OPEN.memory || 0); // seen from afar, the packed notes are dimmer
+    for (let i = 0; i < n; i++) a[i] = memory.base[i] * far;
     for (let i = fires.length - 1; i >= 0; i--) { const [j, t0] = fires[i], u = (t - t0) / .7; if (u > 1) { fires.splice(i, 1); continue; } if (u > 0 && j < n) a[j] = Math.max(a[j], .7 + 1.3 * Math.sin(Math.PI * u)); }
-    if (SUB && SUB.kind === "hood") for (let i = 0; i < n; i++) a[i] *= memory.hood[i] === SUB.key ? 1.3 : .16;
-    if (SUB && SUB.kind === "note") { for (let i = 0; i < n; i++) a[i] *= .25; for (const j of memory.nb[SUB.key] || []) a[j] = 1.4; a[SUB.key] = 3; }
+    if (SUB && SUB.kind === "hood") for (let i = 0; i < n; i++) a[i] *= memory.hood[i] === SUB.key ? 1.05 : .16;
+    if (SUB && SUB.kind === "note") { for (let i = 0; i < n; i++) a[i] *= .25; for (const j of memory.nb[SUB.key] || []) a[j] = 1.05; a[SUB.key] = 1.9; }
     if (HOVER_NOTE != null && HOVER_NOTE < n) a[HOVER_NOTE] = 2.2; memory.pts.geometry.attributes.a.needsUpdate = true;
   });
 
@@ -480,7 +481,7 @@ window.beingMount = async function (host, opts) {
   }
   ticks.push((t) => {
     for (const id in ORG) { const o = ORG[id], u = o.g.userData, fl = Math.max(0, 1 - (t - o.flash) / 1.6), tw = o.on ? .75 + .25 * Math.sin(t * (1 + 3 * o.act) + o.g.id) : 1; const mine = SUB && SUB.kind === "feature" && SUB.key === id, other = SUB && SUB.kind === "feature" && !mine;
-      u.sp.material.opacity = mine ? 1 : (o.on ? (.45 + .55 * Math.max(fl, o.act)) * tw : .2) * (other ? .3 : 1); u.sp.scale.setScalar(u.base * (1 + 1.4 * fl + (HOVER_FEATURE === id ? .8 : 0) + (mine ? 1.8 : 0))); u.ring.material.opacity = Math.max(HINT, HOVER_FEATURE === id || mine ? 1 : 0) * (o.on ? .7 : .35); u.ring.lookAt(cam.position); }
+      u.sp.material.opacity = mine ? 1 : (o.on ? (.45 + .55 * Math.max(fl, o.act)) * tw : .2) * (other ? .3 : 1); u.sp.scale.setScalar(u.base * (1 + 1.4 * fl + (HOVER_FEATURE === id ? .8 : 0) + (mine ? .9 : 0))); u.ring.material.opacity = Math.max(HINT, HOVER_FEATURE === id || mine ? 1 : 0) * (o.on ? .7 : .35); u.ring.lookAt(cam.position); }
   });
 
   ticks.push(() => {
@@ -488,22 +489,22 @@ window.beingMount = async function (host, opts) {
     for (const m of mind.mats) { ease(m.uniforms.fk, s && s.kind === "region" ? 1 : 0); if (s && s.kind === "region") { m.uniforms.fp.value.set(...REGIONS[s.key].at); m.uniforms.fr.value = .26; } }
     for (const m of heart.mats) { ease(m.uniforms.fk, s && s.kind === "heart" ? 1 : 0); if (s && s.kind === "heart") { m.uniforms.fp.value.set(...HEART_PARTS[s.key].at); m.uniforms.fr.value = .38; } }
     for (const [k, list] of Object.entries(senses.mats)) {
-      const to = !s || s.org !== "senses" || s.kind !== "sense" ? 1 : s.key === k ? 1.12 : .22;
+      const to = !s || s.org !== "senses" || s.kind !== "sense" ? 1 : s.key === k ? 1 : .22;
       for (const m of list) { if (m.uniforms) ease(m.uniforms.dm, to); else m.opacity = m.userData.base * Math.min(1, to); }
     }
-    if (memory.lines) memory.lines.material.opacity = memory.lines.material.userData.base * (s && (s.kind === "hood" || s.kind === "note") ? .45 : 1);
+    if (memory.lines) memory.lines.material.opacity = memory.lines.material.userData.base * (s && (s.kind === "hood" || s.kind === "note") ? .45 : 1) * (.15 + .85 * (OPEN.memory || 0)); // from afar 24k links would add up to white
   });
 
   /* --- the links between the organs --- */
   vessel("mind", HEART_C, BRAIN_C.clone().add(V(0, -.85, .1)), 5, .25, .04); vessel("senses", HEART_C, SENSE_C.clone().add(V(.15, .35, 0)), 5, .4, .05);
   for (const [nm, k, dy] of [["s_hear", "hearing", 0], ["s_touch", "touch", .05], ["s_bal", "balance", 0], ["s_heat", "heat", -.36]]) vessel(nm, HEART_C, SENSE_C.clone().add(V(...SPOS[k])).add(V(0, dy, 0)), 2, .3, .02);
-  vessel("memory", HEART_C, MEM_C.clone().add(V(-.7, -.1, 0)), 5, .4, .05);
+  vessel("memory", HEART_C, MEM_C.clone().add(V(-.5, -.08, 0)), 5, .4, .05);
   const bstem = BRAIN_C.clone().add(V(0, -.6, 0));
-  nerve("senses", SENSE_C.clone().add(V(.2, .6, 0)), bstem); nerve("memory", MEM_C.clone().add(V(-.6, .35, 0)), bstem); nerve("heart", HEART_C.clone().add(V(0, .35, 0)), bstem);
+  nerve("senses", SENSE_C.clone().add(V(.2, .6, 0)), bstem); nerve("memory", MEM_C.clone().add(V(-.42, .25, 0)), bstem); nerve("heart", HEART_C.clone().add(V(0, .35, 0)), bstem);
 
   /* ===================== the camera: you turn it ===================== */
   const view = { th: 0, ph: 1.42, d: 10.4, tx: 0, ty: .2, tz: 0 }, goal = { ...view }, HOME = { ...view };
-  const TARGETS = { mind: { c: BRAIN_C, d: 4.4 }, heart: { c: HEART_C, d: 2.8 }, senses: { c: SENSE_C.clone().add(V(.1, .15, 0)), d: 5.4 }, memory: { c: MEM_C, d: 3.6 } };
+  const TARGETS = { mind: { c: BRAIN_C, d: 4.4 }, heart: { c: HEART_C, d: 2.8 }, senses: { c: SENSE_C.clone().add(V(.1, .15, 0)), d: 5.4 }, memory: { c: MEM_C, d: 2.5 } };
   let FOCUS = null, OPEN = {}, HOVER = null, HOVER_NOTE = null, HOVER_FEATURE = null, HINT = 1, hintUntil = 0, NOW = 0, SYS = null, SENSE = {}, CELLS = [];
   function focusOn(name) {
     FOCUS = name; SUB = null; hintUntil = NOW + 3;
@@ -528,15 +529,14 @@ window.beingMount = async function (host, opts) {
   const spinning = { obj: null, vx: 0, vy: 0 };
   let drag = null;
   gl.addEventListener("contextmenu", (e) => e.preventDefault());
-  gl.addEventListener("pointerdown", (e) => { gl.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, b: e.button, moved: false, on: FOCUS ? pickAt(e, true) : null }; });
+  gl.addEventListener("pointerdown", (e) => { gl.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, b: e.button, moved: false, on: pickAt(e, true) }; });
   gl.addEventListener("pointermove", (e) => {
     if (drag) {
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
       if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 4) drag.moved = true; if (!drag.moved) return;
       if (drag.b === 2) { const s = goal.d * .0012, r = V(Math.cos(goal.th), 0, -Math.sin(goal.th)); goal.tx -= r.x * dx * s; goal.tz -= r.z * dx * s; goal.ty += dy * s; return; }
-      const org = drag.on && drag.on.organ === FOCUS ? ORGAN_OBJ[FOCUS] : null;
+      const on = drag.on, org = on ? (on.organ === "senses" && on.part ? senses.organs[on.part] : ORGAN_OBJ[on.organ]) : null;
       if (org) { org.rotation.y += dx * .008; org.rotation.x += dy * .008; spinning.obj = org; spinning.vx = dx * .008; spinning.vy = dy * .008; }
-      else { goal.th -= dx * .006; goal.ph = Math.max(.25, Math.min(2.9, goal.ph - dy * .006)); spinning.obj = "cam"; spinning.vx = -dx * .006; spinning.vy = 0; }
       return;
     }
     hover(e);
@@ -691,7 +691,7 @@ window.beingMount = async function (host, opts) {
   let PANEL_SENSE = null;
   function showHood(k) {
     const h = memory.hoods[k]; if (!h) return; PICKED = null;
-    subFocus({ kind: "hood", key: k, org: "memory", d: 1.1 + 2.4 * Math.sqrt(h.n / Math.max(1, memory.nodes.length)), pos: () => h.centre.clone().applyMatrix4(memory.g.matrixWorld), from: () => wpos(memory.g) });
+    subFocus({ kind: "hood", key: k, org: "memory", d: .75 + 1.6 * Math.sqrt(h.n / Math.max(1, memory.nodes.length)), pos: () => h.centre.clone().applyMatrix4(memory.g.matrixWorld), from: () => wpos(memory.g) });
     const top = memory.nodes.map((n, i) => [n, i]).filter(([, i]) => memory.hood[i] === k).sort((x, y) => memory.deg[y[1]] - memory.deg[x[1]]).slice(0, 12);
     openPanel(`<h2>${esc(h.name)}</h2><div class="s">${h.n} notes · its most linked note is ${esc(h.hub)} (${h.links} links)</div><h3>Most linked</h3>${top.map(([n, i]) => `<div class="grow" data-note="${i}" style="cursor:pointer"><span>${esc(n.title || n.id)}</span><span>${memory.deg[i]} links</span></div>`).join("")}`, "hood");
   }
@@ -710,7 +710,7 @@ window.beingMount = async function (host, opts) {
   }
   async function showNote(n) {
     if (!n) return; const i = memory.nodes.indexOf(n);
-    if (i >= 0) subFocus({ kind: "note", key: i, org: "memory", d: .6, pos: () => V(memory.p[i * 3], memory.p[i * 3 + 1], memory.p[i * 3 + 2]).applyMatrix4(memory.g.matrixWorld), from: () => wpos(memory.g) }); openPanel(`<h2>${esc(n.title || n.id)}</h2><div class="s">${esc(n.id)}</div><pre>loading…</pre><button class="b" data-open="${esc(n.id)}">open it</button>`, "note");
+    if (i >= 0) subFocus({ kind: "note", key: i, org: "memory", d: .45, pos: () => V(memory.p[i * 3], memory.p[i * 3 + 1], memory.p[i * 3 + 2]).applyMatrix4(memory.g.matrixWorld), from: () => wpos(memory.g) }); openPanel(`<h2>${esc(n.title || n.id)}</h2><div class="s">${esc(n.id)}</div><pre>loading…</pre><button class="b" data-open="${esc(n.id)}">open it</button>`, "note");
     try { const r = await api(`note?id=${encodeURIComponent(n.id)}`); const pre = panel.querySelector("pre"); if (pre) pre.textContent = r.text || ""; } catch { const pre = panel.querySelector("pre"); if (pre) pre.textContent = "(couldn't read it)"; }
   }
 
@@ -768,7 +768,9 @@ window.beingMount = async function (host, opts) {
   function tag(v, dx, dy, title, sub, alpha) {
     if (!HINTS) sub = "";
     const [x, y, z] = proj(v); if (z > 1) return; const lx = x + dx, ly = y + dy; c2.save(); c2.globalAlpha = alpha ?? 1; c2.strokeStyle = P.mute; c2.beginPath(); c2.moveTo(x, y); c2.lineTo(x + dx * .35, ly); c2.lineTo(lx, ly); c2.stroke(); c2.fillStyle = P.ink; c2.beginPath(); c2.arc(x, y, 2, 0, 6.3); c2.fill();
-    c2.textAlign = dx < 0 ? "right" : "left"; c2.font = "600 10px Inter,sans-serif"; c2.fillText(title.toUpperCase(), lx + (dx < 0 ? -6 : 6), ly - 4); c2.font = "400 10.5px Inter,sans-serif"; c2.fillStyle = P.mute; c2.fillText(sub, lx + (dx < 0 ? -6 : 6), ly + 11); c2.restore();
+    c2.textAlign = dx < 0 ? "right" : "left"; c2.lineJoin = "round"; c2.lineWidth = 4; c2.strokeStyle = P.bg; const tx = lx + (dx < 0 ? -6 : 6);
+    c2.font = "600 10px Inter,sans-serif"; c2.strokeText(title.toUpperCase(), tx, ly - 4); c2.fillText(title.toUpperCase(), tx, ly - 4);
+    if (sub) { c2.font = "400 10.5px Inter,sans-serif"; c2.fillStyle = P.mute; c2.strokeText(sub, tx, ly + 11); c2.fillText(sub, tx, ly + 11); } c2.restore();
   }
   function frame() {
     if (dead) return; requestAnimationFrame(frame);
@@ -784,24 +786,24 @@ window.beingMount = async function (host, opts) {
     const tg = V(view.tx, view.ty, view.tz); cam.position.set(tg.x + view.d * Math.sin(view.ph) * Math.sin(view.th), tg.y + view.d * Math.cos(view.ph), tg.z + view.d * Math.sin(view.ph) * Math.cos(view.th)); cam.lookAt(tg);
     for (const k of Object.keys(TARGETS)) OPEN[k] = (OPEN[k] || 0) + ((FOCUS === k ? 1 : 0) - (OPEN[k] || 0)) * Math.min(1, dt * 4);
     for (const f of ticks) f(t, dt);
-    bloom.strength = .7 - .45 * (OPEN.memory || 0); // thousands of notes would bloom into one white cloud
+    bloom.strength = .55 - .35 * (OPEN.memory || 0) - .2 * (OPEN.mind || 0); // thousands of notes would bloom into one white cloud
     composer.render();
     const c = c2; c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, W, H);
     c.font = "300 11px Inter,sans-serif"; c.fillStyle = P.mute; c.fillText("KUROOTO", 40, 34); c.font = "300 19px Inter,sans-serif"; c.fillStyle = P.ink; c.fillText("the being", 40, 58);
-    c.font = "400 10px ui-monospace,monospace"; c.fillStyle = P.mute; c.fillText(`${Math.round(BPM)} / min · ${recent.length} events in 10 min${HINTS ? " · drag to turn, wheel to zoom, right-drag to pan, click a part to look at it, Esc goes back, H hides these" : ""}`, 40, 76);
+    c.font = "400 10px ui-monospace,monospace"; c.fillStyle = P.mute; c.fillText(`${Math.round(BPM)} / min · ${recent.length} events in 10 min${HINTS ? " · drag an organ to turn it, wheel to zoom, right-drag to pan, click a part to look at it, Esc goes back, H hides these" : ""}`, 40, 76);
     let ly = 104; c.font = "400 10px Inter,sans-serif"; if (HINTS) for (const k of Object.keys(PROC)) { c.fillStyle = "#" + new THREE.Color(PROC[k].c).getHexString(); c.beginPath(); c.arc(46, ly - 3, 3, 0, 6.3); c.fill(); c.fillStyle = P.mute; c.fillText(PROC[k].name, 56, ly); ly += 14; }
     c.font = "400 10px Inter,sans-serif";
     if (!FOCUS) {
       tag(BRAIN_C.clone().add(V(.9, .8, 0)), 150, -20, "Mind", "click to look inside · sparks are its work");
       tag(HEART_C.clone().add(V(.4, .1, 0)), 220, 20, "Core", `${Math.round(BPM)} a minute: faster when it's busier`);
       tag(SENSE_C.clone().add(V(.1, 1.45, 0)), 60, -40, "Senses", "sight, hearing, touch, balance, its own body");
-      tag(MEM_C.clone().add(V(-.2, .55, 0)), -40, -50, "Memory", `${memory.nodes.length} notes · they light up as they link`);
+      tag(MEM_C.clone().add(V(-.12, .4, 0)), -40, -50, "Memory", `${memory.nodes.length} notes · they light up as they link`);
     }
     if (FOCUS === "mind") for (const [k, r] of Object.entries(REGIONS)) { const v = V(...r.at).add(OFF).applyMatrix4(mind.b.matrixWorld); const [x] = proj(v); tag(v, x > W / 2 ? 110 : -110, -16, r.name, r.sub, OPEN.mind * (PICKED && PICKED !== k ? .35 : 1)); }
     if (FOCUS === "heart") for (const [k, r] of Object.entries(HEART_PARTS)) { const v = V(...r.at).applyMatrix4(heart.g.matrixWorld); const [x] = proj(v); tag(v, x > W / 2 ? 110 : -110, -16, r.name, r.sub, OPEN.heart * (PICKED && PICKED !== k ? .35 : 1)); }
     if (FOCUS === "senses") for (const [k, o] of Object.entries(senses.organs)) { const v = o.getWorldPosition(V(0, 0, 0)); const [x, y] = proj(v); tag(v, x > W / 2 ? 130 : -130, y > H / 2 ? 40 : -40, SENSES[k].name, SENSES[k].sub, OPEN.senses * (PICKED && PICKED !== k ? .35 : 1)); }
     if (FOCUS === "memory") for (const h of memory.hoods.filter((x) => x.n >= 5).slice(0, 10)) { const v = V(...h.at).applyMatrix4(memory.g.matrixWorld); const [x] = proj(v); tag(v, x > W / 2 ? 90 : -90, -16, h.name, `${h.n} notes · most linked: ${String(h.hub).slice(0, 28)}`, OPEN.memory * (SUB && SUB.kind === "hood" && SUB.key !== h.key ? .25 : 1)); }
-    if (FOCUS && (OPEN[FOCUS] || 0) > .3) for (const id in ORG) { const o = ORG[id]; if (o.org !== FOCUS || (o.part !== PICKED && FOCUS !== "memory")) continue; const [x, y, z] = proj(o.g.getWorldPosition(V(0, 0, 0))); if (z > 1) continue; c.save(); c.globalAlpha = OPEN[FOCUS] * (o.on ? .85 : .4); c.font = "400 9px Inter,sans-serif"; c.fillStyle = o.on ? P.ink : P.mute; c.fillText(o.title, x + 8, y + 3); c.restore(); }
+    if (FOCUS && (OPEN[FOCUS] || 0) > .3) for (const id in ORG) { const o = ORG[id]; if (o.org !== FOCUS || (o.part !== PICKED && FOCUS !== "memory")) continue; const [x, y, z] = proj(o.g.getWorldPosition(V(0, 0, 0))); if (z > 1) continue; c.save(); c.globalAlpha = OPEN[FOCUS] * (o.on ? .85 : .4); c.font = "400 9px Inter,sans-serif"; c.lineJoin = "round"; c.lineWidth = 3.5; c.strokeStyle = P.bg; c.strokeText(o.title, x + 8, y + 3); c.fillStyle = o.on ? P.ink : P.mute; c.fillText(o.title, x + 8, y + 3); c.restore(); }
     lane(c, H - 100, 34, LANES.you, "YOU", LANES.you ? (LANES.you.typed ? "typed to Kurooto" : "heard, and said to Kurooto") : "say its name, or type in the talk box");
     lane(c, H - 48, 44, LANES.me, "KUROOTO", LANES.me ? (LANES.me.typed ? "answered" : "speaking") : "");
   }
