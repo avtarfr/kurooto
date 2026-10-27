@@ -582,6 +582,20 @@ restart too (`core/jobs.py` passes `jid` to `record_turn`). `/new` in a chat sta
 (`privacy.keep_days`, `/forget`) and gists cover the sessions' turns (`modules/chat.py:history_files`).
 `Incoming` has `session` and `quote` for this.
 
+### The chat on the dashboard (0.8.14)
+
+The dashboard's Chat page (`web/chat_api.py`, `static/chat.js`; [web.md](web.md#the-chat-page-0814)) uses the chat
+above without a protocol of its own. `PhoneChat.take`'s message handling is `_yours(mid, sid, text, to_id, path, sent,
+voice, on)`; `typed(text, session, reply)` calls it for a message from the page (a fresh id; the chat must exist), so
+it's kept, pushed with `chat-say` as `from: "you"` (the phones show it like one typed on another phone) and handled
+as `Incoming(via="app")`; its `phone_chat` event carries `on: "dashboard"`. `press(mid, n)` is `_button`, `thread(sid)`
+lists one chat, `change(op, args)` runs the session and message ops (never `BEING_OPS`). `PhoneApp.answer` checks the
+seal and nonce, then `act(item_id, fields)` does the answer; the page calls `act` directly (behind the dashboard's
+key). `PhoneChat.live` tells the dashboard's open pages about each change (`{"t": "chat"}`; nothing goes to the call
+line for it, and nothing with `look.chat_page` off). Only what `chat.json` holds is shown: the app's and the page's
+messages, their answers, and Kurooto's own messages that went to the `chat` channel; Telegram, Voice, the talk box and
+the terminal aren't recorded there.
+
 ## Today and the phone's own alarm (0.6.0)
 
 **The list.** `modules/calls/today.py:PhoneToday.snapshot()` builds it from `core/actions.py:today` (the dashboard's

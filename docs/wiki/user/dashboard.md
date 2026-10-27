@@ -368,6 +368,7 @@ back to the board. In the roomy layout they're tabs under the panes.
 | Page | Key | What it's for |
 |---|---|---|
 | Today | Alt+T | the day, with buttons |
+| Chat | Alt+H | the phone app's chat, live: Kurooto's messages and answers with their buttons, Waiting for you, and a box to write in it ([below](#chat-alth)) |
 | Activity | Alt+A | what happened, newest first (the last 80 events: names, counts and times, never message text) |
 | AI jobs | Alt+J | AI requests: when, what, effort, how long, result, and **Cancel** on running or waiting ones |
 | Schedule | Alt+C | everything scheduled: reminders, check-ins, calls, syncs, digests |
@@ -406,6 +407,40 @@ tool does.
 **Where things go:** journal lines go into today's daily note (`journal/<date>.md`, or `dailies/<date>.md` in the
 zettelkasten layout). `.` lines go into one inbox note per day, `inbox/<date>-captured.md`, one timed line each. This
 differs from `/note` on Telegram, which makes a new note per thought.
+
+### Chat (Alt+H)
+
+The phone app's chat on the dashboard (0.8.14): the same chats and messages as the app, live, so Kurooto's messages
+aren't only on your phone and Telegram. Needs [Phone calls](calls.md) on (the chat comes with the phone app); without
+it the page says so.
+
+- **The chats** down the left, as in the app: **Kurooto** (its own chat: reminders, check-ins, results, what add-ons
+  say) first, then pinned ones and the latest. Each shows its last line, how many of Kurooto's messages you haven't
+  read, and "working" while your AI answers in it. **+ new chat** starts one (named after its first words, as in the
+  app); **rename**, **pin** and **delete** are at the top of an open chat.
+- **The open chat**, newest at the bottom: your messages on the right, Kurooto's on the left with their title, their
+  buttons (a tap does exactly what a tap in the app does, so a question settles everywhere), Why? and Less of this
+  where the app shows them, files as links (a file from Kurooto opens from your call line, as on the phone; one you
+  sent from the phone stays on this computer), quoted replies, and "edited" and "pinned" marks.
+- **Waiting for you:** the app's open questions and approvals above the chat, with a button per answer, **answer…**
+  for your own words, **later** and **dismiss**. An answer here is the same as one on the phone: the question goes from
+  your phones, Telegram and the Today page too.
+- **Write** in the box at the bottom: **Enter** sends, **Shift+Enter** is a new line. It goes to Kurooto in the open
+  chat exactly as a message typed in the app (the same commands and plain-English requests, the chat's own AI context
+  carries), and your phones show it as yours. **reply** under a message quotes it, and a reply to a reminder or a
+  check-in goes to the feature that sent it, as on Telegram.
+- **Live:** new messages, answers, "working" and what's waiting appear without reloading. Opening a chat marks it read
+  on your computer, and a chat you read in the app shows as read here; the app keeps its own unread badge, so reading
+  on the dashboard doesn't clear the phone's.
+
+**What is and isn't shown:** what the app's chat holds: everything you wrote in the app or on this page, the answers
+to them, and Kurooto's own messages when they go to the app's chat (always without Telegram; with Telegram, when
+`notify.app_chat` is on). What you send on Telegram, say to Voice, or type in the talk box or the terminal isn't kept
+in the chat, so it isn't here (an answer to it is, when it goes to the app's chat too). The chat keeps each chat's last
+100 messages for 7 days.
+
+Nothing new leaves your computer: the page is behind the dashboard's key like every other page, and what you write or
+tap reaches your phones through your call line, as when you use the app. `look.chat_page` turns the page off.
 
 ### Activity, AI jobs, Schedule
 
@@ -641,6 +676,7 @@ a page.
 | **Ctrl+K** / ⌘K | open or close the do-anything line | anywhere outside a terminal |
 | ↑ ↓, Tab, Enter, Esc | pick, complete, run, close (in the Ctrl+K line) | Ctrl+K |
 | **Alt+T** | Today | |
+| **Alt+H** | Chat (the phone app's chat) | |
 | **Alt+A** | Activity | |
 | **Alt+J** | AI jobs | |
 | **Alt+C** | Schedule | |
@@ -660,7 +696,7 @@ a page.
 | **Esc** | empties the search box | Features and Settings |
 | **L** | open or fold every corner panel and legend | the board |
 | **R** | highlight notes edited in the last day (Recent) | the board, while the NOTES map is showing (not while you type in a box) |
-| **Enter** | send | the kurooto chat tab, the Today box |
+| **Enter** | send (**Shift+Enter**: a new line on the Chat page) | the kurooto chat tab, the Today box, the Chat page |
 | **↑ / ↓** | earlier lines you typed | the kurooto chat tab |
 | **Ctrl+L** | clear the chat tab | the kurooto chat tab |
 | **Ctrl+Enter** (⌘Enter) | save the journal entry | Today page |

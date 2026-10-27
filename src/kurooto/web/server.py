@@ -56,6 +56,7 @@ register_defaults(
         "being_resting_sparks": True,  # the being's resting sparks: a trickle from what it does all the time
         "being_live_waveform": True,  # the being's YOU lane live from the microphone's levels (0.8.13)
         "talk_box": True,  # the small box over the board to talk to Kurooto in plain English (Alt+K)
+        "chat_page": True,  # the Chat page (Alt+H): the phone app's chat, live, to read, answer and write (0.8.14)
     },
 )
 # Settings: each setting's guide line under it, which opens its whole entry, and a search through the entries (0.8.10)

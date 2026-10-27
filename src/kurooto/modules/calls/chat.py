@@ -132,6 +132,18 @@ class PhoneChat:
             msgs = self._load()
             msgs.append(m)
             jsave(self.file, {"msgs": self._trim(msgs)})
+        self.live("msg", msg=self.public(m))
+
+    def live(self, kind: str, **fields) -> None:
+        """Tell the dashboard's open pages (its Chat page, web/chat_api.py): {"t": "chat", "kind": "msg" | "sessions" |
+        "status" | "waiting", ...}. Only to this computer's own pages, and not at all with look.chat_page off."""
+        live = getattr(self.app, "live", None)
+        if live is None or self.app.settings.get("look.chat_page") is False:
+            return
+        try:
+            live.push({"t": "chat", "kind": kind, **fields})
+        except Exception:
+            pass
 
     def _find(self, mid: str) -> dict | None:
         return next((m for m in self._load() if m["id"] == mid), None) if mid else None
@@ -146,13 +158,15 @@ class PhoneChat:
             change(m)
             m.pop("pushed", None)  # the call line hears the change (flush sends it again if it doesn't)
             jsave(self.file, {"msgs": msgs})
-            return m
+        self.live("msg", msg=self.public(m), update=True)
+        return m
 
     def drop_session(self, sid: str) -> None:
         """A chat was deleted: its messages here go."""
         with self._lock():
             msgs = self._load()
             jsave(self.file, {"msgs": [m for m in msgs if (m.get("session") or MAIN) != sid]})
+        self.live("sessions")
 
     def _session_of(self, mid: str) -> str:
         m = self._find(mid)
@@ -326,7 +340,8 @@ class PhoneChat:
 
     def status(self, sid: str, state: str, job: str = "") -> bool:
         """`kind: "status"` for one chat (working while an AI request for it runs): to the phones connected to the
-        call line, not kept, no notification."""
+        call line, not kept, no notification. The dashboard's Chat page hears it too."""
+        self.live("status", session=sid, state=state)
         return self.calls.connector.admin_later("chat-status", session=sid, state=state, job=job)
 
     def on_event(self, rec: dict) -> None:
@@ -415,7 +430,33 @@ class PhoneChat:
                 return 404, {"ok": False, "note": "That file didn't reach your computer. Send it again."}
         if not text and path is None:
             return 400, {"ok": False, "note": "The message was empty."}
-        to = self._find(str(fields.get("reply") or fields.get("to") or ""))
+        to_id = str(fields.get("reply") or fields.get("to") or "")
+        return self._yours(mid, sid, text, to_id, path, sent, bool(fields.get("voice")) and path is not None)
+
+    def typed(self, text: str, session: str = "", reply: str = "") -> tuple[int, dict]:
+        """A message typed on the dashboard's Chat page (web/chat_api.py, behind the dashboard's key): handled exactly
+        as one typed in the app (the same session, its AI context, replies), and your phones see it as yours."""
+        sid = self.sessions.norm(session)
+        if sid is None or (sid != MAIN and self.sessions.get(sid) is None):
+            return 404, {"ok": False, "note": "There's no such chat."}
+        text = str(text or "").strip()[:TEXT_MAX]
+        if not text:
+            return 400, {"ok": False, "note": "The message was empty."}
+        return self._yours(uuid.uuid4().hex[:16], sid, text, str(reply or ""), on="dashboard")
+
+    def press(self, mid: str, n) -> tuple[int, dict]:
+        """A button under one of Kurooto's messages, tapped on the dashboard's Chat page: as a tap in the app."""
+        return self._button(str(mid or ""), n)
+
+    def thread(self, sid: str) -> list[dict]:
+        """One chat's messages, oldest first, as the phones get them (the buttons' data stays here)."""
+        return [self.public(m) for m in self._load() if (m.get("session") or MAIN) == sid]
+
+    def _yours(self, mid: str, sid: str, text: str, to_id: str, path: Path | None = None, sent: dict | None = None,
+               voice: bool = False, on: str = "") -> tuple[int, dict]:  # fmt: skip
+        """Your message (from the app, or the dashboard's Chat page: on="dashboard"): kept, sent to your phones, and
+        handled like a Telegram message in its chat."""
+        to = self._find(to_id)
         reply_to = {"kind": to["_map"][0], "ref": to["_map"][1]} if to and to.get("_map") else None
         mine = {"id": mid, "from": "you", "text": text, "at": int(time.time()), "session": sid}
         quote = None
@@ -439,7 +480,6 @@ class PhoneChat:
             said.append(self.public(m))
             return PREFIX + m["id"]
 
-        voice = bool(fields.get("voice")) and path is not None
         if voice:  # a voice note: what was heard becomes the message, as on Telegram (modules/voice_notes.py)
             vn = self.app.modules.get("voice_notes")
             if vn is None or not self.app.is_on("voice_notes"):
@@ -453,7 +493,9 @@ class PhoneChat:
             respond(f"Heard: {heard[:600]}")
             text, path = (text + "\n" + heard).strip(), None
 
-        self.app.events.emit("phone_chat", chars=len(text), **({"files": 1} if path is not None else {}))
+        self.app.events.emit(
+            "phone_chat", chars=len(text), **({"files": 1} if path is not None else {}), **({"on": on} if on else {})
+        )
         inc = Incoming(
             text,
             via="app",
@@ -473,6 +515,15 @@ class PhoneChat:
         return 200, {"ok": True, "id": mid, "said": said}
 
     # ----------------------------------------------------------------------------------------- ops
+    def change(self, op: str, args: dict) -> tuple[int, dict]:
+        """A chat or a message changed on the dashboard's Chat page: the app's own session and message ops (never the
+        being's requests, which only the paired phone makes)."""
+        if op in SESSION_OPS:
+            return self._session_op(op, args)
+        if op in MSG_OPS:
+            return self._msg_op(op, args)
+        return 400, {"ok": False, "op": op[:20], "note": "The Chat page can't do that."}
+
     def _op(self, op: str, fields: dict, sealed: bool, queued: bool, device: str = "") -> tuple[int, dict]:
         """A change rather than a message. Its arguments are in "args" (or, the ones that aren't "id", beside it)."""
         args = {k: v for k, v in fields.items() if k not in ("id", "ts", "n", "op", "args")}

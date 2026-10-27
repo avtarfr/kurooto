@@ -64,6 +64,12 @@ needs = "`look.board` = `being`, Voice listening, and `voice.listen.levels` on."
 tip = "A small box over the board to talk to Kurooto in plain English (Alt+K)."
 when = "Turn it off if you use the terminal or Telegram instead."
 
+[s."look.chat_page"]
+tip = "The Chat page (Alt+H): the phone app's chat on the dashboard, live, with its buttons, and a box to write in it."
+what = "The same chats and messages as the app: Kurooto's messages and answers with their buttons, files as links, the app's Waiting for you questions, and what you wrote in the app or on this page. A tap or a message here goes the same way as one in the app, so a question settles everywhere and the chat's AI context carries. Off, the page leaves the dashboard's pages and its live messages stop."
+when = "Turn it off if you only use the chat on your phone or Telegram."
+needs = "Phone calls on (the chat comes with the phone app)."
+
 [s."look.settings_guide"]
 tip = "On the Settings page, a line under each setting that says what it does and opens its whole guide entry."
 what = "With it on, the search box also looks through the entries, so \"battery\" finds `power.on_battery`. Off, the page shows only the settings, with what each does when you hover its name."

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.14 (unreleased)
+
+- **The Chat page on the dashboard.** Kurooto's messages (reminders, check-ins, answers, what add-ons say, questions
+  with buttons) were only in the phone app's chat and on Telegram; the dashboard showed the talk box's answers and
+  events without text. The new Chat page (Alt+H, Ctrl+K `open chat`) shows the same chats and messages as the phone
+  app, live, newest at the bottom, with Kurooto's buttons, files as links and the app's Waiting for you. A button or an
+  answer there is the same as a tap in the app, so a question settles everywhere; a message written there goes to
+  Kurooto in the open chat exactly as one typed in the app, and your phones show it as yours. Opening a chat marks it
+  read on your computer. It shows what the app's chat holds (not Telegram, Voice or the talk box), needs Phone calls,
+  and nothing new leaves your computer. `look.chat_page`.
+
 ## 0.8.13 (unreleased)
 
 - **Kurooto says numbers as a person would.** The speech engine read digits literally: "21:31" with a pause in the

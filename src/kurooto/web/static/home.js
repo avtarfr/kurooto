@@ -49,7 +49,7 @@ const denseFits = () => WANT() === "dense" && window.innerWidth >= 1280 && windo
 // browsers. The pages (activity … settings) open over the whole board, Alt and the underlined letter opens one, and
 // Esc goes back. Roomy (narrow windows) shows every pane, with the pages in its tabs.
 const PANES = { status: "#pane-status", systems: "#pane-systems", brain: "#pane-brain", notes: "#pane-vault", terminal: "#pane-tabs" };
-const PKEY = { brain: "b", console: "o", today: "t", activity: "a", jobs: "j", schedule: "c", features: "f", phone: "p", research: "r", about: "y", settings: "s", face: "e" };
+const PKEY = { brain: "b", console: "o", today: "t", chat: "h", activity: "a", jobs: "j", schedule: "c", features: "f", phone: "p", research: "r", about: "y", settings: "s", face: "e" };
 let HIDE = new Set(), MAX = null, PAGE = null; // hidden panes, the pane filling the board, the page over the board
 let STUDY = false; // Study mode: the NOTES map and the STUDY pane only (look.study_mode); HIDE and MAX wait untouched
 let HIDDEN_F = new Set(); // features taken off the Features page (look.hidden_features; only ones that are off)
@@ -226,6 +226,7 @@ function loadLook() {
     BEING_REST = look.values.being_resting_sparks !== false; if (BEING) BEING.setRest(BEING_REST);
     BEING_LIVE = look.values.being_live_waveform !== false; if (BEING) BEING.setLive(BEING_LIVE);
     if ((look.values.talk_box !== false) !== TALK.on) { TALK.on = look.values.talk_box !== false; talkShow(); }
+    setChatPage(look.values.chat_page !== false);
     if (m !== BRAIN_MON) { BRAIN_MON = m; if (B3 && B3.setMonitor) B3.setMonitor(m); }
     const v = cleanHide(look.values.panes);
     if (Object.keys(PANES).filter((p) => v.has(p)).join() !== hideList().join()) { HIDE = v; MAX = null; applyPanes(); }
@@ -790,8 +791,8 @@ function renderBoard(m) {
 
 const feed = [];
 const SEEN = new WeakMap(); // when each live event arrived (fresh ones are bright in SYSTEMS)
-const TABS = { brain: "Brain", console: "Brain console", today: "Today", activity: "Activity", jobs: "AI jobs", schedule: "Schedule", features: "Features", phone: "Phone", research: "Research", about: "About you", settings: "Settings", face: "Face" };
-const DLABEL = { brain: "brain", console: "console", today: "today", activity: "activity", jobs: "jobs", schedule: "schedule", features: "features", phone: "phone", research: "research", about: "you", settings: "settings", face: "face" };
+const TABS = { brain: "Brain", console: "Brain console", today: "Today", chat: "Chat", activity: "Activity", jobs: "AI jobs", schedule: "Schedule", features: "Features", phone: "Phone", research: "Research", about: "About you", settings: "Settings", face: "Face" };
+const DLABEL = { brain: "brain", console: "console", today: "today", chat: "chat", activity: "activity", jobs: "jobs", schedule: "schedule", features: "features", phone: "phone", research: "research", about: "you", settings: "settings", face: "face" };
 let tab = "activity"; // roomy: the tab below the panes
 let dtab = "kurooto"; // dense: the terminal pane shows "kurooto" (the chat) or a terminal; the pages open over the board
 const current = () => (DENSE ? PAGE || dtab : tab);
@@ -801,7 +802,7 @@ function showTab(name) {
   renderNav();
   try { localStorage.setItem("kurooto.dash.tab", name); } catch { /* fine */ }
   // the settings-like tabs get room (the canvases above shrink and redraw by themselves)
-  $(".grid").classList.toggle("tall", ["features", "phone", "research", "about", "settings", "terminals", "console"].includes(name));
+  $(".grid").classList.toggle("tall", ["features", "phone", "research", "about", "settings", "terminals", "console", "chat"].includes(name));
   renderTab();
 }
 function renderNav() {
@@ -863,6 +864,7 @@ function renderPage(name, body) {
   else if (name === "brain") renderBrain(body);
   else if (name === "console") renderConsole(body);
   else if (name === "face") renderFace(body);
+  else if (name === "chat") renderChat(body);
 }
 // Face presence's page (modules/face, 0.8.10): face.js, loaded the first time it opens
 async function renderFace(body) {
@@ -872,6 +874,19 @@ async function renderFace(body) {
 // Brain (Alt+B): the whole Brain as a 3D model in its dashboard pane (Alt+B to fill the board).
 // (brain3d.js, three.js; core/brainview.py gives the islands and their switches).
 let B3 = null;
+// The Chat page (Alt+H, look.chat_page, 0.8.14): the phone app's chat, live (chat.js, loaded the first time it opens;
+// web/chat_api.py). Its live messages come as {t: "chat"} (connect below). Off: the page leaves the board's pages.
+const CHAT_PAGE = { key: "h", tab: "Chat", label: "chat" };
+async function renderChat(body) {
+  try { if (!window.CHATPAGE) await loadScript("/static/chat.js?v=1"); } catch { body.innerHTML = '<p class="d">The Chat page could not load.</p>'; return; }
+  window.CHATPAGE.mount(body, api, { open: openPage });
+}
+function setChatPage(on) {
+  if (on === !!DLABEL.chat) return;
+  if (on) { PKEY.chat = CHAT_PAGE.key; TABS.chat = CHAT_PAGE.tab; DLABEL.chat = CHAT_PAGE.label; }
+  else { if (PAGE === "chat") closePage(); if (!DENSE && tab === "chat") showTab("activity"); delete PKEY.chat; delete TABS.chat; delete DLABEL.chat; }
+  renderNav(); renderMenu(); if (PAGE) renderPageNav();
+}
 const loadScript = (src) => new Promise((ok, no) => { const el = document.createElement("script"); el.src = src; el.onload = ok; el.onerror = no; document.head.appendChild(el); });
 function stopBrain(host) { if (B3) { B3.stop(); B3 = null; } if (host) { host.classList.remove("b3"); host.style.cssText = ""; } }
 function updateBrainMeta(d) {
@@ -1969,6 +1984,7 @@ function connect() {
       if (m.kind === "camera") { let d = $("#camera-dot"); if (!d) { d = document.createElement("span"); d.id = "camera-dot"; d.className = "badge hidden"; d.textContent = "● camera"; d.title = "Kurooto is using the camera (Face presence)"; $(".bar .right").prepend(d); } d.classList.toggle("hidden", !m.on); }
       if (window.FACE) window.FACE.live(m);
     }
+    else if (m.t === "chat") { if (window.CHATPAGE) window.CHATPAGE.live(m); } // the Chat page (chat.js)
     else if (m.t === "senses") { if (BEING) BEING.senses(m); } // another device an add-on reports for: numbers only
     else if (m.t === "body") {
       const first = !last; last = m; LIGHT = m.sys.profile === "light" || matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1997,6 +2013,7 @@ function settingChanged(key, value) {
   if (key === "look.board") setBoard(boardOf(value), false);
   if (key === "look.being_theme") { BEING_THEME = value === "theme" ? "theme" : "void"; stopBeing(); applyPanes(); }
   if (key === "look.talk_box") { TALK.on = value !== false; talkShow(); }
+  if (key === "look.chat_page") setChatPage(value !== false);
   if (key === "look.being_hints") { BEING_HINTS = value !== false; if (BEING) BEING.setHints(BEING_HINTS); }
   if (key === "look.being_resting_sparks") { BEING_REST = value !== false; if (BEING) BEING.setRest(BEING_REST); }
   if (key === "look.being_live_waveform") { BEING_LIVE = value !== false; if (BEING) BEING.setLive(BEING_LIVE); }

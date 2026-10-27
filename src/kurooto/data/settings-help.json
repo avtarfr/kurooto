@@ -378,6 +378,7 @@
 "look.being_theme": "The being's colours: white light on black, or the page's palette.",
 "look.board": "The board: Kurooto as one living body (being), three panes on top (three), or STATUS on the left (classic).",
 "look.brain_monitor": "BRAIN's part monitor: shown beside the model, or in a drawer behind a tab.",
+"look.chat_page": "The Chat page (Alt+H): the phone app's chat on the dashboard, live, with its buttons, and a box to write in it.",
 "look.design": "The dashboard's design: new (sans-serif, rounded panes) or classic (the monospace look of 0.5.18).",
 "look.hidden_features": "Features hidden from the Features list (they still run if they're on).",
 "look.layout": "Dense (everything on one full-screen board) or roomy (bigger panes and type).",

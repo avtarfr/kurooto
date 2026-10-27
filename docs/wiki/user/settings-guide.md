@@ -47,7 +47,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
-- [Dashboard and terminal](#dashboard-and-terminal): 24 settings
+- [Dashboard and terminal](#dashboard-and-terminal): 25 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 26 settings
 - [Face presence](#face-presence): 33 settings
@@ -6392,6 +6392,19 @@ A small box over the board to talk to Kurooto in plain English (Alt+K).
 
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off if you use the terminal or Telegram instead.
+
+### `look.chat_page`
+
+The Chat page (Alt+H): the phone app's chat on the dashboard, live, with its buttons, and a box to write in it.
+
+The same chats and messages as the app: Kurooto's messages and answers with their buttons, files as links, the app's
+Waiting for you questions, and what you wrote in the app or on this page. A tap or a message here goes the same way as
+one in the app, so a question settles everywhere and the chat's AI context carries. Off, the page leaves the dashboard's
+pages and its live messages stop.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you only use the chat on your phone or Telegram.
+- **Depends on:** Phone calls on (the chat comes with the phone app).
 
 ### `look.settings_guide`
 
