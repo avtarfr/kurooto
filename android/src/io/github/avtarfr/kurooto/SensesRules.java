@@ -86,4 +86,14 @@ final class SensesRules {
         while (out.size() > max) out.remove(0);
         return out;
     }
+
+    /** Whether the phone may send what it holds (0.8.13). `onLine`: the id of the batch the call line kept for your
+     *  computer while it was off ("" none); `waiting`: the ids the line still holds from this phone, or null when the line
+     *  couldn't be asked. Only while that batch still waits does the phone hold back, so at most one batch of senses is
+     *  ever on the line, and sending starts again the moment your computer takes it. (Before 0.8.13 a clock did this:
+     *  12 hours of nothing after any batch waited, even when your computer was off for ten minutes.) */
+    static boolean maySend(String onLine, List<String> waiting) {
+        if (onLine == null || onLine.isEmpty()) return true;
+        return waiting != null && !waiting.contains(onLine);
+    }
 }

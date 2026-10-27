@@ -351,7 +351,8 @@ but my data shows otherwise" is removed before it can be sent, always.
 charging, whether you're still, walking or in a vehicle (worked out on the phone), steps, room light (dark, dim, bright), arriving at and leaving your saved
 places, headphones, Do Not Disturb, your next alarm, which Wi-Fi (a code the phone makes itself; you say once what it is: `/senses wifi label <code> home`)
 and total screen time a day (never per app). The microphone is not a sense. The phone takes a reading every 15 minutes (Android batches it, so it's
-cheap), seals it with the phone's key and sends it through your call line, which can't read it; if your computer is off, one sealed batch waits there.
+cheap), seals it with the phone's key and sends it through your call line, which can't read it; if your computer is off, one sealed batch waits there and
+the rest wait on the phone till your computer has taken it (0.8.13; before, nothing more came for 12 hours).
 They feed timing (quieter) and forecasts, never nagging.
 
 `/senses` shows what each sense saw today. `/senses off <name>` switches one off and deletes what it kept; `/senses forget [name]` clears today's.

@@ -31,6 +31,10 @@
 - **The voice lanes are smooth waveforms, not blocks.** Both lanes, on the dashboard and the phone, draw a soft
   mirrored shape through the samples instead of a row of bars, so a short utterance no longer turns into a few wide
   blocks.
+- **Your phone's senses stopped for 12 hours after any short sleep of your computer.** When a batch of readings had
+  to wait on the call line, the phone sent nothing more for 12 hours by the clock, so ten minutes with the laptop
+  shut lost Brain its phone senses till the next day (and readings past the phone's 300 were dropped). The phone
+  now holds back only while that one batch still waits on the line, and sends the rest once your computer takes it.
 
 ## 0.8.12 (2026-10-27)
 
