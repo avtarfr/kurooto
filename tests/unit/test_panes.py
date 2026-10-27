@@ -33,6 +33,7 @@ def test_alt_keys_open_the_pages_but_a_terminal_keeps_its_own(page):
     keys = js.split("const PKEY = ")[1].split(";")[0]
     tabs = ("brain", "console", "today", "activity", "jobs", "schedule", "features", "phone", "research", "about")
     tabs += ("settings", "face")  # 0.8.10: Face presence's page (Alt+E)
+    tabs += ("chat",)  # 0.8.14: the Chat page (Alt+H)
     for tab in tabs:
         assert f"{tab}:" in keys, tab
     assert (
@@ -41,6 +42,7 @@ def test_alt_keys_open_the_pages_but_a_terminal_keeps_its_own(page):
         and 'settings: "s"' in keys
         and 'console: "o"' in keys
         and 'face: "e"' in keys
+        and 'chat: "h"' in keys
     )
     letters = [part.split('"')[1] for part in keys.split(",")]
     assert len(letters) == len(set(letters)) == len(tabs)  # one key each

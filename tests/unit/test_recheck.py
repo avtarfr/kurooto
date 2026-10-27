@@ -14,6 +14,15 @@ OLDER = (dt.date.today() - dt.timedelta(days=300)).isoformat()
 NEW = dt.date.today().isoformat()
 
 
+@pytest.fixture(autouse=True)
+def _today():
+    """The dates from the test's own day, not the collection's: a suite that runs past midnight sees today's."""
+    global OLD, OLDER, NEW
+    OLD = (dt.date.today() - dt.timedelta(days=200)).isoformat()
+    OLDER = (dt.date.today() - dt.timedelta(days=300)).isoformat()
+    NEW = dt.date.today().isoformat()
+
+
 @pytest.fixture
 def note(env):
     env.on("remember")

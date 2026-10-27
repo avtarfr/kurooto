@@ -23,6 +23,7 @@ def app(tmp_path, monkeypatch):
 
     a = App()
     a.settings.set("modules.enabled", ["mind"])
+    a.settings.set("mind.sleep.on", True)  # off for other tests (tests/conftest.py: kurooto_awake)
     a.settings.set("availability.night", {"enabled": True, "from": "23:30", "to": "07:00", "alarm_only": False})
     monkeypatch.setattr(mlog, "_writer_pid", None)
     a.keeper = sk.Keeper(a.paths.state / "mind")

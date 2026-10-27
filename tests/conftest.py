@@ -116,6 +116,23 @@ def calendar_day_checkins():
 
 
 @pytest.fixture(autouse=True)
+def kurooto_awake():
+    """Kurooto sleeps in its night window (mind/sleep.py, `mind.sleep.on`, on by default): what it starts by itself
+    waits for the morning and nothing is said aloud by itself. Tests must pass at any hour, 1 am included, so here it
+    is off unless a test turns it on (tests/unit/test_mind_sleep.py does, on a clock of its own). Set on whichever
+    dict holds the default at the time: a late register_defaults("mind", ...) copies the section."""
+    from kurooto.core import config
+    from kurooto.mind import sleep  # noqa: F401 (registers its defaults)
+
+    was = config._DEFAULTS["mind"]["sleep"]["on"]
+    config._DEFAULTS["mind"]["sleep"]["on"] = False
+    config._GEN[0] += 1
+    yield
+    config._DEFAULTS["mind"]["sleep"]["on"] = was
+    config._GEN[0] += 1
+
+
+@pytest.fixture(autouse=True)
 def no_receipts():
     """Answers end with a run receipt (jobs.receipt, on by default). Tests that check an answer's exact words run
     without it; tests/unit/test_receipt.py turns it on. Its own MonkeyPatch, like calendar_day_checkins."""

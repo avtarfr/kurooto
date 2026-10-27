@@ -6,9 +6,7 @@ something you asked for."""
 from __future__ import annotations
 
 import re
-import sys
 import time
-import types
 from pathlib import Path
 
 import pytest
@@ -16,7 +14,7 @@ import pytest
 import kurooto
 from kurooto import mind
 from kurooto.core.state import jsave
-from kurooto.mind import console, feelings, register, status, workspace
+from kurooto.mind import console, feelings, register, sleep, status, workspace
 from kurooto.mind import log as mlog
 from kurooto.mind import scorekeeper as sk
 from kurooto.mind.tom import model as tom_model
@@ -79,9 +77,7 @@ def test_focus_asleep_held_mood_and_top(app, monkeypatch):
     import datetime as dt
 
     app.availability.set_focus(dt.datetime.now() + dt.timedelta(hours=1))
-    fake = types.ModuleType("kurooto.mind.sleep")
-    fake.state = lambda a: "asleep"
-    monkeypatch.setitem(sys.modules, "kurooto.mind.sleep", fake)
+    monkeypatch.setattr(sleep, "state", lambda a: "asleep")
     monkeypatch.setattr(workspace, "held_count", lambda a: 4, raising=False)
     monkeypatch.setattr(feelings, "mood_band", lambda a: "low")
     jsave(

@@ -5,10 +5,19 @@ message after days of silence."""
 import datetime as dt
 import json
 
+import pytest
+
 from kurooto.core import rhythm as rhythm_mod
 from kurooto.modules import alarm as alarm_mod
 
 TODAY = dt.datetime.combine(dt.date.today(), dt.time(0))
+
+
+@pytest.fixture(autouse=True)
+def _today():
+    """Today at the test's own start, not the collection's: a suite that runs past midnight sees today's."""
+    global TODAY
+    TODAY = dt.datetime.combine(dt.date.today(), dt.time(0))
 
 
 def _events(app, rows):

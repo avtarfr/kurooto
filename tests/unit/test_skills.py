@@ -322,9 +322,11 @@ def test_pack_compiles_sends_the_pdf_and_links_it(env, ai, monkeypatch):
     ai.answer = pack_answer()
     env.app.jobs.run_next()
     pdf = env.app.workspace / "revision-packs" / f"{now():%Y-%m-%d}-topology.pdf"
-    assert wait_for(lambda: len(docs(env)) == 1)
+    note = env.app.workspace / "journal" / f"{now():%Y-%m-%d}.md"
+    # the link is written just after the PDF is sent, on the job's thread: wait for both
+    assert wait_for(lambda: len(docs(env)) == 1 and note.is_file() and "revision-packs/" in note.read_text())
     assert pdf.is_file()
-    daily = (env.app.workspace / "journal" / f"{now():%Y-%m-%d}.md").read_text()
+    daily = note.read_text()
     assert "## Added" in daily and "revision-packs/" in daily and "Revision pack: Topology" in daily
 
 

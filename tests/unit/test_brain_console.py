@@ -172,7 +172,9 @@ def test_the_timeline_filters_by_part_and_day_and_pages(app, brain):
     assert [r["kind"] for r in t["rows"]] == ["gate_receipt"]
     yday = (dt.date.today() - dt.timedelta(days=1)).isoformat()
     _, t = console.view(app, {"view": "timeline", "day": yday})
-    assert {r["kind"] for r in t["rows"]} <= {"deadline_added", "job_ended"} and t["day"] == yday
+    assert "deadline_added" in {r["kind"] for r in t["rows"]} and t["day"] == yday
+    # that day's records only: before 01:00 the fixture's hour-old ones are yesterday's too
+    assert all(dt.date.fromtimestamp(r["ts"]).isoformat() == yday for r in t["rows"])
     _, t = console.view(app, {"view": "timeline", "limit": "3"})
     assert len(t["rows"]) == 3 and t["more"]
     _, t2 = console.view(app, {"view": "timeline", "limit": "3", "before": str(t["rows"][-1]["seq"])})

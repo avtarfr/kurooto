@@ -67,6 +67,8 @@ NOT_BUTTONS = {
     "harness",
     "s",
     "x",
+    "promise",  # mind/status.py: the uneasy item's id ("promise:<id>"), not a button
+    "proposal",  # mind/console.py: a decision's action ("proposal:lab"), not a button
 }  # fmt: skip  (scheduler keys, log text, XML; Brain's score.db keys: read:<day>, answer:<day>, ...)
 
 

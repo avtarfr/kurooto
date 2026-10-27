@@ -704,6 +704,8 @@ def greeter(app, monkeypatch):
     v = FakeVoice()
     monkeypatch.setitem(app.modules, "voice", v)
     app.settings.set("modules.enabled", ["face", "voice"])
+    app.settings.set("face.watch.night", True)  # whatever the hour the test runs at
+    app.settings.set("availability.night", {"enabled": False, "from": "23:30", "to": "07:00", "alarm_only": False})
     return app.modules["face"], v
 
 
@@ -793,7 +795,7 @@ def test_voice_greet_speaks_then_invites(tmp_path, monkeypatch):
         app.settings.set("modules.enabled", ["voice"])
         monkeypatch.setattr(v, "tts", lambda: (object(), ""))
         spoken = []
-        monkeypatch.setattr(v.speaker, "say", lambda text, wait=True: spoken.append(text) or (True, "Spoken."))
+        monkeypatch.setattr(v.speaker, "say", lambda text, **_kw: spoken.append(text) or (True, "Spoken."))
         assert v.greet("Welcome back.", 12, talk=True) == (True, "spoken; not listening: listening is off")
         app.settings.set("voice.listen.on", True)
         monkeypatch.setattr(v, "blocked", lambda: "")
@@ -1506,6 +1508,7 @@ def test_holds_are_capped_named_on_the_card_and_switchable(app, trained):
     import time
 
     f = trained
+    app.settings.set("face.watch.night", True)  # whatever the hour the test runs at
     assert f.hold_watch("meeting people", 3600) and f.holds() == ["meeting people"]
     assert f._holds["meeting people"] - time.monotonic() <= 600.5  # capped: renew it to keep it
     w = f.build_watcher(camera=Cam(), detector=Det(), embedder=Emb(), frames=Frames())

@@ -30,8 +30,8 @@ def study(env, monkeypatch):
     return env, env.app.modules["study"]
 
 
-def later(monkeypatch, minutes):
-    t = now() + dt.timedelta(minutes=minutes)
+def later(monkeypatch, minutes, base=None):
+    t = (base or now()) + dt.timedelta(minutes=minutes)
     monkeypatch.setattr(study_mod, "now", lambda: t)
     return t
 
@@ -90,8 +90,9 @@ def test_a_focus_holds_messages_logs_its_minutes_then_a_break(study, monkeypatch
 
 def test_pause_keeps_whats_left_and_stop_or_reset_ends_it(study, monkeypatch):
     env, st = study
+    t0 = later(monkeypatch, 0)  # one clock for the whole test: a slow run mustn't add seconds to what's logged
     st.timer_start("probability")
-    later(monkeypatch, 10)
+    later(monkeypatch, 10, t0)
     assert st.timer_pause() == "Paused. Probability: 10 min logged."
     assert st.timer()["left"] == 900 and env.app.availability.focus_until() is None
     assert not env.app.scheduler.get("study:timer")
@@ -99,7 +100,7 @@ def test_pause_keeps_whats_left_and_stop_or_reset_ends_it(study, monkeypatch):
     assert actions.act(env.app, "study.timer", {"do": "start"})["message"].startswith("Probability: focus until")
     assert round((dt.datetime.fromisoformat(st.timer()["ends"]) - study_mod.now()).total_seconds()) == 900
     assert st.timer_start() == "The timer is already running."
-    later(monkeypatch, 15)
+    later(monkeypatch, 15, t0)
     assert env.say("/study stop") == "Timer reset. Probability: 5 min logged."  # a stop by hand ends the timer too
     assert not st.timer() and not st.session() and env.app.availability.focus_until() is None
     assert st.day()["probability|manual"] == 900
