@@ -25,7 +25,7 @@ class LocalModels(Module):
         (
             "Ollama runs the models on this computer",
             "dashboard → Features → Local AI models → Set up (installs Ollama, pulls the models)",
-            "ollama rm <model>; remove Ollama with your package manager",
+            "turning it off offers to remove what Kurooto installed for it; `kurooto installed` and `kurooto remove`",
         ),
     )
     id = "local_models"
@@ -169,8 +169,14 @@ class LocalModels(Module):
         self._wire_up(models)
         return True, "Local models are ready: " + ", ".join(m["tag"] for m in models)
 
-    def pull(self, tag: str, size_gb: float, progress=print, feature: str = "Local AI models") -> tuple[bool, str]:
-        """Download one model through Ollama (its server running), with progress every 10%."""
+    def pull(
+        self, tag: str, size_gb: float, progress=print, feature: str = "Local AI models", by: str = "local_models"
+    ) -> tuple[bool, str]:
+        """Download one model through Ollama (its server running), with progress every 10%. A model Ollama didn't
+        have goes on the receipt for `by` (core/uninstall.py); one it had stays yours."""
+        from kurooto.core import uninstall
+
+        had = uninstall.norm(tag) in {uninstall.norm(h) for h in self.have()}
         progress(f"Downloading {tag} ({size_gb:g} GB)…")
         egress.handed("Ollama", feature)  # Ollama downloads it from its registry
         with (
@@ -190,6 +196,12 @@ class LocalModels(Module):
                     if pct // 10 != last:
                         last = pct // 10
                         progress(f"{tag}: {pct}%")
+        if not had:
+            try:
+                size = (uninstall._ollama_tags() or {}).get(uninstall.norm(tag)) or int(size_gb * uninstall.GB)
+                uninstall.record_model(self.app.paths.app, tag, size, by)
+            except Exception:  # a receipt that can't be written never fails a download
+                pass
         return True, ""
 
     def remove(self, tag: str) -> bool:
@@ -202,9 +214,13 @@ class LocalModels(Module):
         )
         try:
             with urllib.request.urlopen(req, timeout=30):  # noqa: S310 (Ollama on this computer)
-                return True
+                pass
         except OSError:
             return False
+        from kurooto.core import uninstall
+
+        uninstall.forget(self.app.paths.app, f"model:{uninstall.norm(tag)}")
+        return True
 
     def _wire_up(self, models: list[dict]) -> None:
         """Use the helper model for quick decisions; GBrain uses the embedding model on its own."""

@@ -241,8 +241,9 @@ size and what it's for.
 
 **What leaves your computer.** Nothing; the models run here.
 
-**Turn it off.** Features → Local AI models → Turn off. Ollama and the models stay installed (remove them with Ollama
-if you like).
+**Turn it off.** Features → Local AI models → Turn off. Kurooto then asks whether to remove what it installed for
+it (Ollama, the models), with their size: **Remove** / **Keep**, in Today → Waiting for you or your chat. Nothing goes
+without that tap, and only what Kurooto installed (see [What Kurooto installed](#what-kurooto-installed)).
 
 [Voice notes](talking-to-kurooto.md) don't use local models: they use your Gemini key.
 
@@ -285,8 +286,40 @@ requests fail as before when the internet is down), `hold_h` (24), `offer` (on).
 **What leaves your computer.** Only the one download, which Ollama makes from its own registry. The helper's decisions
 and answers stay here.
 
-**Turn it off.** `/helper off`. The model stays in Ollama (remove it with `ollama rm qwen2.5:1.5b-instruct` if you
-like).
+**Turn it off.** `/helper off`. If Kurooto downloaded its model and nothing else uses it, you're asked whether to
+remove it (Remove / Keep); kept, `/helper on` uses it again.
+
+---
+
+## What Kurooto installed
+
+Kurooto keeps a receipt of what it installs on this computer: programs (Ollama, Node.js, Bun and GBrain, kitty and
+fish, Tectonic, Tesseract, ...), with the files and folders each install made, and the Ollama models it downloads.
+Voice's speech packages and models live in Kurooto's own folder and are listed with them.
+
+**Never what was there before.** A program that's already on the computer isn't installed again, so it never gets on
+the receipt; nor does a model Ollama already had. Of the folders an install touches, only what wasn't there before is
+written down, so `~/.local/bin` itself or your own programs in it are never touched. A folder Kurooto's install made
+that now holds things of yours stays: Ollama's model store with models you pulled yourself, Bun's folder with your
+own global packages. The receipt is this computer's only: it isn't in backups or your profile, so a restore on a new
+computer never removes anything there.
+
+**See it:** `kurooto installed` in a terminal, or `/installed` in your chat: each one with its size, the features it's
+for, and what uses it now. It also names programs that are here but weren't installed by Kurooto (never removed by it).
+
+**Remove one:** `kurooto remove <name>` (`ollama`, `gemma4:e4b`, `voice`, ...) says what goes and asks first
+(`--yes` doesn't). Ollama's models go with Ollama, GBrain with Bun. Something a feature that's on still uses can't be
+removed until it's off. In the chat, **Remove…** under `/installed` asks Remove / Keep.
+
+**Turning a feature off** (or `/helper off`) asks whether to remove what Kurooto installed for it that nothing else
+uses, with the size: **Remove** / **Keep**, in Today → Waiting for you on the dashboard, Telegram or the phone app.
+Changing This computer's setup (Settings → `hardware.force_profile`, `hardware.extra_models`, `kurooto hardware
+--profile`) asks the same about models the new setup doesn't use. Nothing is removed without that tap, and never by
+the AI or a schedule. `uninstall.offer` off: no questions (the commands still work).
+
+**Uninstalling Kurooto** follows the receipt: `kurooto uninstall` lists what Kurooto installed outside its own folder
+and asks once before removing it too (`--yes` doesn't ask, `--keep-programs` leaves it all, and so does
+`uninstall.with_programs` off).
 
 ---
 

@@ -35,6 +35,7 @@ These belong to Kurooto itself and answer whichever features are on.
 | `/fixme` · `/fixme <what you see>` | what's wrong and what to do, matched by rules with no AI (so it works when the AI is what broke): each failing check with its troubleshooting row, known issues of your version and a Fix button where there's one; `/fixme the phone doesn't ring` finds the rows for what you see; `/fixme now` checks online too; `/fixme fix <id>` runs a fix (in a terminal); `/fixme ai` has your AI explain the last answer, if it works | [Troubleshooting](troubleshooting.md) |
 | `/calm` | messages that came by themselves today, the limit, what waits for the evening and what you turned down; `/calm 8` (messages a day), `/calm calls 2`, `/calm evening 21:00`, `/calm off`, `/calm on` | [Messages it sends](messages-it-sends.md) |
 | `/why` | why the last message that came by itself came | [Messages it sends](messages-it-sends.md) |
+| `/installed` | what Kurooto installed on this computer, with sizes and what uses each; **Remove…** asks Remove / Keep | [Your computer](your-computer.md#what-kurooto-installed) |
 | `/helper` · `/helper on` · `/helper off` · `/helper test` | the offline helper, a small model on this computer for quick decisions and quick answers while the internet is down: how it's doing (its speed test, requests waiting for the connection); `on` sets it up (downloads about 1 GB, then times it), `test` times it again | [Your computer](your-computer.md#the-offline-helper) |
 | `/keep` · `/keep 60` · `/keep <feature>` | what you used of each feature that's on (last 30 days, or as many as you say, up to 90) and what it sent by itself; one feature with Keep / Quiet / Off buttons | [Messages it sends](messages-it-sends.md#keep-or-drop-the-features-you-dont-use) |
 | `/forget 7d` · `/forget 2w` · `/forget all` | forget what Kurooto kept of your conversations from the last 7 days (12h, 2w...) now, with a count per kind; `all` forgets everything after a button that asks whether the gists go too; `/forget` alone says how long things are kept (`privacy.keep_days`) | [Privacy](privacy.md#how-long-its-kept) |
@@ -343,6 +344,8 @@ help with setup, repairs and scripts. `kurooto <command> --help` shows each one'
 | `kurooto run all`, `kurooto run all status`, `kurooto run all stop` | `/run all` from a terminal: it prints the progress line live, a line per step, then the summary (Ctrl-C leaves it running in Kurooto). `kurooto run` alone still runs the assistant in the window |
 | `kurooto hardware`, `--profile <name>`, `--add <model>`, `--remove <model>`, `--add-prereq <id>`, `--remove-prereq <id>`, `--install` | what this computer suits, and going past it |
 | `kurooto space`, `kurooto space --clean` | what Kurooto takes and what can go |
+| `kurooto installed` | what Kurooto installed on this computer (programs, Ollama models), with sizes and what uses each ([What Kurooto installed](your-computer.md#what-kurooto-installed)) |
+| `kurooto remove <name>`, `--yes` | remove one of them (asks first); only what Kurooto put there goes |
 | `kurooto selftest` | check that this version starts |
 | `kurooto --version` | the version you have |
 
@@ -356,7 +359,7 @@ help with setup, repairs and scripts. `kurooto <command> --help` shows each one'
 | `kurooto profile status \| save \| restore` (`save --replace`; `restore --repo owner/name`, `--yes`, `--no-start`) | your setup, encrypted in your private repository |
 | `kurooto sync`, `kurooto sync --no-wait`, `kurooto sync --status` | sync everything that's on |
 | `kurooto rotate`, `kurooto rotate --yes` | new keys for your call line (a lost phone, keys that got out) |
-| `kurooto uninstall`, `--keep-data`, `--revoke` | remove Kurooto; `--revoke` first takes back what it set up on your accounts |
+| `kurooto uninstall`, `--keep-data`, `--revoke`, `--keep-programs`, `--yes` | remove Kurooto, and what it installed (its receipt; asks first); `--revoke` first takes back what it set up on your accounts |
 
 ### Talking to Kurooto from a terminal or script
 

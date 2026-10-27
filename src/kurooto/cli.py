@@ -389,7 +389,7 @@ def stop(quiet: bool = False, graceful: bool = False) -> int:
     return 0
 
 
-def uninstall(keep_data: bool, revoke: bool = False) -> int:
+def uninstall(keep_data: bool, revoke: bool = False, keep_programs: bool = False, yes: bool = False) -> int:
     import shutil
 
     from kurooto.core import autostart
@@ -401,6 +401,8 @@ def uninstall(keep_data: bool, revoke: bool = False) -> int:
         if not leave.uninstall_revoke(print):
             print("Nothing was removed. `kurooto uninstall` without --revoke removes Kurooto anyway.")
             return 1
+    if not keep_programs:  # what Kurooto installed, from its receipt, while Ollama is still here for its models
+        uninstall_receipt(yes)
     try:  # (ws5) the copies of your skills Kurooto put in agy and other agent programs (core/agent_export.py)
         from kurooto.core import agent_export
 
@@ -445,6 +447,40 @@ def uninstall(keep_data: bool, revoke: bool = False) -> int:
         shutil.rmtree(p.app, ignore_errors=True)
     print("Kurooto is uninstalled. (uv and Python stay; they're harmless and other tools may use them.)")
     return 0
+
+
+def uninstall_receipt(yes: bool) -> None:
+    """`kurooto uninstall`: remove what the receipt lists (core/uninstall.py), asking first in a terminal. What's in
+    Kurooto's own folder goes with it anyway; this is for what lives elsewhere (Ollama's models, Bun, ...)."""
+    from kurooto.core import uninstall as receipt
+    from kurooto.core.config import Settings
+
+    p = paths()
+    try:
+        if Settings(p.config / "settings.json").get("uninstall.with_programs") is False:
+            print("What Kurooto installed stays (Settings: uninstall.with_programs is off).")
+            return
+        ts = receipt.things(p.app)
+    except Exception as e:
+        print(f"Couldn't read what Kurooto installed ({type(e).__name__}); it stays.")
+        return
+    outside = [
+        t
+        for t in ts
+        if t.kind == "model"
+        or (t.kind == "program" and (t.entry.get("package") or t.entry.get("uninstaller") or t.entry.get("owns")))
+        or (t.kind == "program" and any(not receipt._inside(Path(x), p.app) for x in t.entry.get("paths") or []))
+    ]
+    if not outside:
+        return
+    print("Kurooto installed these outside its own folder:")
+    for t in outside:
+        print(f"  {t.title}: {t.size}")
+    if not yes and sys.stdin.isatty():
+        if input("Remove them too? [Y/n] ").strip().lower() in ("n", "no"):
+            print("They stay; remove them yourself whenever you like.")
+            return
+    receipt.remove(p.app, outside, say=lambda line: print("  " + line))
 
 
 BIN = Path(os.environ.get("KUROOTO_BIN") or Path.home() / ".local" / "bin")  # KUROOTO_BIN: tests
@@ -1590,7 +1626,68 @@ def hardware_cmd(a) -> int:
             ok, msg = lm.setup(progress=lambda line: print("  " + line))
             print(("Done: " if ok else "Not done: ") + msg)
             return 0 if ok else 1
+        if a.profile or a.remove:  # models the new setup doesn't use: Remove / Keep (core/uninstall.py)
+            from kurooto.core import uninstall
+
+            idle = [t for t in uninstall.things_for(app) if t.kind == "model" and not t.users]
+            if idle:
+                print(
+                    "Not used now: "
+                    + ", ".join(f"{t.name} ({t.size})" for t in idle)
+                    + ". `kurooto remove <model>` removes one."
+                )
         return 0
+    finally:
+        app.close()
+
+
+# ------------------------------------------- `kurooto installed`, `kurooto remove <thing>` (core/uninstall.py)
+def installed_parsers(sub) -> None:
+    sub.add_parser("installed", help="what Kurooto installed on this computer (programs, Ollama models), with sizes")
+    rm = sub.add_parser("remove", help="remove something Kurooto installed (see `kurooto installed`)")
+    rm.add_argument("thing", help="its name in `kurooto installed`: ollama, gemma4:e4b, voice, ...")
+    rm.add_argument("--yes", action="store_true", help="don't ask first")
+
+
+def installed_run(a) -> int | None:
+    if a.cmd not in ("installed", "remove"):
+        return None
+    from kurooto.app import App
+    from kurooto.core import uninstall
+
+    app = App()
+    try:
+        ts = uninstall.things_for(app)
+        if a.cmd == "installed":
+            print(uninstall.report(ts, uninstall._prereqs(app.paths.app), app))
+            return 0
+        t = uninstall.find(ts, a.thing)
+        if t is None:
+            names = ", ".join(x.name for x in ts) or "nothing"
+            print(f"{a.thing} isn't something Kurooto installed here (it installed: {names}).", file=sys.stderr)
+            return 2
+        if t.users:
+            print(f"{t.title} is used by {', '.join(t.users)}; turn that off first.", file=sys.stderr)
+            return 1
+        going = uninstall.with_needs([t], [x for x in ts if not x.users])
+        blocked = [x for x in uninstall.with_needs([t], ts) if x.users]
+        if blocked:
+            print(
+                f"{t.title} can't go while {', '.join(f'{x.title} ({chr(44).join(x.users)})' for x in blocked)} "
+                "uses what runs on it.",
+                file=sys.stderr,
+            )
+            return 1
+        print("This removes " + ", ".join(f"{x.title} ({x.size})" for x in going) + ".")
+        if not a.yes:
+            if not sys.stdin.isatty():
+                print("Add --yes to remove it without a terminal to answer in.", file=sys.stderr)
+                return 1
+            if input("Remove? [y/N] ").strip().lower() not in ("y", "yes"):
+                print("Nothing removed.")
+                return 0
+        ok, _ = uninstall.remove(app.paths.app, going, say=lambda line: print("  " + line), app=app)
+        return 0 if ok else 1
     finally:
         app.close()
 
@@ -2213,6 +2310,10 @@ def main(argv: list[str] | None = None) -> int:
     un.add_argument(
         "--revoke", action="store_true", help="first delete your call line and take back Google's and the bot's access"
     )
+    un.add_argument(
+        "--keep-programs", action="store_true", help="leave the programs and models Kurooto installed (its receipt)"
+    )
+    un.add_argument("--yes", action="store_true", help="don't ask before removing what Kurooto installed")
     ro = sub.add_parser("rotate", help="new keys for your call line (a lost phone, a backup that got out)")
     ro.add_argument("--yes", action="store_true", help="don't ask first (every paired phone has to pair again)")
     nt = sub.add_parser(
@@ -2231,6 +2332,7 @@ def main(argv: list[str] | None = None) -> int:
     addons_parsers(sub)
     ai_parsers(sub)
     project_parsers(sub)
+    installed_parsers(sub)
     a = ap.parse_args(argv)
     done = home_run(a)
     done = ws5_run(a) if done is None else done
@@ -2245,6 +2347,7 @@ def main(argv: list[str] | None = None) -> int:
     done = addons_run(a) if done is None else done
     done = ai_run(a) if done is None else done
     done = project_run(a) if done is None else done
+    done = installed_run(a) if done is None else done
     if done is not None:
         return done
 
@@ -2357,7 +2460,7 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "update":
         return update(a.now)
     if a.cmd == "uninstall":
-        return uninstall(a.keep_data, a.revoke)
+        return uninstall(a.keep_data, a.revoke, a.keep_programs, a.yes)
     if a.cmd == "ntfy-token":
         return ntfy_token(a.clear)
     if a.cmd == "rotate":  # (revoke) core/leave.py; the running Kurooto makes the new pairing link

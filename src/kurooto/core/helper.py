@@ -372,7 +372,7 @@ class Helper:
             return False, "Ollama is installed but its server didn't start; restart the computer and try again."
         pulled = False
         if m["tag"] not in lm.have():
-            ok, msg = lm.pull(m["tag"], m["size_gb"], progress, feature="Offline helper")
+            ok, msg = lm.pull(m["tag"], m["size_gb"], progress, feature="Offline helper", by="local_helper")
             if not ok:
                 return False, msg
             pulled = True
@@ -417,9 +417,11 @@ class Helper:
 
     def turn_off(self) -> str:
         self.app.settings.set("local_helper.on", False)
+        from kurooto.core import uninstall  # a model Kurooto downloaded for it: Remove / Keep (uninstall.offer)
+
         return (
             "The offline helper is off. Its model stays in Ollama (about 1 GB; /helper on uses it again). With the "
-            "internet down, requests still wait until it's back."
+            "internet down, requests still wait until it's back." + uninstall.after_off(self.app, "local_helper")
         )
 
     def _in_background(self, fn, label: str) -> None:

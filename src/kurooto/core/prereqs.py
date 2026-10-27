@@ -64,6 +64,8 @@ class Prereq:
     signin_hint: str = ""
     serve: list[str] = field(default_factory=list)
     check: list[str] = field(default_factory=list)  # a command that must succeed too (e.g. macOS's git stub)
+    features: list[str] = field(default_factory=list)  # what it's for (module ids): all off offers to remove it
+    owns: list[Path] = field(default_factory=list)  # folders its install makes besides its program (core/uninstall.py)
 
     def find(self) -> str | None:
         for name in self.programs:
@@ -101,6 +103,8 @@ class Prereqs:
                 d.get("signin_hint", ""),
                 d.get("serve", []),
                 d.get("check", {}).get(self.os, []),
+                d.get("features", []),
+                [expand(x, self.app_dir) for x in d.get("owns", {}).get(self.os, [])],
             )
 
     # ------------------------------------------------------------------------------------ planning
@@ -148,6 +152,7 @@ class Prereqs:
                 f"free (Kurooto keeps {margin_gb:g} GB spare)."
             )
         kind = p.step.get("kind")
+        before = self._look(p)  # what's there already: never on the receipt (core/uninstall.py)
         progress(f"Installing {p.title}…")
         if kind in HANDED:  # a program that downloads by itself
             egress.handed(HANDED[kind], "setting up programs")
@@ -238,12 +243,33 @@ class Prereqs:
                 return False, f"I don't know how to install {p.title} on this system."
         except Exception as e:
             return False, f"Installing {p.title} failed: {type(e).__name__}: {e}"[:400]
-        if ok and p.find():
+        if ok and (exe := p.find()):
+            self._receipt(p, before, exe)
             progress(f"{p.title} is installed.")
             return True, f"{p.title} is installed."
         if ok and p.step.get("then"):  # an installer that finishes in its own window (e.g. Apple's)
             return False, p.step["then"]
         return False, f"{p.title} didn't install cleanly. {msg}".strip()
+
+    def _look(self, p: Prereq) -> dict | None:
+        try:
+            from kurooto.core import uninstall
+
+            return uninstall.look(self, p)
+        except Exception:  # a look that fails only means nothing goes on the receipt
+            return None
+
+    def _receipt(self, p: Prereq, before: dict | None, exe: str) -> None:
+        """What this install made goes on the receipt, so it can be removed again; a receipt that can't be written
+        never fails the install."""
+        if before is None:
+            return
+        try:
+            from kurooto.core import uninstall
+
+            uninstall.record_program(self, p, before, exe)
+        except Exception:
+            pass
 
     def _script(self, p: Prereq) -> tuple[bool, str]:
         if self.os == "windows":

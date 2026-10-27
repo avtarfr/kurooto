@@ -4,6 +4,10 @@
 #        download-tar (unpacked into Kurooto's own folder), download-dmg (macOS: an app copied out of a disk
 #        image), winget, flatpak, brew (Homebrew, macOS), url (we open the page for you), none (not made for
 #        that system; `why` says so)
+# features: what it's for (module ids; local_helper is the offline helper): turning them all off offers to remove it,
+#           if Kurooto installed it (core/uninstall.py). Empty: only `kurooto remove` or `kurooto uninstall` take it.
+# owns:     folders its install makes besides the program (Bun's ~/.bun): removed with it only when the install made
+#           them, and kept when things of yours are inside
 
 [agy]
 title = "Antigravity (agy)"
@@ -24,6 +28,10 @@ title = "Ollama"
 why = "Runs small AI models on this computer (picked for your hardware)."
 size_gb = 5  # Linux: a 1.4 GB download that unpacks to about 3.5 GB (GPU libraries)
 programs = ["ollama"]
+features = ["local_models", "local_helper", "gbrain"]
+owns.windows = ["~/.ollama"]
+owns.macos = ["~/.ollama"]
+owns.linux = ["~/.ollama"]  # its model store: kept when models you pulled yourself are in it
 dirs.windows = ["%LOCALAPPDATA%/Programs/Ollama"]
 dirs.macos = ["~/Applications/Ollama.app/Contents/Resources", "/Applications/Ollama.app/Contents/Resources"]
 dirs.linux = ["{app}/ollama/bin"]
@@ -37,6 +45,7 @@ title = "Node.js"
 why = "Needed for phone calls and deploying your call line."
 size_gb = 0.12
 programs = ["node"]
+features = ["calls"]
 dirs.windows = ["{app}/node"]
 dirs.macos = ["{app}/node/bin"]
 dirs.linux = ["{app}/node/bin"]
@@ -49,6 +58,7 @@ title = "Telegram Desktop"
 why = "Optional: chat with your bot from this computer too (your phone's Telegram works on its own)."
 size_gb = 0.25
 programs = ["telegram-desktop", "Telegram"]
+features = ["telegram"]
 dirs.windows = ["%APPDATA%/Telegram Desktop"]
 dirs.macos = ["/Applications/Telegram.app/Contents/MacOS", "~/Applications/Telegram.app/Contents/MacOS"]
 dirs.linux = []
@@ -61,6 +71,10 @@ title = "Bun"
 why = "Runs GBrain, the notes brain."
 size_gb = 0.1
 programs = ["bun"]
+features = ["gbrain"]
+owns.windows = ["~/.bun"]
+owns.macos = ["~/.bun"]
+owns.linux = ["~/.bun"]  # kept when global packages of yours are in it
 dirs.windows = ["~/.bun/bin"]
 dirs.macos = ["~/.bun/bin"]
 dirs.linux = ["~/.bun/bin"]
@@ -73,6 +87,7 @@ title = "GBrain"
 why = "Your notes brain: search your notes by meaning, and memory for your AI."
 size_gb = 0.35
 programs = ["gbrain"]
+features = ["gbrain"]
 dirs.windows = ["~/.bun/bin"]
 dirs.macos = ["~/.bun/bin"]
 dirs.linux = ["~/.bun/bin"]
@@ -85,6 +100,8 @@ title = "Claude Code"
 why = "The AI brain 'Claude Code', for people with a Claude plan (Advanced)."
 size_gb = 0.25
 programs = ["claude"]
+owns.macos = ["~/.local/share/claude"]
+owns.linux = ["~/.local/share/claude"]  # its versions (the program in ~/.local/bin links there)
 dirs.windows = ["~/.local/bin"]
 dirs.macos = ["~/.local/bin"]
 dirs.linux = ["~/.local/bin"]
@@ -113,6 +130,7 @@ title = "Tectonic"
 why = "Optional: turns revision packs (LaTeX) into PDFs. A single-program LaTeX engine; the first PDF fetches the LaTeX packages it needs (about 50 MB)."
 size_gb = 0.15
 programs = ["tectonic"]
+features = ["skills", "research_addon"]
 dirs.windows = ["{app}/tectonic"]
 dirs.macos = ["{app}/tectonic"]
 dirs.linux = ["{app}/tectonic"]
@@ -126,6 +144,7 @@ title = "kitty"
 why = "Optional: the terminal Kurooto Terminal opens in on Linux and macOS (the official build, in Kurooto's own folder; your own kitty is used if you have one). About 45 MB to download, 160 MB unpacked."
 size_gb = 0.25
 programs = ["kitty"]
+features = ["terminal"]
 dirs.windows = []
 dirs.macos = ["{app}/kitty.app/Contents/MacOS", "~/Applications/kitty.app/Contents/MacOS", "/Applications/kitty.app/Contents/MacOS", "/opt/homebrew/bin", "/usr/local/bin"]
 dirs.linux = ["{app}/kitty/bin", "~/.local/kitty.app/bin"]
@@ -138,6 +157,7 @@ title = "fish"
 why = "Optional: the shell in Kurooto Terminal on Linux and macOS (the official build, in Kurooto's own folder; your own fish is used if you have one). About 3 MB to download on Linux, 17 MB on a Mac."
 size_gb = 0.06
 programs = ["fish"]
+features = ["terminal"]
 dirs.windows = []
 dirs.macos = ["{app}/fish.app/Contents/Resources/base/usr/local/bin", "/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin"]
 dirs.linux = ["{app}/fish/bin"]
@@ -151,6 +171,7 @@ title = "Tesseract OCR"
 why = "Optional: reads scanned pages of your books (Books and PDFs). Plain text: it can't write equations as LaTeX. About 150 MB with English."
 size_gb = 0.15
 programs = ["tesseract"]
+features = ["books", "handwritten"]
 dirs.windows = ["%LOCALAPPDATA%/Programs/Tesseract-OCR", "%LOCALAPPDATA%/Tesseract-OCR"]
 dirs.macos = ["/opt/homebrew/bin", "/usr/local/bin"]
 dirs.linux = []
@@ -165,6 +186,7 @@ title = "Poppler (PDF tools)"
 why = "Optional: reads encrypted and unusual PDFs and draws book pages for OCR (Books and PDFs). Without it, Kurooto's own reader handles most PDFs."
 size_gb = 0.05
 programs = ["pdftoppm"]
+features = ["books", "handwritten"]
 dirs.windows = []
 dirs.macos = ["/opt/homebrew/bin", "/usr/local/bin"]
 dirs.linux = []

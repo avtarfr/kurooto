@@ -1092,6 +1092,13 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 |---|---|---|
 | `turnon.offer` | `true` | a request a feature that's off understands: offer to turn it on |
 
+### `uninstall`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `uninstall.offer` | `true` | turning a feature off asks whether to remove what Kurooto installed for it, with the size |
+| `uninstall.with_programs` | `true` | kurooto uninstall also removes the programs and models Kurooto installed |
+
 ### `updates`
 
 | Setting | Default | What it does |

@@ -644,6 +644,8 @@
 "terminal.tabs": "in order; agent = your AI's own program, when it's installed",
 "terminal.top": "kurooto top: \"left\" (a column beside the first tab), \"tab\" (a tab of its own) or \"off\"",
 "turnon.offer": "a request a feature that's off understands: offer to turn it on",
+"uninstall.offer": "turning a feature off asks whether to remove what Kurooto installed for it, with the size",
+"uninstall.with_programs": "kurooto uninstall also removes the programs and models Kurooto installed",
 "updates.channel": "stable, or beta for earlier versions",
 "updates.exam_hold": "with staged on: nothing installs in an exam period or within a day of a quiz or exam",
 "updates.mode": "night (update by itself), ask (Telegram question) or off",

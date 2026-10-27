@@ -99,6 +99,9 @@ class App:
         from kurooto.core import tap  # never without a tap: an AI's alarm or call runs on Approve (core/tap.py)
 
         self.ask.hooks[tap.HOOK] = lambda q, answer: tap.approved(self, q, answer)
+        from kurooto.core import uninstall  # Remove / Keep what a feature installed, once it's off
+
+        self.ask.hooks[uninstall.HOOK] = lambda q, answer: uninstall.answered(self, q, answer)
         from kurooto.core import proposals  # the AI's changes to your files wait as proposals (core/proposals.py)
 
         proposals.attach(self)
@@ -201,7 +204,10 @@ class App:
             "modules.enabled", [x for x in (self.settings.get("modules.enabled") or []) if x != module_id]
         )
         self.events.emit("module_disabled", module=module_id)
-        return True, f"{m.title if m else module_id} is off"
+        from kurooto.core import uninstall  # what it installed that nothing else uses: Remove / Keep (uninstall.offer)
+
+        said = uninstall.after_off(self, module_id) if m else ""
+        return True, f"{m.title if m else module_id} is off" + (f".{said}" if said else "")
 
     def need_title(self, need: str, m: Module | None = None) -> str:
         """A requirement in words: "Telegram or the phone app (Phone calls)" when either does."""
@@ -471,6 +477,12 @@ class App:
                 out = runall.command(self, msg, arg)
                 if out:
                     msg.reply(out)
+                return
+            if name == "installed":  # what Kurooto installed, with sizes; Remove… asks first (core/uninstall.py)
+                from kurooto.core import uninstall
+
+                text, buttons = uninstall.command(self, arg)
+                msg.reply(text, buttons=buttons)
                 return
             if name == "helper":  # the offline helper: /helper, /helper on, off, test (core/helper.py)
                 msg.reply(self.helper.command(arg))
@@ -777,6 +789,10 @@ class App:
             from kurooto.modules import mind as brain
 
             return brain.button(self, ref, act)
+        if prefix == "uni":  # Remove… under /installed: asks Remove / Keep for that one (core/uninstall.py)
+            from kurooto.core import uninstall
+
+            return uninstall.button(self, ref, act)
         if prefix == "dof":  # Add / Add all / None under dates from a photo, a mail or a class calendar
             from kurooto.core import dateoffers
 

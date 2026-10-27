@@ -286,7 +286,11 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | The laptop still sleeps with the lid closed on the charger (Linux) | Turn on `awake.lid`. If your system refuses the lid hold to background programs (doctor says so), allow it in polkit or set `HandleLidSwitchExternalPower=ignore` in logind.conf. |
 | `kurooto autostart boot`: "Linux didn't allow that from here" | Run `loginctl enable-linger` in a terminal, then `kurooto autostart boot` again. |
 | `kurooto ask`, `call`, `send`, `ask-me` or `ask-approval` say Kurooto isn't running | `kurooto on`, then try again. `--timeout` is in minutes. |
-| A low-disk warning | `/space clean` removes Kurooto's own old files; free space elsewhere too. |
+| A low-disk warning | `/space clean` removes Kurooto's own old files; free space elsewhere too. `kurooto installed` lists the programs and models Kurooto installed, with their sizes: `kurooto remove <name>` takes one away. |
+| I turned a feature off and its programs or models are still there | Kurooto asks first: Remove / Keep is waiting in Today → Waiting for you (or your chat). No question came? Something on still uses it (`kurooto installed` says what), it was on this computer before Kurooto (never removed), or `uninstall.offer` is off. |
+| `kurooto remove` says something uses it | Turn that feature off first (or pick another AI in Settings → AI for agy or Claude Code), then remove it. |
+| "… stays: models you pulled yourself are in it" | Ollama's model store holds models you pulled yourself, so it stays; `ollama rm <model>` removes yours if you like. |
+| `kurooto remove`: "couldn't remove …" | The program is running (close it) or the folder isn't yours to change; try again, or delete the path it names yourself. |
 | "Kurooto didn't connect to <host> ... it isn't on the list" | `privacy.egress` is `enforce` and that host isn't on Kurooto's list (an address changed in settings, an add-on). If you trust it, add it to `privacy.allow_hosts` in Settings (`["feeds.example.org"]`), or set `privacy.egress` back to `record`. `/egress` shows what was blocked. |
 
 ## Updates, backups and moving

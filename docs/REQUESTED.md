@@ -52,10 +52,14 @@ Standing plans, never struck through.
 - **A detailed interface for the Brain** (planned for 0.8.2, asked 2026-10-26): beyond the cards, a proper console on the dashboard and the phone:
   open any decision to see its reasons and evidence, a timeline you can filter by part and day, search across what it has logged, each part's
   switches and settings next to what that part is doing, and the same view for its experiments, beliefs, skills and plans.
-- **Uninstall what a feature brought** (planned for 0.8.2): turning a feature off, or a hardware setting that stops
+- ~~**Uninstall what a feature brought** (planned for 0.8.2): turning a feature off, or a hardware setting that stops
   using a model, offers to remove what it installed (Ollama models, programs like Node or GBrain) with its size, never
   without a tap and never what was there before Kurooto; an install receipt, `kurooto installed` and `kurooto remove`,
-  and `kurooto uninstall` that follows the receipt. Today turning a feature off keeps everything it installed.
+  and `kurooto uninstall` that follows the receipt. Today turning a feature off keeps everything it installed.~~
+  (0.8.10: the receipt in the program folder (programs with what each install made, Ollama models Kurooto downloaded,
+  Voice's parts), `kurooto installed` and `/installed`, `kurooto remove <name>`, Remove / Keep after a feature goes off
+  or This computer's setup stops using a model (`uninstall.offer`), `kurooto uninstall` following the receipt
+  (`--keep-programs`, `uninstall.with_programs`); guarded `install.remove`)
 - ~~**Common features directly usable from the phone app** (and the rest of the dashboard plan:
   ~~check-in and quiz cards~~ (0.6.0: answered on the app's main screen with an answer box and their buttons, through
   the phone outbox while the laptop sleeps)): the dashboard's Today page (0.5.7) and Ctrl+K (0.5.8) are done;
