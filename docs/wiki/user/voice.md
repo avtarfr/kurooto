@@ -160,7 +160,7 @@ downloaded to your computer as separate programs, not part of Kurooto.
 | `voice.listen.stt_model` | `base` | `tiny`, `base` or `small` |
 | `voice.listen.language` | (worked out) | the language you speak, e.g. `en` or `hi` |
 
-All of them: [the settings guide](../../SETTINGS_GUIDE.md).
+All of them, each with its whole entry: [the settings guide](settings-guide.md#voice-and-voice-notes).
 
 ## What it can't do yet
 

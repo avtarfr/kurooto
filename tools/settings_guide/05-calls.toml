@@ -1,0 +1,187 @@
+title = "Phone calls and the call line"
+page = "calls.md"
+intro = """Calls both ways through your own call line (a small Cloudflare Worker on your account), the voice they use,
+how persistently they ring, the look back after each call, what the phone app gets from the computer, and reminders
+that still arrive while this computer's lid is shut."""
+cost = "Calls run through your call line on your own Cloudflare account. Live calls stream your voice to Google's Gemini Live with your key; turn-by-turn calls send each turn's text to Gemini (or stay here with a local model). What goes to the phone app is sealed with its key."
+needs = "The Phone calls feature, with its call line deployed and a phone paired."
+
+[parent."calls.worker"]
+tip = "Your call line's name, address and version (set by Kurooto when it's deployed)."
+
+[s."calls.voice_mode"]
+tip = "How calls listen and speak: Gemini Live, your phone's own speech turn by turn, or Live with the phone as backup."
+values = "`auto` (Live, and the phone's speech when Live fails), `live` (Live only; a failed call goes to Telegram), `phone` (the phone's speech every time)."
+when = "Pick `phone` if Live is often down or you're on a weak connection; `live` if you never want the walkie-talkie style. Applies from the next call."
+
+[s."calls.voice_by_kind"]
+tip = "The voice mode for one kind of call, e.g. the alarm always on the phone's speech."
+values = "A JSON object, kind → mode: `{\"alarm\": \"phone\", \"checkins:evening\": \"live\"}`. Kinds: a feature (`alarm`, `checkins`, `weekly`, `quiz`, `deadlines`, `research`), one of its calls (`checkins:night`), `reminder`, `outgoing`."
+when = "When one kind of call works better another way (a sleepy alarm call on the plainer phone speech, say). The more exact kind wins over `calls.voice_mode`."
+
+[s."calls.live_model"]
+tip = "The Gemini Live model calls try first."
+values = "A Gemini Live model name."
+when = "When Google brings out a newer Live model, or this one is retired. A model that fails moves the call to the next in `calls.live_models`."
+
+[s."calls.live_models"]
+tip = "Other Live models to try, in order, when the first one is down."
+values = "A list of model names; `[]` keeps to `calls.live_model`."
+when = "Add a model you know works on your key; empty it if you'd rather fall back to turn by turn than to an older model."
+
+[s."calls.voice"]
+tip = "Which Gemini Live voice calls speak in; empty is Google's default."
+values = "A Live voice name such as `Kore`, `Puck` or `Charon`."
+when = "When you'd like a different voice. Takes effect on the next call."
+
+[s."calls.voice_by_model"]
+tip = "A voice for each Live model, where a model doesn't know the one in `calls.voice`."
+values = "A JSON object, model → voice name."
+when = "Only if a fallback model refuses your chosen voice."
+
+[s."calls.turn_brain"]
+tip = "Who answers turn-by-turn calls on your computer: Gemini with your key, or a local model."
+when = "Pick `local` to keep turn-by-turn calls entirely on this computer (needs a capable local model; answers are slower and plainer)."
+cost = "`gemini` sends each turn's words to Google with your key; `local` keeps them here."
+
+[s."calls.text_model"]
+tip = "The Gemini model that answers turn-by-turn calls (here, or on your call line while the computer is off)."
+values = "A Gemini model name."
+when = "When a cheaper or faster model suits you, or this one is retired."
+
+[s."calls.persona"]
+tip = "Your own words on how calls should sound, such as \"be brief and a bit cheeky\"."
+when = "When calls feel too chatty or too stiff. Your persona card applies to calls too; this adds call-only wording."
+
+[s."calls.ring_s"]
+tip = "Seconds a call rings before it counts as missed (a wake-up call rings 5 minutes)."
+when = "Raise it if you often reach the phone just too late."
+
+[s."calls.realert_min"]
+tip = "Minutes after the first ring that an unanswered call rings again."
+values = "A list of minutes, e.g. `[3, 6]`; `[]` rings once."
+when = "Empty it if one ring is enough; add a later one if you sleep through calls you asked for."
+
+[s."calls.later_min"]
+tip = "Minutes until it calls back after you tap Later on a ringing call."
+when = "Set it to how long you're usually busy when you tap Later."
+
+[s."calls.review"]
+tip = "After every call, an AI request looks back at it: does what slipped through and keeps lessons."
+what = "It finishes anything the call promised but didn't do, and keeps short lessons every later call is told."
+when = "Turn it off to save AI requests, or if you don't want calls read back. Calls still work the same."
+cost = "The call's transcript goes to your AI (or `calls.review_brain`) once per call."
+
+[s."calls.review_brain"]
+tip = "Which AI does the look back after a call; empty is your main one."
+values = "An AI id such as `agy`, `gemini` or `claude`, or empty."
+when = "Pick a cheaper AI if look backs use too much of your main AI's limit."
+cost = "That AI gets the call's transcript."
+needs = "`calls.review`."
+
+[s."calls.review_effort"]
+tip = "How hard the look back after a call thinks."
+when = "Lower it to spend less of your AI's limit on look backs."
+needs = "`calls.review`."
+
+[s."calls.lessons_max"]
+tip = "How many lessons from past calls every call is told; a repeat replaces the older one."
+when = "Lower it if calls feel weighed down by old rules; raise it if useful lessons drop off."
+needs = "`calls.review`."
+
+[s."calls.notes_repo"]
+tip = "Your notes' repository on GitHub, so calls can read whole notes while this computer is off."
+values = "`owner/repo`; set by Notes sync."
+when = "Set for you by Notes sync. Empty it if calls shouldn't read your notes from GitHub."
+cost = "Your call line reads notes from that repository with Notes sync's token, only during a call."
+needs = "Notes sync, and `notes_sync.share_with_calls`."
+
+[s."calls.ntfy_server"]
+tip = "The push server the phone app listens on. Change it only if you run your own."
+values = "A web address."
+when = "Only if you host your own ntfy server. Pair the phone again afterwards."
+cost = "Wake-up pushes (no content) go through this server."
+
+[s."calls.today"]
+tip = "Your phone app's Today screen and its copy of your alarm, kept up to date from this computer."
+when = "Turn it off if you don't use the app's Today screen. The app then says it's turned off."
+cost = "Sealed for each phone with its own key through your call line, every 5 minutes when it changed."
+needs = "Phone calls and a paired Android phone."
+
+[s."calls.views"]
+tip = "Systems and the Notes map in the phone app: your notes' titles and links, and each feature's health."
+when = "Turn it on to see your notes map on the phone. Off by default because it sends note titles to the phone."
+cost = "Note titles and links (never what notes say), sealed with the phone's key, through your call line."
+needs = "Phone calls and a paired Android phone."
+
+[s."calls.views_notes"]
+tip = "The most notes on the phone's Notes map (best linked first)."
+when = "Lower it if the map is slow on your phone."
+needs = "`calls.views`."
+
+[s."calls.views_links"]
+tip = "The most links on the phone's Notes map (a book's \"Seen in\" links go first)."
+when = "Lower it if the map is slow or cluttered on your phone."
+needs = "`calls.views`."
+
+[s."calls.worker.url"]
+tip = "Your call line's address (set when it's deployed)."
+when = "Never by hand: deploying the call line sets it."
+
+[s."calls.worker.name"]
+tip = "Your call line's name on Cloudflare (set when it's deployed)."
+when = "Never by hand: deploying the call line sets it."
+
+[s."calls.worker.version"]
+tip = "The version of your call line that's deployed (set by Kurooto)."
+when = "Never by hand: Kurooto updates the call line and writes it here."
+
+[s."calls.chat_sessions"]
+pending = "chat-core, 0.8.10"
+tip = "Separate chats in the phone app, each its own conversation whose context carries over."
+when = "Turn it off to keep one chat, as on Telegram."
+cost = "Messages travel sealed through your call line; each chat's context goes to your AI with its requests."
+needs = "Phone calls and a paired phone."
+
+[s."calls.chat_files_inline"]
+pending = "chat-core, 0.8.10"
+tip = "Files in the app's chat show inline and open in the app."
+when = "Turn it off to get files as a link instead."
+needs = "Phone calls and a paired phone."
+
+[s."calls.chat_edit"]
+pending = "chat-core, 0.8.10"
+tip = "Edit your own messages in the app's chat for 15 minutes after sending."
+when = "Turn it off if edits confuse you; Kurooto isn't asked again after an edit either way."
+needs = "Phone calls and a paired phone."
+
+[s."calls.chat_titles"]
+pending = "chat-core, 0.8.10"
+tip = "How a new chat gets its title: its first words, or a short title from your AI."
+values = "`first words` or `ai`."
+when = "Pick `ai` for neater titles; it costs one small AI request per new chat."
+cost = "`ai` sends the chat's first message and answer to your AI once."
+
+[s."lidsafe.hours"]
+tip = "How far ahead your call line holds reminders and the morning line, in hours."
+values = "12 to 24."
+when = "Lower it to keep less on the call line; 24 covers a whole night and day away."
+cost = "Your call line keeps each item as a time, an id and ciphertext it can't read."
+needs = "Reminders with the lid shut, Phone calls and an Android phone."
+
+[s."lidsafe.reminders"]
+tip = "Your reminders still reach the phone while this computer is asleep or off."
+when = "Turn it off to have reminders only from this computer (late, if it slept)."
+cost = "Sealed for each Android phone with its own key; your call line holds ciphertext only."
+needs = "Reminders with the lid shut."
+
+[s."lidsafe.today"]
+tip = "A morning line on your phone with the day's first class and what's due, even with the lid shut."
+when = "Turn it off if the morning page and check-ins are enough."
+cost = "Sealed for each Android phone; your call line holds ciphertext only."
+needs = "Reminders with the lid shut."
+
+[s."lidsafe.morning"]
+tip = "When the morning line comes if no wake-up alarm is set."
+when = "Set it to when you're usually up. With the alarm set, it comes with the alarm."
+needs = "`lidsafe.today`."

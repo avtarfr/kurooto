@@ -1,0 +1,84 @@
+title = "Classes and timetable"
+page = "classes-and-timetable.md"
+intro = """Your subjects and weekly timetable, the term's dates, the question after each class, and doubts saved for the
+next class. Classes hold calls while they're on; a missed class gets a catch-up task. Most of these are easier to set
+with `/subject`, `/class` and `/term` than by typing JSON."""
+cost = "Nothing leaves this computer; with Chat on, the after-class answer goes to your AI to become a lecture note."
+needs = "The Subjects and timetable feature."
+
+[s."subjects.list"]
+tip = "Your subjects: each one's name, short names and notes folder."
+values = "A list, typed as JSON; `/subject add` fills it in."
+when = "Use `/subject` to add or rename one; edit here only to fix a folder or short name."
+
+[s."subjects.timetable"]
+tip = "Your weekly classes: subject, day, start and end."
+values = "A list, typed as JSON; `/class` fills it in, and so do a term note and \"every Monday at 9 I have a lab\"."
+when = "Use `/class` or say it; edit here only to fix a time."
+
+[s."subjects.term_note"]
+tip = "The note that holds your term's dates and timetable, read whenever it changes."
+values = "A note's path, a pattern, `auto` (find it), or empty (off)."
+when = "Set it if your college gives a term calendar you keep as a note; its key dates join the deadline list."
+
+[s."subjects.term_ends"]
+tip = "The last day of classes; no classes are expected after it."
+values = "A date `YYYY-MM-DD`, or empty."
+when = "Set it each term (`/term ends 2026-12-04`) so calls aren't held for classes that are over."
+
+[s."subjects.holidays"]
+tip = "Days with no classes."
+values = "A list of dates: `[\"2026-12-25\"]`."
+when = "Add holidays your timetable should skip (the term note's and a holiday calendar's count too)."
+
+[s."subjects.exam_periods"]
+tip = "Exam periods: no classes then, exams instead."
+values = "A list of `[\"start\", \"end\"]` date pairs; `/term exams` fills it in."
+when = "Set them each term; Exam season and staged updates use them too."
+
+[s."subjects.no_calls_in_class"]
+tip = "No calls while a class is on."
+when = "Turn it off if calls during classes are fine (an online course, say)."
+
+[s."subjects.margin_min"]
+tip = "Minutes around a class when calls already wait (walking in, settling down)."
+when = "Raise it if calls catch you on the way to class."
+needs = "`subjects.no_calls_in_class`."
+
+[s."subjects.catch_up"]
+tip = "A class you missed gets a catch-up task and a lecture note to fill in."
+when = "Turn it off if you don't want catch-up tasks; Went to … on the message takes one back."
+cost = "Nothing leaves: a task in Deadlines and a stub note."
+
+[s."capture.delay_min"]
+tip = "Minutes after a class ends before it asks what happened in it."
+when = "Raise it if the question comes while you're still packing up."
+needs = "After-class notes."
+
+[s."capture.subjects"]
+tip = "Ask only after these subjects' classes; empty asks after every subject."
+values = "A list of subject short names: `[\"la\", \"stats\"]`."
+when = "Narrow it to the classes where a note is worth it."
+needs = "After-class notes."
+
+[s."capture.skip_subjects"]
+tip = "Never ask after these subjects' classes."
+values = "A list of subject short names: `[\"pe\"]`."
+when = "Add classes where there's nothing to write down."
+needs = "After-class notes."
+
+[s."capture.study_log"]
+tip = "Your AI turns your after-class answer into a lecture note."
+when = "Turn it off to have your answer saved as you wrote it."
+cost = "Your answer goes to your AI once per class."
+needs = "After-class notes and Chat with your AI."
+
+[s."doubts.before_min"]
+tip = "Open doubts for a subject come this many minutes before its next class."
+when = "Raise it if you want time to look them over before class."
+needs = "The Doubt queue."
+
+[s."doubts.recent_h"]
+tip = "A doubt that names no subject is filed under the class that's on, or ended this many hours ago."
+when = "Lower it if doubts land under the wrong class."
+needs = "The Doubt queue."

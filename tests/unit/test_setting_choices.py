@@ -63,15 +63,20 @@ def test_the_dashboard_gets_the_lists(tmp_path, monkeypatch):
 
 
 def test_every_setting_has_a_tooltip():
+    import importlib.util
     import json as _j
 
-    from gen_settings_guide import collect
+    tool = Path(__file__).resolve().parents[2] / "tools" / "gen_settings_guide.py"
+    spec = importlib.util.spec_from_file_location("gen_settings_guide", tool)
+    gen = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gen)
+    collect = gen.collect
 
     help_ = _j.loads(
         (Path(__file__).resolve().parents[2] / "src" / "kurooto" / "data" / "settings-help.json").read_text()
     )
     rows = collect()
-    assert len(help_) == len(rows)
-    missing = [k for k, _v, why in rows if not why and not help_.get(k)]
+    assert {k for k, _v, _w in rows} <= set(help_)  # every setting, and the boxes that hold several (0.8.10)
+    missing = [k for k, _v, why in rows if not help_.get(k)]
     assert not missing, missing
     assert json.dumps(help_, sort_keys=True)  # plain JSON

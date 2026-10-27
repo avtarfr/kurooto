@@ -16,8 +16,8 @@ commit as the change**:
    page (`docs/PRIVACY.md` rendered into `installer/privacy.html` between its `PRIVACY:START`/`PRIVACY:END` markers),
    the changelog page from `CHANGELOG.md`, the install scripts).
 
-Also, when they apply: `docs/MANUAL.md` (with the Undo), `docs/PRIVACY.md`, `docs/SETTINGS_GUIDE.md` (regenerated with
-`tools/gen_settings_guide.py`), tests.
+Also, when they apply: `docs/MANUAL.md` (with the Undo), `docs/PRIVACY.md`, the settings guide (each new setting's entry
+in `tools/settings_guide/`, then `tools/gen_settings_guide.py`), tests.
 
 ## Code style
 

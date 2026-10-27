@@ -1,0 +1,175 @@
+title = "Quiz and exams"
+page = "quiz-and-exams.md"
+intro = """Spaced practice from your notes, exam mode before a quiz or exam, the optional Exam season with its revision
+plan and exam-day help, revision packs, and study packs to give another AI. With Chat on, your AI grades your answers;
+otherwise you grade yourself."""
+cost = "Quiz questions and your answers go to your AI for grading when Chat is on; a quiz call goes through your call line and Gemini Live. Everything else stays here."
+needs = "The Quiz feature (Exam season is a feature of its own)."
+
+[s."quiz.per_session"]
+tip = "Questions in one quiz."
+when = "Raise it for longer sessions; lower it for a quick daily habit."
+
+[s."quiz.exam_per_session"]
+tip = "Questions in one quiz while exam mode is on."
+when = "Raise it if you want heavier practice close to exams."
+needs = "Exam mode (`deadlines.exam_mode_days`)."
+
+[s."quiz.offer_at"]
+tip = "The evening before a quiz or exam, practice is offered from this time; empty: never."
+values = "A time `HH:MM`, or empty."
+when = "Move it to when you'd study; empty it to stop the offer."
+
+[s."quiz.exam_daily"]
+tip = "In exam mode, a practice check-in every day at this time; empty: never."
+values = "A time `HH:MM`, or empty."
+when = "Set it (say, `18:00`) for a daily habit in the weeks before exams."
+needs = "Exam mode."
+
+[s."quiz.by_call"]
+tip = "/quiz, \"quiz me\" and quiz check-ins ring you instead of coming as text."
+when = "Turn it on if you revise better out loud. Saying \"here\" keeps one quiz in text."
+needs = "Phone calls."
+
+[s."quiz.call_min"]
+tip = "Minutes a quiz call is meant to take."
+when = "Change it to fit how long you like to be quizzed."
+needs = "`quiz.by_call`."
+
+[s."quiz.links"]
+tip = "Recall cards from the links in your concept graph come by themselves."
+what = "A card asks how two linked concepts relate. `/card` gives one any time."
+when = "Turn it on for small daily recall between sessions."
+needs = "The Concept graph."
+
+[s."quiz.links_at"]
+tip = "When a link card may come (never during a class, focus time or the night)."
+needs = "`quiz.links`."
+when = "Pick times you're usually free for a minute."
+
+[s."quiz.links_per_day"]
+tip = "The most link cards in a day (at most 5)."
+when = "Lower it if they feel like too many."
+needs = "`quiz.links`."
+
+[s."quiz.links_check"]
+tip = "A model on this computer says how close your answer to a link card came."
+when = "Turn it on if you want feedback on link cards; it never uses a cloud AI."
+cost = "Nothing leaves: Local AI models only."
+needs = "`quiz.links` and Local AI models."
+
+[s."exam_season.hold_updates"]
+tip = "During exams, updates that aren't critical wait until the exams are over."
+when = "Turn it off if you want updates as usual during exams."
+needs = "Exam season, with exam periods set (`/term exams`)."
+
+[s."exam_season.budget"]
+tip = "During exams, only deadlines, quizzes and the alarm come in the day; the rest waits for the evening."
+when = "Turn it off to keep your usual flow of messages during exams."
+needs = "Exam season."
+
+[s."exam_season.no_calls"]
+tip = "Hold every call while an exam is on."
+when = "Leave it on; turn it off only if exams aren't on your timetable at their real times."
+needs = "Exam season."
+
+[s."exam_season.exam_min"]
+tip = "How long an exam lasts, in minutes (no calls then; the debrief comes half an hour after)."
+when = "Set it to your exams' usual length."
+needs = "Exam season."
+
+[s."exam_season.alarm_check"]
+tip = "Every night of the exam period: will tomorrow's alarm ring?"
+when = "Turn it off if you don't use Kurooto's alarm for exam mornings."
+needs = "Exam season and the Morning alarm."
+
+[s."exam_season.night_at"]
+tip = "When the nightly alarm check runs."
+when = "Set it before you usually go to bed."
+needs = "`exam_season.alarm_check`."
+
+[s."exam_season.eve"]
+tip = "The evening before an exam, a checklist: where it is, your seat, calculator, ID card."
+when = "Turn it off if you have your exam-day checklist under control."
+needs = "Exam season."
+
+[s."exam_season.eve_at"]
+tip = "When the evening-before question can come."
+needs = "`exam_season.eve`."
+when = "Move it to when you pack your bag."
+
+[s."exam_season.leave_alarm"]
+tip = "On an exam day, an alarm to leave (a call with Phone calls, else a message)."
+when = "Turn it off if you live next to the exam hall."
+needs = "Exam season."
+
+[s."exam_season.leave_min"]
+tip = "Minutes before the exam the leave alarm goes, unless you say a time (\"leave 8:10\")."
+when = "Set it to your travel time plus a margin."
+needs = "`exam_season.leave_alarm`."
+
+[s."exam_season.debrief"]
+tip = "After each exam, a two-minute debrief that goes into the subject's course note."
+when = "Turn it off if you'd rather not look back right after an exam."
+cost = "Nothing: your debrief is saved as you said it."
+needs = "Exam season."
+
+[s."exam_season.quiz_call_at"]
+tip = "When a quiz call you picked rings the evening before an exam."
+needs = "Exam season and Phone calls."
+when = "Move it to when you'd revise."
+
+[s."exam_season.quizzes"]
+tip = "Treat quizzes and tests outside an exam period as exams too."
+when = "Turn it on if your quizzes matter as much as exams."
+needs = "Exam season."
+
+[s."exam_season.revision"]
+tip = "A revision plan before each exam: its topics ranked and fitted into your free time (/revise)."
+when = "Turn it off if you plan revision yourself."
+cost = "Nothing: plain arithmetic on this computer, no AI."
+needs = "Exam season; free time comes from Start-by dates."
+
+[s."exam_season.revision_days"]
+tip = "Days before each exam that the revision plan starts."
+when = "Raise it to spread revision out; lower it for a shorter run-up."
+needs = "`exam_season.revision`."
+
+[s."exam_season.revision_share"]
+tip = "The share of your free time (in %) revision blocks may take."
+when = "Raise it in heavy exam weeks; lower it if the plan crowds out everything else."
+needs = "`exam_season.revision`."
+
+[s."exam_season.block_min"]
+tip = "Minutes in one revision block (one topic each)."
+when = "Shorten it if you focus better in short bursts."
+needs = "`exam_season.revision`."
+
+[s."exam_season.revision_ask"]
+tip = "Each evening: did you cover today's revision topics? (Counts like a quiz answer.)"
+when = "Turn it off if you'd rather not be asked."
+needs = "`exam_season.revision`."
+
+[s."skills.auto_pack"]
+tip = "The evening before a quiz or exam, a revision pack: ask first, build it, or never."
+when = "Pick `auto` if you always want one; `off` if you never use them."
+cost = "Building a pack is an AI request with that subject's notes."
+needs = "Skills."
+
+[s."skills.auto_pack_after"]
+tip = "Revision packs aren't offered before this time of day (12 to 36 hours before the exam)."
+when = "Move it to when you'd look at one."
+needs = "`skills.auto_pack`."
+
+[s."studypack.instructions"]
+tip = "Your own extra lines and a format phrase (\"pdf too\") go into the study pack's prompt."
+when = "Turn it off to use the plain prompt only."
+cost = "Nothing leaves: the pack is a zip you send yourself; it never uses your AI."
+needs = "Skills (`/studypack`)."
+
+[s."studypack.extra"]
+tip = "Your own rules for the other AI, added to the end of every study pack's prompt."
+values = "Lines of text, one rule each."
+when = "Add standing instructions (\"use my notation\", \"LaTeX for maths\") you'd otherwise type each time."
+cost = "Nothing leaves: it goes into the zip you send yourself."
+needs = "`studypack.instructions`."

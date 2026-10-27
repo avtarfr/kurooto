@@ -1,0 +1,56 @@
+title = "This computer"
+page = "your-computer.md"
+intro = """How Kurooto behaves on this computer: starting with it, battery and sleep, which local models and programs
+it installs for you, its dashboard's port, the features list, and running every nightly process at once."""
+cost = "Nothing leaves this computer, except downloads of the models and programs you ask it to install."
+needs = "Nothing: core settings, always there."
+
+[s."modules.enabled"]
+tip = "The features that are on. The Features page changes it."
+values = "A list of feature ids."
+when = "Use the Features page (or `kurooto enable`/`disable`), which sets each feature up properly; editing this list by hand skips that."
+
+[s."power.on_battery"]
+tip = "What Kurooto does on battery: put off heavy work, carry on as usual, or pause."
+values = "`saver` (heavy work waits for the charger; Telegram and reminders keep working), `normal` (as if plugged in), `pause` (nothing runs until you plug in; the call line still rings the alarm)."
+when = "Pick `normal` on a laptop with a big battery; `pause` if you want it quiet whenever you're unplugged."
+
+[s."autostart.when"]
+tip = "When Kurooto starts: when you log in, or (Linux with systemd) when the computer starts, before anyone logs in."
+when = "Pick `boot` for a home server or a computer you rarely log in to. Settings → Starting does it and says what it did."
+
+[s."awake.lid"]
+tip = "Linux: keep running with the lid closed while plugged in."
+when = "Turn it on if you keep the laptop shut on a desk. Elsewhere it's the system's own lid setting."
+cost = "Power while the lid is closed."
+needs = "Stay awake on charger."
+
+[s."hardware.force_profile"]
+tip = "Use another hardware profile's models than the one detected for this computer."
+values = "Empty (detected), `light`, `apple-8`, `apple`, `small-gpu`, `big-gpu`, `big-gpu-12`."
+when = "Pick a lighter profile if local models make this computer slow; a bigger one only if the detection undersold it."
+cost = "A different profile may download different Ollama models."
+needs = "Local AI models."
+
+[s."hardware.extra_models"]
+tip = "Ollama models of your own to install, past what suits this computer."
+values = "A list of Ollama model names: `[\"gemma4:12b\"]`."
+when = "Add a model you want to use (in `brain.models` or elsewhere)."
+cost = "Each one is downloaded from Ollama's registry, and takes disk space."
+needs = "Local AI models."
+
+[s."hardware.extra_prereqs"]
+tip = "Other programs Kurooto should install for you, by id."
+values = "A list of ids: `tesseract`, `poppler`, `tectonic`, `git`…"
+when = "Add a program a feature you use would benefit from (Tesseract for scanned books, say)."
+cost = "Each one is downloaded from its project's site or your system's package source."
+
+[s."web.port"]
+tip = "The dashboard's port on this computer (read when Kurooto starts)."
+values = "A port number."
+when = "Change it only if another program uses 8770. Restart Kurooto afterwards; bookmarks need the new port."
+
+[s."runall.on"]
+tip = "`/run all` and `kurooto run all`: every nightly process that's on, now, one after another."
+when = "Turn it off if you never want the nightly work run on demand."
+

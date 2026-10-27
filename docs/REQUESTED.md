@@ -41,11 +41,14 @@ Standing plans, never struck through.
 - **The whole Brain visible from the phone app** (planned for 0.8.2, asked 2026-10-26): a Brain view next to Systems and the Notes map in the app's
   Views tab, read-only, live while you watch it: what it's thinking, what it did and why, its beliefs and their sources, experiments, proposals,
   skills, senses (counts only), its model of you, plans, what it forgot, stops and limits, the journal and story headings. Sealed with your phone's key.
-- **A guide to every single setting, and a tooltip on every single one** (planned for 0.8.2, asked 2026-10-26): today each setting has a one-line tooltip
+- ~~**A guide to every single setting, and a tooltip on every single one**~~ (planned for 0.8.2, asked 2026-10-26): today each setting has a one-line tooltip
   taken from its comment (0.8.0) and the generated settings guide is one table. Add a proper guide as its own page (user wiki, in the app's help and on the site),
   one entry per setting: what it does in plain words, its values and default, when you would change it, what changes when you do, what it costs or sends
   outward, and what it depends on or switches off with it; grouped by feature, searchable, linked from each setting's tooltip. Tooltips for every setting on the
-  dashboard and in the phone app (long-press), written for a person and not copied from a code comment, with a test that fails when a setting has no entry.
+  dashboard and in the phone app (long-press), written for a person and not copied from a code comment, with a test that fails when a setting has no entry. (0.8.10: the user wiki's Settings guide, 706 entries in 26 feature groups (every setting, the phone app's own included),
+  written from tools/settings_guide/ by tools/gen_settings_guide.py; on the dashboard each setting's tip sits under it and opens its whole entry, and the
+  search looks through the entries; the app gets them as an asset with SettingHelp.kt for the Settings pane's long-press; tests fail on a setting with no
+  entry or a tip copied from the comment)
 - ~~**Feed the Brain its whole past**~~ (started in 0.8.1, asked 2026-10-26): the Brain only knows what happened since it was switched on. A one-time, resumable, read-only
   backfill of what's already on this computer (Kurooto's event history, AI request history, deadlines, reminders, check-ins, quizzes, call counts, the journal and
   notes' structure) into a history table of its own, never counted as reward, used for priors (what a normal day is, your pace, past choices); each source its own switch. (0.8.1 built the first source only: Kurooto's event history, used for deadline moves in the read.) (0.8.7: every source with its own switch, `history.db` with a chain per source witnessed in the log, priors for the read, the forecast, week plans' pace and the model of you; the journal, the notes' structure and the chat log are left out, the stage-14 model reads the first two live and chat counts are an engagement signal; see Feeding Brain its past in the user wiki)

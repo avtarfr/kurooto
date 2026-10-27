@@ -1,0 +1,64 @@
+title = "Morning alarm"
+page = "calls.md"
+intro = """Kurooto wakes you with a call that rings on the alarm stream (so it rings on silent), placed by your call
+line so it rings even if this computer is asleep. Set one in plain English ("wake me at 6:45"), with /alarm, or as a
+daily default here. While an alarm is set, the night runs from your bedtime to the alarm."""
+cost = "The alarm is held by your call line (your own Cloudflare account) and rings your phone; the call itself is like any other (see Phone calls)."
+needs = "The Morning alarm feature, with Phone calls and a paired phone."
+
+[s."alarm.daily"]
+tip = "A wake-up time that rings every day (on the days below) unless you set another for that morning."
+values = "A time `HH:MM`, or none (off)."
+when = "Set it if you get up at the same time most days; \"no alarm tomorrow\" skips one day and it's back after. `/alarm daily 7:00` and `/alarm daily off` change it too."
+
+[s."alarm.days"]
+tip = "The days the daily alarm rings."
+values = "A list of `mon` … `sun`."
+when = "Take the weekend out if you sleep in: `[\"mon\", \"tue\", \"wed\", \"thu\", \"fri\"]`."
+needs = "`alarm.daily`."
+
+[s."alarm.reason"]
+tip = "What the wake-up call says it's for."
+values = "Short text."
+when = "Change the words if \"Wake-up call\" isn't how you'd put it; it shows on the ringing screen."
+
+[s."alarm.retries"]
+tip = "How many more times the alarm rings if you don't answer (5 minutes apart)."
+when = "Raise it if you sleep through it; 0 rings once."
+
+[s."alarm.snooze_min"]
+tip = "Minutes a snoozed alarm waits before it rings again."
+when = "Shorten it if you fall back asleep; Later on the ringing call uses it."
+
+[s."alarm.bedtime"]
+tip = "With an alarm set, no calls from this time until it rings; none uses the night hours' start."
+values = "A time `HH:MM`, or none."
+when = "Set it if you go to bed earlier than your night hours start on nights you've set an alarm."
+
+[s."alarm.prep_min"]
+tip = "Minutes before the alarm that your AI drafts the day's plan into today's daily note."
+values = "Minutes; 0: no plan."
+when = "Set 0 if you don't want a drafted plan; raise it if the plan isn't ready when the alarm rings."
+cost = "One AI request each morning with an alarm; it reads your calendar, deadlines and notes for the day."
+needs = "Chat with your AI on."
+
+[s."alarm.notes"]
+tip = "After the wake-up call, today's plan (or what you said on the call) goes into your daily note."
+when = "Turn it off if you don't want the morning call in your notes."
+cost = "Nothing leaves: written to your notes on this computer."
+
+[s."alarm.open_page"]
+tip = "When the alarm rings, the morning page opens on this computer (if it's awake)."
+when = "Turn it off if the page opening on a shared or sleeping-room screen bothers you."
+cost = "Nothing leaves."
+
+[s."alarm.keep_awake"]
+tip = "Keep this computer awake before the alarm so the day's plan is drafted in time."
+what = "From 12 hours before until 15 minutes after it rings. On Linux, with the lid closed too; a Mac still sleeps with its lid closed."
+when = "Turn it on if the plan is often missing because the computer slept overnight. Plug it in: it stays awake all night."
+cost = "Battery and power overnight."
+
+[s."alarm.suggest"]
+tip = "Before your usual bedtime with no alarm set, one message offering your usual wake-up time."
+when = "Turn it off if you don't use an alarm every night. It never sets one by itself."
+cost = "At most one Telegram message a day."

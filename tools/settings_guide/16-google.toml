@@ -1,0 +1,269 @@
+title = "Google: Classroom, Gmail, Calendar and Drive"
+page = "google.md"
+intro = """Classroom deadlines and materials, the Gmail digest and reply drafts, Email in, Google Calendar, the Agent
+plan calendar and Drive upload, through your own Google sign-in. Each feature asks Google for its own permission when
+you set it up; Gmail is only read (nothing sent, deleted or marked read) except for drafts you tap Send on."""
+cost = "Kurooto talks to Google's APIs with your own sign-in. What your AI may read of your mail is only what your read rules allow; everything else is only counted, here."
+needs = "The Google feature, signed in."
+
+[parent."google.endpoints"]
+tip = "Google's service addresses. Leave them alone."
+
+[s."google.accounts"]
+tip = "The names of your signed-in Google accounts; \"main\" is the one you signed in with first."
+values = "A list of short names: `[\"main\", \"school\"]`."
+when = "Add an account on the Google card (or `/google add school`) to use, say, a school account for Classroom."
+
+[s."google.use"]
+tip = "Which of your Google accounts each feature uses; unset means main."
+values = "A JSON object: `{\"mail_digest\": \"school\", \"calendar_read\": [\"main\", \"school\"]}`."
+when = "Pick per feature on its card, or `/google use mail school`."
+
+[s."google.classroom"]
+tip = "Read Classroom: courses, assignments and announcements, for deadlines."
+when = "Turn it off if you only want other Google features."
+cost = "Read-only access to your Classroom courses and coursework."
+
+[s."google.classroom_every"]
+tip = "How often Classroom is checked for new deadlines."
+when = "Shorten it in busy weeks; lengthen it to check less."
+needs = "`google.classroom`."
+
+[s."google.classroom_notes"]
+tip = "Permission for Classroom → notes: materials and attached Drive files, read-only."
+when = "Set for you when you set up Classroom → notes; Google asks you to allow it."
+needs = "Classroom → notes."
+
+[s."google.mail_digest"]
+tip = "Permission for the mail digest: read Gmail, read-only."
+when = "Set for you when you set up the Mail digest; Google asks you to allow it."
+needs = "The Mail digest."
+
+[s."google.reply_drafts"]
+tip = "Permission for reply drafts in Gmail, sent only when you tap Send."
+when = "Set for you when you set up Email reply drafts."
+needs = "Email reply drafts."
+
+[s."google.gmail_drafts"]
+tip = "Allow `/draft` to save drafts in your Gmail (one more sign-in: Google calls it a restricted permission)."
+when = "Turn it on if you want to draft mail from Telegram."
+cost = "Kurooto may create drafts in your Gmail; it never sends without your tap."
+
+[s."google.digest_email"]
+tip = "Permission to send the mail digest to your own inbox (send only)."
+when = "Set for you when you set up Mail digest by email."
+needs = "Mail digest by email."
+
+[s."google.calendar_read"]
+tip = "Permission to read your calendars (Google Calendar), read-only."
+when = "Set for you when you set up Google Calendar."
+needs = "Google Calendar."
+
+[s."google.agent_calendar"]
+tip = "Permission for Kurooto's own \"Agent plan\" calendar (it can't see your others)."
+when = "Set for you when you set up the Agent plan calendar."
+needs = "Agent plan calendar."
+
+[s."google.drive_upload"]
+tip = "Permission to put files you send yourself into a Kurooto folder in Drive (its own files only)."
+when = "Set for you when you set up Drive upload."
+needs = "Drive upload."
+
+[s."google.endpoints.auth"]
+tip = "Google's sign-in address. Leave it alone."
+when = "Only for tests or a proxy."
+
+[s."google.endpoints.token"]
+tip = "Google's token address. Leave it alone."
+when = "Only for tests or a proxy."
+
+[s."google.endpoints.calendar"]
+tip = "Google Calendar's API address. Leave it alone."
+when = "Only for tests or a proxy."
+
+[s."google.endpoints.classroom"]
+tip = "Google Classroom's API address. Leave it alone."
+when = "Only for tests or a proxy."
+
+[s."google.endpoints.gmail"]
+tip = "Gmail's API address. Leave it alone."
+when = "Only for tests or a proxy."
+
+[s."google.endpoints.drive"]
+tip = "Google Drive's API address. Leave it alone."
+when = "Only for tests or a proxy."
+
+[s."google.endpoints.drive_upload"]
+tip = "Google Drive's upload address. Leave it alone."
+when = "Only for tests or a proxy."
+
+[s."classroom_notes.at"]
+tip = "When new Classroom posts are fetched into your notes."
+when = "Add or move times to match when your teachers usually post."
+needs = "Classroom → notes."
+
+[s."classroom_notes.files"]
+tip = "Download the Drive files attached to posts and read their text into your notes."
+when = "Turn it off to keep only the posts, with links to the files."
+cost = "Downloads from your Drive to this computer."
+needs = "Classroom → notes."
+
+[s."classroom_notes.max_file_mb"]
+tip = "Attached files bigger than this (MB) are only linked, not downloaded."
+when = "Raise it for big lecture recordings or scans."
+needs = "`classroom_notes.files`."
+
+[s."classroom_notes.folders"]
+tip = "Which notes folder each course goes into, where Kurooto's own pick is wrong."
+values = "A JSON object, a course's exact name → folder: `{\"MA101 Linear Algebra (2026)\": \"linear-algebra\"}`."
+when = "Set it when a course lands in the wrong folder."
+needs = "Classroom → notes."
+
+[s."classroom_notes.skip"]
+tip = "Courses to leave out, by words from their names (`/classnotes skip` fills it)."
+values = "A list of words."
+when = "Add clubs and old courses you don't want in your notes."
+needs = "Classroom → notes."
+
+[s."classroom_notes.backfill_days"]
+tip = "How far back (days) it looks; older posts not edited since are left alone."
+when = "Raise it once to bring in a whole term's material."
+needs = "Classroom → notes."
+
+[s."mail_digest.at"]
+tip = "When the mail digest checks your Gmail."
+when = "Set the times you'd like a summary of your mail."
+needs = "The Mail digest."
+
+[s."mail_digest.read"]
+tip = "What the AI may read for the digest: senders, @domains or Gmail labels you chose."
+values = "A list: `[\"label:Courses\", \"sam@example.org\", \"@school.example\"]`; `/mail read` fills it."
+when = "Add the senders and labels that matter. Everything else is only counted, never summarised."
+cost = "Mail matching these goes to your AI to be summarised."
+needs = "The Mail digest."
+
+[s."mail_digest.never_read"]
+tip = "Senders, @domains or labels the digest never reads, even if chosen elsewhere."
+values = "A list; `/mail never` fills it."
+when = "Add anything that must never reach the AI (a bank, a doctor)."
+needs = "The Mail digest."
+
+[s."mail_digest.own_domain"]
+tip = "On a school or work account, mail from your own organisation's domain is read too."
+when = "Turn it off if your organisation's mail shouldn't go to your AI."
+cost = "Your organisation's mail goes to your AI to be summarised."
+needs = "The Mail digest."
+
+[s."mail_digest.query"]
+tip = "A Gmail search: mail it matches is read too, e.g. everything but Promotions and Social."
+values = "Gmail search words, e.g. `-category:promotions -category:social`; empty: none."
+when = "Use it to widen what's read without listing senders. Personal mail is still only counted."
+cost = "Matching mail goes to your AI."
+needs = "The Mail digest."
+
+[s."mail_digest.first_days"]
+tip = "How far back (days) the first digest looks."
+when = "Raise it once if you want older mail in the first digest."
+needs = "The Mail digest."
+
+[s."mail_digest.max_messages"]
+tip = "The most mails looked at per check."
+when = "Raise it for a busy inbox; mails over the limit wait for the next check."
+needs = "The Mail digest."
+
+[s."mail_digest.save_note"]
+tip = "A copy of each digest goes into your notes (mail/)."
+when = "Turn it off to get digests only as messages."
+needs = "The Mail digest."
+
+[s."mail_digest.skip_confidential"]
+tip = "Mail marked confidential is only counted: never read by the AI, summarised or answered."
+when = "Leave it on, especially on a work or school account."
+needs = "The Mail digest."
+
+[s."mail_digest.confidential_words"]
+tip = "The markings that make a mail confidential (in its subject, text or a label)."
+values = "A list of regular expressions, any case; a space matches any run of spaces or line breaks."
+when = "Add your organisation's own marking if it uses another phrase."
+needs = "`mail_digest.skip_confidential`."
+
+[s."mail_digest.confidential"]
+tip = "What happens to confidential mail: only counted, or summarised by a model on this computer."
+values = "`count` (only counted) or `local` (summarised here by a local model, kept only in Kurooto's data folder)."
+when = "Pick `local` if you want confidential mail summarised and have Local AI models."
+cost = "Nothing leaves either way: `local` runs on this computer."
+needs = "`mail_digest.skip_confidential`; Local AI models for `local`."
+
+[s."mail_digest.local_model"]
+tip = "Which Ollama model summarises confidential mail; empty uses Local AI models' helper."
+values = "An Ollama model name, or empty."
+when = "Pick a bigger model for better summaries if your computer can run it."
+cost = "Nothing leaves: a model on this computer."
+needs = "`mail_digest.confidential` = `local`."
+
+[s."mail_digest.mail_in"]
+tip = "Email in: mail you forward to you+kurooto@ (or label) is filed into your notes, its dates as buttons."
+when = "Turn it on (`/mail in on`) to send things into your notes by email."
+cost = "That mail goes to your AI to be filed."
+needs = "The Mail digest."
+
+[s."mail_digest.mail_in_label"]
+tip = "A Gmail label whose mail goes into your notes too, from anyone."
+values = "A Gmail label's name, or empty."
+when = "Set it with a Gmail filter that labels mail you want filed."
+needs = "`mail_digest.mail_in`."
+
+[s."mail_digest.mail_in_senders"]
+tip = "Your other email addresses that may send mail into your notes (your own always can)."
+values = "A list of email addresses."
+when = "Add your phone's or work's address if you forward from there."
+needs = "`mail_digest.mail_in`."
+
+[s."mail_digest.mail_in_anyone"]
+tip = "Mail to +kurooto from anyone goes in. A stranger could then write into your notes."
+when = "Leave it off unless you know why you need it."
+needs = "`mail_digest.mail_in`."
+
+[s."mail_digest.mail_in_every"]
+tip = "How often Gmail is checked for mail you sent in."
+when = "Shorten it if you want forwarded mail filed sooner."
+needs = "`mail_digest.mail_in`."
+
+[s."reply_drafts.per_day"]
+tip = "The most reply drafts written in a day."
+when = "Raise it for a busy inbox; lower it to spend less of your AI."
+cost = "Each draft is an AI request with the mail it answers."
+needs = "Email reply drafts."
+
+[s."reply_drafts.ask_days"]
+tip = "Days the Send / Edit / Discard question on a draft stays open."
+when = "Shorten it so old drafts stop lingering."
+needs = "Email reply drafts."
+
+[s."agent_plan.name"]
+tip = "The name of Kurooto's own calendar for the time blocks it plans with you."
+values = "A calendar name."
+when = "Rename it to tell it apart from your own calendars. Kurooto writes only to this one."
+needs = "The Agent plan calendar."
+
+[s."agent_plan.remind_min"]
+tip = "Minutes before each planned block for Google's pop-up reminder; 0: none."
+when = "Set 0 if Kurooto's own reminders are enough."
+needs = "The Agent plan calendar."
+
+[s."drive_upload.big_files"]
+tip = "A file too big for Telegram (over 50 MB) comes as a Drive link instead of failing."
+when = "Turn it off to have big files refused rather than uploaded."
+cost = "Those files go to your Google Drive."
+needs = "Drive upload."
+
+[s."drive_upload.folder"]
+tip = "The Google Drive folder files go to."
+values = "A folder name in your Drive."
+when = "Rename it if you'd like another folder."
+needs = "Drive upload."
+
+[s."drive_upload.temp_days"]
+tip = "Days a too-big-for-Telegram upload is kept in your Drive before it's deleted; 0 keeps them."
+when = "Set 0 to keep every upload; raise it if you need the links longer."
+needs = "Drive upload."

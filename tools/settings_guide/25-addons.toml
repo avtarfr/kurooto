@@ -1,0 +1,29 @@
+title = "Add-ons"
+page = "add-ons.md"
+intro = """Your own add-ons folder (extra features, skills, prompts and default settings laid over Kurooto), and add-ons
+by link from someone else's repository at a pinned commit, each fenced to the hosts on its card. Add-ons run as you,
+with your permissions: turn on only ones you wrote or read."""
+cost = "Your own add-ons run as you and may reach whatever they're written to. Add-ons by link reach only the hosts on the card you agreed to."
+needs = "Your add-ons (overlay) and Add-ons by link are features of their own."
+
+[s."overlay.path"]
+tip = "The full path of your add-ons folder."
+values = "A full folder path."
+when = "Point it at the folder with your modules, skills, prompts and settings.json. Read when Kurooto starts."
+needs = "Your add-ons."
+
+[s."overlay.code"]
+tip = "Also run the Python add-ons in its modules/ folder (off: only skills, prompts and settings)."
+when = "Turn it off to use an add-ons folder's skills and settings without running its code."
+needs = "Your add-ons."
+
+[s."addons.on"]
+tip = "Load the add-ons you added by link (`kurooto addons add`); off, none load from the next start."
+when = "Turn it off to stop all of them at once; they stay where they are."
+needs = "Add-ons by link."
+
+[s."addons.official_updates"]
+tip = "Say once when a newer version of an official add-on you have is out; it's never updated by itself."
+when = "Turn it off to stop the message (the update buttons stay on the card)."
+cost = "Nothing beyond the message: Kurooto's own list says what's newer."
+needs = "Add-ons by link."

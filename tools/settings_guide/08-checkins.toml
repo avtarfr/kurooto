@@ -1,0 +1,107 @@
+title = "Check-ins, journal and the week"
+page = "check-ins-and-journal.md"
+intro = """The evening, night and midday check-ins that ask how the day went and write your answer into your journal,
+the Sunday summary of the week, and the first week's small quests. Your answers stay in your notes; with Chat on,
+your AI may write them up."""
+cost = "Check-in questions and answers travel over Telegram, the app or a call like any message; your answers are written into your notes on this computer. Where an entry says so, your AI also gets them."
+needs = "The Check-ins feature."
+
+[parent."checkins.times"]
+tip = "When each check-in comes: evening, night and midday (none: that one is off)."
+
+[parent."checkins.questions"]
+tip = "What each check-in asks."
+
+[s."checkins.times.evening"]
+tip = "When the evening check-in comes: the day in review."
+values = "A time `HH:MM`, or none (off)."
+when = "Move it to when your day winds down; none turns the evening check-in off."
+
+[s."checkins.times.night"]
+tip = "When the night check-in comes, just before bed (off unless you set a time)."
+values = "A time `HH:MM` such as `23:15`, or none (off)."
+when = "Set it if you want a last line in your journal before sleeping."
+
+[s."checkins.times.midday"]
+tip = "When the midday check-in comes (off unless you set a time)."
+values = "A time `HH:MM` such as `13:00`, or none (off)."
+when = "Set it if you'd like to re-plan the afternoon halfway through the day."
+
+[s."checkins.questions.evening"]
+tip = "What the evening check-in asks."
+values = "Any question."
+when = "Reword it to what you actually want to reflect on."
+
+[s."checkins.questions.night"]
+tip = "What the night check-in asks."
+values = "Any question."
+when = "Reword it to suit your bedtime routine."
+
+[s."checkins.questions.midday"]
+tip = "What the midday check-in asks."
+values = "Any question."
+when = "Reword it to what you want to check at midday."
+
+[s."checkins.journal"]
+tip = "Each check-in's answer goes into your journal."
+when = "Turn it off if you only want the questions, not the writing."
+
+[s."checkins.day_starts"]
+tip = "When a check-in day begins, so a night check-in at 00:30 still counts for the evening before."
+when = "Move it if you often stay up past 5. Kurooto moves it with your learned hours unless you set it."
+
+[s."checkins.learn_times"]
+tip = "A check-in you keep moving or answering late moves to when you actually do it, with Undo."
+when = "Turn it off to keep check-ins at the times you set."
+
+[s."checkins.reflect"]
+tip = "The evening check-in lists up to three things today's records show you did, and asks what's first tomorrow."
+when = "Turn it off for the plain question only."
+
+[s."checkins.by_call"]
+tip = "Check-ins come as a call (a missed call falls back to Telegram)."
+when = "Turn it on if you'd rather talk than type at the end of the day."
+cost = "A call like any other: through your call line and Gemini Live."
+needs = "Phone calls."
+
+[s."checkins.asleep_defers"]
+tip = "With check-ins by call and an alarm set, the night check-in waits for the morning once you've gone to bed."
+when = "Turn it off to be called anyway."
+needs = "`checkins.by_call` and the Morning alarm."
+
+[s."checkins.ai_notes"]
+tip = "After a check-in call, your AI writes your journal and study logs from what you said."
+when = "Turn it off to have your words go into the journal as they are."
+cost = "The call's transcript goes to your AI once."
+needs = "Chat with your AI on, and `checkins.by_call`."
+
+[s."weekly.when"]
+tip = "When the week's summary comes."
+values = "`weekly <day> HH:MM`, e.g. `weekly sun 19:00`."
+when = "Move it to when you plan your week."
+cost = "Nothing leaves: counted from the local event log."
+needs = "The Weekly summary."
+
+[s."weekly.people"]
+tip = "One line about the people in your project notes: who you met this week and who's next."
+when = "Turn it off if you don't want people in the summary. Only from meetings logged in your project notes."
+cost = "Nothing leaves."
+needs = "The Weekly summary."
+
+[s."weekly.call"]
+tip = "A Sunday review call after the summary: the week, what went well, next week's priorities."
+when = "Turn it on if you'd like to talk the week through."
+cost = "A call (call line and Gemini Live); with Chat on, its write-up goes through your AI."
+needs = "The Weekly summary and Phone calls."
+
+[s."quests.when"]
+tip = "When the day's first-week quest comes."
+when = "Move it to a time you'll have a minute to try something."
+cost = "Nothing leaves: no AI."
+needs = "First-week quests (they run for the first `quests.days` days)."
+
+[s."quests.days"]
+tip = "How many days the first-week quests run."
+when = "Shorten it if you've found your way around already; `/quests stop` ends them at once."
+cost = "Nothing leaves: no AI."
+needs = "First-week quests."

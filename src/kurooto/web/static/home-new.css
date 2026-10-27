@@ -319,6 +319,15 @@ body[data-design="new"] .form input[type=checkbox] { width: 16px; height: 16px; 
 body[data-design="new"] .form textarea { width: 100%; min-height: 30px; padding: 5px 8px; border: 1px solid var(--rule); border-radius: var(--r-ctl); background: var(--bg);
   color: var(--fg); font: 12px/1.45 var(--code); resize: vertical; }
 body[data-design="new"] .form .help { margin: -2px 0 8px; font-size: 12px; line-height: 1.45; color: var(--dim); }
+body[data-design="new"] .form details.set-guide { margin: -2px 0 10px; font: 12px/1.45 var(--ui); color: var(--dim); }
+body[data-design="new"] .form details.set-guide > summary { padding: 1px 0; transition: color .15s; }
+body[data-design="new"] .form details.set-guide > summary:hover, body[data-design="new"] .form details.set-guide[open] > summary { color: var(--fg); }
+body[data-design="new"] .form details.set-guide > summary::after { color: var(--accent-text); }
+body[data-design="new"] .form .sg-body { margin: 6px 0 2px; padding: 8px 10px; border: 0; border-radius: 8px; background: var(--bg); }
+body[data-design="new"] .form .sg-body dt { color: var(--dim); font-size: 11px; letter-spacing: 0; }
+body[data-design="new"] .form .sg-body code { padding: 0 2px; font: 11.5px var(--code); }
+body[data-design="new"] .form .sg-more { color: var(--accent-text); text-decoration: none; }
+body[data-design="new"] .form .sg-more:hover { text-decoration: underline; }
 body[data-design="new"] .form .said { margin: 0 0 6px; color: var(--accent-text); }
 body[data-design="new"] .form .said.bad2 { color: var(--bad); }
 body[data-design="new"] .form .fixed { font-size: 13px; }

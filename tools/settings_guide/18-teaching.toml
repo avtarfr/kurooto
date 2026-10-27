@@ -1,0 +1,315 @@
+title = "Teaching Kurooto and what it remembers"
+page = "teaching-kurooto.md"
+intro = """How Kurooto learns: setting itself up from what you say, the Wrong button and test cases, the nightly look
+back, lessons from its own work, what it remembers and recalls in a reply, and Dreaming's morning message with its
+nightly tuning. Every change it makes to itself is said in one line with Undo."""
+cost = "Rules on this computer unless an entry says otherwise. Health, money and password details are never kept."
+needs = "The feature each entry names: Remember, Learns from its own work, the Nightly look back, Wrong button and test cases, Dreaming; inference and memory are core."
+
+[s."infer.on"]
+tip = "Set things up from what you say in the chat and the journal (\"every Monday at 9 I have a lab\"), each with Undo."
+when = "Turn it off if you'd rather set everything up yourself. `/inferred` lists what it set up."
+needs = "Nothing: core. Each kind below has its own switch."
+
+[s."infer.projects"]
+tip = "\"I got a project under Prof X\" makes a project note with them and a Meetings section."
+when = "Turn it off if such sentences shouldn't create project notes."
+needs = "`infer.on`."
+
+[s."infer.meetings"]
+tip = "\"Met X today\" adds a dated line to that project's Meetings; a meeting ahead becomes a deadline."
+when = "Turn it off if you log meetings yourself."
+needs = "`infer.on` and a project note with that person."
+
+[s."infer.classes"]
+tip = "\"Every Monday at 9 I have a <subject> lab\" adds a class to your timetable."
+when = "Turn it off if your timetable is set elsewhere."
+needs = "`infer.on` and Subjects and timetable."
+
+[s."infer.commitments"]
+tip = "\"Every Tuesday at 7pm I go to the gym\" adds a commitment (it holds calls like a class)."
+when = "Turn it off if such sentences shouldn't become commitments."
+needs = "`infer.on`."
+
+[s."infer.quizzes"]
+tip = "\"There's a quiz on Linear Algebra every Monday\" adds a row to the recurring quizzes table."
+when = "Turn it off if you keep that table yourself."
+needs = "`infer.on` and Deadlines."
+
+[s."infer.aliases"]
+tip = "\"By POTA I mean Physics of the Atmosphere\" gives that subject a short name."
+when = "Turn it off if you set short names yourself."
+needs = "`infer.on`."
+
+[s."infer.short_names"]
+tip = "\"LA\" becomes Linear Algebra's short name after two messages use it (when it fits only that subject)."
+when = "Turn it off if it guesses short names you don't mean."
+needs = "`infer.on`."
+
+[s."infer.sweep"]
+tip = "One pass over your chats and journal for such sentences: once when first on, then nightly on what's new."
+when = "Turn it off to only catch sentences as you say them."
+needs = "`infer.on`."
+
+[s."infer.sweep_days"]
+tip = "How far back (days) the first pass over your chats and journal reads."
+when = "Raise it to catch more of your past; lower it for a lighter first pass."
+needs = "`infer.sweep`."
+
+[s."infer.sweep_ai"]
+tip = "A line the rules can't read: a model here restates it, your AI does, or it's skipped."
+when = "Pick `off` to keep the sweep to rules only; `main` reads more but uses your AI."
+cost = "`main` sends those lines to your AI; `local` keeps them here."
+needs = "`infer.sweep`; Local AI models for `local`."
+
+[s."memory.recall"]
+tip = "Replies and calls are told the few remembered items your message refers to (\"as we said on the call\")."
+what = "Only when your message points at the past or an open thread; gists only, never transcripts."
+when = "Turn it off if you'd rather each request start fresh."
+cost = "Those remembered items go to your AI with the request (within `memory.budget_tokens`)."
+needs = "Nothing: core."
+
+[s."memory.budget_tokens"]
+tip = "At most about this much of what's remembered goes with one reply or call (about 4 characters a token)."
+when = "Raise it for richer recall; lower it to send less."
+cost = "More tokens means more remembered text goes to your AI."
+needs = "`memory.recall`."
+
+[s."memory.threads"]
+tip = "What you say you'll do, and tasks you start, become open threads (\"did I finish that thing?\")."
+when = "Turn it off if you don't want that kept. `/threads` shows them."
+needs = "Nothing: core."
+
+[s."memory.thread_days"]
+tip = "Days an untouched open thread waits before it closes by itself."
+when = "Raise it if your tasks run long."
+needs = "`memory.threads`."
+
+[s."remember.recheck_days"]
+tip = "A kept line that hasn't come up in this many days gets one \"Still true?\"; 0: never."
+when = "Raise it to be asked less; 0 to never be asked. Lines you wrote yourself are never touched."
+needs = "Remember."
+
+[s."learning.search"]
+tip = "A search index of past requests, calls and chats on this computer: `/history`, and the AI's search_history."
+when = "Turn it off if you don't want past conversations searchable."
+cost = "The index stays here; passages the AI finds go to that AI with its request."
+needs = "Learns from its own work."
+
+[s."learning.skills"]
+tip = "A request that took many steps can become a skill, or improve the one that does it."
+when = "Turn it off if you'd rather write skills yourself. Each new skill comes with Undo."
+cost = "The request, its answer and steps go to the second-look AI once."
+needs = "Learns from its own work and Skills."
+
+[s."learning.skill_min_steps"]
+tip = "How many tool uses a request needs before it's considered for a new skill."
+when = "Raise it to learn only from big tasks."
+needs = "`learning.skills`."
+
+[s."learning.corrections"]
+tip = "When you correct a skill's answer, the skill keeps it as a lesson."
+when = "Turn it off to keep skills exactly as written."
+cost = "Your correction and the skill go to the second-look AI."
+needs = "Learns from its own work and Skills."
+
+[s."learning.remember"]
+tip = "The nightly look back keeps facts you stated in your chats and calls in your how-to-help-me note."
+when = "Turn it off to keep only what you tell it with Remember."
+cost = "The day's requests go to the AI the look back uses."
+needs = "Learns from its own work and the Nightly look back."
+
+[s."learning.remember_max"]
+tip = "The most facts kept in a night."
+when = "Lower it if it keeps too much."
+needs = "`learning.remember`."
+
+[s."learning.brain"]
+tip = "The AI that looks at finished work; empty uses the concept graph's second-look AI, else your main one."
+values = "An AI id, or empty."
+when = "Pick a cheaper AI if learning uses too much of your main one."
+cost = "That AI gets what's being learned from."
+needs = "Learns from its own work."
+
+[s."cases.button"]
+tip = "A Wrong button under replies to plain-English requests (`/wrong` works either way)."
+when = "Turn it off if the button clutters your chat."
+needs = "Wrong button and test cases."
+
+[s."cases.fallthroughs"]
+tip = "Keep short requests no instant request understood, to learn from later."
+when = "Turn it off if you'd rather not keep them."
+needs = "Wrong button and test cases."
+
+[s."cases.keep_days"]
+tip = "Cases you didn't make test cases are forgotten after this many days (0: `privacy.keep_days`, else 30)."
+when = "Lower it to forget sooner. Test cases stay."
+needs = "Wrong button and test cases."
+
+[s."cases.learn"]
+tip = "A test case may teach its phrasing, but only if every test case that passed still passes."
+when = "Turn it off to keep test cases without learning from them."
+needs = "Wrong button and test cases."
+
+[s."cases.learn_rephrased"]
+tip = "The same not-understood phrasing twice followed by the same request: it's learned."
+when = "Turn it off to learn only from test cases you make."
+needs = "Wrong button and test cases."
+
+[s."cases.review"]
+tip = "When the monthly list of most common not-understood phrasings may come."
+when = "Move it to when you have a few minutes."
+needs = "Wrong button and test cases."
+
+[s."cases.review_days"]
+tip = "Days at least between two such lists."
+when = "Raise it to see the list less often."
+needs = "Wrong button and test cases."
+
+[s."cases.review_max"]
+tip = "Phrasings in one list."
+when = "Lower it for a shorter list."
+needs = "Wrong button and test cases."
+
+[s."retro.when"]
+tip = "When the nightly look back runs; `weekly sun 21:00` looks back over the whole week instead."
+when = "Pick weekly if a nightly look back is too much."
+cost = "One AI request with the day's records (and transcripts and journal, if allowed below)."
+needs = "The Nightly look back."
+
+[s."retro.max_proposals"]
+tip = "The most changes one look back proposes."
+when = "Lower it for fewer suggestions."
+needs = "The Nightly look back."
+
+[s."retro.observe_days"]
+tip = "How long Observe longer (and `/observe` without a length) watches, in days."
+when = "Raise it to gather more before deciding."
+needs = "The Nightly look back."
+
+[s."retro.no_days"]
+tip = "How long a No keeps an idea away, in days."
+when = "Raise it if the same ideas come back too soon."
+needs = "The Nightly look back."
+
+[s."retro.transcripts"]
+tip = "The look back reads today's call transcripts."
+when = "Turn it off to keep transcripts out of it."
+cost = "The transcripts go to your AI with the look back."
+needs = "The Nightly look back."
+
+[s."retro.journal"]
+tip = "The look back reads today's journal note."
+when = "Turn it off to keep your journal out of it."
+cost = "Your journal note goes to your AI with the look back."
+needs = "The Nightly look back."
+
+[s."retro.routines"]
+tip = "Propose a routine it sees in your records (the same thing at the same time, 3+ weeks)."
+when = "Turn it off if you don't want routine suggestions."
+needs = "The Nightly look back."
+
+[s."retro.routine_weeks"]
+tip = "On how many different weeks something must happen before it's a routine."
+when = "Raise it for fewer, surer suggestions."
+needs = "`retro.routines`."
+
+[s."retro.fixes"]
+tip = "Make data fixes it's sure of (two copies of one deadline become one), with Undo."
+when = "Turn it off to be asked about every fix."
+needs = "The Nightly look back."
+
+[s."dreaming.when"]
+tip = "When the morning message comes (\"While you slept\"), covering everything since the last one."
+when = "Move it to when you're up. It follows your learned hours unless you set it."
+cost = "Nothing: it gathers what the night did; no AI."
+needs = "Dreaming."
+
+[s."dreaming.loose_ends"]
+tip = "The morning message also lists loose ends: open doubts, unlinked notes, broken links, tasks past due."
+when = "Turn it off for a shorter morning message."
+needs = "Dreaming."
+
+[s."dreaming.self_check"]
+tip = "Each morning, replay your test cases and say which ones went wrong since yesterday."
+when = "Turn it off if you have no test cases."
+needs = "Dreaming and Wrong button and test cases."
+
+[s."dreaming.tune_messages"]
+tip = "Each night, replay the messages it sent you and tune when they come (one change, with Undo)."
+when = "Turn it off to keep message timing exactly as set."
+needs = "Dreaming."
+
+[s."dreaming.tune_effort"]
+tip = "Each night, replay your requests and tune the effort they get (one change, with Undo)."
+when = "Turn it off to keep efforts as rated."
+needs = "Dreaming."
+
+[s."dreaming.tune_fallbacks"]
+tip = "Each night, check which AI did best at each effort and let that one go first (with Undo)."
+when = "Turn it off to keep your main AI first always."
+needs = "Dreaming."
+
+[s."dreaming.tune_sizing"]
+tip = "Each night, adjust Start-by's sizes to how long your deadlines really took."
+when = "Turn it off to keep the sizes you set."
+needs = "Dreaming and Start-by dates."
+
+[s."dreaming.tune_margin"]
+tip = "How much better a change must score in the replay than leaving things as they are."
+when = "Raise it for fewer, surer changes."
+needs = "Dreaming's tuning switches."
+
+[s."dreaming.never_tune"]
+tip = "Kinds of message it never tunes (besides the alarm, your reminders and calls, deadlines under 12 hours)."
+values = "A list of message kinds."
+when = "Add a kind whose timing you never want moved."
+needs = "`dreaming.tune_messages`."
+
+[s."dreaming.propose_prompts"]
+tip = "Offer a fix for a skill that keeps going wrong, as a proposal you apply or not."
+when = "Turn it on if you'd like skills to improve with your approval."
+cost = "The skill and its failures go to your AI to draft the fix."
+needs = "Dreaming."
+
+[s."dreaming.curious"]
+tip = "Mention a topic you asked about 3+ times this week that has no note, with Make a stub."
+when = "Turn it off if you don't want the suggestion."
+needs = "Dreaming."
+
+[s."dreaming.resurface"]
+tip = "Bring back one thing from the past: a note or quiz subject from 10-30 days ago, or an anniversary."
+when = "Turn it off if you don't want it."
+needs = "Dreaming."
+
+[s."dreaming.consolidate"]
+tip = "Ask about things it remembers twice or that disagree: Keep A / Keep B / Both true."
+when = "Turn it off to leave what it remembers as it is."
+needs = "Dreaming."
+
+[s."dreaming.consolidate_ai"]
+tip = "A second opinion on near misses: a model here, your AI, or none."
+when = "Pick `off` to keep it to rules only."
+cost = "`main` sends the two lines to your AI; `local` keeps them here."
+needs = "`dreaming.consolidate`."
+
+[s."dreaming.consolidate_max"]
+tip = "The most such questions in one morning message; the rest wait."
+when = "Lower it for a shorter message."
+needs = "`dreaming.consolidate`."
+
+[s."dreaming.fold"]
+tip = "In the morning message, offer lasting things you said for your profile (Keep / Not that)."
+when = "Turn it off to build your profile only by hand."
+needs = "Dreaming."
+
+[s."dreaming.fold_ai"]
+tip = "A second look at what the rules found for your profile: a model here, your AI, or none."
+when = "Pick `off` to keep it to rules only."
+cost = "`main` sends those lines to your AI; `local` keeps them here."
+needs = "`dreaming.fold`."
+
+[s."dreaming.fold_max"]
+tip = "The most profile suggestions in one morning message."
+when = "Lower it for a shorter message."
+needs = "`dreaming.fold`."

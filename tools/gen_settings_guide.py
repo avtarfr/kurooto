@@ -1,170 +1,71 @@
 #!/usr/bin/env python3
-"""Write docs/SETTINGS_GUIDE.md: every setting Kurooto has, with its default and what it does, read from the code itself
-(every register_defaults call, which is how a module declares its settings, with the comment on each line), so the
-guide can't drift from the program. Run it after changing a setting: python tools/gen_settings_guide.py [--check]
+"""Write the settings guide: every setting Kurooto has, read from the code itself (every register_defaults call, which
+is how a module declares its settings), explained from the guide's own source, so it can't drift from the program.
+Run it after changing a setting: python tools/gen_settings_guide.py [--check]
 
---check exits 1 when the committed guide is out of date (CI runs it)."""
+The source is tools/settings_guide/*.toml, one file per feature group (0.8.10). Each file has the group's title, its
+intro, the wiki page that covers it and what its settings cost and depend on, then one table per setting:
+
+    [s."brain.main"]
+    tip = "..."     # the tooltip: one line, written for a person (required)
+    what = "..."    # more on what it does, when the tip isn't enough
+    values = "..."  # what it can be set to (else worked out from the default and core/choices.py)
+    when = "..."    # when you'd change it, and what changes when you do (required)
+    cost = "..."    # what it costs or sends outward (else the group's)
+    needs = "..."   # what it depends on, or switches off with it (else the group's)
+    default = "..." # the default in words, where the code computes it
+
+`[parent."availability.night"] tip = "..."` explains a group of settings the dashboard shows as one box.
+Settings of the phone app itself are `app.<its key>` (no register_defaults: their default is given). A setting
+another branch adds can be written ahead with `pending = "<why>"`: it is left out until the setting exists.
+
+It writes:
+    docs/wiki/user/settings-guide.md      the guide (the user wiki, and so the site), grouped, every entry
+    docs/SETTINGS_GUIDE.md                every setting in one table, linked to its guide entry
+    src/kurooto/data/settings-help.json   {"section.key": tooltip} for the dashboard (web/api.py)
+    android/assets/settings-help.json     every entry in full, for the app's long-press (SettingHelp.kt)
+    src/kurooto/web/static/settings-guide.js  the same as a script, for the dashboard's Settings page (home.js)
+
+--check exits 1 when a file is out of date, or a setting has no entry (CI and the tests run it)."""
 
 # ruff: noqa: E501
 from __future__ import annotations
 
 import ast
+import functools
 import json
+import re
 import sys
+import textwrap
+import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src" / "kurooto"
 OUT = ROOT / "docs" / "SETTINGS_GUIDE.md"
+GUIDE_SRC = ROOT / "tools" / "settings_guide"
+WIKI = ROOT / "docs" / "wiki" / "user" / "settings-guide.md"
+HELP = SRC / "data" / "settings-help.json"
+FULL = SRC / "web" / "static" / "settings-guide.js"  # a script: the dashboard serves .js, not .json
+APP = ROOT / "android" / "assets" / "settings-help.json"
+SITE = "https://avtarfr.github.io/kurooto/wiki/user/settings-guide.html"  # update/updater.py's PAGES + the page
+FIELDS = ("tip", "what", "values", "when", "cost", "needs", "default", "pending")
 
-NOTES = {  # settings whose source line has no comment: what they do
-    "agents.scripts": "your own scripts the AI programs may run (full paths); empty: none",
-    "mind.improve.on": "Brain improving itself through gated proposals: nothing changes without the hidden harness and your say-so",
-    "mind.senses.activity": "the activity stream: the window in front, hashed titles, saves and commits in your projects (never keystrokes, the screen or URLs)",
-    "mind.senses.phone": "each of the phone's sensors, off until you switch it on (here and in the phone app's Phone tab)",
-    "quota.soft": "learned limits: soft (a hint it plans around) or hard",
-    "research.zotero": "where Zotero's library is: auto finds it, or a folder",
-    "agent_plan.name": "the name of the plan your AI subscription is on, shown in usage lines",
-    "agent_plan.remind_min": "minutes before a plan's usage window ends to remind you",
-    "alarm.days": "the days the daily alarm rings",
-    "alarm.reason": "what the wake-up call says it's for",
-    "alarm.retries": "how many more times it rings if you don't answer",
-    "alarm.snooze_min": "minutes a snoozed alarm waits",
-    "availability.focus_keyword": "a calendar event with this in its title holds messages and calls (focus)",
-    "availability.night.alarm_only": "hold calls at night only when a wake-up alarm is set",
-    "availability.night.enabled": "no calls during the night hours",
-    "availability.night.from": "when the night hours start",
-    "availability.night.to": "when the night hours end",
-    "availability.nocall_keyword": "a calendar event with this in its title means no calls during it",
-    "backups.when": "when the automatic backup runs",
-    "books.gemini_model": "the Gemini model that reads scanned book pages when it's chosen",
-    "brain.agy.io_mode": "how Kurooto talks to agy: pipe, or a pseudo-terminal where pipes give no output",
-    "brain.classify": "who judges how hard a request is: rules, main (your AI) or ollama",
-    "brain.fallback": "the AI that takes over when the main one can't answer, or a list of them in order; empty: at a limit (brain.fallback_on), the other agent program, then a Gemini key",
-    "brain.main": "the AI that handles requests: agy, claude, gemini, ollama or custom, or an extra Claude account (claude:<name>)",
-    "brain.timeout_min.high": "minutes a hard request may run before it's stopped",
-    "brain.timeout_min.low": "minutes a quick request may run before it's stopped",
-    "brain.timeout_min.medium": "minutes a normal request may run before it's stopped",
-    "calendar.days": "how many days ahead Kurooto reads your calendar",
-    "calendar.no_calls_in_events": "no calls while a calendar event is on",
-    "calendar.private_keyword": "an event with this in its title is never shown or read aloud",
-    "calendar.refresh": "how often the calendar is read again",
-    "calendar.remind_min": "minutes before an event to remind you (0: off)",
-    "calls.live_model": "the Gemini Live voice model for calls",
-    "calls.live_models": "other Live models to try, in order, when the first one is down",
-    "calls.ntfy_server": "the push server the phone app listens to (change only if you run your own)",
-    "calls.voice_by_kind": 'a voice per kind of call, e.g. {"alarm": "Puck"}',
-    "calls.voice_by_model": "a voice per Live model",
-    "calls.voice_mode": "how calls talk: auto uses Gemini Live and your phone's own speech if Live is down",
-    "calls.worker.name": "your call line's name on Cloudflare (set when it's deployed)",
-    "calls.worker.url": "your call line's address (set when it's deployed)",
-    "calls.worker.version": "the version of the call line that's deployed (set by Kurooto)",
-    "capture.delay_min": "minutes after a class ends before it asks what happened",
-    "checkins.journal": "add each check-in's answer to your journal",
-    "checkins.questions.evening": "the evening check-in's question",
-    "checkins.questions.midday": "the midday check-in's question",
-    "checkins.questions.night": "the night check-in's question",
-    "classroom_notes.at": "when new Classroom posts are fetched",
-    "classroom_notes.max_file_mb": "Classroom files bigger than this (MB) aren't downloaded",
-    "deadlines.max_files": "the most notes read when looking for deadlines",
-    "deadlines.ping_h": "hours before the due time for a deadline's first nudge (one message; closer than urgent_h it's urgent)",
-    "deadlines.scan_notes": "also find deadlines written in your notes",
-    "deadlines.urgent_h": "a deadline closer than this many hours is urgent",
-    "drive_upload.big_files": "files over Telegram's 50 MB go to your Google Drive and you get a link",
-    "drive_upload.folder": "the Google Drive folder files go to",
-    "files.folder": "a folder for files outside your notes (course files, PDFs); empty: inside the notes",
-    "files.links": "how notes link to files: empty is automatic",
-    "gbrain.checkup_ignore": "checkup findings starting with these words aren't reported",
-    "gbrain.checkup_when": "when the weekly notes-brain checkup runs",
-    "gbrain.embeddings": "where the notes brain gets its embeddings: auto, ollama, gemini or off",
-    "gbrain.nightly": "when the notes brain's nightly upkeep runs",
-    "gbrain.sync": "how often notes are indexed",
-    "google.classroom_every": "how often Classroom is checked for deadlines",
-    "google.endpoints.auth": "Google's sign-in address (for tests and proxies; leave alone)",
-    "google.endpoints.calendar": "Google Calendar's API address (leave alone)",
-    "google.endpoints.classroom": "Google Classroom's API address (leave alone)",
-    "google.endpoints.drive": "Google Drive's API address (leave alone)",
-    "google.endpoints.drive_upload": "Google Drive's upload address (leave alone)",
-    "google.endpoints.gmail": "Gmail's API address (leave alone)",
-    "google.use": "which signed-in Google account each feature uses (Settings → Google)",
-    "handwritten.every": "how often the handwritten-notes folder is checked",
-    "handwritten.model": "the Gemini model that reads handwriting when it's chosen",
-    "lidsafe.morning": "the time the lid-shut safeguard looks for in the morning",
-    "look.hidden_features": "features hidden from the Features list (they still run if on)",
-    "look.layout": "dense (everything on one board) or roomy",
-    "look.links_in": "where links open: default is your default browser",
-    "look.panes": "the dense board's hidden panes: status, systems, notes, terminal (empty: none hidden)",
-    "look.projects": "folders of git repositories the PROJECTS box shows (empty: Research's repositories)",
-    "look.study_mode": "the dashboard in Study mode: the notes map, the study timer and what's due (Alt+M, /study mode)",
-    "mail_digest.at": "when mail digests run",
-    "mail_digest.confidential": "what to do with confidential mail: count, hide or skip",
-    "mail_digest.query": "an extra Gmail search the digest is limited to",
-    "mail_digest.skip_confidential": "don't summarise mail marked confidential",
-    "modules.enabled": "the features that are on (the Features list changes it)",
-    "notes.layout": "how your notes are laid out: kurooto or zettelkasten",
-    "notes.open_with": "the program that opens a note from the dashboard; empty: the system's",
-    "notes.paths": 'your own folder for a kind of note, e.g. {"daily": "journal/{date}.md"}',
-    "notes_sync.api": "the Git host's API address (leave alone)",
-    "notes_sync.branch": "the branch your notes sync to",
-    "notes_sync.every": "how often notes sync",
-    "notify.app_kinds": "which messages also reach your phone app",
-    "notify.desktop": "show notifications on this computer",
-    "notify.desktop_kinds": "which messages show on this computer",
-    "profile.branch": "the branch your saved profile lives on (set by Kurooto)",
-    "profile.when": "when your profile is saved",
-    "quiz.per_session": "questions per quiz",
-    "quota.background_pct": "the share of an AI's daily free limit background work may use",
-    "quota.limits": 'your own limits per AI, e.g. {"agy": 200}',
-    "quota.local": "what the model on this computer does for the free limit: quick, background or off",
-    "quota.on": "keep part of the free AI limit for what you're waiting on",
-    "reply_drafts.ask_days": "days between asking whether drafted replies were useful",
-    "reply_drafts.per_day": "the most reply drafts per day",
-    "research.endpoints.arxiv": "arXiv's API address (leave alone)",
-    "research.endpoints.biorxiv": "bioRxiv's API address (leave alone)",
-    "research.endpoints.pubmed": "PubMed's API address (leave alone)",
-    "research.log_when": "when commits are written into your project logs",
-    "research.max_papers": "the most papers in a digest",
-    "retro.max_proposals": "the most changes one look back proposes (it runs at retro.when: nightly by default)",
-    "sources.mix": "the source mix for books and notes: how much each kind counts in answers",
-    "startby.sizes.exam": "days an exam takes to prepare for",
-    "startby.sizes.other": "days other work takes",
-    "startby.sizes.problem_set": "days a problem set takes",
-    "startby.sizes.quiz": "days a quiz takes to prepare for",
-    "startby.sizes.report": "days a report takes",
-    "study.idle_min": "minutes without activity before study time stops counting",
-    "study.sample_s": "seconds between looks at the active window",
-    "subjects.list": "your subjects: name, short names, folder",
-    "subjects.margin_min": "minutes around a class when calls are held",
-    "subjects.no_calls_in_class": "no calls during a class",
-    "subjects.term_note": "the note that holds your term's dates and timetable",
-    "subjects.timetable": "your weekly classes",
-    "telegram.allowed_users": "Telegram accounts that may use the bot (set when you pair)",
-    "telegram.api_base": "Telegram's API address (leave alone)",
-    "telegram.chat_id": "your chat with the bot (set when you pair)",
-    "telegram.silent_kinds": "message kinds sent without a sound",
-    "terminal.font_size": "the Kurooto Terminal's font size",
-    "updates.channel": "stable, or beta for earlier versions",
-    "updates.mode": "night (update by itself), ask (Telegram question) or off",
-    "updates.wait_hours": "hours a new version waits before it's installed",
-    "updates.window": "the hours the automatic update may run",
-    "voice_notes.api_base": "a different address for the voice-note model (empty: Google's)",
-    "voice_notes.model": "the Gemini model that turns voice notes into text",
-    "web.port": "the dashboard's port on this computer",
-    "you.assistant_name": "the name your assistant goes by in messages",
-}
+INTRO = """# Settings guide (the table)
 
-INTRO = """# Settings guide
-
-Every setting Kurooto has, what it does and its default. This file is written by `tools/gen_settings_guide.py` from the
-code, so it is complete; the notes on the left come from the comment beside each setting in the source.
+Every setting Kurooto has, its default and what it does, in one table. This file is written by
+`tools/gen_settings_guide.py` from the code, so it is complete. Each setting's full entry (what it does, its values,
+when you'd change it, what it costs or sends, what it depends on) is in the user wiki's
+[Settings guide](wiki/user/settings-guide.md), grouped by feature; the link after each line goes there.
 
 ## Where settings live, and how to change one
 
 - **The dashboard:** Settings (Alt+S), grouped by feature, with a search box: the core sections (you, notify,
-  availability, updates, brain, ask, look, power, notes, files) and the features that are on. Changes apply at once;
-  most are read again the next time they're used. A few are read only when Kurooto starts (such as `web.port`): for
-  those, restart it with `kurooto stop`, then `kurooto start`. The other core sections (such as `quota`, `health`
-  and `sources`) aren't on that page yet: change them in the file.
+  availability, updates, brain, ask, look, power, notes, files) and the features that are on. Each setting shows what
+  it does under its name; click that line for its whole guide entry. Changes apply at once; most are read again the
+  next time they're used. A few are read only when Kurooto starts (such as `web.port`): for those, restart it with
+  `kurooto stop`, then `kurooto start`. The other core sections (such as `health` and `sources`) aren't on that page
+  yet: change them in the file.
 - **The file:** `settings.json` in Kurooto's config folder (Linux `~/.config/kurooto`, macOS
   `~/Library/Application Support/Kurooto/config`, Windows `%LOCALAPPDATA%\\Kurooto\\config`). It holds only what you changed; delete a
   line to go back to the default. A dotted name such as `brain.main` is the key `main` inside `brain`:
@@ -207,7 +108,33 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 ## Every setting
 """
 
+WIKI_INTRO = """# Settings guide
 
+Every setting Kurooto has, one entry each: what it does, what it can be set to and its default, when you'd change it
+and what changes when you do, what it costs or sends outward, and what it depends on. Grouped by feature; the
+[contents](#contents) below lists the groups.
+
+**Finding one.** On the dashboard, Settings (Alt+S) has a search box that also looks through these entries: type what
+you want ("night", "calls", "battery") rather than a setting's name. Each setting there shows its one-line tip under
+its name; click the tip for the whole entry. In the phone app, long-press a setting for its entry. On this page, your
+browser's find (Ctrl+F) finds a name like `brain.main`.
+
+**Changing one.** On the dashboard's Settings page (a feature's settings appear once it's on), or in `settings.json` in
+Kurooto's config folder (`kurooto paths` says where), which holds only what you changed: a dotted name such as
+`brain.main` is the key `main` inside `brain`, `{"brain": {"main": "agy"}}`, and deleting a line goes back to the
+default. Restart Kurooto after editing the file by hand (`kurooto stop`, then `kurooto start`). A few settings are set
+by Kurooto itself (pairing, the call line's address); their entries say so. Secrets (keys, tokens) are never settings:
+they're in the system keyring.
+
+**Times and schedules.** A time is 24-hour `HH:MM`. A schedule is `daily 07:30` (several times: `daily 07:00,13:00`),
+`weekly sun 19:00`, `hourly`, or `every 15m` / `every 3h`.
+
+This page is written by `tools/gen_settings_guide.py` from Kurooto's code and the guide's source
+(`tools/settings_guide/`), so every setting is here; [the table](../../SETTINGS_GUIDE.md) lists them all on one page.
+"""
+
+
+# ------------------------------------------------------------------------------------------- the settings in the code
 def comments(src: str) -> dict[int, str]:
     out = {}
     for no, line in enumerate(src.splitlines(), 1):
@@ -235,6 +162,7 @@ def flatten(node: ast.Dict, prefix: str, cm: dict[int, str], out: list) -> None:
 
 
 def collect() -> list[tuple[str, object, str]]:
+    """Every setting in the code: (name, default, the comment beside it)."""
     found: dict[str, tuple[object, str]] = {}
     for f in sorted(SRC.rglob("*.py")):
         src = f.read_text(encoding="utf-8")
@@ -258,50 +186,294 @@ def collect() -> list[tuple[str, object, str]]:
     return sorted((k, *v) for k, v in found.items())
 
 
+# ------------------------------------------------------------------------------------------------- the guide's source
+def load() -> list[dict]:
+    """The groups, in their files' order: {id, file, title, intro, page, cost, needs, entries, parents}."""
+    groups = []
+    for f in sorted(GUIDE_SRC.glob("*.toml")):
+        d = tomllib.loads(f.read_text(encoding="utf-8"))
+        gid = re.sub(r"^\d+-", "", f.stem)
+        for key, e in (d.get("s") or {}).items():
+            bad = set(e) - set(FIELDS)
+            if bad:
+                raise SystemExit(f"{f.name}: {key} has fields the guide doesn't know: {sorted(bad)}")
+        groups.append(
+            {
+                "id": gid,
+                "file": f.name,
+                "title": d["title"],
+                "intro": " ".join(d.get("intro", "").split()),
+                "page": d.get("page", ""),
+                "cost": d.get("cost", ""),
+                "needs": d.get("needs", ""),
+                "entries": d.get("s") or {},
+                "parents": d.get("parent") or {},
+            }
+        )
+    return groups
+
+
+def slug(title: str) -> str:
+    """A heading's id, as the site's Markdown makes it (tools/release.py md_html) and GitHub does for these."""
+    return re.sub(r"[^a-z0-9 -]", "", title.lower()).replace(" ", "-")
+
+
+def anchor(key: str) -> str:
+    return slug(f"`{key}`")
+
+
+def _choices() -> dict:
+    sys.path.insert(0, str(SRC.parent))
+    try:
+        from kurooto.core.choices import CHOICES
+    finally:
+        sys.path.pop(0)
+    return CHOICES
+
+
+SCHEDULE = re.compile(r"(daily|weekly|every|hourly)\b")
+
+
+def auto_values(key: str, v: object, choices: dict) -> str:
+    """What a setting can be set to, when its entry doesn't say: from its list of choices, else its default's kind."""
+    if key in choices:
+        return (
+            "One of: "
+            + "; ".join(f"`{c}`" if c == label else f"`{c}` ({label.split(': ', 1)[-1]})" for c, label in choices[key])
+            + "."
+        )
+    if isinstance(v, bool):
+        return "On or off."
+    if isinstance(v, int):
+        return "A whole number."
+    if isinstance(v, float):
+        return "A number."
+    if isinstance(v, str) and SCHEDULE.match(v):
+        return "A schedule: `daily HH:MM` (several: `daily 07:00,13:00`), `weekly sun 19:00`, `hourly` or `every 15m`."
+    if isinstance(v, str) and re.fullmatch(r"\d{1,2}:\d{2}", v):
+        return "A time of day, 24-hour `HH:MM`."
+    if isinstance(v, list):
+        return "A list, typed as JSON."
+    if isinstance(v, dict):
+        return "A JSON object."
+    return "Text."
+
+
+def say_default(v: object) -> str:
+    if v is None:
+        return "none"
+    if v is True:
+        return "on"
+    if v is False:
+        return "off"
+    if v == "":
+        return "empty"
+    if v in ([], {}):
+        return "none"
+    s = v if isinstance(v, str) else json.dumps(v, ensure_ascii=False)
+    return f"`{s if len(s) <= 120 else s[:117] + '…'}`"
+
+
+@functools.cache
+def build() -> tuple[list[dict], dict[str, dict], list[str]]:
+    """(groups, every entry by key, problems). An entry: the source's fields plus its default, values, group and
+    anchor, with the group's cost and needs where it has none."""
+    groups, rows = load(), {k: v for k, v, _w in collect()}
+    choices = _choices()
+    entries: dict[str, dict] = {}
+    problems: list[str] = []
+    for g in groups:
+        for key, e in g["entries"].items():
+            if key in entries:
+                problems.append(f"{key} has two entries ({entries[key]['file']} and {g['file']})")
+                continue
+            phone = key.startswith("app.")
+            if key not in rows and not phone:
+                if not e.get("pending"):
+                    problems.append(
+                        f"{key} ({g['file']}) isn't a setting in the code: renamed or removed? Remove or rename its entry"
+                    )
+                continue
+            for need in ("tip", "when"):
+                if not str(e.get(need, "")).strip():
+                    problems.append(f"{key} ({g['file']}) has no {need}")
+            if phone and "default" not in e:
+                problems.append(f"{key} ({g['file']}) is the phone app's: give its default")
+            v = rows.get(key)
+            entries[key] = {
+                "g": g["id"],
+                "file": g["file"],
+                "tip": " ".join(str(e.get("tip", "")).split()),
+                "what": " ".join(str(e.get("what", "")).split()),
+                "values": " ".join(str(e.get("values") or auto_values(key, v, choices)).split()),
+                "default": " ".join(str(e["default"]).split()) if "default" in e else say_default(v),
+                "when": " ".join(str(e.get("when", "")).split()),
+                "cost": " ".join(str(e.get("cost") or g["cost"]).split()),
+                "needs": " ".join(str(e.get("needs") or g["needs"]).split()),
+                "anchor": anchor(key),
+            }
+    for key in rows:
+        if key not in entries:
+            same = next((e["file"] for k, e in entries.items() if k.split(".")[0] == key.split(".")[0]), "")
+            where = f"tools/settings_guide/{same}" if same else "a file in tools/settings_guide/"
+            problems.append(f"{key} has no entry in the settings guide: add one to {where}")
+    seen: dict[str, str] = {}
+    for key, e in entries.items():
+        if e["anchor"] in seen:
+            problems.append(f"{key} and {seen[e['anchor']]} would share a link ({e['anchor']})")
+        seen[e["anchor"]] = key
+    for g in groups:
+        for p in g["parents"]:
+            if not any(k.startswith(p + ".") for k in entries):
+                problems.append(f"{p} ({g['file']}) groups no settings")
+    return groups, entries, problems
+
+
+def parents(groups: list[dict], entries: dict[str, dict]) -> dict[str, dict]:
+    """The settings the dashboard shows as one box (availability.night): their tip and the settings inside."""
+    out = {}
+    for g in groups:
+        for p, d in g["parents"].items():
+            kids = [k for k in entries if k.startswith(p + ".")]
+            if kids:
+                out[p] = {
+                    "g": g["id"],
+                    "tip": " ".join(str(d.get("tip", "")).split()),
+                    "children": kids,
+                    "anchor": entries[kids[0]]["anchor"],
+                }
+    return out
+
+
+# ------------------------------------------------------------------------------------------------------- the outputs
+def page_title(page: str) -> str:
+    f = WIKI.parent / page.split("#")[0]
+    if f.exists():
+        m = re.search(r"(?m)^# (.+)$", f.read_text(encoding="utf-8"))
+        if m:
+            return re.sub(r"[`*]", "", m[1]).strip()
+    return page.split("#")[0].removesuffix(".md").replace("-", " ").capitalize()
+
+
+def wiki() -> str:
+    groups, entries, _ = build()
+    out = [WIKI_INTRO, "## Contents", ""]
+    live = [(g, [k for k in g["entries"] if k in entries]) for g in groups]
+    for g, keys in live:
+        if keys:
+            out.append(f"- [{g['title']}](#{slug(g['title'])}): {len(keys)} setting{'s' * (len(keys) != 1)}")
+    for g, keys in live:
+        if not keys:
+            continue
+        out += ["", f"## {g['title']}", ""]
+        intro = g["intro"]
+        if g["page"]:
+            intro += f" More in [{page_title(g['page'])}]({g['page']})."
+        if intro:
+            out += [intro.strip(), ""]
+        cost, needs = " ".join(g["cost"].split()), " ".join(g["needs"].split())
+        if cost or needs:  # once for the group; an entry says its own only where it differs
+            out.append("For every setting in this group, unless its entry says otherwise:")
+            out += [""] + ([f"- **Costs and what leaves this computer:** {cost}"] if cost else [])
+            out += [f"- **Depends on:** {needs}"] if needs else []
+            out.append("")
+        for key in keys:
+            e = entries[key]
+            out += ["", f"### `{key}`", "", e["tip"], ""]
+            if e["what"]:
+                out += [e["what"], ""]
+            out.append(f"- **Values:** {e['values']} **Default:** {e['default']}.")
+            out.append(f"- **When to change it:** {e['when']}")
+            if e["cost"] and e["cost"] != cost:
+                out.append(f"- **Costs and what leaves this computer:** {e['cost']}")
+            if e["needs"] and e["needs"] != needs:
+                out.append(f"- **Depends on:** {e['needs']}")
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(wrap(x) for x in out)).rstrip() + "\n"
+
+
+def wrap(line: str) -> str:
+    """A paragraph or list item cut at 120 columns, as the wiki's other pages are (a list item's lines indented)."""
+    if len(line) <= 120 or line.startswith(("#", "|")) or "\n" in line:
+        return line
+    item = line.startswith("- ")
+    return textwrap.fill(
+        line, 120, subsequent_indent="  " if item else "", break_long_words=False, break_on_hyphens=False
+    )
+
+
 def show(v: object) -> str:
     s = json.dumps(v, ensure_ascii=False) if not isinstance(v, str) else json.dumps(v)
     return (s if len(s) <= 60 else s[:57] + "…").replace("|", "\\|")
 
 
 def render() -> str:
-    rows = collect()
+    _, entries, _ = build()
     out = [INTRO]
     section = ""
-    for name, value, why in rows:
+    for name, value, _why in collect():
         top = name.split(".")[0]
         if top != section:
             section = top
             out += ["", f"### `{top}`", "", "| Setting | Default | What it does |", "|---|---|---|"]
-        why = why or NOTES.get(name, "")
+        e = entries.get(name)
+        why = f"{e['tip']} ([guide](wiki/user/settings-guide.md#{e['anchor']}))" if e else ""
         out.append(f"| `{name}` | `{show(value)}` | {why.replace('|', '\\|')} |")
     return "\n".join(out) + "\n"
 
 
-HELP = SRC / "data" / "settings-help.json"
-
-
 def help_json() -> str:
-    """Every setting's one-line explanation, for the dashboard's tooltips: {"section.key": text}."""
-    rows = {name: (why or NOTES.get(name, "")).replace("\\|", "|") for name, _v, why in collect()}
+    """Every setting's tooltip, for the dashboard: {"section.key": text}, with the boxes that hold several."""
+    groups, entries, _ = build()
+    rows = {k: e["tip"] for k, e in entries.items() if not k.startswith("app.")}
+    rows.update({k: p["tip"] for k, p in parents(groups, entries).items() if not k.startswith("app.")})
     return json.dumps(rows, ensure_ascii=False, indent=0, sort_keys=True) + "\n"
 
 
+def full_json() -> str:
+    """Every entry in full, for the dashboard's Settings page and the phone app's long-press."""
+    groups, entries, _ = build()
+    doc = {
+        "page": SITE,
+        "groups": [
+            {"id": g["id"], "title": g["title"], "intro": g["intro"]}
+            for g in groups
+            if any(k in entries for k in g["entries"])
+        ],
+        "settings": {k: {f: v for f, v in e.items() if f != "file" and v} for k, e in sorted(entries.items())},
+        "parents": parents(groups, entries),
+    }
+    return json.dumps(doc, ensure_ascii=False, separators=(",", ":"), sort_keys=True) + "\n"
+
+
+def outputs() -> dict[Path, str]:
+    full = full_json()
+    js = "// Written by tools/gen_settings_guide.py: every setting's guide entry, for Settings (home.js). Don't edit.\n"
+    return {
+        OUT: render(),
+        WIKI: wiki(),
+        HELP: help_json(),
+        FULL: js + "window.KUROOTO_SETTINGS_GUIDE = " + full,
+        APP: full,
+    }
+
+
 def main() -> int:
-    text = render()
+    _, entries, problems = build()
+    if problems:
+        print("The settings guide has problems:\n- " + "\n- ".join(problems), file=sys.stderr)
+        return 1
+    files = outputs()
     if "--check" in sys.argv:
-        if not HELP.exists() or HELP.read_text(encoding="utf-8") != help_json():
-            print(
-                "src/kurooto/data/settings-help.json is out of date: python tools/gen_settings_guide.py",
-                file=sys.stderr,
-            )
-            return 1
-        if not OUT.exists() or OUT.read_text(encoding="utf-8") != text:
-            print("docs/SETTINGS_GUIDE.md is out of date: python tools/gen_settings_guide.py", file=sys.stderr)
+        stale = [p for p, text in files.items() if not p.exists() or p.read_text(encoding="utf-8") != text]
+        if stale:
+            names = ", ".join(str(p.relative_to(ROOT)) for p in stale)
+            print(f"{names} out of date: python tools/gen_settings_guide.py", file=sys.stderr)
             return 1
         return 0
-    OUT.write_text(text, encoding="utf-8")
-    HELP.write_text(help_json(), encoding="utf-8")
-    print(f"wrote {OUT.relative_to(ROOT)}: {text.count('| `')} settings")
+    for p, text in files.items():
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text, encoding="utf-8")
+    print(f"wrote the settings guide: {len(entries)} entries in {len({e['g'] for e in entries.values()})} groups")
     return 0
 
 

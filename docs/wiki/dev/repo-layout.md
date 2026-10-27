@@ -75,7 +75,8 @@ One line per folder or important file. Paths are relative to the repository root
 |---|---|
 | `release.py` | `keygen`, `build`, `sign`, `yank`, `publish` ([release-and-updates.md](release-and-updates.md)) |
 | `privacy_scan.py`, `privacy_allow.txt` | the scanner for secrets and personal data, and the paths exempt from its pattern layer |
-| `gen_settings_guide.py` | writes `docs/SETTINGS_GUIDE.md` from the code (`--check` for CI and tests) |
+| `gen_settings_guide.py` | writes the settings guide (the user wiki's page, `docs/SETTINGS_GUIDE.md`, the dashboard's and the app's help) from the code and `settings_guide/` (`--check` for CI and tests) |
+| `settings_guide/` | the settings guide's source: one TOML file per feature group, an entry per setting (0.8.10) |
 | `update_rehearsal.py` | installs, updates, rolls back and uninstalls with the real installer in a sandbox |
 | `hooks/pre-commit`, `hooks/pre-push` | privacy scan and noreply identity checks (`git config core.hooksPath tools/hooks`) |
 

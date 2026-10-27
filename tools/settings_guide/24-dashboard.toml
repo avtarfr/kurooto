@@ -1,0 +1,111 @@
+title = "Dashboard and terminal"
+page = "dashboard.md"
+intro = """How the dashboard looks and what's on its board: the design, the board, colours, panes, the being, Study mode
+and the talk box; and the Kurooto Terminal, a real terminal window laid out like the dashboard's terminals. Look
+changes show at once (the palette reloads the page)."""
+cost = "Nothing leaves this computer. Fonts and colours come with Kurooto; nothing is fetched."
+needs = "Nothing: the dashboard's own settings, always there."
+
+[s."look.design"]
+tip = "The dashboard's design: new (sans-serif, rounded panes) or classic (the monospace look of 0.5.18)."
+when = "Pick classic if you prefer a terminal look; the board, keys and data are the same in both."
+
+[s."look.board"]
+tip = "The board: Kurooto as one living body (being), three panes on top (three), or STATUS on the left (classic)."
+when = "Pick `three` or `classic` on an older computer or if you'd rather see plain panes."
+
+[s."look.layout"]
+tip = "Dense (everything on one full-screen board) or roomy (bigger panes and type)."
+values = "`dense` (screens 1280 px wide or more; narrower ones get roomy) or `roomy`."
+when = "Pick `roomy` on a small screen or if you want bigger type."
+
+[s."look.palette"]
+tip = "The colours of Kurooto's pages and terminals: its own palettes, your desktop's, or a named theme."
+values = "`kuro`, `rose`, `system` (your desktop's accent and light or dark mode), or a named theme such as a Catppuccin flavour."
+when = "Pick the one you like; the dots under it preview the dashboard's and the light pages' colours. The page reloads to take it."
+
+[s."look.theme_file"]
+tip = "A colours file of your own (a kitty theme, or matugen or pywal JSON) instead of the desktop's."
+values = "A full path, or empty."
+when = "Set it if your desktop's colours come from a file; it switches the palette to `system`. Empty it to stop."
+
+[s."look.panes"]
+tip = "Panes hidden from the dense board: status, systems, notes, terminal."
+values = "A list of pane names; empty: none hidden."
+when = "Hide panes you never look at (the panes menu on the board does the same)."
+
+[s."look.brain_monitor"]
+tip = "BRAIN's part monitor: shown beside the model, or in a drawer behind a tab."
+when = "Pick `drawer` for more room for the model."
+
+[s."look.being_theme"]
+tip = "The being's colours: white light on black, or the page's palette."
+when = "Pick `theme` to have the being match your palette."
+needs = "`look.board` = `being`."
+
+[s."look.being_hints"]
+tip = "The being's hints: what to click and what each part is (H on the board toggles them)."
+when = "Turn them off once you know your way around."
+needs = "`look.board` = `being`."
+
+[s."look.talk_box"]
+tip = "A small box over the board to talk to Kurooto in plain English (Alt+K)."
+when = "Turn it off if you use the terminal or Telegram instead."
+
+[s."look.study_mode"]
+tip = "The dashboard in Study mode: the notes map, the study timer and what's due (Alt+M, `/study mode`)."
+when = "Usually switched with Alt+M rather than here."
+needs = "The Study tracker for the timer's log."
+
+[s."look.projects"]
+tip = "Folders of git repositories the PROJECTS box shows; empty uses Research's repositories."
+values = "A list of full paths."
+when = "Set it if your projects aren't in Research's list."
+
+[s."look.hidden_features"]
+tip = "Features hidden from the Features list (they still run if they're on)."
+values = "A list of feature ids."
+when = "Usually set by hiding a card on the Features page; a search there still finds hidden ones."
+
+[s."look.links_in"]
+tip = "Where links to other sites open: this computer's default browser, or the browser showing the dashboard."
+values = "`default` or `here`."
+when = "Pick `here` if the dashboard runs in a browser that isn't your default."
+
+[s."terminal.tabs"]
+tip = "The Kurooto Terminal's tabs, in order: your AI's program, your shell, Kurooto chat, the log."
+values = "A list of `agent`, `shell`, `chat`, `logs`, and `top`."
+when = "Drop tabs you don't use, or reorder them."
+needs = "Kurooto Terminal."
+
+[s."terminal.top"]
+tip = "Where `kurooto top` goes: a column beside the first tab, a tab of its own, or nowhere."
+needs = "Kurooto Terminal."
+when = "Pick `tab` on a narrow screen."
+
+[s."terminal.shell"]
+tip = "Which shell the terminal runs: fish if you have it, else yours, or one you name."
+values = "`auto`, or a program such as `zsh` or `pwsh`."
+when = "Name your shell if `auto` picks the wrong one."
+needs = "Kurooto Terminal."
+
+[s."terminal.font_size"]
+tip = "The Kurooto Terminal's font size."
+when = "Raise it on a high-resolution screen."
+needs = "Kurooto Terminal."
+
+[s."terminal.kitty"]
+tip = "Linux and macOS: use kitty (yours, or Kurooto's copy); off uses your usual terminal, a window per tab."
+when = "Turn it off if you'd rather not install kitty."
+cost = "Kurooto's copy of kitty is downloaded once, if you don't have one."
+needs = "Kurooto Terminal."
+
+[s."terminal.default"]
+tip = "Make Kurooto Terminal your default terminal (turning it off undoes it)."
+when = "Turn it on if you'd like every new terminal in Kurooto's layout and colours."
+needs = "Kurooto Terminal."
+
+[s."terminal.default_opens"]
+tip = "As your default terminal, what a launch opens: one shell tab, or the whole window."
+needs = "`terminal.default`."
+when = "Pick `layout` to get every tab each time."

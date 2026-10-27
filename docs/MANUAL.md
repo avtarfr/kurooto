@@ -4334,7 +4334,8 @@ changed since keeps your change, and the step says which.
 
 ## Where things are
 
-Every setting, its default and what it does: [SETTINGS_GUIDE.md](SETTINGS_GUIDE.md).
+Every setting, its default and what it does: the user wiki's [settings guide](wiki/user/settings-guide.md) (one entry per
+setting, grouped by feature), or all of them in one table: [SETTINGS_GUIDE.md](SETTINGS_GUIDE.md).
 
 `kurooto paths` prints them. By default:
 

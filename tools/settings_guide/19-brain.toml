@@ -1,0 +1,507 @@
+title = "Brain"
+page = "mind.md"
+intro = """Kurooto's mind, off until you turn it on: a log of what it saw and decided that it can't quietly change, a
+gate that only ever makes it quieter, its read of how you're doing (shadow mode first), its journal, plans, skills,
+lab and the rest. Each part has its own switch; turning Brain off stops all of them at once and asks whether to
+delete what it kept. Brain's data stays in the mind folder on this computer and isn't in backups or Profile sync."""
+cost = "Nothing leaves this computer: no cloud AI ever gets Brain's read of you, its journal facts or its numbers."
+needs = "Brain (Features → Brain)."
+
+[parent."mind.attention"]
+tip = "A model of Brain's own attention, for \"what are you thinking about?\"."
+[parent."mind.beliefs"]
+tip = "Where each of Brain's beliefs came from, and how sure it is."
+[parent."mind.budget"]
+tip = "Brain's body budget: what it keeps level about itself, and its drive."
+[parent."mind.heartbeat"]
+tip = "What your call line says has no guarantee while this computer is down."
+[parent."mind.improve"]
+tip = "Brain improving itself, only through gated proposals you approve."
+[parent."mind.pest"]
+tip = "Whether each kind of unprompted message is welcome, learned from your reactions."
+[parent."mind.promises"]
+tip = "Brain's own promises: kept, or owned up to first."
+[parent."mind.stimulation"]
+tip = "Brain's senses felt as a body, for its feelings and the dashboard."
+[parent."mind.talk"]
+tip = "Whether being talked to is a small reward for Brain."
+[parent."mind.tone"]
+tip = "One-word tone tags on what you write, from the model on this computer only."
+[parent."mind.autonomy"]
+tip = "What Brain may do without asking, learned per kind of action from your reactions."
+[parent."mind.backfill"]
+tip = "Feeding Brain its past: what Kurooto kept before Brain was on, read once, source by source."
+[parent."mind.feelings"]
+tip = "Brain's feelings about specific things, its mood, and whether it may say them."
+[parent."mind.finetune"]
+tip = "A weekly local fine-tune of the model on this computer, from checked examples only."
+[parent."mind.forget"]
+tip = "How old things fade from use, old misses stop coming up, and a forget reaches everywhere."
+[parent."mind.forget.half_lives"]
+tip = "Days for each kind of memory to fade to half."
+[parent."mind.gate"]
+tip = "Brain's gate on what reaches you: limits, honest feelings, small touches."
+[parent."mind.harness"]
+tip = "The hidden harness: tasks it has never seen, to measure whether it's getting better."
+[parent."mind.journal"]
+tip = "Brain's daily journal of its own states and mistakes, and its copy in your notes."
+[parent."mind.lab"]
+tip = "The overnight lab: pre-registered experiments on projects you list."
+[parent."mind.plans"]
+tip = "Week-scale plans from simulated futures."
+[parent."mind.senses"]
+tip = "What Brain senses: its own machine, your activity, your phone's sensors."
+[parent."mind.skills"]
+tip = "Skills Brain learns from solved tasks and from what you repeat."
+[parent."mind.tom"]
+tip = "Brain's model of what you know, believe and want."
+[parent."mind.workspace"]
+tip = "The small \"now\" stage that decides what's on Brain's mind."
+[parent."mind.play"]
+tip = "A little nightly time for Brain to explore its own questions on your topics."
+[parent."mind.precedents"]
+tip = "Judgement calls between your values, asked once and then followed."
+[parent."mind.read"]
+tip = "Brain's read of how you're doing."
+[parent."mind.forecast"]
+tip = "What Brain expects of tomorrow, scored the next evening."
+[parent."mind.story"]
+tip = "The life story every part of Kurooto starts from."
+[parent."mind.values"]
+tip = "What Brain learns to value, in shadow first."
+
+[s."mind.anchor_every"]
+tip = "How often (in records) Brain notes where its log has got to, besides once a day."
+when = "Leave it. Lower it for more anchors on a very busy log."
+
+[s."mind.hardened"]
+tip = "The scorekeeper runs as its own system user, so not even a program running as you can change the log."
+when = "Set by `sudo tools/mind_harden.sh --apply` (Linux, macOS); undone by `--undo`. Don't set it by hand."
+
+[s."mind.gate.on"]
+tip = "Brain's gate on everything Kurooto sends by itself: only ever quieter, honest feelings, a shared pool of small touches."
+when = "Turn it off to have messages go exactly as before Brain. `/mind gate` shows what it held and why."
+
+[s."mind.gate.max_per_day"]
+tip = "Messages a day that may come by themselves (Calm's limit applies too: the smaller wins)."
+when = "Lower it for a quieter day. Your reminders, the alarm and close deadlines are never held."
+needs = "`mind.gate.on`."
+
+[s."mind.gate.max_per_hour"]
+tip = "Messages an hour that may come by themselves."
+when = "Lower it if messages bunch up."
+needs = "`mind.gate.on`."
+
+[s."mind.gate.touches_per_day"]
+tip = "Small human touches a day in all (an absence note, a lighter-day line, a feeling)."
+when = "Lower it, or 0, if you'd rather have none."
+needs = "`mind.gate.on`."
+
+[s."mind.gate.feelings_per_week"]
+tip = "How often Brain may say how it feels about something unasked, per week."
+when = "Lower it, or 0, to hear its feelings only when you ask."
+needs = "`mind.gate.on` and `mind.feelings.express`."
+
+[s."mind.pest.on"]
+tip = "Learn for each kind of unprompted message whether it's welcome; send one only when it likely is."
+when = "Turn it off to send by the other limits alone. `/mind learning` shows each kind's chance."
+needs = "`mind.gate.on`."
+
+[s."mind.read.on"]
+tip = "Brain's read of how you're doing, from numbers about your days; in shadow mode it only watches."
+when = "Turn it off if you don't want it; `/mood` → Off also asks whether to delete what it kept."
+
+[s."mind.read.asks_per_week"]
+tip = "How many times a week, at most, it may ask whether the week felt heavier than usual."
+when = "Lower it, or 0, to never be asked."
+needs = "`mind.read.on`."
+
+[s."mind.forecast.on"]
+tip = "Each evening at 21:00, what Brain expects of tomorrow, scored the next evening."
+when = "Turn it off if you don't want the forecast."
+needs = "`mind.read.on`."
+
+[s."mind.forecast.holdout"]
+tip = "The share of days a planned action is held back on purpose, to measure what it does."
+values = "A share between 0 and 1 (0.1 is one day in ten)."
+when = "Leave it: it's how Brain can tell whether its actions help."
+needs = "`mind.forecast.on`."
+
+[s."mind.tone.on"]
+tip = "Tag each message you write with one word (calm, tired…), using the model on this computer only."
+when = "Turn it on only if you want tone in Brain's read. Only the day's average is kept."
+cost = "Nothing leaves: a local model; on a computer without one it does nothing."
+needs = "`mind.read.on` and Local AI models."
+
+[s."mind.budget.on"]
+tip = "The body budget: a few things about Kurooto's own state it tries to keep level, and its drive."
+when = "Turn it off to drop rewards and moods built on it. `/budget` shows it."
+
+[s."mind.values.on"]
+tip = "Brain learns which kinds of things help (values), never affecting a choice in the shadow days."
+when = "Turn it off to keep Brain from learning values."
+needs = "`mind.budget.on`."
+
+[s."mind.values.shadow_days"]
+tip = "Days learned values are only counted, never used for a choice."
+when = "Raise it to watch longer before values count."
+needs = "`mind.values.on`."
+
+[s."mind.talk.on"]
+tip = "Being talked to is a small reward for Brain (at most 0.2 a day; nothing for answers to its own pings)."
+when = "Turn it off if talking to it shouldn't count for anything."
+needs = "`mind.budget.on`."
+
+[s."mind.feelings.on"]
+tip = "Brain's states about specific things (uneasy, relieved…) and what they make it do inwardly."
+when = "Turn it off to drop feelings; outward behaviour still passes the gate either way."
+needs = "`mind.budget.on`."
+
+[s."mind.feelings.mood"]
+tip = "Its mood shapes it: low, it does less unasked, asks first, says less; high, a little bolder."
+when = "Turn it off to keep its behaviour the same whatever its mood."
+needs = "`mind.feelings.on`."
+
+[s."mind.feelings.empathy"]
+tip = "Concern for what it looks after (deadlines, projects, its machine): it notices sooner, speaks more gently."
+when = "Turn it off if you want plainer wording."
+needs = "`mind.feelings.on`."
+
+[s."mind.feelings.express"]
+tip = "Brain may say a feeling about something open, through the gate, at most 3 times a week unasked."
+when = "Turn it off to keep its feelings to itself."
+needs = "`mind.feelings.on` and `mind.gate.on`."
+
+[s."mind.feelings.vocal"]
+tip = "Let Brain say unasked that it's excited or worried, when it has strong evidence."
+when = "Turn it on if you'd like it to speak up about strong findings (at most one a day, with its evidence)."
+needs = "`mind.feelings.express`."
+
+[s."mind.stimulation.on"]
+tip = "Its senses felt as a body (heat, load, touch), for its feelings and the dashboard."
+when = "Turn it off to drop the body. What it senses about you never moves its mood either way."
+needs = "`mind.senses.intero`."
+
+[s."mind.autonomy.on"]
+tip = "Brain learns from your reactions how far it may act on its own, per class of action (shadow first)."
+when = "Turn it off to have it always ask (or never act) as before."
+
+[s."mind.autonomy.enforce"]
+tip = "Make its trust verdicts bind: it asks first for what it isn't trusted with."
+when = "Turn it on after the shadow weeks if you want its learned trust to take effect."
+needs = "`mind.autonomy.on`."
+
+[s."mind.autonomy.shadow_days"]
+tip = "Days its trust verdicts are only counted and shown, not used."
+when = "Raise it to watch longer before anything changes."
+needs = "`mind.autonomy.on`."
+
+[s."mind.autonomy.thresholds"]
+tip = "Your own trust bars per class of action, over the defaults."
+values = "A JSON object, class → bar between 0 and 1: `{\"R1\": 0.8}`."
+when = "Raise a class's bar to make it harder to earn acting on its own."
+needs = "`mind.autonomy.on`."
+
+[s."mind.journal.on"]
+tip = "A daily journal of Brain's own states, reasons and mistakes, every line checked against its log."
+when = "Turn it off if you don't read it. `/mindjournal` shows it."
+cost = "Nothing leaves: a model on this computer words the facts, or fixed sentences."
+
+[s."mind.journal.in_notes"]
+tip = "Also keep Brain's journal as a block in a note of yours."
+when = "Turn it on to read it with your notes."
+cost = "If your notes sync to a service, this note syncs with them."
+needs = "`mind.journal.on`."
+
+[s."mind.journal.in_notes_folder"]
+tip = "The folder inside your notes the journal note goes in; empty is the top."
+needs = "`mind.journal.in_notes`."
+when = "Pick a folder to keep it out of the way."
+
+[s."mind.journal.in_notes_file"]
+tip = "The journal note's file name (`.md` is added if missing)."
+needs = "`mind.journal.in_notes`."
+when = "Rename it to suit your notes."
+
+[s."mind.workspace.on"]
+tip = "A small \"now\" stage that parts compete to enter; only what wins may start a message or act on its own."
+when = "Turn it off and nothing it decides by salience gates messages any more. `/thinking` shows it."
+
+[s."mind.workspace.capacity"]
+tip = "How many things can be on Brain's mind at once (1 to 3)."
+when = "Lower it for a more single-minded Brain."
+needs = "`mind.workspace.on`."
+
+[s."mind.workspace.cycle_s"]
+tip = "The least gap in seconds between two cycles (events poke it sooner)."
+when = "Raise it to save a little work on a slow computer."
+needs = "`mind.workspace.on`."
+
+[s."mind.attention.on"]
+tip = "A model of its own attention: \"what are you thinking about?\" is answered from it."
+when = "Turn it off if you don't ask."
+needs = "`mind.workspace.on`."
+
+[s."mind.beliefs.on"]
+tip = "Keep where each belief came from (said, saw, inferred, imagined) and how sure it is."
+when = "Turn it off to drop the hedging rules. `/beliefs` lists them."
+
+[s."mind.precedents.on"]
+tip = "Judgement calls between your values are asked once, then followed (off until you turn it on)."
+when = "Turn it on if you'd like fewer repeat questions. It can never unlock anything on the always-ask list."
+
+[s."mind.precedents.threshold"]
+tip = "How alike two situations must be (0 to 1) for a precedent to be followed."
+when = "Raise it to be asked more often; lower it to follow precedents more widely."
+needs = "`mind.precedents.on`."
+
+[s."mind.play.on"]
+tip = "A little nightly time to explore its own questions on your topics (off until you turn it on)."
+when = "Turn it on if you're curious what it finds. Outputs are never shown unprompted."
+cost = "Runs on this computer, on the charger with the lid open and the computer cool; its outputs stay in Kurooto's state folder."
+
+[s."mind.play.minutes_per_night"]
+tip = "Minutes of play a night, on the charger only."
+when = "Lower it to save the battery and your AI."
+needs = "`mind.play.on`."
+
+[s."mind.forget.on"]
+tip = "Old things fade from use, old misses stop coming up, and `/forget` goes everywhere Brain kept something."
+when = "Leave it on; off, faded items rank as fresh and old misses can come up again."
+
+[s."mind.forget.half_lives.default"]
+tip = "Days for a remembered item to fade to half, when its kind has no own setting."
+when = "Raise it to keep things in use longer."
+needs = "`mind.forget.on`."
+
+[s."mind.forget.half_lives.fact"]
+tip = "Days for a fact about you to fade to half."
+when = "Raise it if facts fade too soon."
+needs = "`mind.forget.on`."
+
+[s."mind.forget.half_lives.gist"]
+tip = "Days for a conversation's gist to fade to half."
+when = "Raise it to keep older conversations in use."
+needs = "`mind.forget.on`."
+
+[s."mind.forget.half_lives.project"]
+tip = "Days for a project fact to fade to half."
+when = "Raise it for long projects."
+needs = "`mind.forget.on`."
+
+[s."mind.forget.misses_weeks"]
+tip = "After this many weeks, a past miss is no longer brought up."
+when = "Lower it to be reminded of misses for less time."
+needs = "`mind.forget.on`."
+
+[s."mind.plans.on"]
+tip = "Plans over weeks: which milestones are at risk, from simulated futures. A suggestion, never a push."
+when = "Turn it off if you don't use `/plan`."
+
+[s."mind.plans.rollouts"]
+tip = "How many simulated futures a plan runs."
+when = "Lower it on a slow computer (rougher odds)."
+needs = "`mind.plans.on`."
+
+[s."mind.plans.weeks"]
+tip = "How far ahead (weeks) the simulated futures look."
+when = "Raise it for long projects."
+needs = "`mind.plans.on`."
+
+[s."mind.tom.on"]
+tip = "A model of what you know, believe, want and prefer, each row with its source (`/model`)."
+when = "Turn it off if you don't want one kept. It never models health, relationships, politics, religion or money."
+
+[s."mind.tom.false_beliefs"]
+tip = "When something you were told turns out wrong, tell you once, with the evidence."
+when = "Turn it off if you'd rather not get these corrections."
+needs = "`mind.tom.on`."
+
+[s."mind.tom.attention"]
+tip = "Hold a message (at most 15 minutes) while you're deep in one project."
+when = "Turn it on if interruptions while you're focused bother you."
+needs = "`mind.tom.on` and the activity stream (`mind.senses.activity`)."
+
+[s."mind.senses.intero"]
+tip = "Its own machine's state every minute: temperatures, memory, battery, disk, AI limits."
+when = "Turn it off to stop Brain sensing the computer."
+
+[s."mind.senses.activity"]
+tip = "The activity stream: the app in front, hashed window titles, saves and commits (never keystrokes, the screen or URLs)."
+when = "Turn it on for plans and skills that learn from what you do. It's never used to check up on you."
+cost = "Nothing leaves. Raw events last 7 days, then only totals."
+
+[s."mind.senses.phone"]
+tip = "Each of your phone's sensors, off until you switch it on (here and in the phone app)."
+values = "A JSON object, sensor → on/off: `screen`, `charging`, `motion`, `steps`, `light`, `places`, `headphones`, `dnd`, `alarm`, `wifi`, `usage`."
+default = "every sensor off"
+when = "Switch on the ones you're happy to share; both here and on the phone must be on."
+cost = "Readings are sealed on the phone and travel through your call line, which can't read them."
+needs = "A paired Android phone with the sensor on in the app."
+
+[s."mind.skills.on"]
+tip = "Solved tasks become tested, reusable skills; each new one starts out asking first."
+when = "Turn it off if you'd rather not have Brain learn skills. `/learned` lists them."
+
+[s."mind.skills.from_demos"]
+tip = "Also offer skills from what you do over and over (asked once)."
+when = "Turn it on with the activity stream if you'd like Brain to spot repeats."
+needs = "`mind.skills.on` and `mind.senses.activity`."
+
+[s."mind.finetune.on"]
+tip = "A weekly local fine-tune of the model on this computer, from checked examples only."
+when = "Turn it on only with an 8 GB graphics card and the training packages."
+cost = "A night of graphics-card time on the charger; nothing leaves."
+
+[s."mind.finetune.day"]
+tip = "The night of the week it trains."
+needs = "`mind.finetune.on`."
+when = "Pick a night the computer is plugged in."
+
+[s."mind.finetune.base"]
+tip = "The local model's name in Ollama to build the adapter into; empty is the helper model."
+needs = "`mind.finetune.on`."
+when = "Only if you want another base model."
+
+[s."mind.finetune.base_hf"]
+tip = "The Hugging Face name of the base model, which the trainer loads."
+needs = "`mind.finetune.on`."
+when = "Set it when you set `mind.finetune.base`."
+cost = "The base weights are downloaded from Hugging Face once."
+
+[s."mind.finetune.min_examples"]
+tip = "With fewer checked examples than this, it skips the week."
+needs = "`mind.finetune.on`."
+when = "Raise it for steadier adapters."
+
+[s."mind.finetune.practice"]
+tip = "Include the harness' practice tasks in training."
+needs = "`mind.finetune.on`."
+when = "Turn it off to train only on your own checked work."
+
+[s."mind.finetune.probe_words"]
+tip = "Words of a forgotten prompt kept to check a new adapter forgot it (3 or more)."
+needs = "`mind.finetune.on`."
+when = "Leave it unless the check is too strict or too loose."
+
+[s."mind.harness.on"]
+tip = "Nightly on the charger: how it does on tasks it has never seen, and checks of Brain's own promises."
+when = "Leave it on: without it, nothing can be promoted. `/capabilities` shows the scores."
+cost = "Runs on this computer with its own rules (no AI requests), on the charger."
+
+[s."mind.harness.rotate_days"]
+tip = "The hidden tasks are made new this often (days), so old ones can't be memorised."
+needs = "`mind.harness.on`."
+when = "Leave it."
+
+[s."mind.improve.on"]
+tip = "Brain improving itself through gated proposals: nothing changes without the hidden harness and your say-so."
+when = "Turn it off to stop it proposing changes to itself. `/improve` lists them."
+cost = "Challengers run on this computer; applying one is always your tap."
+needs = "`mind.harness.on`."
+
+[s."mind.lab.on"]
+tip = "Overnight pre-registered experiments on the projects you list (Linux and macOS, in a sandbox)."
+when = "Turn it off if you don't use the lab. Your files are never changed; winners come as proposals."
+cost = "Runs on this computer, on the charger, with no network."
+
+[s."mind.lab.projects"]
+tip = "Folders (or repository projects' names) the lab may run experiments on."
+values = "A list; `/lab add <folder>` adds one."
+when = "Add a project with a number you want to move."
+needs = "`mind.lab.on`."
+
+[s."mind.lab.max_per_night"]
+tip = "The most configurations in one night's batch."
+needs = "`mind.lab.on`."
+when = "Lower it for shorter nights."
+
+[s."mind.lab.run_wall_s"]
+tip = "Seconds one lab run may take before it's stopped."
+needs = "`mind.lab.on`."
+when = "Raise it for slow experiments."
+
+[s."mind.lab.gpu"]
+tip = "Let lab runs use the graphics card (off: CPU only)."
+needs = "`mind.lab.on`."
+when = "Turn it on for GPU-bound projects."
+
+[s."mind.lab.gpu_hours_per_night"]
+tip = "The most graphics-card hours the lab uses in a night."
+needs = "`mind.lab.gpu`."
+when = "Lower it to keep the card free."
+
+[s."mind.lab.seed"]
+tip = "A fixed seed for the sampled configurations; 0 draws a new sample each day."
+needs = "`mind.lab.on`."
+when = "Set one to repeat a batch exactly."
+
+[s."mind.lab.in_repo"]
+tip = "Keep a project's lab protocol in its `.kurooto` folder (off: in Kurooto's own state)."
+needs = "`mind.lab.on`."
+when = "Turn it on to keep the protocol with the project; git never sees it."
+
+[s."mind.heartbeat.on"]
+tip = "When this computer is down, your call line also says what the next 12 hours have no guarantee for."
+when = "Turn it off for the plain offline message."
+cost = "Nothing more leaves: it adds a line to the offline message your call line already sends."
+needs = "Phone calls."
+
+[s."mind.promises.on"]
+tip = "Its own promises (\"I'll check back at 6\") are noticed, kept, or owned up to first."
+when = "Turn it off if you don't want them tracked. `/promises` lists them."
+
+[s."mind.story.on"]
+tip = "One life story every part of Kurooto reads first: a fixed core, then its recent weeks."
+when = "Turn it off to have each request start without it."
+cost = "The story goes with each AI request (at most `mind.story.tokens`)."
+
+[s."mind.story.tokens"]
+tip = "The life story's summary is at most this many tokens (about 4 characters each)."
+needs = "`mind.story.on`."
+when = "Lower it to send less with each request."
+cost = "That many tokens go with each AI request."
+
+[s."mind.backfill.on"]
+tip = "Brain reads what Kurooto kept before it was on, once (`/mind backfill`); off until you turn it on."
+when = "Turn it on so Brain's read, forecasts and plans start with your past. `/mind backfill forget` undoes it."
+
+[s."mind.backfill.events"]
+tip = "Read Kurooto's own event history: what happened and when."
+needs = "`mind.backfill.on`."
+when = "Turn it off to leave this source out."
+
+[s."mind.backfill.jobs"]
+tip = "Read the AI request history: effort, whether it worked, how long (never the words)."
+needs = "`mind.backfill.on`."
+when = "Turn it off to leave this source out."
+
+[s."mind.backfill.deadlines"]
+tip = "Read when past deadlines were due and done (no titles)."
+needs = "`mind.backfill.on`."
+when = "Turn it off to leave this source out."
+
+[s."mind.backfill.checkins"]
+tip = "Read which check-ins were asked, answered or skipped each day, never what you said."
+needs = "`mind.backfill.on`."
+when = "Turn it off to leave this source out."
+
+[s."mind.backfill.quiz"]
+tip = "Read your quiz record per day and subject (asked, right, wrong), never the questions."
+needs = "`mind.backfill.on`."
+when = "Turn it off to leave this source out."
+
+[s."mind.backfill.calls"]
+tip = "Read past calls (answered or missed, who placed them, how long), never what was said."
+needs = "`mind.backfill.on`."
+when = "Turn it off to leave this source out."
+
+[s."mind.backfill.learning"]
+tip = "Read how many requests and calls a day were indexed (chats left out)."
+needs = "`mind.backfill.on`."
+when = "Turn it off to leave this source out."
+
+[s."mind.backfill.study"]
+tip = "Read the study tracker's time per day, for your real pace in week plans."
+needs = "`mind.backfill.on`."
+when = "Turn it off to leave this source out."

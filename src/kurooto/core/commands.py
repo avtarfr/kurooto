@@ -281,6 +281,8 @@ def section(app: App, g: Group, on: list[Module], offs: bool) -> str:
     out = [f"{g.title} (more: {wiki(g.page)})", *lines]
     if said:
         out += ["Just say:", *(f"- {s}" for s in dict.fromkeys(said))]
+    if g.key == "settings":  # the settings guide (0.8.10): every setting, what it does and when you'd change it
+        out.append(f"Every setting explained, one entry each: {wiki('settings-guide')}")
     if offs:
         off = [m for m in app.modules.values() if group_of(m.id) == g and m not in on and m.title]
         for m in off:

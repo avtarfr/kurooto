@@ -1,0 +1,197 @@
+title = "Your AI"
+page = "ai-brains.md"
+intro = """Which AI answers your requests, what stands in when it can't, how long it may work, how the free limits are
+kept for what you're waiting on, and the small offline helper. Everything an AI does goes through the AI you chose
+here; a request's words go to that AI's service, and nowhere else."""
+cost = "Requests go to the AI you chose (agy and Claude Code through their own programs; a Gemini key to Google; Ollama stays on this computer). Changing these settings decides which of them is asked, not how much is sent."
+needs = "Nothing: core settings. The dashboard's AI step on the setup page and `kurooto ai` change the main ones with their checks."
+
+[parent."brain.timeout_min"]
+tip = "Minutes a request may run before it's stopped, for quick, normal and hard requests."
+[parent."brain.agy"]
+tip = "How Kurooto talks to the agy program."
+
+[s."brain.main"]
+tip = "The AI that answers your requests and does the bigger tasks."
+values = "`agy`, `claude`, `gemini` (a key), `ollama` (on this computer), `custom`, or an extra Claude account `claude:<name>`. Empty until setup picks one."
+when = "When you switch AI programs or subscriptions. The next request goes to the new one; requests already running finish where they are. The setup page's AI step does the same with a test first, which is the safer way."
+cost = "Your requests' words, the files you attach and the notes a request needs go to this AI's service (nothing for `ollama`). Its free limit or subscription is what's used."
+needs = "The program or key for that AI (setup installs and signs in). `brain.fallback` covers it when it can't answer."
+
+[s."brain.fallback"]
+tip = "Which AI takes over when your main one can't answer, in order."
+values = "One AI's id, a list in order such as `[\"agy\", \"gemini\"]`, or empty for the automatic order: at a limit, the other agent program, then a Gemini key."
+when = "When you have a second AI you'd rather use as the stand-in, or none you want used. Empty is right for most people."
+cost = "A request that falls back sends the same words to the stand-in's service."
+needs = "`brain.fallback_on` decides what counts as \"can't answer\"."
+
+[s."brain.fallback_on"]
+tip = "What makes a request move on to the stand-in AI: a limit, a sign-in problem or a timeout."
+values = "A list of `rate_limited`, `auth`, `timeout`; `[]` never falls back."
+when = "Add `timeout` if your main AI is often slow, `auth` if its sign-in often lapses. Empty it if you'd rather wait than have another AI answer."
+needs = "`brain.fallback`."
+
+[s."brain.classify"]
+tip = "Who decides how hard a request is (and so how much effort it gets)."
+values = "`rules` (no AI), `main` (asks your AI first), or `ollama` (a model on this computer)."
+when = "`rules` is quick and free. Pick `ollama` if you have a local model and the rules misjudge your requests; `main` costs one small extra request each time."
+cost = "`main` sends each request's text to your AI once more, to rate it; `rules` and `ollama` stay here."
+
+[s."brain.timeout_min.low"]
+tip = "Minutes a quick request may run before it's stopped."
+when = "Raise it if quick requests get cut off on a slow connection; lower it to give up sooner on stuck ones."
+
+[s."brain.timeout_min.medium"]
+tip = "Minutes a normal request may run before it's stopped."
+when = "Raise it if ordinary requests (reading a few notes, a short write-up) get cut off."
+
+[s."brain.timeout_min.high"]
+tip = "Minutes a hard request may run before it's stopped."
+when = "Raise it for long jobs (a whole chapter, a big project change) that get cut off; a stopped request says so and can be asked again."
+
+[s."brain.models"]
+tip = "Which model each AI uses at each effort level, where you want other than its preset."
+values = "A JSON object per AI, e.g. `{\"custom\": {\"low\": \"...\", \"medium\": \"...\", \"high\": \"...\"}}` or `{\"claude\": {\"high\": \"opus\"}}`."
+when = "When you want a cheaper or stronger model at one level. Settings doesn't show it: the AI step on the setup page and `kurooto ai` set it, with a test."
+
+[s."brain.base_urls"]
+tip = "Another address for an AI's service, in place of its preset."
+values = "A JSON object, e.g. `{\"custom\": \"http://localhost:8000/v1\"}`."
+when = "Only for `custom` (an OpenAI-style server of your own) or a proxy. Set through the setup page's AI step, which tests it."
+cost = "Requests go to the address you give, so make sure it's one you trust."
+
+[s."brain.claude_accounts"]
+tip = "Your extra Claude accounts, each its own AI you can pick (`claude:<name>`)."
+values = "Set by Kurooto when you add an account: `{\"work\": {\"name\": \"Work\"}}`."
+when = "Add one on the setup page (AI → Claude Code → Add another Claude account) or with `kurooto ai add-claude NAME`; rename or remove it in Settings → Claude accounts. Don't edit it by hand."
+
+[s."brain.effort_map"]
+tip = "Effort changes Dreaming learned for your requests, e.g. low ones run at medium."
+values = "A JSON object from one effort to another: `{\"low\": \"medium\"}`."
+when = "Set by Dreaming's nightly replay, one change at a time with Undo. Empty it to go back to the efforts as rated."
+needs = "Dreaming with `dreaming.tune_effort` on."
+
+[s."brain.fallback_first"]
+tip = "Effort levels at which your first stand-in AI is tried before the main one (learned by Dreaming)."
+values = "A list of `low`, `medium`, `high`."
+when = "Set by Dreaming when its replay shows the stand-in does better at a level. Empty it to always start with the main AI."
+needs = "Dreaming with `dreaming.tune_fallbacks` on, and a `brain.fallback`."
+
+[s."brain.agy.io_mode"]
+tip = "How Kurooto talks to the agy program: through a pipe, or a pseudo-terminal."
+when = "Only if agy runs but Kurooto gets no output from it (some versions buffer when piped): try `pty`."
+needs = "agy as your main or fallback AI."
+
+[s."quota.on"]
+tip = "Keep part of each AI's free limit for what you're waiting on, so background work never uses it all."
+what = "Background work (digests, nightly reading) waits once a day's count reaches `quota.background_pct` of a known limit. Your own requests never wait."
+when = "Turn it off on a paid plan with room to spare: background work then never waits. Counting and the usage line stay."
+cost = "Nothing: counts and times only, in quota.json on this computer."
+
+[s."quota.background_pct"]
+tip = "The share of an AI's daily limit background work may use before it waits for the reset."
+values = "A percentage, 0 to 100."
+when = "Lower it if you run out before evening; raise it if background work waits while you hardly use the AI yourself."
+cost = "Nothing: counts and times only, in quota.json on this computer."
+needs = "`quota.on`."
+
+[s."quota.limits"]
+tip = "Your own daily limits per AI, which win over the ones Kurooto learned."
+values = "A JSON object: `{\"agy\": 900, \"gemini:gemini-flash-latest\": 250}`."
+when = "When you know your plan's real limit and the learned one is wrong. Kurooto then keeps its reserve against your number."
+cost = "Nothing: counts and times only, in quota.json on this computer."
+needs = "`quota.on`."
+
+[s."quota.soft"]
+tip = "Whether a limit Kurooto only measured makes background work wait, or is just shown."
+values = "`learned` (a limit learned from its own count is a measure only), `all` (Google's numbers too), `off` (every known limit keeps its reserve, as before 0.7.5)."
+when = "Pick `off` if background work keeps using up your day before you need the AI. A \"limit reached\" answer always pauses that AI until its reset, whatever this says."
+cost = "Nothing: counts and times only, in quota.json on this computer."
+needs = "`quota.on`."
+
+[s."quota.local"]
+tip = "What a model on this computer takes over to spare the free limit."
+values = "`quick` (only the \"how hard is this\" question), `background` (queued background work too, instead of waiting), `off`."
+when = "`background` keeps digests coming on a tight limit, written by a smaller model (weaker). `off` if you have no local model."
+cost = "Nothing leaves: the local model runs here; it uses this computer's memory and graphics card while it works."
+needs = "Local AI models on, with a model installed."
+
+[s."jobs.receipt"]
+tip = "One quiet line under each answer: which AI, effort, time, limit used and what it did."
+when = "Turn it off if you don't care which AI answered. Nothing else changes; the AI jobs page keeps the same record."
+cost = "Nothing."
+
+[s."jobs.plan_line"]
+tip = "Before a long answer, one short line saying what it's about to do and roughly how long."
+what = "Only when your last requests of the same kind took more than about 20 seconds. Never on a call."
+when = "Turn it off if you'd rather get just the answer."
+cost = "Nothing: worked out from what's known before the request runs."
+
+[s."jobs.stuck_min"]
+tip = "Minutes a request may sit with no AI at work and no program running before the watchdog stops it."
+when = "Raise it if long-thinking requests are stopped while they're still fine; lower it to free a stuck queue sooner. A stopped request says so."
+cost = "Nothing."
+
+[s."agents.export"]
+tip = "Which other AI programs get your skills as slash commands, so /journal works there too."
+values = "A list of `agy`, `agents` (Copilot CLI and others that read ~/.agents) and `claude` (Claude Code); empty: none."
+when = "Add a program you use directly. Its skills folder gets a copy of each skill (marked as Kurooto's; yours are never touched), kept up to date every hour. Emptying it removes every copy Kurooto made."
+cost = "Nothing leaves: files written into those programs' own skills folders on this computer."
+needs = "Those programs installed. `kurooto export-skills on|off` changes it too."
+
+[s."agents.prefix"]
+tip = "A prefix put before every skill copied into your other AI programs, e.g. `k-` for /k-journal."
+values = "Short text, or empty."
+when = "When a copied skill's name clashes with one of the program's own commands. The copies are renamed within the hour."
+cost = "Nothing."
+needs = "`agents.export`."
+
+[s."agents.scripts"]
+tip = "Scripts of your own the AI programs may run during a request (full paths)."
+values = "A list of full paths."
+when = "When you want a request to be able to use a tool you wrote (say, `make-figures`). Everything else stays refused; add only scripts you trust to run unattended."
+cost = "The scripts run as you on this computer when the AI calls them; what they do is up to them."
+needs = "agy or Claude Code as the AI."
+
+[s."local_helper.on"]
+tip = "A small model on this computer (about 1 GB) for quick decisions and as a stand-in while the internet is down."
+what = "It rates how hard a request is, picks between close readings of a short message and reads a short yes/no. Never answers your requests while you're online."
+when = "Turn it on (or `/helper on`) on a computer without a graphics card when the free limit runs short or the internet often drops. It only stays on if it passes a speed test here."
+cost = "One download from Ollama's registry (about 1 GB of disk). Nothing else leaves; it uses some memory while it runs."
+needs = "Ollama (installed for you)."
+
+[s."local_helper.model"]
+tip = "Which Ollama model the offline helper uses; empty picks the standard small one."
+values = "An Ollama model name, or empty."
+when = "Only if you want a different small model; it must still pass the speed test."
+cost = "Downloads that model from Ollama's registry."
+needs = "`local_helper.on`."
+
+[s."local_helper.timeout_s"]
+tip = "Seconds a quick decision waits for the helper before the rules decide instead."
+when = "Raise it on a slow computer if the helper keeps timing out; the rules are always the fallback."
+cost = "Nothing."
+needs = "`local_helper.on`."
+
+[s."local_helper.max_s"]
+tip = "How fast the helper must answer in its speed test (seconds), or it stays off."
+when = "Raise it to let a slower computer use the helper anyway; decisions will feel slower."
+cost = "Nothing."
+needs = "`local_helper.on`."
+
+[s."local_helper.offline"]
+tip = "With the internet down: quick things answered here, AI requests wait in the queue until it's back."
+what = "You're told once that a request waits; when the connection is back, one line says what's running. Nothing is dropped silently."
+when = "Turn it off to have requests fail at once while offline instead of waiting."
+cost = "Nothing: nothing extra is pinged to find out the connection is down."
+
+[s."local_helper.hold_h"]
+tip = "Hours a request waits for the internet before it gives up and says so."
+when = "Lower it if old requests coming back much later would be useless; raise it for long trips offline."
+cost = "Nothing."
+needs = "`local_helper.offline`."
+
+[s."local_helper.offer"]
+tip = "Offer the offline helper once if your free limit keeps running short or the internet often drops."
+when = "Turn it off if you never want to be asked. `/helper on` works either way."
+cost = "Nothing: one message with Install / Not now, two weeks after setup, and only when it fits."

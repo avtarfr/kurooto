@@ -64,6 +64,25 @@ body.home { color-scheme: dark;
 .form legend { color: var(--lav); font-size: 12px; }
 .form label { margin: 6px 0; font: 12px var(--mono); display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 .form .help { font-size: 11.5px; margin: -4px 0 6px; }
+/* the settings guide under each setting: its tip on one line, the whole entry when opened (0.8.10) */
+.form fieldset:has(details.set-guide) { min-width: 0; } /* a fieldset grows to its widest line otherwise */
+.form details.set-guide { margin: -4px 0 6px; font-size: 11.5px; color: var(--dim); }
+.form details.set-guide > summary { display: flex; gap: 4px; cursor: pointer; list-style: none; }
+.form details.set-guide > summary::-webkit-details-marker { display: none; }
+.form details.set-guide > summary > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.form details.set-guide > summary::after { content: "\203A"; flex: none; color: var(--lav); transition: transform .15s; }
+.form details.set-guide[open] > summary { color: var(--fg); }
+.form details.set-guide[open] > summary > span { white-space: normal; }
+.form details.set-guide[open] > summary::after { transform: rotate(90deg); }
+.form .sg-body { margin: 4px 0 2px; padding-left: 8px; border-left: 1px solid var(--line); line-height: 1.45; }
+.form .sg-body p { margin: 0 0 6px; }
+.form .sg-body dl { margin: 0; }
+.form .sg-body dt { color: var(--lav); font-size: 10.5px; letter-spacing: .04em; }
+.form .sg-body dd { margin: 0 0 6px; color: var(--fg); overflow-wrap: anywhere; }
+.form .sg-body code { font: inherit; }
+.form .sg-kid { margin: 0 0 8px; color: var(--fg); }
+.form .sg-kid .sg-def { color: var(--dim); }
+.form .sg-more { color: var(--lav); }
 .form .swatch-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .form .swatch-row span { margin: 0 2px 0 6px; }
 .form .swatch-row span:first-child { margin-left: 0; }

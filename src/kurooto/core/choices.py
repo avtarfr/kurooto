@@ -48,7 +48,10 @@ CHOICES: dict[str, list[list[str]]] = {
     "integrate.order": [["smallest", "smallest: fewest pages first"], ["name", "name"]],
     "integrate.rerank": [["auto", "auto"], ["off", "off"]],
     "look.design": [["new", "new"], ["classic", "classic: the monospace look of 0.5.18"]],
-    "mail_digest.confidential": [["count", "count: only how many"], ["hide", "hide"], ["skip", "skip"]],
+    "mail_digest.confidential": [
+        ["count", "count: only how many"],
+        ["local", "local: summarised by a model on this computer"],
+    ],
     "mind.finetune.day": DAYS,
     "privacy.egress": [
         ["record", "record: count every request"],

@@ -1,0 +1,182 @@
+title = "Reminders, deadlines and start-by dates"
+page = "reminders-and-deadlines.md"
+intro = """The deadline list and how it chases what's due (a message a day before, a call or urgent message six hours
+before, "Overdue?" after), where deadlines come from (your notes, Classroom, the calendar, the term note, photos), and
+start-by dates worked back from your free time. Start-by is local arithmetic: no AI."""
+cost = "Nothing leaves this computer beyond the messages and calls themselves (Telegram, the phone app, your call line)."
+needs = "The Deadlines feature."
+
+[parent."startby.sizes"]
+tip = "Hours each kind of deadline takes, used to work out when to start it."
+
+[s."deadlines.ping_h"]
+tip = "Hours before a deadline that its first nudge comes (one message, with Done / Not mine / Snooze)."
+when = "Raise it to hear about deadlines earlier; lower it if a day's notice is too early to act."
+
+[s."deadlines.urgent_h"]
+tip = "Hours before a deadline that it's urgent: a call (with Phone calls) or an urgent message."
+when = "Raise it if six hours isn't enough to finish things; lower it if the urgent nudge comes too early."
+
+[s."deadlines.call"]
+tip = "The urgent nudge is a call, when Phone calls is on (a message when no call fits before it)."
+when = "Turn it off to get a message instead of a call."
+needs = "Phone calls."
+
+[s."deadlines.plan_h"]
+tip = "How far ahead \"due soon\" looks, in hours: the morning plan, /status and calls."
+when = "Raise it to see the week's deadlines every morning; lower it to see only the next day or two."
+
+[s."deadlines.overdue_check"]
+tip = "After a deadline's due time: \"Overdue?\" with Done / New date / Drop."
+when = "Turn it off if you'd rather let past deadlines drop quietly."
+
+[s."deadlines.tick_notes"]
+tip = "Done ticks the `- [ ]` line in your notes when the deadline came from one."
+when = "Turn it off if Kurooto shouldn't change your task lines."
+cost = "Nothing leaves: it changes only that checkbox."
+needs = "`deadlines.scan_notes`."
+
+[s."deadlines.scan_notes"]
+tip = "Find deadlines in your notes: dated `- [ ]` tasks."
+when = "Turn it off if your notes' dated tasks aren't deadlines you want chased."
+
+[s."deadlines.skip_notes"]
+tip = "Notes or folders the deadline scan leaves alone."
+values = "A list of note paths or folders inside your notes."
+when = "Add an ideas list or an archive whose dates aren't due dates."
+needs = "`deadlines.scan_notes`."
+
+[s."deadlines.max_files"]
+tip = "The most notes read when looking for deadlines (notes over 1 MB are skipped)."
+when = "Raise it if you have a very large notes folder and some tasks are missed; lower it on a slow computer."
+needs = "`deadlines.scan_notes`."
+
+[s."deadlines.from_calendar"]
+tip = "Calendar events that look like deadlines or exams join the deadline list."
+when = "Turn it off if your calendar's events aren't deadlines."
+needs = "The Calendar feature."
+
+[s."deadlines.from_term_note"]
+tip = "The term note's quizzes, exams and deadlines join the deadline list."
+when = "Turn it off if you keep that list elsewhere."
+needs = "Subjects and timetable, with a term note (`/term note`)."
+
+[s."deadlines.from_photos"]
+tip = "Send a photo with the caption \"dates\" and its dates come back as buttons to add."
+when = "Turn it off if you never send notice-board photos."
+cost = "The photo goes to your AI to read its dates."
+
+[s."deadlines.recurring"]
+tip = "Recurring quizzes (from kurooto/recurring.md in your notes) become dated deadlines."
+when = "Turn it off if you don't keep a recurring quizzes table."
+
+[s."deadlines.horizon_days"]
+tip = "How far ahead recurring quizzes become dated deadlines, in days."
+when = "Lower it to keep the list short; raise it to see a whole term ahead."
+needs = "`deadlines.recurring`."
+
+[s."deadlines.exam_mode_days"]
+tip = "Days before a quiz or exam that exam mode starts (more practice, revision); 0 turns it off."
+when = "Raise it if you start revising earlier; 0 if you don't want exam mode."
+needs = "Quiz for the practice it brings."
+
+[s."deadlines.meeting_brief"]
+tip = "The evening before a meeting with a project's person: a short brief of where things stand."
+values = "A schedule such as `daily 20:00`; empty: off."
+when = "Move it to when you prepare for the next day; empty it to stop the briefs."
+cost = "One AI request per brief, with that project's notes."
+needs = "Help with your project, with meetings logged in a project note."
+
+[s."startby.horizon_days"]
+tip = "Deadlines due this far ahead (in days) get a start-by date."
+when = "Raise it to plan big deadlines further ahead."
+needs = "Start-by dates."
+
+[s."startby.window"]
+tip = "The hours of each day that count as free time for planning deadlines."
+values = "`HH:MM-HH:MM`; an end before the start runs past midnight."
+when = "Set it to the hours you actually work. A window you set is never moved by the learning."
+needs = "Start-by dates."
+
+[s."startby.learn_window"]
+tip = "Once a week, move the window to when you're actually up, with one line and Undo."
+when = "Turn it off to keep the window fixed. It never changes one you set yourself."
+needs = "Start-by dates."
+
+[s."startby.share"]
+tip = "The share of your free time (in %) that goes to deadlines; the rest is for everything else."
+when = "Raise it if start-by dates come too late for you; lower it if they come too early."
+needs = "Start-by dates."
+
+[s."startby.min_gap_min"]
+tip = "Gaps between classes and events shorter than this (minutes) don't count as free time."
+when = "Lower it if you do get work done in short gaps."
+needs = "Start-by dates."
+
+[s."startby.sizes.problem_set"]
+tip = "Hours a problem set or homework takes."
+when = "Change it if your problem sets take more or less than an evening. A size you tap in \"Time to start\" overrides it for that one."
+needs = "Start-by dates."
+
+[s."startby.sizes.report"]
+tip = "Hours a report, essay, project or presentation takes."
+when = "Change it to how long such work really takes you."
+needs = "Start-by dates."
+
+[s."startby.sizes.quiz"]
+tip = "Hours to prepare for a quiz."
+when = "Change it to how long you really revise for a quiz."
+needs = "Start-by dates."
+
+[s."startby.sizes.exam"]
+tip = "Hours to prepare for an exam, unless its subject has its own."
+when = "Change it, or set per subject in `startby.exam_by_subject` (the first exam of a subject asks you)."
+needs = "Start-by dates."
+
+[s."startby.sizes.other"]
+tip = "Hours any other deadline takes."
+when = "Change it if your other deadlines are usually bigger or smaller."
+needs = "Start-by dates."
+
+[s."startby.exam_by_subject"]
+tip = "Hours to prepare for a subject's exams, where it differs from the usual."
+values = "A JSON object, subject → hours: `{\"linear-algebra\": 25}`."
+when = "Answer the question at a subject's first exam, or use `/startby exam la 2-3 days`."
+needs = "Start-by dates."
+
+[s."startby.ask_exams"]
+tip = "The first time a subject has an exam, ask how long its exams take you to prepare for."
+when = "Turn it off if the usual exam size is fine for every subject."
+needs = "Start-by dates."
+
+[s."startby.when"]
+tip = "When the day's \"Time to start\" messages come (they wait out quiet hours)."
+when = "Move it to when you plan your day."
+needs = "Start-by dates."
+
+[s."startby.tell"]
+tip = "A message on a deadline's start-by day (only when that's two days or more before it's due)."
+when = "Turn it off to see start-by dates only in the morning plan and /startby."
+needs = "Start-by dates."
+
+[s."startby.crunch_weeks"]
+tip = "Weeks the Sunday summary looks ahead for crunch weeks (more work due than free time); 0: none."
+when = "Raise it to see trouble further ahead; 0 to drop the crunch-week line."
+needs = "Start-by dates and the Weekly summary."
+
+[s."startby.negotiate"]
+tip = "A deadline that keeps slipping gets a reshaped plan once a day instead of the same reminder again."
+when = "Turn it off if you'd rather keep the plain reminders."
+needs = "Start-by dates."
+
+[s."reminders.places"]
+tip = "Location reminders: \"remind me when I reach the library to …\"."
+when = "Turn it on to use places you saved in the Android app."
+cost = "Where your places are never leaves the phone; the computer and call line only see their names."
+needs = "Reminders and the Android app, with places saved in it."
+
+[s."date_offers.remind_min"]
+tip = "An event you tap Add on (from a photo, mail or a shared calendar) is reminded this long before."
+values = "Minutes."
+when = "Change it to how much warning you like for such events."
+needs = "Reminders."

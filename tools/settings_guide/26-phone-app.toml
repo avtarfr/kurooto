@@ -1,0 +1,160 @@
+title = "The phone app's own settings"
+page = "phone-app.md"
+intro = """Settings that live on the phone itself, in the Android app's Settings, not on your computer: how the app
+looks, its ringtones, bedside mode, location reminders, and the senses it may share. Long-press any of them in the
+app for its entry here."""
+cost = "Nothing: these stay on the phone, except the senses, which go sealed to your computer when you switch them on."
+needs = "The Android app, paired with your computer."
+
+[s."app.vivid"]
+tip = "Vivid colours from your wallpaper; off uses the wallpaper's quieter colours (Calm)."
+default = "on"
+when = "Turn it off for a quieter app."
+
+[s."app.floatingBar"]
+tip = "The navigation bar floats above the screen; off, it sits on the bottom edge."
+default = "on"
+when = "Turn it off if the floating bar covers things you want to tap."
+
+[s."app.moving"]
+tip = "The moving background; off, a still picture."
+default = "on"
+when = "Turn it off to save battery or if motion bothers you (Android's Remove animations stops it too)."
+
+[s."app.newCallScreen"]
+tip = "The new call screen; off, the call screen from before 0.8.7."
+default = "on"
+when = "Turn it off only if the new screen misbehaves on your phone."
+
+[s."app.direct"]
+tip = "Connect straight to your call line; off, calls and messages come through ntfy.sh only."
+default = "on"
+when = "Turn it off only if the straight connection keeps dropping on your network."
+cost = "Off, wake-up pushes (no content) go through ntfy.sh."
+
+[s."app.viewMode"]
+tip = "Which view the Views tab opens on."
+values = "`systems` or `notes` (the Notes map)."
+default = "`systems`"
+when = "Pick the one you look at most."
+needs = "`calls.views` on your computer."
+
+[s."app.callTone"]
+tip = "The ringtone for Kurooto's calls; empty is the phone's default."
+values = "A ringtone picked from the phone's list."
+default = "the phone's default ringtone"
+when = "Pick one you'll recognise as Kurooto."
+
+[s."app.alarmTone"]
+tip = "The tone for the wake-up alarm; it plays on the alarm stream, so it rings even on silent."
+values = "A tone picked from the phone's list."
+default = "the phone's default alarm"
+when = "Pick one loud enough to wake you."
+
+[s."app.bedsideAuto"]
+tip = "Open bedside mode by itself while charging between the hours you set."
+default = "off"
+when = "Turn it on for a phone that lives on a charger by your bed."
+
+[s."app.bedsideFrom"]
+tip = "When bedside mode may start opening by itself."
+values = "A time `HH:MM`."
+default = "`22:00`"
+when = "Set it to when you go to bed."
+needs = "`app.bedsideAuto`."
+
+[s."app.bedsideTo"]
+tip = "When bedside mode stops opening by itself."
+values = "A time `HH:MM`."
+default = "`07:00`"
+when = "Set it to when you get up."
+needs = "`app.bedsideAuto`."
+
+[s."app.bedsideKeepOn"]
+tip = "Keep the screen on while bedside mode is open and charging."
+default = "on"
+when = "Turn it off to let the screen sleep; bedside mode still dims at night."
+
+[s."app.places.on"]
+tip = "Location reminders: \"remind me when I reach the library\" for the places you saved."
+default = "off"
+when = "Turn it on (Places) and save your places on the phone."
+cost = "Where your places are never leaves the phone; your computer only sees their names."
+needs = "`reminders.places` on your computer, and location permission."
+
+[s."app.senses.screen"]
+tip = "Share when the screen is on and how often you unlock (counts only)."
+default = "off"
+when = "Switch it on if you want Brain's timing to know when you're on your phone."
+cost = "Sealed with this phone's key, through your call line, every 15 minutes."
+needs = "Brain on your computer, with `mind.senses.phone` for this sensor."
+
+[s."app.senses.charging"]
+tip = "Share whether the phone is charging."
+default = "off"
+when = "Switch it on to help Brain tell night from day."
+cost = "Sealed with this phone's key, through your call line."
+needs = "Brain, with `mind.senses.phone`."
+
+[s."app.senses.motion"]
+tip = "Share whether you're still, walking or in a vehicle (worked out on the phone)."
+default = "off"
+when = "Switch it on so messages wait while you're on the move."
+cost = "Sealed with this phone's key; the accelerometer's readings never leave the phone."
+needs = "Brain, with `mind.senses.phone`; the physical activity permission."
+
+[s."app.senses.steps"]
+tip = "Share your steps a day."
+default = "off"
+when = "Switch it on if you'd like steps in Brain's picture of your day."
+cost = "Sealed with this phone's key, through your call line."
+needs = "Brain, with `mind.senses.phone`; the physical activity permission."
+
+[s."app.senses.light"]
+tip = "Share the room's light: dark, dim or bright."
+default = "off"
+when = "Switch it on to help Brain notice lights-out."
+cost = "Sealed with this phone's key, through your call line."
+needs = "Brain, with `mind.senses.phone`."
+
+[s."app.senses.places"]
+tip = "Share arriving at and leaving your saved places (by name)."
+default = "off"
+when = "Switch it on so Brain knows when you're home or out."
+cost = "Only the place's name, sealed; where it is never leaves the phone."
+needs = "Brain, with `mind.senses.phone`; places saved in the app."
+
+[s."app.senses.headphones"]
+tip = "Share whether headphones are connected."
+default = "off"
+when = "Switch it on to help timing (a call is fine with headphones in, say)."
+cost = "Sealed with this phone's key, through your call line."
+needs = "Brain, with `mind.senses.phone`."
+
+[s."app.senses.dnd"]
+tip = "Share whether Do Not Disturb is on."
+default = "off"
+when = "Switch it on so messages wait while your phone is on Do Not Disturb."
+cost = "Sealed with this phone's key, through your call line."
+needs = "Brain, with `mind.senses.phone`."
+
+[s."app.senses.alarm"]
+tip = "Share when your next phone alarm is."
+default = "off"
+when = "Switch it on if you set alarms on the phone itself rather than with Kurooto."
+cost = "Sealed with this phone's key, through your call line."
+needs = "Brain, with `mind.senses.phone`."
+
+[s."app.senses.wifi"]
+tip = "Share which Wi-Fi you're on, as a code made on the phone, never its name."
+default = "off"
+when = "Switch it on, then tell Kurooto once what a code is (`/senses wifi label <code> home`)."
+cost = "Only the code, sealed; Android asks for location to read the Wi-Fi name, which stays on the phone."
+needs = "Brain, with `mind.senses.phone`; location permission."
+
+[s."app.senses.usage"]
+tip = "Share your total screen time a day, never per app."
+default = "off"
+when = "Switch it on if you'd like it in Brain's picture of your day."
+cost = "Only the day's total, sealed, through your call line."
+needs = "Brain, with `mind.senses.phone`; Usage access in Android's settings."

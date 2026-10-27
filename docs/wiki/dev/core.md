@@ -40,8 +40,9 @@ Contents: [settings](#settings) · [secrets](#secrets) · [paths](#paths-and-the
   daemon can overwrite each other's concurrent `set`. Change settings in the daemon (the API's `POST /api/settings` or a module
   method), not by editing the file while it runs.
 - Sections and where they are registered (the full list with every key and default is generated into
-  `docs/SETTINGS_GUIDE.md` by `tools/gen_settings_guide.py`; `tests/unit/test_settings_guide.py` fails when it's stale,
-  so regenerate it after adding or changing a setting):
+  `docs/SETTINGS_GUIDE.md` and the user wiki's settings guide by `tools/gen_settings_guide.py`, from the code and
+  `tools/settings_guide/`; `tests/unit/test_settings_guide.py` fails when it's stale or a setting has no entry, so add the
+  entry and regenerate after adding or changing a setting; see "The settings guide" below):
 
 | Section | Registered in |
 |---|---|
@@ -1548,9 +1549,28 @@ Official colours moved to reach AA (everything else is exactly as published):
 ## Setting choices and tooltips (0.8.0)
 
 `core/choices.py` (`CHOICES`, `for_section`) lists the settings whose valid values are known (about 25); the API's
-`_settings()` merges them in as drop-downs. `tools/gen_settings_guide.py` also writes `src/kurooto/data/settings-help.json`
-(each setting's `register_defaults` comment, with `NOTES` entries for the ones without), and the API adds per-section `tips`
-(`_tips()`), which `home.js` puts on each label as a tooltip. A test (`test_every_setting_has_a_tooltip`) fails if a new
-setting has no comment, so write one when you register it, then run the generator. Some defaults only register after their
+`_settings()` merges them in as drop-downs.
+
+**The settings guide (0.8.10).** Every setting has an entry in `tools/settings_guide/NN-<group>.toml`, one file per
+feature group (the file's `title`, `intro`, `page`, and the group's `cost` and `needs`), one table each:
+`[s."brain.main"]` with `tip` (the tooltip: one sentence for a person, not the code comment), `when` (when you'd change
+it and what changes), and where they add something `what`, `values`, `cost`, `needs`, `default` (for computed defaults).
+`values` is worked out from `core/choices.py` or the default's type when it's left out, and `cost`/`needs` fall back to the
+group's. `[parent."availability.night"] tip` explains a box of several settings (the dashboard shows those as one JSON box).
+The phone app's own settings are `app.<Prefs key>` with an explicit `default`. A setting another branch is adding can be
+written ahead with `pending = "<why>"`. `tools/gen_settings_guide.py` reads that and `collect()` (every
+`register_defaults` call) and writes: `docs/wiki/user/settings-guide.md` (the guide, grouped, an anchor per setting),
+`docs/SETTINGS_GUIDE.md` (the one-table view, each line linked to its entry), `src/kurooto/data/settings-help.json`
+(`{"section.key": tip}` plus the boxes, which the API's `_tips()` sends per section as `tips`),
+`src/kurooto/web/static/settings-guide.js` (every entry, as `window.KUROOTO_SETTINGS_GUIDE`, for the Settings page: a
+script because `server.static()` serves no `.json`) and `android/assets/settings-help.json` (the same entries, for
+`SettingHelp.kt`). `--check` fails on a setting with no entry, an entry with no `tip` or `when`, an entry for a setting
+that's gone, or a stale file; `tests/unit/test_settings_guide.py` also checks that no tip is the code comment copied.
+So: register the setting with a comment, add its entry to the group file the error names, run the generator.
+
+`home.js` (`renderSettings`) loads `settings-guide.js` once when Settings opens and puts each setting's tip under it as a
+`<details class="set-guide">` line that opens the whole entry, with a link to its anchor on the site's wiki page; the
+search box (`settingsFind`) searches the entries too and opens one whose match is only inside it. A test
+(`test_every_setting_has_a_tooltip`) fails if a setting has no tooltip. Some defaults only register after their
 module is imported (`core.autostart`, `core.infer`, `core.palette`, `web.server`, `web.api`); the test imports them.
 `deadlines.skip_notes` (notes or folders the notes scan leaves alone) is one such setting.

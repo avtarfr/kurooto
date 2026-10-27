@@ -1,0 +1,37 @@
+title = "Privacy and what it keeps"
+page = "privacy.md"
+intro = """Where Kurooto may reach on the internet, how long it keeps transcripts, requests and chats, and the one-line
+gists conversations settle into as their words fade. Every request Kurooto makes is counted by host; `/egress` shows
+them. These settings only ever keep less or reach less."""
+cost = "Nothing: these settings decide what is kept and where requests may go; they send nothing themselves."
+needs = "Nothing: core settings, always there."
+
+[s."privacy.egress"]
+tip = "Count every request Kurooto makes on the internet, also refuse hosts not on the list, or neither."
+values = "`record` (count everything; a host not on the list is counted and still reached), `enforce` (refuse such hosts, naming them and how to allow them), `off`."
+when = "Look at `/egress` for a while on `record`, allow what you trust, then switch to `enforce`. Add-ons by link are fenced to their own hosts in every mode."
+
+[s."privacy.allow_hosts"]
+tip = "More hosts Kurooto may reach, besides its list and the addresses you set up yourself."
+values = "A list of host names: `[\"feeds.example.org\"]`; `.example.org` allows all of it."
+when = "Add a host `/egress` shows as not on the list and that you trust, before turning on `enforce`."
+cost = "Kurooto may reach those hosts."
+
+[s."privacy.keep_days"]
+tip = "Transcripts, AI requests and answers, chats and logs are deleted after this many days; 0 keeps them."
+values = "Days; 0: kept until you `/forget`."
+when = "Set it (say, 30) if you don't want old conversations kept. Other features' own retention follows it where they say so."
+
+[s."privacy.keep_gist"]
+tip = "As a conversation's words fade, it settles into one line of what it decided (`/gists`)."
+when = "Turn it off to keep nothing once the words are gone."
+
+[s."privacy.gist_days"]
+tip = "Gists are deleted after this many days; 0 keeps them until you `/forget all`."
+when = "Set it if even one-line gists shouldn't be kept for long."
+needs = "`privacy.keep_gist`."
+
+[s."privacy.gist_model"]
+tip = "A model on this computer adds a sentence to a call's gist."
+when = "Turn it on for richer call gists; it never uses a cloud AI."
+needs = "`privacy.keep_gist` and Local AI models."
