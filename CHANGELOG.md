@@ -2,10 +2,6 @@
 
 ## 0.8.16 (unreleased)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 - **Voice no longer crashes Kurooto.** Turning listening off, muting, or a microphone that came and went could close
   the microphone's sound stream while the listening thread was still reading it, and the whole of Kurooto died (a
   segmentation fault in the sound library, seen several times a day with PipeWire). Each sound stream is now opened,
@@ -16,7 +12,6 @@
   is read through `pw-record`, separate programs, so a sound driver problem can't take Kurooto down, and listening
   follows your system's default microphone. `voice.audio.backend`: `auto` (the default; PortAudio when
   `voice.listen.device` names a sounddevice microphone, or without PipeWire), `pipewire` or `portaudio` (as before).
-=======
 - **The phone app's call screen, in the call too.** 0.8.7 redrew only the ringing screen, so every answered call, every
   call you placed from the app and every call answered from the notification still showed the call line's old dark
   green page. The call itself now has the app's style (Phone tab → Switches → **New call screen**, on): Kurooto's badge
@@ -28,8 +23,6 @@
 - **Reading a chat on the dashboard clears the phone's badge.** The app kept its own unread counts and ignored your
   computer's, so a chat read on the dashboard's Chat page (or another phone) stayed unread on the phone. It now takes
   the computer's read marks: its badge and notification for that chat clear too, never marking anything newer as read.
->>>>>>> f/v0816-call
-=======
 - **Voice answers sooner, and tells you it heard.** A spoken turn used to wait for your AI's whole answer before the
   first word was made; now, when your AI can stream (Claude Code, a Gemini key, Ollama without tools), each sentence is
   spoken as soon as it's written, the first one alone so its sound is made quickly (`voice.speak.stream`). The moment a
@@ -43,8 +36,6 @@
   general questions that need nothing of yours to the model on this computer, `fastest` to whichever AI answered
   quickest lately; anything that mentions your things, the time, the web or an action still goes to your AI. `same`
   (the default) changes nothing.
->>>>>>> f/v0816-fast
-=======
 - **Brain's trust decides more of what it proposes.** A study block from the morning line, moving part of a slipping
   deadline's work to tomorrow, a revision pack the evening before an exam, and keeping the quiz cards and
   how-to-help-me lines it wrote at night: below the trust bar for their class it asks with the same buttons as before,
@@ -60,8 +51,6 @@
   the register's 2 to 4 sentences, plus the question its buttons answer; digests, lists, answers and anything exempt
   stay whole (`mind.register.templates`). The nightly voice learning now waits for the machine like Brain's own heavy
   work.
->>>>>>> f/v0816-brain
-=======
 - **The dashboard works in a narrow window.** Under 1280 px wide (a window tiled to half a 1920 screen) the dashboard
   uses the roomy layout, and since BRAIN joined the board its grid pushed NOTES and the pages into extra rows: on a long
   page such as Features, STATUS, SYSTEMS and BRAIN got no height and NOTES sat alone in a narrow strip. Roomy now places
@@ -69,9 +58,6 @@
   the board it shows there too, in place of SYSTEMS and BRAIN, beside NOTES and STATUS. A narrow BRAIN pane keeps its
   region panel as a drawer, a window too short for the panes scrolls, and under 900 px they stack. The dense board
   (1280 px and wider) is unchanged.
->>>>>>> f/v0816-dash
-
-## 0.8.15 (unreleased)
 
 - **The phone app's Memory page is as sharp as the dashboard's.** It drew at 1.5 pixels per point and stretched that
   over the phone's denser screen, so notes and their links came out as soft blobs; it now draws at the screen's own
@@ -84,7 +70,6 @@
   Kurooto in the open chat exactly as one typed in the app, and your phones show it as yours. Opening a chat marks it
   read on your computer. It shows what the app's chat holds (not Telegram, Voice or the talk box), needs Phone calls,
   and nothing new leaves your computer. `look.chat_page`.
-
 
 - **Brain is one being.** One status stream (focus, asleep, how many messages are held, the one deadline it's uneasy
   about, its own mood and arousal; enums and numbers only) feeds the dashboard's being, the phone's Views and add-ons.
@@ -103,7 +88,6 @@
   (Settings, setup, the wiki); Brain is Kurooto's mind. Setup has an optional step, "Let it grow an inner life", that
   turns Brain on with a plain explanation.
 
-
 - **Brain dreams about the day.** Each night it offers, in the morning message, 1 to 3 quiz cards for concepts you
   studied that day and are ready for next (written by the model on your computer from your own note), 1 to 3 lines for
   your how-to-help-me note from the day's outcomes (what you undid, what went unanswered, when you told Voice off), and
@@ -118,7 +102,6 @@
   day, never in a class or while you're asleep. `mind.checkins.surprise`. Add-ons can weigh what's on screen by
   `kurooto.mind.frontier.score`.
 
-
 - **Kurooto sleeps.** With Brain on, it sleeps while you do and doesn't talk unless woken (`mind.sleep.on`). Its night
   follows yours: bedtime to the alarm, else the night hours, refined by your phone when its screen, light and charging
   sensors are on (asleep early, up late, up early). Asleep, what it starts by itself waits for the morning; reminders and
@@ -130,7 +113,6 @@
   week's contention minutes.
 - **Something sudden is felt at once.** A phone pickup, something close to an add-on's device or a loud room gives an
   orienting jolt: arousal at once and a fresh look at what's on its mind (`mind.stimulation.jolt`).
-
 
 - **One door for what Kurooto says by itself.** With Brain on, check-ins, Calm's small touches, research watch,
   Dreaming's results, feelings said aloud and add-on ideas now bid at the workspace, and only winners are sent. A
@@ -1374,7 +1356,6 @@ The phone app, rebuilt around chat (the Rail design), and the remaining requeste
 
 ## 0.5.0 (2026-10-20)
 Includes everything planned for 0.4.0 (below), which wasn't released on its own.
-
 
 **Kurooto keeps itself working** (on by default; `health.on`)
 - Every feature that's on has one health check: how often it should work (Classroom within 26 h, Calendar 12, Notes
