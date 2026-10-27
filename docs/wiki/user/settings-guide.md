@@ -7002,7 +7002,7 @@ The moving background; off, a still picture.
 
 ### `app.newCallScreen`
 
-The new call screen; off, the call screen from before 0.8.7.
+The new call screen (ringing and, since 0.8.16, the call itself); off, the call screens from before 0.8.7.
 
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off only if the new screen misbehaves on your phone.

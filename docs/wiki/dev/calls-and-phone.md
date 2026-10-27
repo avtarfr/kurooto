@@ -548,7 +548,13 @@ ones only, forgotten after 3 hours). Working is sent when a message started an A
 Telegram's "/" menu (`/help`, each feature's commands that's on, the core ones, skills), at most 100. Sent to the line
 after every session change (`chat-sessions`); the line pushes `{"kind": "sessions", "srev", "sessions"?, "tags":
 ["stop", "sessions"]}` (the list inline when it's small; never `commands`: fetch `GET /chat?sessions=1`). A `read`
-change goes only to the phones connected straight to the line. The line updates `last` and `updated` itself with each
+change goes only to the phones connected straight to the line (the others get it with their next `GET /chat?…
+&sessions=1`). `read` is the id of the newest message read on the computer's side (the dashboard's Chat page, or a
+phone's `read` op). Since 0.8.16 the app takes it: `Chat.setSessions` and `Chat.putAll` (a mark may name a message
+that only now arrived) run `takeReadMarks`, which moves the phone's own mark (`read` in `chat.json`, a local number
+`ln`) forward to that message's `ln` when the phone has it in that session (`ChatRules.readMarks`, pure Java,
+`test/ChatTest.java`), never back; a session left with nothing of Kurooto's unread loses its notification
+(`ChatNotes.cancel`). Before, the app kept its own marks only, so reading on the dashboard didn't clear its badges. The line updates `last` and `updated` itself with each
 message, so the computer doesn't push the list per message. Titles: the first message's first 6 words (40
 characters; a file's name when there are none); with `calls.chat_titles` = `"ai"`, after the first answer a quiet,
 text-only, low-effort request writes one (`then` action `calls.chat_title`). A title you set (`session.new` with
@@ -1075,12 +1081,44 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     `onDestroy`. `Prefs.newCallScreen` (Phone tab → Switches → **New call screen**, default on), read in `onCreate`, picks
     the screen: on, `EdgeToEdge.enable` with dark bars and `CallScreen.kt` (`ringing()`: always dark over `Sky` at 0.6, a
     turning, breathing `Cookie9Sided` badge, still with reduced motion, `displaySmallEmphasized` caller, and
-    Decline/Later/Answer as 64dp expressive buttons in a floating pill; `page()`: the WebView's `FrameLayout` in an
-    `AndroidView`, padded by the system bars' insets on `k_call_bg`); off, the framework screen from before 0.8.7
-    (`showRingingClassic`, the `fitsSystemWindows` frame). The decision of what an intent does, the ringing words,
-    which replies reach the line and `withAuto` are `CallRules` (pure Java, `test/CallRulesTest.java`). Dev/debug `demo`:
-    a made-up ring with no link; its buttons send nothing and Answer shows a stand-in page (no script, no microphone, no
-    audio changes).
+    Decline/Later/Answer as 64dp expressive buttons in a floating pill; `call()`, 0.8.16, below); off, the framework
+    screen from before 0.8.7 (`showRingingClassic`, the `fitsSystemWindows` frame with the call page itself). The
+    decision of what an intent does, the ringing words, which replies reach the line and `withAuto` are `CallRules`
+    (pure Java, `test/CallRulesTest.java`). Dev/debug `demo`: a made-up ring with no link; its buttons send nothing and
+    Answer shows `Demo.callPage()`, a stand-in with the call page's element ids that acts out a short call (connects,
+    a moving level, a few lines; Mute, Speaker, the mic gate and Hang up change it as in a real call) with no `KurootoApp`
+    bridge, so no microphone, nothing fetched and no audio changes. Extra `placed` goes straight into it (Today's Call in
+    demo does that; `MainActivity --ez demo true --es call in|ring` opens it from adb, since `CallActivity` isn't exported).
+  - **The call itself in Compose (0.8.16).** Up to 0.8.15 only the ringing screen was redrawn: `page()` put the call
+    line's web page (`public/index.html`, dark green, "Ready", the mic gate, Hang up / Mute / Earpiece) in the frame, so
+    every answered call, every call placed from the app (`requestCall`, straight to `answer()`) and every call answered
+    from the notification (`answerPi`, `ringing` false) looked like the old page. Now `CallScreen.call()` keeps the
+    page running the call (microphone, Live or turn by turn, the transcript to your computer, the `KurootoApp` bridge)
+    in a 1 dp `AndroidView` under the sky (hidden from accessibility), and draws the call from `CallUi`: `CallMirror`
+    is the page's `window.KurootoScreen`; on `onPageFinished` (not `about:`) the activity runs `CallScreen.MIRROR`, a
+    `MutationObserver` that posts at most every 60 ms a snapshot of `#who`, `#reason`, `#status` (and its class),
+    `#call` (text, `end`, disabled), `#mute`, `#out`, `#int`, `#gatebox`/`#gate`/`#gateval`, `#level` (width, open
+    when its colour is `--ok`), `#mode`, `#heard`, `#talk` (text, `data-state`, disabled) and `#log` (the last 80 lines
+    with their class, only when the count or the last line's length changed). The buttons press the page's own
+    (`CallScreen.press(id)`, only `call`, `mute`, `out`, `int`, `talk`; `gate(v)` sets the slider and fires `input`), so
+    the page tells the line, mutes and calls `toggleSpeaker` exactly as before; Hang up before the page is ready, or
+    with no call on, just closes. Speaker's state is the activity's own (`route()` sets `CallUi.speaker`), since the
+    page's button names where a tap goes. No change to the page is needed, so it works with a call line not yet
+    updated; `tests/unit/test_calls.py` checks every id the mirror reads is on the page and on the demo stand-in. A page
+    that isn't the call page (`ok: false`: no `#call` or `#status`) or says nothing within `MIRROR_WAIT_MS` (8 s) is
+    shown itself, full screen with the bars' insets on `k_call_bg`, as before (`CallUi.raw`). The look: always dark,
+    Material You or the chosen palette (`KurootoTheme(forceDark)`), `Sky` at 0.45; before anything is said a 148 dp
+    `Cookie9Sided` badge in the middle (it swells with the level while the gate is open, turns while the call is on,
+    still with reduced motion), `displaySmallEmphasized` caller, reason and a status pill (`live` primaryContainer,
+    `err` errorContainer); then a floating header card and the transcript as bubbles (Kurooto primaryContainer left, you
+    secondaryContainer right, notes as tertiary pills, the partial `#heard` faded). A floating card holds Talk (72 dp),
+    Interrupt and the level with **Mic gate** (its `Slider`, 0.6 to 3 in 0.2 steps, folds away); the floating pill bar has
+    Mute and Speaker (`ToggleButton`s, `ic_mic_off`, `ic_volume_up`/`ic_phone_in_talk`) and Hang up (`ic_call_end`, error
+    colours), or Close and the page's Call/Answer when no call is on; each button is its icon over its word (`Face`, 72 dp),
+    as are the ringing screen's Decline / Later / Answer now (a word beside the icon was cut short on a 360 dp phone:
+    "An" for Answer). A phone on its side (wider than tall, under 560 dp high) gets two panes: the header, the controls
+    (scrolling, the gate's note left out) and the bar on the left, the transcript on the right. "New call screen" off
+    keeps the page itself.
   - `MainActivity` (a `ComponentActivity`, edge to edge, `enableOnBackInvokedCallback` for the predictive back
     gesture) holds `HomeState` (Compose state: paired, name, pane, settingsGroup, waitingSheet, unread, today, waiting,
     queued, the status lines, update, tick) and does what the screens ask (`refresh`, `pull`, `loadWaiting`, `requestCall`, `chat`, `dueAct`, `answer`,

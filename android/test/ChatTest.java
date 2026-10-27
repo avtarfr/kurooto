@@ -88,6 +88,30 @@ public class ChatTest {
         check(ChatRules.inline("2*3*4 and snake_case_name").size() == 1, "no italics inside words or sums");
         check(ChatRules.plain("**Hi** _there_\n- `x`").equals("Hi there\n• x"), "plain text");
 
+        // read marks from your computer (0.8.16)
+        java.util.Map<String, Long> phone = new java.util.HashMap<>(), ln = new java.util.HashMap<>();
+        java.util.Map<String, String> computer = new java.util.HashMap<>(), sess = new java.util.HashMap<>();
+        String other = "0123456789abcdef";
+        ln.put("m1", 3L); sess.put("m1", "main");
+        ln.put("m2", 7L); sess.put("m2", "main");
+        ln.put("o1", 5L); sess.put("o1", other);
+        phone.put("main", 3L);
+        computer.put("main", "m2");
+        check(Long.valueOf(7L).equals(ChatRules.readMarks(phone, computer, ln, sess).get("main")), "read on the computer: the phone's mark moves on");
+        phone.put("main", 9L);
+        check(ChatRules.readMarks(phone, computer, ln, sess).isEmpty(), "never backwards: read further here stays read");
+        computer.put("main", "nope");
+        check(ChatRules.readMarks(phone, computer, ln, sess).isEmpty(), "a message this phone doesn't have: nothing yet");
+        computer.clear();
+        computer.put(other, "m2");
+        check(ChatRules.readMarks(phone, computer, ln, sess).isEmpty(), "a message from another session: ignored");
+        computer.put(other, "o1");
+        check(Long.valueOf(5L).equals(ChatRules.readMarks(phone, computer, ln, sess).get(other)), "a session never read here");
+        computer.clear();
+        computer.put("../x", "o1");
+        computer.put("main", "");
+        check(ChatRules.readMarks(phone, computer, ln, sess).isEmpty(), "odd sessions and empty marks: ignored");
+
         System.out.println(failed == 0 ? "chat rules ok" : failed + " failed");
         if (failed > 0) System.exit(1);
     }

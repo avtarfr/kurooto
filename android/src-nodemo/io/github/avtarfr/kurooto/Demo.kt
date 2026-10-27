@@ -21,4 +21,7 @@ object Demo {
     fun view(@Suppress("UNUSED_PARAMETER") kind: String): JSONObject? = null
 
     fun upcoming(): JSONObject? = null
+
+    @JvmStatic
+    fun callPage() = ""
 }

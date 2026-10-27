@@ -2,6 +2,7 @@
 
 ## 0.8.16 (unreleased)
 
+<<<<<<< HEAD
 - **Voice no longer crashes Kurooto.** Turning listening off, muting, or a microphone that came and went could close
   the microphone's sound stream while the listening thread was still reading it, and the whole of Kurooto died (a
   segmentation fault in the sound library, seen several times a day with PipeWire). Each sound stream is now opened,
@@ -12,6 +13,19 @@
   is read through `pw-record`, separate programs, so a sound driver problem can't take Kurooto down, and listening
   follows your system's default microphone. `voice.audio.backend`: `auto` (the default; PortAudio when
   `voice.listen.device` names a sounddevice microphone, or without PipeWire), `pipewire` or `portaudio` (as before).
+=======
+- **The phone app's call screen, in the call too.** 0.8.7 redrew only the ringing screen, so every answered call, every
+  call you placed from the app and every call answered from the notification still showed the call line's old dark
+  green page. The call itself now has the app's style (Phone tab → Switches → **New call screen**, on): Kurooto's badge
+  swelling with your voice, who's calling and why, how the call is going, the transcript as bubbles, your mic's level
+  and the mic gate, Interrupt and turn by turn's Talk, and Mute, Speaker and Hang up in a floating bar, in your
+  wallpaper's colours. The call page still runs the call underneath, so calls work as before, with any call line;
+  the switch off brings back the old screens. The ringing screen's buttons no longer cut their words short ("An" for
+  Answer on narrow phones), and a phone on its side shows the transcript beside the call.
+- **Reading a chat on the dashboard clears the phone's badge.** The app kept its own unread counts and ignored your
+  computer's, so a chat read on the dashboard's Chat page (or another phone) stayed unread on the phone. It now takes
+  the computer's read marks: its badge and notification for that chat clear too, never marking anything newer as read.
+>>>>>>> f/v0816-call
 
 ## 0.8.15 (unreleased)
 

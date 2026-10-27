@@ -29,7 +29,8 @@ import java.util.concurrent.Executors;
  * 0.8.10: sessions (`session` on every message; "main" is Kurooto's own and the one chats from before were in, so
  * those move there), replies to any message (`reply`, with `quote` back), files (`file`), and the session and message
  * ops (`op` with its `args`: session.new, session.rename, session.delete, session.pin, msg.edit, msg.delete, msg.pin,
- * read, sync; the answer carries the new session list or the changed message, applied here). Pushes tagged "chat"
+ * read, sync; the answer carries the new session list or the changed message, applied here; 0.8.16: the list's read
+ * marks, set on the dashboard or another phone, clear the unread counts here too). Pushes tagged "chat"
  * (a new message), "chat-update" (a change), "status" and "sessions" all come through [incoming].
  * Everything that talks to the call line runs in order on one thread ([IO]): a new chat's op before its first message.
  */
@@ -173,7 +174,9 @@ final class Chat {
             d.put("ln", ln);
             d.put("msgs", trim(all));
         } catch (Exception ignored) { }
+        Set<String> read = takeReadMarks(d); // a mark from your computer may name a message only now here
         save(c, d);
+        clearNotes(c, d, read);
     }
 
     /** At most KEEP_SESSION per session and KEEP in all, the oldest going first. */
@@ -280,7 +283,63 @@ final class Chat {
                 if (!gone.isEmpty()) dropSessions(d, gone);
             }
         } catch (Exception ignored) { }
+        Set<String> read = takeReadMarks(d);
         save(c, d);
+        clearNotes(c, d, read);
+    }
+
+    /** Your computer's read marks (each listed session's "read": the newest message read there, on the dashboard's
+     *  Chat page or another phone) move this phone's own on (ChatRules.readMarks), so reading on either side clears
+     *  the unread counts on both (0.8.16; before, the phone kept its own and ignored the computer's). Returns the
+     *  sessions whose mark moved. */
+    private static Set<String> takeReadMarks(JSONObject d) {
+        Set<String> moved = new HashSet<>();
+        try {
+            Map<String, String> computer = new HashMap<>();
+            JSONArray ss = sessions(d);
+            for (int i = 0; i < ss.length(); i++) {
+                JSONObject s = ss.optJSONObject(i);
+                if (s != null && !s.optString("read").isEmpty()) computer.put(s.optString("id"), s.optString("read"));
+            }
+            if (computer.isEmpty()) return moved;
+            JSONObject read = d.optJSONObject("read");
+            if (read == null) read = new JSONObject();
+            Map<String, Long> phone = new HashMap<>(), lnById = new HashMap<>();
+            Map<String, String> sessionById = new HashMap<>();
+            for (String sid : computer.keySet()) phone.put(sid, read.optLong(sid, 0));
+            JSONArray all = msgs(d);
+            for (int i = 0; i < all.length(); i++) {
+                JSONObject x = all.optJSONObject(i);
+                if (x == null || !computer.containsValue(x.optString("id"))) continue;
+                lnById.put(x.optString("id"), x.optLong("ln"));
+                sessionById.put(x.optString("id"), sessionOf(x));
+            }
+            Map<String, Long> next = ChatRules.readMarks(phone, computer, lnById, sessionById);
+            if (next.isEmpty()) return moved;
+            for (Map.Entry<String, Long> e : next.entrySet()) read.put(e.getKey(), (long) e.getValue());
+            d.put("read", read);
+            moved.addAll(next.keySet());
+        } catch (Exception ignored) { }
+        return moved;
+    }
+
+    /** A session read elsewhere with nothing of Kurooto's left unread here: its notification goes. */
+    private static void clearNotes(Context c, JSONObject d, Set<String> sessions) {
+        if (sessions.isEmpty() || demo != null) return;
+        JSONObject read = d.optJSONObject("read");
+        JSONArray all = msgs(d);
+        for (String sid : sessions) {
+            long upto = read == null ? 0 : read.optLong(sid, 0);
+            boolean left = false;
+            for (int i = 0; i < all.length() && !left; i++) {
+                JSONObject x = all.optJSONObject(i);
+                left = x != null && sid.equals(sessionOf(x)) && !"you".equals(x.optString("from")) && !x.optBoolean("deleted")
+                        && x.optLong("ln") > upto;
+            }
+            if (!left) {
+                try { ChatNotes.cancel(c, sid); } catch (Exception ignored) { }
+            }
+        }
     }
 
     private static void dropSessions(JSONObject d, Set<String> gone) throws Exception {

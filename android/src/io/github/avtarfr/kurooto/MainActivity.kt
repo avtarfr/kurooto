@@ -34,7 +34,8 @@ import kotlin.concurrent.thread
  * Extras: "tab" opens on that pane (chat, today, alarms, views, settings; "inbox" opens Chat with what's waiting in a
  * sheet, "phone" Settings → This phone); "bedside" opens bedside mode on top (smoke.sh, the shortcut); "justPaired"
  * says so; "demo" (debug and dev builds only, Demo.ON) shows made-up data without pairing, "palette" (the same builds)
- * a named palette instead of Material You, and "hour" (a float) the sky at that hour. The launcher icon opens Chat.
+ * a named palette instead of Material You, "hour" (a float) the sky at that hour, and "call" (0.8.16; "ring" or "in")
+ * the call screen with a stand-in call (Call on Today does the same in demo). The launcher icon opens Chat.
  */
 class MainActivity : ComponentActivity() {
     internal val h = Handler(Looper.getMainLooper())
@@ -69,6 +70,7 @@ class MainActivity : ComponentActivity() {
             KurootoTheme(palette = ui.palette ?: Palettes.DEFAULT, dynamic = ui.palette == null) { Home(this, ui) }
         }
         if (intent.getBooleanExtra("bedside", false)) startActivity(Intent(this, BedsideActivity::class.java))
+        if (ui.demo) intent.getStringExtra("call")?.let { demoCall(placed = it != "ring") }
     }
 
     override fun onNewIntent(i: Intent) {
@@ -82,6 +84,7 @@ class MainActivity : ComponentActivity() {
         else if (i.action == Intent.ACTION_MAIN && i.hasCategory(Intent.CATEGORY_LAUNCHER)) ui.pane = Pane.CHAT // the icon opens Chat
         if (i.getBooleanExtra("justPaired", false)) ui.status = Said("Paired. You're all set.", Said.OK)
         if (i.getBooleanExtra("bedside", false)) startActivity(Intent(this, BedsideActivity::class.java))
+        if (ui.demo) i.getStringExtra("call")?.let { demoCall(placed = it != "ring") }
     }
 
     override fun onSaveInstanceState(out: Bundle) {
@@ -192,7 +195,7 @@ class MainActivity : ComponentActivity() {
     // ---------- Today ----------
     /** A call line link (works with your computer on or off), then the call. */
     internal fun requestCall() {
-        if (ui.demo) { ui.status = Said("Demo: there's no call line to call.", Said.DIM); return }
+        if (ui.demo) { demoCall(placed = true); return }
         ui.status = Said("Opening a call line…")
         thread {
             val link = Line.callLink(this)
@@ -202,6 +205,11 @@ class MainActivity : ComponentActivity() {
                 startActivity(Intent(this, CallActivity::class.java).putExtra("url", link))
             }
         }
+    }
+
+    /** Demo (debug and dev builds): the call screen with a stand-in call page, ringing or (placed) already in the call. */
+    private fun demoCall(placed: Boolean) {
+        startActivity(Intent(this, CallActivity::class.java).putExtra("demo", true).putExtra("placed", placed))
     }
 
     internal fun chat() {

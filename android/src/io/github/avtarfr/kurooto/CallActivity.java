@@ -56,10 +56,13 @@ import java.util.regex.Pattern;
  * This phone's own wake-up alarm (Alarms, 0.6.0) uses the same ringing screen with Stop and Snooze ("local", no call
  * link); when the call for it comes meanwhile, the screen gains its Answer (ListenService.ring).
  *
- * Two screens, one plumbing (0.8.7): with the Phone tab's "New call screen" on (the default), the ringing screen and the
- * page's frame are Compose, Material 3 Expressive (CallScreen.kt); off, the framework screen from before 0.8.7 below.
- * Which one is read as the activity opens. Extra "demo" (debug and dev builds only, Demo.ON): a made-up ring with no call
- * link (the extras "reason", "alarm" and "local" as usual); its buttons send nothing, and Answer shows a stand-in page.
+ * Two screens, one plumbing (0.8.7): with the Phone tab's "New call screen" on (the default), the ringing screen and
+ * (0.8.16) the call itself are Compose, Material 3 Expressive (CallScreen.kt): the call page still runs the call, out of
+ * sight, and the screen mirrors and presses its buttons (CallScreen.MIRROR, CallUi); off, the framework screen from
+ * before 0.8.7 below, with the call page itself. Which one is read as the activity opens. Extra "demo" (debug and dev
+ * builds only, Demo.ON): a made-up ring with no call link (the extras "reason", "alarm" and "local" as usual); its
+ * buttons send nothing, and Answer shows a stand-in call page (Demo.callPage: no microphone, nothing fetched, no audio
+ * changes). With "placed" too it goes straight into that stand-in call, as a call you place from the app does.
  */
 public class CallActivity extends ComponentActivity {
     static final int SDK = Build.VERSION.SDK_INT;
@@ -81,11 +84,13 @@ public class CallActivity extends ComponentActivity {
     private final Handler h = new Handler(Looper.getMainLooper());
     private String url;
     private boolean fresh, demo; // the Compose screen (Prefs.newCallScreen); made-up, nothing sent (Demo.ON)
+    private CallUi ui; // the Compose call screen's state, mirrored from the call page (fresh only)
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         fresh = Prefs.newCallScreen(this);
         demo = Demo.ON && getIntent().getBooleanExtra("demo", false);
+        if (fresh) ui = new CallUi(Prefs.assistant(this));
         if (fresh) EdgeToEdge.enable(this, SystemBarStyle.dark(0), SystemBarStyle.dark(0)); // light icons on the dark screen
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         overLockScreen();
@@ -114,6 +119,7 @@ public class CallActivity extends ComponentActivity {
     private void handle(Intent i) {
         url = i.getStringExtra("url");
         boolean local = url == null && i.getBooleanExtra("local", false); // this phone's own alarm (Alarms)
+        if (demo && url == null && i.getBooleanExtra("placed", false)) { demoPage(); return; } // made up: a call you placed
         if (demo && url == null && !inCall) { // made up: rings, whatever the extras
             String why = i.getStringExtra("reason");
             showRinging(why != null ? why : "Evening check-in: how did today go?", i.getBooleanExtra("alarm", false), local);
@@ -253,7 +259,7 @@ public class CallActivity extends ComponentActivity {
             s.setMediaPlaybackRequiresUserGesture(false);
             web.setBackgroundColor(Ui.color(this, R.color.k_call_bg));
             web.addJavascriptInterface(new Bridge(), "KurootoApp");
-            web.setWebViewClient(new WebViewClient());
+            mirrored(web);
             web.setWebChromeClient(new WebChromeClient() {
                 @Override public void onPermissionRequest(PermissionRequest req) {
                     for (String res : req.getResources()) {
@@ -282,21 +288,52 @@ public class CallActivity extends ComponentActivity {
     }
 
     private void show(FrameLayout f) {
-        if (fresh) CallScreen.page(this, f); else setContentView(f);
+        if (fresh) CallScreen.call(this, f, ui, actions); else setContentView(f);
     }
 
-    /** Demo: Answer opens a stand-in for the call page (no script, nothing fetched, no microphone, no audio changes). */
+    /** The new screen: the page's state comes back through window.KurootoScreen once it has loaded (CallScreen.MIRROR);
+     *  a page that never says it's the call page is shown itself. The old screen: a plain client, as before. */
+    private void mirrored(WebView w) {
+        if (!fresh) { w.setWebViewClient(new WebViewClient()); return; }
+        w.addJavascriptInterface(new CallMirror(ui), "KurootoScreen");
+        w.setWebViewClient(new WebViewClient() {
+            @Override public void onPageFinished(WebView v, String u) {
+                if (isFinishing() || u == null || u.startsWith("about:")) return;
+                v.evaluateJavascript(CallScreen.MIRROR, null);
+                h.postDelayed(() -> { if (!ui.getReady()) ui.setRaw(true); }, CallScreen.MIRROR_WAIT_MS);
+            }
+        });
+    }
+
+    /** The new screen's buttons: the call page's own (so it tells your computer, routes and mutes as it always has). */
+    private final CallActions actions = new CallActions() {
+        @Override public void press(String id) { js(CallScreen.press(id)); }
+        @Override public void gate(float v) { js(CallScreen.gate(v)); }
+        @Override public void hangUp() {
+            if (demo && url == null) { finish(); return; } // made up: nothing to tell
+            if (ui.getReady() && ui.getInCall()) press("call"); // the page hangs up, tells the line, then callEnded closes
+            else finish();
+        }
+        @Override public void close() { finish(); }
+    };
+
+    private void js(String s) {
+        if (web != null && s != null && !s.isEmpty()) web.evaluateJavascript(s, null);
+    }
+
+    /** Demo: Answer (or a placed call) opens a stand-in for the call page that acts out a call: no microphone, nothing
+     *  fetched, no audio changes (it has no KurootoApp bridge). */
     private void demoPage() {
         if (web == null) {
             web = new WebView(this);
-            web.getSettings().setJavaScriptEnabled(false);
+            web.getSettings().setJavaScriptEnabled(true);
             web.setBackgroundColor(Ui.color(this, R.color.k_call_bg));
+            if (ui != null) ui.setSpeakerFromPage(true);
+            mirrored(web);
             page = frame(web);
         }
         show(page);
-        web.loadDataWithBaseURL(null, "<html><body style=\"background:#0B0F0A;color:#F2EEE8;font:20px sans-serif;"
-                + "display:flex;align-items:center;justify-content:center;height:90vh;text-align:center;margin:0\">"
-                + "<p>Demo: the call page from your call line shows here.</p></body></html>", "text/html", "utf-8", null);
+        web.loadDataWithBaseURL("https://demo.invalid/", Demo.callPage(), "text/html", "utf-8", null);
     }
 
     /** The page starts the call by itself when opened from here (you already tapped Answer). */
@@ -331,6 +368,7 @@ public class CallActivity extends ComponentActivity {
             earpiece = !speaker && !am.isWiredHeadsetOn() && !am.isBluetoothScoOn();
         }
         if (earpiece && !turnMode) holdProximity(); else releaseProximity();
+        if (ui != null) ui.setSpeaker(speaker);
     }
 
     private void holdProximity() {

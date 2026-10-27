@@ -435,8 +435,9 @@ it the page says so.
   carries), and your phones show it as yours. **reply** under a message quotes it, and a reply to a reminder or a
   check-in goes to the feature that sent it, as on Telegram.
 - **Live:** new messages, answers, "working" and what's waiting appear without reloading. Opening a chat marks it read
-  on your computer, and a chat you read in the app shows as read here; the app keeps its own unread badge, so reading
-  on the dashboard doesn't clear the phone's.
+  on your computer, and a chat you read in the app shows as read here. Since 0.8.16 reading here clears the phone's
+  unread badge and notification for that chat too (at once when the app is connected straight to your call line, else
+  the next time it catches up).
 
 **What is and isn't shown:** what the app's chat holds: everything you wrote in the app or on this page, the answers
 to them, and Kurooto's own messages when they go to the app's chat (always without Telegram; with Telegram, when
