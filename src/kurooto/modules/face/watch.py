@@ -30,10 +30,17 @@ whatever the input says, but only after every pause reason above has passed, so 
 night, a call, a lock or /face pause. `people()` true (an add-on watches who's in view: Face.watch_people): each frame
 looked at also emits "people" with every face's box, place, yaw, identity, score and numbers, handed over in memory
 on this thread and dropped with the frame here.
+
+Tracking (0.8.12, face.track.on): while `tracking()` asks for it, every face in view gets a track id (nearest centre,
+frame to frame) and a micro-movement number, emitted as "faces" (positions, the owner flag, m; never numbers that
+describe a face). TRACK_FAST (a dashboard in sight, or an add-on holding the camera "to track") adds detection-only
+frames between the recognition frames at face.track.fps: YuNet only, never SFace, so recognition keeps its own rate.
+Tracking never opens the camera: it only looks faster while the rules above have it open.
 """
 
 from __future__ import annotations
 
+import math
 import time
 from collections import deque
 from collections.abc import Callable
@@ -58,6 +65,18 @@ BLOCKED_RECHECK_S = 300
 JUMP_S = 30  # the clock moved this far between two ticks: the computer slept
 STILL_COS, STILL_PX = 0.995, 0.5
 LEARN_INPUT_S = 60  # learning needs input within this after the arrival (someone who sits down and types)
+TRACK_OFF, TRACK_SLOW, TRACK_FAST = 0, 1, 2  # tracking(): no faces; faces at the recognition rate; at face.track.fps
+TRACK_MAX_FPS = 15.0
+TRACK_SLOW_S = 0.06  # a detection-only frame taking longer than this halves the tracking rate (down to 8 times)
+TRACK_RECOVER = 30  # this many quick detection-only frames in a row undo one halving
+TRACK_MATCH = 1.0  # the same face as last frame: its centre within this many face heights of the old one
+TRACK_MISS = 3  # missing from this many frames in a row: gone, its id with it
+MICRO_WINDOW_S = 0.4  # movement is measured against the face this long ago (jitter doesn't add up, motion does)
+MICRO_JITTER = 0.03  # face heights: YuNet's own jitter between two frames of a still face, ignored (an estimate)
+MICRO_FULL = 0.3  # face heights a second beyond the jitter that make m = 1 (a small nod: about 0.2-0.4)
+MICRO_RISE = 0.6  # m rises this share of the way to a new reading at once (a spike shows in one frame)
+MICRO_TAU = 0.5  # seconds: m fades with this time constant once the face is still
+WAIT_MIN_S = 0.02  # the thread never waits less than this between looks: it can't spin
 
 
 @dataclass
@@ -67,6 +86,22 @@ class Seen:
     e: list[float] | None = None  # only an owner frame's numbers, kept for the still-picture check and learning
     face: Any = None
     others: bool = False
+
+
+@dataclass
+class Track:
+    """One face followed frame to frame: its place in pixels, its landmarks relative to its centre in face heights."""
+
+    id: int
+    cx: float
+    cy: float
+    h: float
+    rel: tuple
+    t: float
+    m: float = 0.0
+    owner: bool = False
+    miss: int = 0
+    past: deque = field(default_factory=lambda: deque(maxlen=12))  # (t, cx, cy, h, rel) of the last frames
 
 
 @dataclass
@@ -93,6 +128,7 @@ class Watcher:
     clock: Callable[[], float] = time.monotonic
     held: Callable[[], bool] = lambda: False  # an add-on keeps the camera looking (after every pause reason)
     people: Callable[[], bool] = lambda: False  # an add-on watches who's in view: "people" each frame
+    tracking: Callable[[], int] = lambda: TRACK_OFF  # who wants every face's place (TRACK_*; face.track.on checked)
     counts: Counts = field(default_factory=Counts)
 
     def __post_init__(self):
@@ -120,6 +156,14 @@ class Watcher:
         self.others = False
         self.arrived_at: float | None = None
         self.candidate: tuple[list[float], float] | None = None  # a frame to learn from, if input follows
+        self.tracks: dict[int, Track] = {}  # positions only, in memory, dropped when the camera closes
+        self._next_id = 1
+        self._track = TRACK_OFF  # tracking() as of the last full tick (track_tick runs between them)
+        self._track_fps = 0.0
+        self.last_track_at = -1e9
+        self.track_slow = 1.0
+        self._quick = 0
+        self._faces_shown = False  # the last "faces" had someone in it (an empty one is sent once, on the change)
 
     # --------------------------------------------------------------------------------------------- reading
     def problem_now(self) -> str:
@@ -135,6 +179,18 @@ class Watcher:
         if self.clock() < self.confirm_until:
             fps = max(fps, CONFIRM_FPS)
         return max(MIN_FPS, fps)
+
+    def track_rate(self) -> float:
+        """Detection frames a second while tracking fast: face.track.fps (at most 15), never under the recognition
+        rate, halved when one is slow."""
+        return max(self.rate(), min(TRACK_MAX_FPS, self._track_fps) / self.track_slow)
+
+    def wait_s(self, cap: float) -> float:
+        """How long the module's thread may sleep: `cap` (until its next full tick), or less when a detection-only
+        frame is due sooner; never under WAIT_MIN_S."""
+        if self.camera_open and self._track == TRACK_FAST:
+            cap = min(cap, self.last_track_at + 1.0 / self.track_rate() - self.clock())
+        return max(WAIT_MIN_S, cap)
 
     # ------------------------------------------------------------------------------------------- one tick
     def tick(self) -> None:
@@ -161,6 +217,10 @@ class Watcher:
         else:
             self.input_since = None
         self._check_away(now, locked, c)
+        self._track = int(self.tracking() or TRACK_OFF) if c.get("track_on") else TRACK_OFF
+        self._track_fps = float(c.get("track_fps") or 10)
+        if self._track == TRACK_OFF and self.tracks:
+            self._drop_tracks()
         why = self.paused()
         if why:
             self._close(why)
@@ -187,8 +247,39 @@ class Watcher:
             return
         self._set("away" if self.away else "watching", "")
         if now - self.last_frame_at >= 1.0 / self.rate():
-            self.last_frame_at = now
+            self.last_frame_at = self.last_track_at = now
             self._frame(now, c)
+        else:
+            self.track_tick()
+
+    def track_tick(self) -> None:
+        """A detection-only frame, if tracking fast and one is due (the module's thread calls it between full ticks;
+        the camera's open/close rules are only ever decided in tick())."""
+        now = self.clock()
+        if not (self.camera_open and self._track == TRACK_FAST and now - self.last_track_at >= 1.0 / self.track_rate()):
+            return
+        self.last_track_at = now
+        frame = self.camera.read()
+        if frame is None:
+            if not self.camera.is_open():
+                self.camera_open = False
+                self._drop_tracks()
+                self.emit("watch", on=False, why="camera stopped")
+            return
+        t0 = self.clock()
+        try:
+            faces = self.detector.detect(frame, SCORE_OTHER)
+            size = self.frames.size(frame)
+        finally:
+            del frame
+        self._update_tracks(now, faces, size, {})
+        if self.clock() - t0 > TRACK_SLOW_S:
+            self._quick = 0
+            self.track_slow = min(8.0, self.track_slow * 2)
+        else:  # quick again for a while (a busy minute is over): back up a step
+            self._quick += 1
+            if self._quick >= TRACK_RECOVER and self.track_slow > 1:
+                self._quick, self.track_slow = 0, self.track_slow / 2
 
     def _set(self, state: str, why: str) -> None:
         self.state, self.why = state, why
@@ -222,6 +313,7 @@ class Watcher:
     def _close(self, why: str) -> None:
         if self.camera_open:
             self.camera_open = False
+            self._drop_tracks()
             try:
                 self.camera.close()
             finally:
@@ -278,6 +370,7 @@ class Watcher:
         if frame is None:
             if not self.camera.is_open():  # a read error closed it (a stale handle after a sleep): reopened later
                 self.camera_open = False
+                self._drop_tracks()
                 self.emit("watch", on=False, why="camera stopped")
             return
         t0 = self.clock()
@@ -301,10 +394,12 @@ class Watcher:
         min_px = float(c.get("min_face_px") or 60)
         faces = self.detector.detect(frame, SCORE_OTHER)
         best: tuple[float, list[float], Any, dict] | None = None
+        judged: dict[int, bool] = {}  # index in faces -> recognised as you (for the tracks' owner flag)
+        best_i = -1
         n_other = 0
         seen: list[dict] | None = [] if self.people() else None
         size = self.frames.size(frame) if seen is not None else (0, 0)
-        for f in faces:
+        for i, f in enumerate(faces):
             p = _person(f, size) if seen is not None and f.score >= SCORE_WATCH else None
             if p is not None:
                 seen.append(p)  # type: ignore[union-attr]
@@ -320,6 +415,8 @@ class Watcher:
             e = self.embedder.feature(crop)
             del crop
             klass, s = self.classify(e)
+            if klass == "stranger":
+                judged[i] = False  # unsure keeps the track's flag: one poor frame doesn't make you someone else
             if p is not None:
                 p.update(who=klass, score=round(float(s), 3), e=list(e))  # a copy for the add-on, in memory only
             if klass == "owner":
@@ -329,6 +426,7 @@ class Watcher:
                     if best is not None:
                         n_other += 1
                     best = (s, e, f, {"good": good})
+                    best_i = i
                 else:
                     n_other += 1
             else:
@@ -341,6 +439,10 @@ class Watcher:
         if seen is not None:
             self.emit("people", faces=seen)  # every frame looked at, empty too: nobody in view is news as well
             del seen
+        if self._track != TRACK_OFF:
+            if best_i >= 0:
+                judged[best_i] = True
+            self._update_tracks(now, faces, self.frames.size(frame), judged)
         others = sum(1 for f in faces if f.score >= SCORE_OTHER) >= 2
         if others != self.others or others:  # while it lasts, every frame refreshes it (core/nearby.py's STALE_S)
             self.others = others
@@ -391,6 +493,75 @@ class Watcher:
             self.left_at = None
         self.emit("arrived", away_min=round(gap / 60), others=any(x.others for x in win))
 
+    # ---------------------------------------------------------------------------------------------- tracking
+    def _update_tracks(self, now: float, faces: list, size: tuple[int, int], judged: dict[int, bool]) -> None:
+        """Match this frame's faces to the tracks (greedy, nearest centre first, within TRACK_MATCH face heights),
+        update each one's micro-movement, start new ids, drop the long-missing, and emit "faces"."""
+        fw, fh = size
+        if not fw or not fh:
+            return
+        dets = []
+        for i, f in enumerate(faces):
+            x, y, w, h = f.box
+            cx, cy, hh = x + w / 2, y + h / 2, max(1.0, float(h))
+            dets.append((i, cx, cy, hh, tuple(((lx - cx) / hh, (ly - cy) / hh) for lx, ly in f.landmarks[:5])))
+        pairs = sorted(
+            (math.hypot(cx - tr.cx, cy - tr.cy) / max(hh, tr.h), tid, i)
+            for i, cx, cy, hh, _ in dets
+            for tid, tr in self.tracks.items()
+        )
+        got: dict[int, int] = {}  # det index -> track id
+        for d, tid, i in pairs:
+            if d <= TRACK_MATCH and i not in got and tid not in got.values():
+                got[i] = tid
+        for i, cx, cy, hh, rel in dets:
+            tid = got.get(i)
+            if tid is None:
+                tid, self._next_id = self._next_id, self._next_id + 1
+                self.tracks[tid] = Track(tid, cx, cy, hh, rel, now)
+                got[i] = tid
+            else:
+                self._move(self.tracks[tid], now, cx, cy, hh, rel)
+            if i in judged:
+                if judged[i]:  # you: only one track is yours at a time
+                    for tr in self.tracks.values():
+                        tr.owner = False
+                self.tracks[tid].owner = judged[i]
+        mine = set(got.values())
+        for tid in [t for t in self.tracks if t not in mine]:
+            self.tracks[tid].miss += 1
+            if self.tracks[tid].miss >= TRACK_MISS:
+                del self.tracks[tid]
+        out = [_shown(tr, fw, fh) for tr in sorted(self.tracks.values(), key=lambda t: t.id) if tr.miss == 0]
+        if out or self._faces_shown:
+            self._faces_shown = bool(out)
+            self.emit("faces", faces=out)
+
+    @staticmethod
+    def _move(tr: Track, now: float, cx: float, cy: float, hh: float, rel: tuple) -> None:
+        """Micro-movement: how far the centre, the size and the landmarks (relative to the face: a nod, a turn, the
+        mouth's corners) moved since MICRO_WINDOW_S ago (the last frame, when frames are further apart), in face
+        heights, less the detector's jitter, per second, scaled to 0..1; it rises at once and fades with MICRO_TAU."""
+        tr.past.append((tr.t, tr.cx, tr.cy, tr.h, tr.rel))
+        ref = next((x for x in tr.past if now - x[0] <= MICRO_WINDOW_S), tr.past[-1])
+        t0, cx0, cy0, h0, rel0 = ref
+        span, step = max(0.05, now - t0), max(0.05, now - tr.t)
+        scale = max(hh, h0)
+        moved_by = (
+            math.hypot(cx - cx0, cy - cy0) / scale
+            + abs(hh - h0) / scale
+            + max((math.hypot(a[0] - b[0], a[1] - b[1]) for a, b in zip(rel, rel0, strict=False)), default=0.0)
+        )
+        raw = min(1.0, max(0.0, moved_by - MICRO_JITTER) / span / MICRO_FULL)
+        tr.m = max(tr.m * math.exp(-step / MICRO_TAU), tr.m + (raw - tr.m) * MICRO_RISE)
+        tr.cx, tr.cy, tr.h, tr.rel, tr.t, tr.miss = cx, cy, hh, rel, now, 0
+
+    def _drop_tracks(self) -> None:
+        self.tracks.clear()
+        if self._faces_shown:
+            self._faces_shown = False
+            self.emit("faces", faces=[])
+
     @staticmethod
     def still(mine: list[Seen]) -> bool:
         if len(mine) < 2:
@@ -403,6 +574,12 @@ class Watcher:
                 if not (dot(a.e, b.e) > STILL_COS and moved(a.face, b.face) < STILL_PX):
                     return False
         return True
+
+
+def _shown(tr: Track, fw: int, fh: int) -> dict:
+    """One face in "faces": its track id, centre (-1..1, the camera's own picture), height's share, owner flag, m."""
+    x, y = round(tr.cx / fw * 2 - 1, 3), round(tr.cy / fh * 2 - 1, 3)
+    return {"id": tr.id, "x": x, "y": y, "h": round(tr.h / fh, 4), "owner": tr.owner, "m": round(tr.m, 3)}
 
 
 def _person(f, size: tuple[int, int]) -> dict:

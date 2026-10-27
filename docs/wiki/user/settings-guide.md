@@ -50,7 +50,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Dashboard and terminal](#dashboard-and-terminal): 23 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 26 settings
-- [Face presence](#face-presence): 31 settings
+- [Face presence](#face-presence): 33 settings
 
 ## You and how it talks to you
 
@@ -6758,6 +6758,32 @@ When someone else is in view too: skip the greeting, say just "Welcome back.", o
 
 - **Values:** `skip`, `short`, `full`. **Default:** `skip`.
 - **When to change it:** Leave it on skip so your day isn't read out in front of others.
+
+### `face.track.on`
+
+While the camera is open, follow every face in view (where it is and how much it moves) for the being's eye.
+
+Each face gets a number that stays with it from frame to frame, its place, its size, whether it's you and how much it
+moves (small nods and turns). The being's eye looks at one person, then another every few seconds, sooner when someone
+new appears or moves more. Nobody else is identified, nothing is kept, and it never opens the camera by itself.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you'd rather the eye only finds you, or to save the processor time.
+- **Costs and what leaves this computer:** With a dashboard in sight, roughly a tenth of one processor core while the
+  camera is open.
+- **Depends on:** Face presence watching; a dashboard page in sight, or an add-on that follows faces.
+
+### `face.track.fps`
+
+How many times a second it looks for faces while following them (1 to 15).
+
+Only finding faces runs this often; recognising you stays at face.watch.fps. On a slow computer it lowers itself when a
+look takes too long.
+
+- **Values:** A whole number. **Default:** `10`.
+- **When to change it:** Lower it to save processor time; raise it for a livelier eye.
+- **Costs and what leaves this computer:** Each look a second costs about 1% of one processor core.
+- **Depends on:** face.track.on.
 
 ### `face.addons.watch`
 

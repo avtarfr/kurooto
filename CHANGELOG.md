@@ -9,6 +9,11 @@
   organs as they turn; the nerves leave the brainstem as a spinal cord and split into fibre bundles with nerve cells,
   lit in a signal's colour. The blood is tinted red, the fluid round the brain pale aqua, the notes each in a clear
   colour, the heart a little fainter, and speech heard that wasn't to Kurooto shows faintly in the YOU lane.
+- **The eye follows anyone.** While Face presence has the camera open and a dashboard is in sight, every face in view
+  is followed (a number per face, its place and how much it moves: small nods and turns), up to 10 times a second;
+  the being's eye looks at one person and moves to another every few seconds, sooner for someone new or someone
+  moving, and follows a lone face closely. Places only: nobody else is identified and nothing is kept
+  (`face.track.on`, `face.track.fps`; add-ons can follow faces too).
 - **Hooks for add-ons in Face presence, Voice and Brain.** An add-on can see who's in view (each face's place, size
   and whether it's you, in memory only) and keep the camera looking while you type, take one thing said through the
   microphone (written out here, never sent), have Kurooto chat with someone the guest way (no tools, none of your

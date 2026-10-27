@@ -1548,3 +1548,207 @@ def test_people_events_never_reach_the_event_log_or_the_pages(app, trained):
     for e in events(app):
         assert not any(k in e for k in ("score", "e", "emb", "faces", "h_px"))
     assert all(m.get("kind") != "people" and "e" not in m and "h" not in m for m in pushed)
+
+
+# ------------------------------------------------------------------------------------- 14 tracking (0.8.12)
+from kurooto.modules.face import watch as wa  # noqa: E402
+
+
+def tracked(frames, mode=wa.TRACK_FAST, cfg=None):
+    t = W(frames, idle=600.0, cfg={"track_on": True, "track_fps": 10} | (cfg or {}))
+    t.w.tracking = lambda: mode
+    return t
+
+
+def loop(t, seconds):
+    """Face._run with the fake clock: a full tick every 0.25 s, track_tick between, sleeping wait_s. Returns the loop's
+    passes (each one a sleep of at least wait_s's floor)."""
+    end, nxt, n = t.clock.t + seconds, t.clock.t, 0
+    while t.clock.t < end:
+        if t.clock.t >= nxt:
+            nxt = t.clock.t + 0.25
+            t.w.tick()
+        else:
+            t.w.track_tick()
+        w = t.w.wait_s(nxt - t.clock.t)
+        assert w >= wa.WAIT_MIN_S
+        t.clock.t += w
+        n += 1
+    return n
+
+
+def faces_msgs(t):
+    return [f["faces"] for k, f in t.got if k == "faces"]
+
+
+class Count(Det):
+    def __init__(self, clock=None, cost=0.0):
+        self.n, self.clock, self.cost = 0, clock, cost
+
+    def detect(self, fr, min_score):
+        self.n += 1
+        if self.clock is not None:
+            self.clock.t += self.cost
+        return super().detect(fr, min_score)
+
+
+def test_track_ids_stay_with_each_face_as_they_move_and_swap_places_in_the_list():
+    frs = []
+    for i in range(80):
+        a, b = face(x=100 + i * 2.0, h=120.0), face(x=420 - i * 1.0, y=180, h=100.0, score=0.9)
+        frs.append(frame([a, b] if i % 2 else [b, a], [you(), rvec()] if i % 2 else [rvec(), you()]))
+    t = tracked(frs)
+    loop(t, 6)
+    msgs = [m for m in faces_msgs(t) if len(m) == 2]
+    assert len(msgs) > 40  # about 10 a second
+    ids = {(f["id"], f["x"] < 0) for m in msgs for f in m}
+    assert len({i for i, _ in ids}) == 2 and len(ids) == 2  # the left face keeps its id, the right one its own
+    assert all(f["owner"] for m in msgs[3:] for f in m if f["x"] < 0)
+    assert not any(f["owner"] for m in msgs for f in m if f["x"] > 0)
+    assert set(msgs[-1][0]) == {"id", "x", "y", "h", "owner", "m"}  # places only: no numbers, no scores
+    assert "seen" in t.kinds()  # face_seen's source still runs
+    t.cam.frames = [frame([face(x=560, y=10, h=60.0)], [rvec()])] * 50  # both gone, someone else elsewhere
+    loop(t, 2)
+    last = faces_msgs(t)[-1]
+    assert len(last) == 1 and last[0]["id"] not in {i for i, _ in ids} and not last[0]["owner"]
+    t.w.release()
+    assert faces_msgs(t)[-1] == [] and not t.w.tracks  # the camera closed: nobody, and nothing kept
+
+
+def test_micro_movement_is_zero_when_still_and_rises_with_a_small_nod():
+    still = tracked([frame([face()], [you()])] * 200)
+    loop(still, 4)
+    assert max(f["m"] for m in faces_msgs(still) for f in m) == 0.0
+    nod = tracked([frame([face(pitch=0.5 + 0.1 * math.sin(i / 2))], [you()]) for i in range(200)])
+    loop(nod, 4)
+    ms = [m[0]["m"] for m in faces_msgs(nod)]
+    assert 0.2 < max(ms) <= 1.0
+    big = tracked([frame([face(x=100 + 25 * (i % 8))], [you()]) for i in range(200)])
+    loop(big, 4)
+    assert max(m[0]["m"] for m in faces_msgs(big)) > max(ms)
+    nod.cam.frames = [frame([face(pitch=0.5)], [you()])] * 100  # still again: it fades
+    loop(nod, 3)
+    assert faces_msgs(nod)[-1][0]["m"] < 0.05
+
+
+def test_tracking_fast_detects_at_its_own_rate_recognition_stays_slow_and_the_loop_never_spins():
+    t = tracked([frame([face()], [you()])] * 400)
+    det = t.w.detector = Count()
+    feats = []
+    real = t.w.embedder.feature
+    t.w.embedder.feature = lambda crop: feats.append(1) or real(crop)
+    passes = loop(t, 10)
+    assert 90 <= det.n <= 115  # face.track.fps 10
+    assert len(feats) <= 16  # SFace at the watcher's own rate (1 a second; 2 for the first 5 s after you)
+    assert passes <= 10 * (10 + 4) + 5  # sleeping until the next frame or tick, never a busy loop
+    det.n = 0
+    t.w.tracking = lambda: wa.TRACK_SLOW  # an add-on's ordinary hold: faces at the recognition rate only
+    passes = loop(t, 10)
+    assert det.n <= 11 and passes <= 41 and faces_msgs(t)[-1]
+    t.cfg["track_on"] = False  # the switch: nothing tracked, the old rate
+    det.n, n_faces = 0, len(faces_msgs(t))
+    loop(t, 10)
+    assert det.n <= 11 and len(faces_msgs(t)) == n_faces + 1 and faces_msgs(t)[-1] == []  # one "nobody" on the way out
+
+
+def test_switch_off_means_face_seen_only_as_before():
+    t = tracked([frame([face(), face(x=40, h=100)], [you(), rvec()])] * 100, cfg={"track_on": False})
+    det = t.w.detector = Count()
+    loop(t, 5)
+    assert "faces" not in t.kinds() and "seen" in t.kinds() and not t.w.tracks
+    assert det.n <= 10  # the watcher's own rate (2 a second while it confirms you)
+
+
+def test_a_slow_machine_halves_the_tracking_rate_and_recovers():
+    t = tracked([frame([face()], [you()])] * 300)
+    loop(t, 1)
+    t.w.detector = Count(t.clock, 0.08)
+    loop(t, 3)
+    assert t.w.track_slow >= 2 and t.w.track_rate() <= 5
+    t.w.detector = Det()
+    loop(t, 60)
+    assert t.w.track_slow < 2
+
+
+def test_who_wants_every_face_and_the_switch(app, trained):
+    f = trained
+    assert f._track_mode() == wa.TRACK_OFF  # no page in sight, no hold, no add-on: nothing is worked out
+    f.hold_watch("reading the room")
+    assert f._track_mode() == wa.TRACK_SLOW
+    f.hold_watch("Eye tracking")
+    assert f._track_mode() == wa.TRACK_FAST
+    f.release_watch("Eye tracking")
+    f.release_watch("reading the room")
+    off = f.watch_faces(lambda faces: None)
+    assert f._track_mode() == wa.TRACK_SLOW
+    off()
+    f._page_in_sight = lambda: True  # a dashboard in sight
+    w = f.build_watcher(camera=Cam(), detector=Det(), embedder=Emb(), frames=Frames())
+    assert f._track_mode() == wa.TRACK_FAST and w.tracking() == wa.TRACK_FAST and w.cfg()["track_fps"] == 10
+    app.settings.set("face.track.on", False)
+    assert f._track_mode() == wa.TRACK_OFF
+
+
+def test_faces_reach_open_pages_at_most_ten_a_second_and_add_ons_each_their_own_copy(app, trained):
+    f = trained
+    pushed = f.pushed
+    f._page_in_sight = lambda: True
+    one = [{"id": 1, "x": 0.1, "y": -0.2, "h": 0.3, "owner": True, "m": 0.4}]
+    got, bad = [], []
+
+    def broken(faces):
+        bad.append(faces)
+        faces[0]["x"] = 9
+        raise RuntimeError("an add-on's mistake")
+
+    f.watch_faces(broken)
+    off = f.watch_faces(got.append)
+    for _ in range(50):
+        f._on_watch("faces", faces=one)
+    msgs = [m for m in pushed if m.get("kind") == "faces"]
+    assert len(msgs) == 1 and msgs[0] == {"t": "face", "kind": "faces", "faces": one}
+    assert len(got) == 50 and got[-1][0]["x"] == 0.1  # one add-on's change never reaches the next
+    f._on_watch("faces", faces=[])  # the last face gone: always said
+    assert pushed[-1]["faces"] == [] and got[-1] == []
+    f._page_in_sight = lambda: False  # no page in sight: nothing pushed
+    f._faces_at = 0.0
+    f._on_watch("faces", faces=one)
+    assert pushed[-1]["faces"] == []
+    off()
+    app.settings.set("face.addons.watch", False)
+    f._on_watch("faces", faces=one)
+    assert len(got) == 52 and len(bad) == 52
+    for e in events(app):
+        assert not any(k in e for k in ("faces", "x", "m", "e"))
+
+
+def test_the_watch_thread_sleeps_between_frames_while_tracking(app, trained, monkeypatch):
+    """The real loop (Face._run) for a second with fakes: about 10 detections, a few dozen passes, little CPU."""
+    import threading
+    import time
+
+    f = trained
+    app.settings.set("face.watch.night", True)  # whatever the hour the test runs at
+    f.cam.frames = [frame([face()], [you()])] * 200
+    det = Count()
+    monkeypatch.setattr(f, "_vision_objects", lambda threads=1: (det, Emb(), Frames()))
+    f.hold_watch("eye tracking")  # you're typing (the fixture's idle is 0): the hold opens the camera
+    f.watcher = f.build_watcher()
+    passes = [0]
+    real = f.watcher.track_tick
+    f.watcher.track_tick = lambda: passes.__setitem__(0, passes[0] + 1) or real()
+    cpu = []
+
+    def run():
+        t0 = time.thread_time()
+        f._run()
+        cpu.append(time.thread_time() - t0)
+
+    th = threading.Thread(target=run, daemon=True)
+    th.start()
+    time.sleep(1.2)
+    f._halt.set()
+    th.join(5)
+    assert f.watcher.camera_open is False and f.cam.closed >= 1  # stopping closes it
+    assert 7 <= det.n <= 16 and passes[0] <= 1.2 * (10 + 4) + 6
+    assert cpu[0] < 0.3  # the loop's own cost with free fakes (the real cost is YuNet's: docs/wiki/dev/face.md)

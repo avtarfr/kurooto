@@ -22,6 +22,11 @@ Hooks for add-ons (0.8.12): watch_people(cb) hands an add-on every face in each 
 yaw, identity, score and its numbers, in memory only), hold_watch(reason) / release_watch(reason) keep the camera
 looking while you type (never past a pause reason), owner_desk_height() says how big your face usually is at the desk.
 Switches face.addons.watch and face.addons.hold; with no add-on using them, nothing changes and nothing runs.
+
+Tracking (0.8.12, face.track.on): while the camera is open and a dashboard is in sight or an add-on holds the camera,
+every face in view goes out as {"t": "face", "kind": "faces", "faces": [{id, x, y, h, owner, m}]} (at most 10 a
+second; watch.py's tracking), so the being's eye can follow anyone; watch_faces(cb) hands the same to an add-on. A
+dashboard in sight, or a hold whose reason says "track", detects at face.track.fps between the recognition frames.
 """
 
 from __future__ import annotations
@@ -42,7 +47,7 @@ from kurooto.modules.base import Answer, Command, Incoming, Intent, Module
 from kurooto.modules.face import parts as face_parts
 from kurooto.modules.face.enrol import MINIMUM, PLAN, TARGET, TARGETS, Enrolment, Session, Vision
 from kurooto.modules.face.model import FLOOR, MODEL, STRICTNESS, Template
-from kurooto.modules.face.watch import PAUSES, Watcher
+from kurooto.modules.face.watch import PAUSES, TRACK_FAST, TRACK_OFF, TRACK_SLOW, Watcher
 
 if TYPE_CHECKING:
     from kurooto.app import App
@@ -85,6 +90,10 @@ register_defaults(
             "hold_calls": False,  # while you're away, calls Kurooto starts itself wait (at most hold_max_min)
             "hold_max_min": 60,  # the longest a call waits while you're away (minutes)
         },
+        "track": {
+            "on": True,  # while the camera is open, follow every face in view (places only) for the being's eye
+            "fps": 10,  # detection frames a second while a dashboard is in sight or an add-on tracks (1 to 15)
+        },
         "addons": {
             "watch": True,  # an add-on may see who's in view (faces' places and numbers, in memory; never pictures)
             "hold": True,  # an add-on may keep the camera looking while you type (never past a pause or a switch)
@@ -99,6 +108,7 @@ register_defaults(
 )
 
 TICK_S = 0.25  # the watcher's thread looks this often (frames are taken at the watcher's own rate)
+FACES_EVERY_S = 0.09  # "faces" to the pages at most about 10 a second
 HOLD_MAX_S = 600.0  # an add-on's hold lasts at most this long unless renewed: a crashed add-on can't keep the camera
 DESK_EVERY_S = 5.0  # your face's size at the desk is noted at most this often (a running median, in memory)
 DESK_MIN = 10  # sightings before the running median is trusted over the enrolment's front step
@@ -192,6 +202,8 @@ class Face(Module):
         self.slow = 1.0
         self._previous: dict | None = None  # the template before the last training, sealed nowhere: Undo, this run only
         self._people: list = []  # add-ons watching who's in view (watch_people)
+        self._faces: list = []  # add-ons following every face's place (watch_faces)
+        self._faces_at = 0.0
         self._holds: dict[str, float] = {}  # an add-on's reason -> until (monotonic): hold_watch
         self._hooks_lock = threading.Lock()
         self._desk: deque = deque(maxlen=240)  # (pixels, share) of your face's height, sightings 5 s apart
@@ -412,6 +424,8 @@ class Face(Module):
             "min_face_px": s("recognise.min_face_px"),
             "away_on": s("away.on"),
             "away_after_min": s("away.after_min"),
+            "track_on": s("track.on"),
+            "track_fps": s("track.fps"),
         }
 
     def _classify(self, e) -> tuple[str, float]:
@@ -448,6 +462,7 @@ class Face(Module):
             clock=clock,
             held=self._held_now,
             people=self._people_on,
+            tracking=self._track_mode,
         )
 
     def tick(self) -> None:
@@ -471,16 +486,24 @@ class Face(Module):
         self.why = self.watcher.why
 
     def _run(self) -> None:
+        # a full tick (pause reasons, input, the camera's rules) every TICK_S; between them, while tracking fast, only
+        # the detection-only frames (Watcher.track_tick), and the sleep is Watcher.wait_s: never under 20 ms
+        next_full = 0.0
         try:
             while not self._halt.is_set():
                 try:
-                    self.tick()
+                    if time.monotonic() >= next_full:
+                        next_full = time.monotonic() + TICK_S
+                        self.tick()
+                    elif self.watcher is not None:
+                        self.watcher.track_tick()
                 except Exception as e:
                     self._failed("watching", e)
                     if self.watcher is not None:
                         self.watcher.release()
                     self._halt.wait(5)
-                self._halt.wait(TICK_S)
+                gap = next_full - time.monotonic()
+                self._halt.wait(self.watcher.wait_s(gap) if self.watcher is not None else max(0.02, gap))
         finally:
             if self.watcher is not None:
                 self.watcher.release()
@@ -532,6 +555,13 @@ class Face(Module):
             self.slow = float(f.get("factor") or 1)
         elif kind == "people":
             self._hand_people(f.get("faces") or [])
+        elif kind == "faces":  # every face's place and micro-movement: to open dashboards (the eye) and add-ons
+            faces = [dict(x) for x in f.get("faces") or []]
+            now = time.monotonic()
+            if (not faces or now - self._faces_at >= FACES_EVERY_S) and self._page_in_sight():
+                self._faces_at = now
+                self._push({"t": "face", "kind": "faces", "faces": faces})
+            self._hand_faces(faces)
         elif kind == "seen":  # your face's place in the frame: to open dashboards only (the being's eyes), never kept
             now = time.monotonic()
             if f.get("px") and now - self._desk_at >= DESK_EVERY_S:  # its size only, for owner_desk_height
@@ -558,6 +588,52 @@ class Face(Module):
                     self._people.remove(cb)
 
         return unsubscribe
+
+    def watch_faces(self, cb) -> object:
+        """cb(faces) on the watcher's thread with every face in view while face.track.on and face.addons.watch are
+        on and the camera is open: [{id, x, y, h, owner, m}] (watch.py's tracking: a track id, the centre -1..1, the
+        height's share, the owner flag, micro-movement 0..1), an empty list once when the last one goes. No identity
+        beyond the owner flag, no numbers. Faster with a hold whose reason says "track". Returns the unsubscribe."""
+        with self._hooks_lock:
+            self._faces.append(cb)
+
+        def unsubscribe() -> None:
+            with self._hooks_lock:
+                if cb in self._faces:
+                    self._faces.remove(cb)
+
+        return unsubscribe
+
+    def _faces_on(self) -> bool:
+        return bool(self._faces) and bool(self.setting("addons.watch"))
+
+    def _hand_faces(self, faces: list) -> None:
+        if not self._faces_on():
+            return
+        with self._hooks_lock:
+            cbs = list(self._faces)
+        for cb in cbs:
+            try:
+                cb([dict(x) for x in faces])
+            except Exception as e:
+                self._failed("an add-on following faces", e)
+
+    def _page_in_sight(self) -> bool:
+        live = getattr(self.app, "live", None)
+        try:
+            return bool(live is not None and live.watched())
+        except Exception:
+            return False
+
+    def _track_mode(self) -> int:
+        """Who wants every face's place: TRACK_FAST for a dashboard in sight or a hold "to track", TRACK_SLOW for any
+        other hold or an add-on following faces (at the recognition rate), else TRACK_OFF (nothing is worked out)."""
+        if not self.setting("track.on"):
+            return TRACK_OFF
+        holds = self.holds()
+        if self._page_in_sight() or any("track" in h.lower() for h in holds):
+            return TRACK_FAST
+        return TRACK_SLOW if holds or self._faces_on() else TRACK_OFF
 
     def _people_on(self) -> bool:
         return bool(self._people) and bool(self.setting("addons.watch"))

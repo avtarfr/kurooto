@@ -2184,6 +2184,9 @@ never approves, unlocks or allows anything. Details: [the user guide](wiki/user/
 - **Watching:** the camera stays closed while you type; it looks about once a second only when you're idle, just
   unlocked or being confirmed, and pauses (saying why) when locked, on a call, in focus, at night, when the camera is
   busy, covered or blocked. A "● camera" badge shows on the dashboard while Kurooto holds it.
+- **Following faces** (`face.track.on`): while the camera is open and a dashboard is in sight, the being's eye
+  follows everyone in view (places and movement only), switching between people every few seconds; it looks up to
+  10 times a second then (`face.track.fps`).
 - **Greeting:** after 20 minutes away, recognised in 3 of 4 frames; through Calm's rules (`face.greet`, not counted
   against the daily limit, at most 3 a day, an hour apart), never during a call, focus or the night; no greeting with
   someone else in view (`face.greet.with_others`).
