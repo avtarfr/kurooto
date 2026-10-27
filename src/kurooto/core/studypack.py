@@ -19,8 +19,8 @@ goes in: class files that mention it, the pages of each book that do (with a pag
 pack and in the prompt; books fill the gaps.
 
 Limits: the zip stays under Telegram's 50 MB (notes first, then class material, newest first, then books; the rest is
-listed in INDEX.md as left out); notes over 400 KB and files over 40 MB are left out; hidden files and folders never go
-in.
+listed in INDEX.md as left out) and files over 40 MB are left out, unless the pack goes to Drive (build(limit=None)),
+where nothing is left out for size; notes over 400 KB are always left out; hidden files and folders never go in.
 """
 
 from __future__ import annotations
@@ -40,6 +40,9 @@ if TYPE_CHECKING:
 MAX_ZIP = 48 * 1024 * 1024  # under Telegram's 50 MB, leaving room for the notes and the index
 MAX_NOTE = 400 * 1024
 MAX_FILE = 40 * 1024 * 1024
+# why a file was left out for size (build's left_out), so a reply can count them by reason
+OVER_ZIP = "the zip would pass Telegram's 50 MB"
+OVER_FILE = "over 40 MB"
 MAX_NOTES = 600  # notes read to find the ones that link to the subject
 MAX_BOOK_PAGES = 200  # a topic's pages from one book, at most (its matching chapters first)
 MAX_PACK_BOOK_PAGES = 250  # and from all the books together (about 900 KB of text), readings the class cites first
@@ -315,8 +318,9 @@ def course_folders(app: App, subject: str) -> list[Path]:
     return list(dict.fromkeys(out))
 
 
-def course_files(app: App, subject: str) -> list[Path]:
-    """The course's files, newest first."""
+def course_files(app: App, subject: str, any_size: bool = False) -> list[Path]:
+    """The course's files, newest first. any_size: files over MAX_FILE too (a pack takes them when it goes to Drive,
+    and says it left them out when it doesn't)."""
     files = []
     for d in course_folders(app, subject):
         for f in d.rglob("*"):
@@ -325,7 +329,8 @@ def course_files(app: App, subject: str) -> list[Path]:
                     f.is_file()
                     and f.suffix.lower() in FILE_TYPES
                     and not _hidden(f.relative_to(d))
-                    and 0 < f.stat().st_size <= MAX_FILE
+                    and 0 < f.stat().st_size
+                    and (any_size or f.stat().st_size <= MAX_FILE)
                 ):
                     files.append(f)
             except OSError:
@@ -333,8 +338,9 @@ def course_files(app: App, subject: str) -> list[Path]:
     return sorted(files, key=lambda f: (-f.stat().st_mtime, str(f)))
 
 
-def sources(app: App, subject: str) -> list[Source]:
-    """The course's files and what Books has read for the subject, once each, class material first, newest first."""
+def sources(app: App, subject: str, any_size: bool = False) -> list[Source]:
+    """The course's files and what Books has read for the subject, once each, class material first, newest first.
+    any_size: course files over MAX_FILE too."""
     read: dict[str, Source] = {}
     store = Path(app.paths.data) / "book-text" / subject
     for meta_f in sorted(store.glob("*/meta.json")) if store.is_dir() else []:
@@ -349,7 +355,7 @@ def sources(app: App, subject: str) -> list[Source]:
         s.chapters = [c for c in m.get("chapters") or [] if isinstance(c, list) and len(c) >= 4]
         read[str(f.resolve()) if f else meta_f.parent.name] = s
     out = list(read.values())
-    files = course_files(app, subject)
+    files = course_files(app, subject, any_size)
     base_of = {f: d for d in course_folders(app, subject) for f in files if d in f.parents}
     texts = {sidecar(f) for f in files} - {None}
     for f in files:
@@ -638,7 +644,7 @@ def build(
     rx = pattern(topics)
     notes = note_files(app, subject, rx)
     notes += [n for n in brain_notes(app, topics) if n not in notes]
-    srcs = sources(app, subject)
+    srcs = sources(app, subject, any_size=True)  # a file over MAX_FILE is left out below, and INDEX.md says so
     if not notes and not srcs:
         raise ValueError(f"I found no notes or course files for {name}.")
     dest = dest or Path(app.paths.cache) / "study-packs" / f"{subject}-study-pack.zip"
@@ -694,7 +700,7 @@ def build(
                 )
                 data = body.encode("utf-8")
                 if limit and total + len(data) > limit:
-                    out.append((s.title, "the zip would pass Telegram's 50 MB"))
+                    out.append((s.title, OVER_ZIP))
                     continue
                 a = arc("books", f"{slug(s.title)}-pages.md")
                 z.writestr(a, data)
@@ -715,11 +721,11 @@ def build(
                 size = s.path.stat().st_size
             except OSError:
                 continue
-            if size > MAX_FILE:
-                out.append((s.path.name, "over 40 MB"))
+            if limit and size > MAX_FILE:  # Drive (no limit) takes any size
+                out.append((s.path.name, OVER_FILE))
                 continue
             if limit and total + size > limit:
-                out.append((s.path.name, "the zip would pass Telegram's 50 MB"))
+                out.append((s.path.name, OVER_ZIP))
                 continue
             a = arc(where, rel_in(s))
             z.write(s.path, a)

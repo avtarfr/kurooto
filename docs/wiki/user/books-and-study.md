@@ -263,12 +263,18 @@ then **the prompt as its own message**, ready to copy and paste (it's also `PROM
 how many notes and files went in.
 
 **Size limits.** Telegram takes files up to 50 MB.
-- With [Drive upload](google.md) on, nothing is left out: a pack over 50 MB goes to your Google Drive and you get a
-  link. That upload is temporary: it's deleted from your Drive after `drive_upload.temp_days` (7) days, unless you move
-  it out of the Kurooto folder in Drive first.
-- Without it, the zip is kept under 50 MB (notes first, then class material, newest first, then books); what didn't fit
-  is listed in `INDEX.md` and the reply says how many files were left out.
-- Notes over 400 KB and files over 40 MB are always left out; hidden files and folders never go in.
+- With [Drive upload](google.md) on, nothing is left out for size, files over 40 MB included: a pack over 50 MB goes
+  to your Google Drive and you get a link. That upload is temporary: it's deleted from your Drive after
+  `drive_upload.temp_days` (7) days, unless you move it out of the Kurooto folder in Drive first.
+- Without it, the zip is kept under 50 MB (notes first, then class material, newest first, then books) and files over
+  40 MB are left out; `INDEX.md` lists what was left out, and the reply counts it by reason: didn't fit in 50 MB, over
+  40 MB on its own, or a book's pages on the topic past what the other AI can hold at once. It suggests Drive upload
+  only when that's off or not set up.
+- With Drive upload set up but `drive_upload.big_files` off, a pack that left files out for size comes with a question:
+  **Send it all as a Drive link** builds it again with nothing left out and puts it in your Drive (kept, not
+  temporary).
+- Asking the AI to "send it as a Drive link" works too: its `study_pack` tool takes `to=drive`.
+- Notes over 400 KB are always left out; hidden files and folders never go in.
 
 **What leaves your computer.** Only what you choose to upload to the other AI yourself. With Drive upload, a pack over
 50 MB goes to your own Google Drive. The zip is kept in Kurooto's cache, which the

@@ -157,19 +157,23 @@ class FakeDrive:
 
     id = "drive_upload"
 
-    def __init__(self):
+    def __init__(self, big_files=True):
         self.sent = []
+        self.big_files = big_files
 
     def setting(self, k):
-        return {"big_files": True, "temp_days": 7}.get(k)
+        return {"big_files": self.big_files, "temp_days": 7}.get(k)
+
+    def ready(self):
+        return True, ""
 
     def send(self, path, caption="", wait=False, temporary=False):
         self.sent.append((path.name, path.stat().st_size, temporary))
         return True, f"Uploading {path.name} to your Google Drive; the link comes when it's done."
 
 
-def drive_on(env, monkeypatch):
-    drive = FakeDrive()
+def drive_on(env, monkeypatch, big_files=True):
+    drive = FakeDrive(big_files)
     monkeypatch.setitem(env.app.modules, "drive_upload", drive)
     real = env.app.is_on
     monkeypatch.setattr(env.app, "is_on", lambda mid: True if mid == "drive_upload" else real(mid))
@@ -196,6 +200,83 @@ def test_many_files_over_the_limit_go_to_drive_instead_of_being_refused(chat_on,
         env.app, [files / "slides-1.pdf", files / "slides-2.PDF", files / "a.pdf"], inside=[env.app.workspace.parent]
     )
     assert ok and "Google Drive" in msg and drive.sent[-1][2] is True
+
+
+def big_lecture(files):
+    """A 41 MB lecture that takes no disk space (sparse)."""
+    f = files / "lecture-big.pdf"
+    f.write_bytes(b"")
+    with open(f, "r+b") as h:
+        h.truncate(41 * 1024 * 1024)
+    return f
+
+
+def test_a_pack_going_to_drive_keeps_a_file_over_40_mb_and_telegrams_leaves_it_out(chat_on, env, monkeypatch):
+    # 0.8.13: with Drive upload on, a file over 40 MB was still left out ("over 40 MB")
+    big_lecture(seed(env))
+    path, info = studypack.build(env.app, "deep-learning", limit=None)
+    assert "class/lecture-big.pdf" in zipfile.ZipFile(path).namelist() and not info["left_out"]
+    path, info = studypack.build(env.app, "deep-learning")
+    assert ("lecture-big.pdf", studypack.OVER_FILE) in info["left_out"]
+
+
+def test_the_reply_gives_the_real_reasons_and_offers_drive_only_when_its_off(chat_on, env, monkeypatch):
+    seed(env)
+    left = [
+        ("a.pdf", studypack.OVER_ZIP),
+        ("b.pdf", studypack.OVER_ZIP),
+        ("c.pdf", studypack.OVER_FILE),
+        ("salby", "40 more pages on the topic: the books together keep to 250 pages, what the other AI can hold"),
+    ]
+    line = sk.left_out_line(left)
+    assert "2 files didn't fit in Telegram's 50 MB" in line and "1 file is over 40 MB on its own" in line
+    assert "1 book had more pages on the topic than the pack keeps" in line and "4 file" not in line
+    assert "50 MB" not in sk.left_out_line(left[3:]) and sk.left_out_line([]) == ""
+    real = studypack.build
+    monkeypatch.setattr(studypack, "build", lambda *a, **k: (real(*a, **k)[0], {**real(*a, **k)[1], "left_out": left}))
+    out = env.say("/studypack deep learning")  # Drive upload off: it's suggested
+    assert "didn't fit in Telegram's 50 MB" in out and "With Drive upload set up" in out
+    drive_on(env, monkeypatch)  # on, big files as links: not advertised, nothing asked
+    out = env.say("/studypack deep learning")
+    assert "Drive upload" not in out and not env.app.ask.pending(source="skills")
+
+
+def test_the_tool_sends_the_whole_pack_to_drive_when_asked(chat_on, env, monkeypatch):
+    seed(env)
+    drive_on(env, monkeypatch, big_files=False)
+    calls = {}
+    real_build, real_send = studypack.build, sk.send_file
+
+    def build(*a, **k):
+        calls["limit"] = k.get("limit", -1)
+        return real_build(*a, **k)
+
+    def send(app, path, caption="", inside=None, to=""):
+        calls["to"] = to
+        return real_send(app, path, caption, inside, to)
+
+    monkeypatch.setattr(studypack, "build", build)
+    monkeypatch.setattr(sk, "send_file", send)
+    tool = {t.name: t for t in env.app.modules["skills"].call_tools()}["study_pack"]
+    assert "drive" in tool.description.lower()
+    out = env.app.modules["skills"]._tool_study_pack({"subject": "dl", "to": "drive"})
+    assert calls == {"limit": None, "to": "drive"} and "Google Drive" in out
+    assert str(env.app.paths.cache / "study-packs" / "deep-learning-study-pack.zip") in out  # where the zip is
+
+
+def test_a_telegram_pack_that_left_files_out_asks_to_send_it_all_by_drive(chat_on, env, monkeypatch):
+    big_lecture(seed(env))
+    drive = drive_on(env, monkeypatch, big_files=False)  # set up, but big files don't go by themselves
+    out = env.say("/studypack deep learning")
+    assert "1 file is over 40 MB" in out and "I've asked whether to send it all as a Drive link" in out
+    assert not drive.sent and len(docs(env)) == 1
+    q = env.app.ask.pending(source="skills")[-1]
+    assert q["choices"] == [sk.PACK_DRIVE_YES, "No"]
+    env.app.ask.answer(q["id"], sk.PACK_DRIVE_YES, via="telegram")
+    assert drive.sent and drive.sent[-1][0] == "deep-learning-study-pack.zip" and drive.sent[-1][2] is False
+    with zipfile.ZipFile(env.app.paths.cache / "study-packs" / "deep-learning-study-pack.zip") as z:
+        assert "class/lecture-big.pdf" in z.namelist()  # the rebuilt pack has the big lecture
+    assert not env.app.ask.pending(source="skills")
 
 
 def test_temporary_drive_files_are_deleted_when_their_days_are_up(env, monkeypatch):

@@ -2,6 +2,12 @@
 
 ## 0.8.13 (unreleased)
 
+- **A study pack goes whole to Drive when you ask.** With Drive upload on, files over 40 MB were still left out, and
+  the reply blamed Telegram's 50 MB for everything left out and suggested Drive upload even when it was on. Going to
+  Drive, nothing is left out for size now; the reply counts what was left out by its real reason and suggests Drive
+  upload only when it's off or not set up. With Drive upload set up but big files off, a pack that left files out
+  asks "Send it all as a Drive link?", and the AI's `study_pack` tool takes `to=drive`, so "send it as a Drive link"
+  works.
 - **A backup could freeze Voice and Face.** A backup ran on Kurooto's main loop, so while it worked, the parts that
   share it waited; and one that met a named pipe in Kurooto's folders (an add-on's stream left behind by a hard stop)
   read it forever, so listening and Face presence never started. Backups now leave out anything that isn't a plain
