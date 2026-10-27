@@ -159,6 +159,13 @@ class FakeLive:
         self.msgs.append(json.loads(json.dumps(msg)))  # as the stream sends it
 
 
+def test_interest_is_felt_in_the_head_and_never_moves_the_mood():
+    x = stim.translate({"interest": 0.8})
+    ch = stim.CHANNELS["interest"]
+    assert x == {"interest": 0.8} and (ch.region, ch.phasic, ch.own) == ("head", True, False)
+    assert stim.translate({"interest": 3.0}) == {}  # out of range: ignored
+
+
 def test_an_add_ons_readings_map_to_physical_analogues():
     x = stim.translate({
         "light_lux": 99.0, "proximity_cm": 0.0, "accel_x": 0.0, "accel_y": 9.80665, "accel_z": 3.0,

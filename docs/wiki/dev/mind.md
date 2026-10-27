@@ -1030,6 +1030,7 @@ a non-number, NaN or out of range is dropped) and makes each a channel of region
 | `picked_up` (0/1 or a count) | `handled` | skin | phasic | as given |
 | `battery_temp_c` | `temperature` | skin | tonic | C (comfort 30); over 45 hurts |
 | `battery_pct`, `charging` (0/1) | `satiety` | gut | tonic | battery + 10 on the charger; under 5 % off it hurts |
+| `interest` (0..1) | `interest` | head | phasic | as given: an add-on judged that something caught its attention |
 
 A hurt here (`ADDON_PAIN`) sets that channel's valence to -1 and intensity to at least 0.8, and isn't counted in `pain`
 (its own head). The readings live in memory only (`_fed`, a weak map per app: no file of their own): a phasic channel is

@@ -128,6 +128,7 @@ CHANNELS: dict[str, Channel] = {
     "handled": Channel("skin", True, 0.6, 1.5, 0.5, 1.0, 2.0, 4.0, 0.5, False),
     "temperature": Channel("skin", False, 0.5, 1.5, 1.0, 30.0, 25.0, 15.0, 0.6, False),
     "satiety": Channel("gut", False, 0.5, 1.5, 2.0, 85.0, 80.0, 60.0, 0.6, False),
+    "interest": Channel("head", True, 0.5, 1.5, 0.1, 0.0, 1.0, 1.0, 0.5, False),  # something caught its attention
 }
 
 
@@ -330,6 +331,7 @@ ADDON = {
     "battery_temp_c": (-40.0, 100.0),
     "battery_pct": (0.0, 100.0),
     "charging": (0.0, 1.0),
+    "interest": (0.0, 1.0),  # an add-on's judgement that something caught its attention (a jolt, felt in the head)
 }
 ADDON_PAIN = {"temperature": lambda x: x > 45.0, "loudness": lambda x: x >= 100.0, "satiety": lambda x: x < 5.0}
 FED_S = 600.0  # a device's reading older than this isn't felt any more (as intero's sample)
@@ -385,6 +387,8 @@ def translate(readings: dict, heading_was: float | None = None) -> dict[str, flo
         x["temperature"] = r["battery_temp_c"]
     if "battery_pct" in r:
         x["satiety"] = min(110.0, r["battery_pct"] + (10.0 if r.get("charging") else 0.0))
+    if "interest" in r:
+        x["interest"] = r["interest"]
     return x
 
 
