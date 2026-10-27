@@ -4,6 +4,8 @@ switches (listening, mute, night, calls, pause). Fakes stand in for the micropho
 model and the AI: no sound device or model is touched."""
 
 import json
+import threading
+import time
 
 import pytest
 
@@ -556,6 +558,110 @@ def test_a_turn_has_no_outline_and_the_levels_switch_and_an_unwatched_page_stop_
     voice.app.live.watched = lambda: False
     voice.hear(Heard(speech=True, text="no I'll get the snacks later"), tone())
     assert not any(m["kind"] == "voice_heard" for m in voice.app.live.sent)
+
+
+# ---------------------------------------------------------------------------- outputs (0.8.12, add_output)
+class Tts:
+    def synth(self, text):
+        return (text.encode() * 100)[:3200], 16000  # stands for that sentence's sound
+
+
+class Speakers:
+    """This computer's Player: records what it was given, never plays."""
+
+    def __init__(self):
+        self.got = []
+
+    def play(self, pcm, sr):
+        self.got.append(pcm)
+
+    def stop(self):
+        pass
+
+
+class Output:
+    """An add-on's output: answers in turn (True, False or an exception), records each sentence, and whether Kurooto
+    was holding its ears while it played."""
+
+    def __init__(self, voice, *answers, block=False):
+        self.v, self.answers, self.block = voice, list(answers), block
+        self.got, self.held, self.stopped = [], [], []
+        self.started = threading.Event()
+
+    def __call__(self, pcm, sr, stop):
+        assert isinstance(pcm, bytes) and sr == 16000
+        self.got.append(pcm)
+        self.held.append(self.v.speaker.holding())
+        self.started.set()
+        if self.block:
+            self.stopped.append(stop.wait(5))
+        a = self.answers.pop(0) if self.answers else True
+        if isinstance(a, Exception):
+            raise a
+        return a
+
+
+@pytest.fixture
+def speakers(voice, monkeypatch):
+    monkeypatch.setattr(voice, "tts", lambda: (Tts(), ""))
+    voice.speaker.player = Speakers()
+    return voice.speaker.player
+
+
+def test_an_output_plays_instead_of_the_speakers(voice, speakers):
+    out = Output(voice)
+    voice.add_output(out)
+    assert voice.say("One. Two.", wait=True)[0]
+    assert len(out.got) == 2 and speakers.got == []
+    assert out.held == [True, True]  # Kurooto doesn't hear itself while the other device plays
+    assert sum(m["kind"] == "voice_speak" for m in voice.app.live.sent) == 2  # the shape is sent as before
+    voice.speaker.until = 0
+    assert not voice.speaker.holding()
+
+
+def test_the_newest_output_first_and_false_falls_back(voice, speakers):
+    old, new = Output(voice, True, False), Output(voice, False, False)
+    voice.add_output(old)
+    voice.add_output(new)
+    voice.say("One. Two.", wait=True)
+    assert len(new.got) == 2 and len(old.got) == 2  # newest asked first, then the older one
+    assert speakers.got == [old.got[1]]  # neither took the second: this computer's speakers did
+
+
+def test_a_raising_output_falls_back_and_is_told_once(voice, speakers):
+    out = Output(voice, RuntimeError("phone gone"), RuntimeError("phone gone"))
+    voice.add_output(out)
+    voice.say("One. Two.", wait=True)
+    assert len(out.got) == 2 and len(speakers.got) == 2
+    failed = [e for e in voice.app.events.tail(50) if e.get("kind") == "voice_failed"]
+    assert len(failed) == 1 and failed[0]["part"] == "output" and "phone gone" in failed[0]["error"]
+
+
+@pytest.mark.parametrize("how", ["stop", "mute"])
+def test_stop_and_mute_end_an_output_at_once(voice, speakers, how):
+    out = Output(voice, block=True)
+    voice.add_output(out)
+    voice.say("One. Two. Three.")
+    assert out.started.wait(5)
+    voice.speaker.stop() if how == "stop" else voice.mute(True)
+    for _ in range(200):
+        if not voice.speaker.busy:
+            break
+        time.sleep(0.01)
+    assert not voice.speaker.busy
+    assert out.stopped == [True] and len(out.got) == 1 and speakers.got == []  # nothing more, nowhere else
+
+
+def test_a_removed_output_isnt_used(voice, speakers):
+    out = Output(voice)
+    first, second = voice.add_output(out), voice.add_output(out)  # the same function twice
+    first()
+    first()  # each remove() takes only its own, and twice is harmless
+    voice.say("One.", wait=True)
+    assert len(out.got) == 1
+    second()
+    voice.say("Two.", wait=True)
+    assert len(out.got) == 1 and len(speakers.got) == 1
 
 
 # ------------------------------------------------------------------------------------- Voice ID (0.8.10)

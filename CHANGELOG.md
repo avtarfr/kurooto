@@ -17,6 +17,8 @@
 - **Voice: the waveform shows speech that wasn't for Kurooto too.** People talking to each other and noise now move
   the dashboard's waveform as well, as their loudness only: no words ever reach the page. `voice.listen.levels`
   turns it off with the live levels.
+- **Voice: an add-on can play Kurooto's voice on another device** (`Voice.add_output`), with this computer's
+  speakers taking over when that device can't.
 
 ## 0.8.11 (2026-10-27)
 

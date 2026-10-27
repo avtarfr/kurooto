@@ -46,6 +46,8 @@ answer from your AI (Telegram and the phone app ones too), and `off` keeps it si
 - Long answers are read up to `voice.speak.max_chars` (800 characters), then "The rest is on screen."
 - Code in an answer isn't read out ("code on screen"), and links are read as "a link".
 - `/voice say Good morning` says something now; `/voice stop` stops it mid-sentence.
+- An add-on can play Kurooto's voice on another device instead of these speakers (0.8.12); when that device can't,
+  the computer's speakers play it, and `/voice stop` and mute stop it there too.
 
 ## Listening
 

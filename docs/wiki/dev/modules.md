@@ -382,6 +382,10 @@ user's folder over Kurooto:
 
   An add-on that keeps anything about other people (a face's or a voice's numbers) does so on its own terms: it should
   ask them first, seal what it keeps (`core/biometric.py`'s stores) and delete it when asked.
+- Playing Kurooto's voice elsewhere (0.8.12): `app.modules["voice"].add_output(fn)` in `start()`, and the returned
+  `remove()` in `stop()`. `fn(pcm, sr, stop) -> bool` gets each spoken sentence instead of this computer's speakers,
+  blocks until it has played (or `stop` is set) and returns False to let the speakers play it; details and threading
+  in [voice.md](voice.md#outputs-playing-the-voice-elsewhere-0812).
 - The folder can't be inside Kurooto's own folders (`inside_kurooto`), and updates never touch it.
 - Turning add-ons on changes `core/places.py:write_roots` (their `skills/`), which makes agy's consent question appear
   again.

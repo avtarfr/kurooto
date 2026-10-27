@@ -9,7 +9,7 @@ with listening a second switch. User page: [../user/voice.md](../user/voice.md).
 
 | File | What's in it |
 |---|---|
-| `modules/voice/__init__.py` | `Voice` (the module: settings, parts it wants, `hear()`, `ask_brain()`, the listener's lifecycle in `background()`, the API's `status()`/`say()`/`mute()`/`shape()`, `/voice`), `Speaker` (sentence-by-sentence speech), `strip_wake()` |
+| `modules/voice/__init__.py` | `Voice` (the module: settings, parts it wants, `hear()`, `ask_brain()`, the listener's lifecycle in `background()`, the API's `status()`/`say()`/`mute()`/`shape()`, `add_output()`, `/voice`), `Speaker` (sentence-by-sentence speech, played by an output or the `Player`), `strip_wake()` |
 | `modules/voice/names.py` | `NameMatcher`: its name as Whisper may spell it (`MISHEARD`, `voice.listen.name_variants`, `skeleton()` + `distance()` near misses); `called()`, `anywhere()`, `uncall()` |
 | `modules/voice/gate.py` | `Gate.decide(Heard, Context) -> Decision`: the rules, then the local model; `PROMPT`; `parse()` |
 | `modules/voice/portal.py` | `Portal`: open/closed, `take(heard, decision)`, `tick()` (silence), `close(why)`, `context()` for the gate |
@@ -57,6 +57,26 @@ On `Voice` (`app.modules["voice"]`), both blocking: call them from the add-on's 
   conversation's guests never mix in). Waits like `ask_brain` (`_wait_job`), then `jobs.forget_guest`. None when Voice
   or `voice.addons.chat` is off or the text is empty.
 - `say(text, wait=True)` (already there) speaks a scripted line.
+
+## Outputs: playing the voice elsewhere (0.8.12)
+
+`Voice.add_output(fn) -> remove()` lets an add-on play Kurooto's voice on another device instead of this computer's
+speakers. `fn(pcm: bytes, sr: int, stop: threading.Event) -> bool`:
+
+- **Called** by `Speaker._play` for each sentence's sound (16-bit little-endian mono PCM at `sr`), newest output
+  first. It **blocks** until that sound has finished playing, or until `stop` is set, and returns `True` when it
+  played it, `False` when it can't now; the next output is asked, finally the local `Player`. An exception counts as
+  `False`, and is logged once per output as `voice_failed {part: "output", error}`.
+- **Threading.** It runs on the speaking thread (`voice-say`, or the caller's with `wait=True`) inside
+  `Speaker.lock`, so outputs are never called concurrently and sentences stay in order. `busy` is true the whole time,
+  so `holding()` keeps the microphone held while the other device plays, plus the usual 0.4 s tail, exactly as for
+  the `Player`. Registration takes a separate small lock, never held while sound plays: `add_output` and `remove()`
+  are safe from any thread, and a change takes effect from the next sentence. `remove()` is idempotent and removes
+  only its own registration (the same `fn` may be added twice).
+- **Stopping.** `stop` is `Speaker._cancel`: `Speaker.stop()` (`/voice stop`, mute, Voice off) sets it, and the
+  sentence loop ends; after a stop nothing falls back to the `Player`. It's cleared when the next utterance starts.
+- **Unchanged:** `voice_speak` is published as each sentence starts, wherever it plays; `status()` still names the
+  local player. The sound is handed over in memory only; the output must not write or keep it either.
 
 ## The flow
 

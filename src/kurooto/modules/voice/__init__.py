@@ -47,7 +47,11 @@ from kurooto.modules.voice.portal import Portal
 from kurooto.modules.voice.voiceid import NO_VOICE, VoiceID
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from kurooto.app import App
+
+    Output = Callable[[bytes, int, threading.Event], bool]
 
 register_defaults(
     "voice",
@@ -123,7 +127,20 @@ class Speaker:
         self.busy = False
         self.until = 0.0  # it finished speaking at (monotonic) + a short tail: the microphone ignores until then
         self.player = None
-        self._cancel = threading.Event()
+        self._cancel = threading.Event()  # stop()/mute: ends the sentence loop and is the stop an output is handed
+        self._outputs: list[list] = []  # [fn, failed already], newest first (add_output)
+        self._out_lock = threading.Lock()  # registration only; never held while sound plays
+
+    def add_output(self, fn: Output) -> Callable[[], None]:
+        entry = [fn, False]
+        with self._out_lock:
+            self._outputs.insert(0, entry)
+
+        def remove() -> None:
+            with self._out_lock:
+                self._outputs[:] = [e for e in self._outputs if e is not entry]  # by identity: fn may be added twice
+
+        return remove
 
     def say(self, text: str, wait: bool = True) -> tuple[bool, str]:
         tts, why = self.v.tts()
@@ -152,10 +169,6 @@ class Speaker:
             self._cancel.clear()
             pool = ThreadPoolExecutor(1, thread_name_prefix="voice-tts")
             try:
-                if self.player is None:
-                    from kurooto.modules.voice.audio import Player
-
-                    self.player = Player()
                 fut = pool.submit(tts.synth, out[0])
                 for i in range(len(out)):
                     pcm, sr = fut.result()
@@ -164,13 +177,36 @@ class Speaker:
                     if self._cancel.is_set():
                         break
                     self.v.publish("voice_speak", samples=shape_mod.from_pcm(pcm, sr), rate=shape_mod.RATE)
-                    self.player.play(pcm, sr)
+                    self._play(pcm, sr)
             except Exception as e:
                 self.v.app.events.emit("voice_failed", part="speaking", error=f"{type(e).__name__}: {e}"[:300])
             finally:
                 pool.shutdown(wait=False, cancel_futures=True)
                 self.busy = False
                 self.until = time.monotonic() + 0.4
+
+    def _play(self, pcm: bytes, sr: int) -> None:
+        """One sentence: the newest output that takes it, else this computer's speakers. Runs inside _speak (busy),
+        so holding() covers an output's whole play exactly as the Player's."""
+        with self._out_lock:
+            outs = list(self._outputs)
+        for entry in outs:
+            if self._cancel.is_set():
+                return
+            try:
+                if entry[0](pcm, sr, self._cancel):
+                    return
+            except Exception as e:  # counts as "can't now"; told once per output, not per sentence
+                if not entry[1]:
+                    entry[1] = True
+                    self.v.app.events.emit("voice_failed", part="output", error=f"{type(e).__name__}: {e}"[:300])
+        if self._cancel.is_set():  # stopped while an output played: not finished here instead
+            return
+        if self.player is None:
+            from kurooto.modules.voice.audio import Player
+
+            self.player = Player()
+        self.player.play(pcm, sr)
 
     def stop(self) -> None:
         self._cancel.set()
@@ -716,6 +752,14 @@ class Voice(Module):
             and getattr(result, "text", "")
         ):
             self.speaker.say(result.text, wait=False)
+
+    def add_output(self, fn: Output) -> Callable[[], None]:
+        """Play Kurooto's voice elsewhere (an add-on: another device). fn(pcm, sr, stop) gets each sentence's 16-bit
+        mono PCM, newest output first, instead of this computer's speakers; it blocks until the sound has played (or
+        `stop` is set: /voice stop, mute, Voice off) and returns True, or False when it can't now (the next output,
+        finally the speakers, play it). Raising counts as False (voice_failed part="output", once). It runs on the
+        speaking thread while holding() is true, so the microphone doesn't hear Kurooto. Returns remove()."""
+        return self.speaker.add_output(fn)
 
     def say(self, text: str, wait: bool = False) -> tuple[bool, str]:
         """Speak this now (POST /api/voice/say, /voice say)."""
