@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.8.11 (unreleased)
+## 0.8.11 (2026-10-27)
+
+Fixes from the first real use of Voice ID and Face presence.
 
 - **Voice ID: Set up from its own page.** With Voice ID on but its files not downloaded yet, the Your voice page
   said to go to the dashboard; it now has a **Set up now** button that downloads them there and shows the progress.
