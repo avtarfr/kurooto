@@ -39,6 +39,12 @@ import androidx.compose.ui.unit.dp
  *  (a part → its organ → the whole body) before it leaves the pane. */
 @Composable
 fun ViewsTab(a: MainActivity, ui: HomeState, room: PaddingValues) {
+    if (remember { Prefs.viewsOrgans(a) }) OrganViews(a, ui, room) else WholeViews(a, ui, room) // 0.8.10: organ pages, a switch
+}
+
+/** Views with the whole being in one drawing (Look → Organ pages in Views off): as it was before the organ pages. */
+@Composable
+private fun WholeViews(a: MainActivity, ui: HomeState, room: PaddingValues) {
     val pane = remember { ViewsPane(a, null, ui.demo, null) }
     var mode by remember { mutableStateOf(pane.startMode()) }
     var beingOk by remember { mutableStateOf(pane.beingOk()) }
@@ -116,7 +122,7 @@ private fun ViewsChoice(mode: String, pick: (String) -> Unit) {
 
 /** A plain note over the drawing: cover hides it (nothing to show yet), else it floats at the top of what's shown. */
 @Composable
-private fun Note(title: String, body: String, cover: Boolean) {
+internal fun Note(title: String, body: String, cover: Boolean) {
     Box(
         Modifier.fillMaxSize().then(if (cover) Modifier.background(MaterialTheme.colorScheme.surface) else Modifier),
         contentAlignment = if (cover) Alignment.Center else Alignment.TopCenter,
@@ -135,5 +141,5 @@ private fun Note(title: String, body: String, cover: Boolean) {
 }
 
 /** The Brain console's drawing code is in this app (the brain-console part's static/views/brainconsole.js). */
-private fun brainConsoleShipped(a: MainActivity): Boolean =
+internal fun brainConsoleShipped(a: MainActivity): Boolean =
     try { a.assets.list("views")?.contains("brainconsole.js") == true } catch (e: Exception) { false }

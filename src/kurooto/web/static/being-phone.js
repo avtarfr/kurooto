@@ -18,7 +18,8 @@ const FONT = 'Roboto, "Google Sans", system-ui, sans-serif';
 const STATE = { status: "", warn: "" }; // the header's second line: "live" or "as of", and what's wrong
 
 /* ======================================== the adapter being.js calls ======================================== */
-const S = { panel: null, close: null, open: 0, y: 0, goal: 0, h: 0, host: 0, drag: null, raf: 0, cam: null, size: null, shift: 0, shiftGoal: 0 };
+const S = { panel: null, close: null, open: 0, y: 0, goal: 0, h: 0, host: 0, drag: null, raf: 0, cam: null, size: null, shift: 0, shiftGoal: 0,
+  organ: false, inset: 0, still: false }; // an organ page (being.js opts.only): no sheet; the app's bars cover its top and bottom (inset)
 const HALF = .5, TALL = .9; // the sheet's half height and its full one, of the screen
 
 function sheetY(state) { return state === 2 ? 0 : state === 1 ? S.h - S.host * HALF : S.h + 24; }
@@ -29,20 +30,22 @@ function sheetMeasure() { // full height leaves the name and the two buttons at 
 // the sheet follows the finger 1:1; let go, it settles with a spring (critically damped: no bounce, no overshoot)
 function sheetTick() {
   S.raf = 0;
-  if (!S.panel) return;
-  if (!S.drag) { const d = S.goal - S.y; S.y += d * .24; if (Math.abs(d) < .5) S.y = S.goal; }
-  S.panel.style.transform = `translate3d(0,${S.y.toFixed(1)}px,0)`;
-  S.shiftGoal = S.open ? S.host * HALF * .5 : 0; S.shift += (S.shiftGoal - S.shift) * .2; if (Math.abs(S.shiftGoal - S.shift) < .5) S.shift = S.shiftGoal;
+  if (!S.panel && !S.organ) return;
+  if (S.panel) {
+    if (!S.drag) { const d = S.goal - S.y; S.y += d * .24; if (Math.abs(d) < .5) S.y = S.goal; }
+    S.panel.style.transform = `translate3d(0,${S.y.toFixed(1)}px,0)`;
+  }
+  S.shiftGoal = S.open ? S.host * HALF * .5 : S.inset; S.shift += (S.shiftGoal - S.shift) * (S.still ? 1 : .2); if (Math.abs(S.shiftGoal - S.shift) < .5) S.shift = S.shiftGoal;
   lens();
   if (S.drag || S.y !== S.goal || S.shift !== S.shiftGoal) S.raf = requestAnimationFrame(sheetTick);
-  else if (!S.open && S.y >= S.h) S.panel.style.visibility = "hidden";
+  else if (S.panel && !S.open && S.y >= S.h) S.panel.style.visibility = "hidden";
 }
 const kick = () => { if (!S.raf) S.raf = requestAnimationFrame(sheetTick); };
 // with the sheet up, the camera's centre moves up into what's left of the screen, so what you picked stays in view
 function lens() {
   if (!S.cam || !S.size) return;
   const [w, h] = S.size();
-  if (S.shift > .5) S.cam.setViewOffset(w, h, 0, S.shift, w, h); else if (S.cam.view && S.cam.view.enabled) S.cam.clearViewOffset();
+  if (Math.abs(S.shift) > .5) S.cam.setViewOffset(w, h, 0, S.shift, w, h); else if (S.cam.view && S.cam.view.enabled) S.cam.clearViewOffset();
   S.cam.updateProjectionMatrix();
 }
 function sheetTo(state) {
@@ -106,6 +109,7 @@ window.beingPhone = {
   touch(T) {
     const gl = T.gl, F = new Map(); let g = null;
     S.cam = T.cam; S.size = T.size;
+    if (S.organ) kick(); // the app said where its bars are before the being was up
     const two = () => { const [a, b] = [...F.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
     gl.addEventListener("pointerdown", (e) => {
       try { gl.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
@@ -124,7 +128,8 @@ window.beingPhone = {
       F.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (g.n === 2 && F.size >= 2) {
         const m = two(), G = T.goal;
-        G.d = clampN(g.gd * g.d0 / m.d, 1.2, 22);
+        const near = T.only() ? .25 : 1.2; // an organ page: as close as a single note
+        G.d = clampN(g.gd * g.d0 / m.d, near, T.only() ? 12 : 22);
         const dx = m.x - g.x, dy = m.y - g.y, s = G.d * .0012, r = { x: Math.cos(G.th), z: -Math.sin(G.th) };
         G.tx -= r.x * dx * s; G.tz -= r.z * dx * s; G.ty += dy * s; g.x = m.x; g.y = m.y;
         return;
@@ -263,13 +268,16 @@ function clip(c, s, w) { if (w < 30) return ""; let t = s; while (t.length > 4 &
 /* ======================================== the page: what the app hands in ======================================== */
 const $ = (s) => document.querySelector(s);
 const PV = { being: null, mounting: false, gl: null, demo: false, made: 0, notesMade: -1, graph: null, seen: new Set(), primed: false,
-  settings: null, brain: null, voice: null, computer: "", reach: true, off: false, depth: -1, palette: null, look: null, ok: true };
+  settings: null, brain: null, voice: null, computer: "", reach: true, off: false, depth: -1, palette: null, look: null, ok: true,
+  only: null, still: false, rev: "" }; // only: the organ page (brain, heart, senses, memory), or null for the whole being
 
 function report(extra) {
   const d = PV.being ? PV.being.depth() : 0;
-  if (d === PV.depth && !extra) return;
-  PV.depth = d;
-  fetch(`/state?depth=${d}${extra || ""}&n=${Math.random().toString(36).slice(2)}`, { cache: "no-store" }).catch(() => {});
+  // an organ page: when what it lists changed (or how fresh the copy is), the app reads it again (organState)
+  const rev = PV.being && PV.being.rev ? `${PV.being.rev()}.${STATE.status}.${STATE.warn}` : "";
+  if (d === PV.depth && rev === PV.rev && !extra) return;
+  PV.depth = d; PV.rev = rev;
+  fetch(`/state?depth=${d}${rev ? `&rev=${encodeURIComponent(rev)}` : ""}${extra || ""}&n=${Math.random().toString(36).slice(2)}`, { cache: "no-store" }).catch(() => {});
 }
 function message(text, small) {
   const el = $("#msg"); if (!el) return;
@@ -365,12 +373,12 @@ async function mount(b) {
   try {
     const host = $("#being"), look = b.look || {}, pal = PV.palette || {};
     PV.look = look;
-    PV.being = await window.beingMount(host, { api, mode: "phone", hoodOf: (id) => (PV.graph ? PV.graph.hoodOf(id) : null),
+    PV.being = await window.beingMount(host, { api, mode: "phone", only: PV.only || undefined, still: PV.still, hoodOf: (id) => (PV.graph ? PV.graph.hoodOf(id) : null),
       theme: look.theme === "theme" ? "theme" : "void", pal: { bg: pal.bg, fg: pal.fg, accent: pal.accent, rose: pal.rose, bad: pal.bad, dim: pal.dim }, hints: look.hints !== false });
     message("");
     if (PV.graph) PV.being.graph(PV.graph.g);
     feed(b);
-    setInterval(() => report(), 400); // a tap, Esc or a sheet closed: the app's back button knows how deep you are
+    setInterval(() => report(), PV.only ? 200 : 400); // a tap, Esc or a sheet closed: the app's back button knows how deep you are
   } catch (err) {
     message("The being couldn't start on this phone.", String(err && err.message || err).slice(0, 160));
     report("&gl=0");
@@ -382,6 +390,7 @@ function take(text) {
   if (PV.gl === null) { PV.gl = webgl2(); if (!PV.gl) { report("&gl=0"); message("This phone's web view can't draw the being: it needs WebGL 2."); return true; } }
   if (!PV.gl) return true;
   PV.demo = !!d.demo; PV.palette = d.palette || PV.palette; PV.computer = d.computer || ""; PV.reach = d.reach !== false; PV.off = !!d.off;
+  if (!PV.being && !PV.mounting) { PV.only = d.only || null; PV.still = !!d.still; S.still = PV.still; } // set once, as it mounts
   if (d.notes && typeof d.notes === "object" && d.notes.made !== PV.notesMade) {
     PV.notesMade = d.notes.made; PV.graph = graphOf(d.notes);
     if (PV.being) PV.being.graph(PV.graph.g);
@@ -401,6 +410,24 @@ function take(text) {
 }
 
 function back() { const used = !!(PV.being && PV.being.escape()); report(); return used; }
+
+/* ---- the organ pages (0.8.10): the app's Brain, Heart, Senses and Memory, one organ each on the same page ---- */
+const organ = () => (PV.being && PV.being.only ? PV.being : null); // mounted as an organ page
+function only(page) { // another organ, without loading the page again
+  if (!organ()) { PV.only = page; return false; }
+  const ok = organ().only(page); if (ok) PV.only = page; report(); return ok;
+}
+function organState() { // what the app lists: the parts, the one picked, how fresh the copy is
+  if (!organ()) return "{}";
+  const st = JSON.parse(organ().state() || "{}"); st.status = STATE.status; st.warn = STATE.warn; return JSON.stringify(st);
+}
+function pick(kind, key) { if (organ()) { organ().pick(String(kind || ""), String(key ?? "")); report(); } return true; }
+function setting(key, value) { if (organ()) organ().setting(String(key), value); return true; }
+function feature(id, on) { if (organ()) organ().feature(String(id), !!on); return true; }
+function mode(m) { if (organ()) organ().mode(String(m)); return true; }
+function inset(top, bottom) { // CSS pixels the app's bars cover at the top and bottom: the organ sits centred between them
+  S.organ = true; S.inset = Math.round(((+bottom || 0) - (+top || 0)) / 2); TOP = Math.max(0, +top || 0); kick(); return true;
+}
 
 /* ---- demo (dev builds' made-up data: the app hands in demo: true): the rest of a being beside Demo's Systems ---- */
 const DEMO = { muted: false, n: 0 };
@@ -440,5 +467,5 @@ async function demoAsk(op, a) {
   return { ok: true, value: a.value };
 }
 
-window.KurootoBeing = { take, back };
+window.KurootoBeing = { take, back, only, organState, pick, setting, feature, mode, inset };
 })();

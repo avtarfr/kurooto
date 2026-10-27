@@ -475,6 +475,30 @@ checks each use is guarded):
   `voice.mute` to `/ask` (the app seals them, `BeingRules`). `/state?depth=&gl=` tells the app how deep you are and
   whether WebGL 2 is there. In demo (`demo: true`) the being block and the answers are made up here.
 
+**Organ pages (0.8.10, `opts.only`).** The app's Views pages Brain, Heart, Senses and Memory mount the being with
+`only: "brain"|"heart"|"senses"|"memory"` (`PAGE_ORGAN` maps them to `mind`, `heart`, `senses`, `memory`) and `still`
+(Android's Remove animations). Every difference is behind `OM` (true only with `opts.only`), so the dashboard, which
+never passes it, is as before (`tests/unit/test_being.py`):
+
+- `only(page)` shows that organ's group alone (`ORGAN_OBJ[k].visible`), hides the vessels, nerves and blood (`LINKS`),
+  and frames it at `ONLY_D[organ]` (nearer than `TARGETS`, which frame an organ among the others); it's how the app
+  switches pages without loading the page again. `pickAt` skips anything under a hidden group (`shown`). A part
+  focused (`subFocus`) comes in to `s.d * ONLY_SUB`. One finger turns the organ wherever it lands (`held()`: the organ,
+  or the sense picked); pinch goes from 0.25 to 12. With `still` the camera jumps and nothing keeps spinning.
+- Nothing is drawn over it: no header, colours' key, lanes, mute, hints or mode bar, and only the picked part's label
+  (`PICKED`), with its ring. `openPanel`/`closePanel` build nothing; they mark the list as changed (`organDirty`).
+- The list: `describe()` makes `{page, head, mode, sel, parts, detail, feats, said}`: each part with its live state
+  (`partLive`: sparks per region from `KREC`, the events of the last ten minutes; the heart's rate, jobs, call line;
+  Voice, the phone's motion and screen, the coil's processor and heat; a neighbourhood's notes), and the part picked in
+  full (`detail`: rows, the coil's bars, Brain parts with their `mind.*` keys, features, settings flattened as
+  `settingsHTML` does, a neighbourhood's top notes, a note's text). It's made every second and at once after a change
+  (`organTick`); `state()` returns it and `rev()` counts changes. The app calls back `pick(kind, key)` (`""` goes back
+  to the organ), `setting(key, value)`, `feature(id, on)` (the dashboard's own `api` calls), `mode(m)`.
+- `being-phone.js`: `KurootoBeing.only`, `organState` (`state()` plus "live"/"as of" and what's wrong), `pick`,
+  `setting`, `feature`, `mode`, and `inset(top, bottom)`: the CSS pixels under the app's floating bars, so
+  `cam.setViewOffset` centres the organ between them. `/state` also carries `rev` (the list's count, with the copy's
+  freshness) every 200 ms when it changed; the app then reads `organState`.
+
 ## Threaded jobs (0.8.6)
 
 `Module.every(..., thread=True)` runs the action through `modules/base.on_daemon_thread`: a daemon thread per run, awaited

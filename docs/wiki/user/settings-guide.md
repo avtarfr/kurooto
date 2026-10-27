@@ -49,7 +49,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [This computer](#this-computer): 11 settings
 - [Dashboard and terminal](#dashboard-and-terminal): 22 settings
 - [Add-ons](#add-ons): 4 settings
-- [The phone app's own settings](#the-phone-apps-own-settings): 24 settings
+- [The phone app's own settings](#the-phone-apps-own-settings): 26 settings
 - [Face presence](#face-presence): 29 settings
 
 ## You and how it talks to you
@@ -6409,6 +6409,23 @@ Which view the Views tab opens on.
 - **Values:** `systems` or `notes` (the Notes map). **Default:** `systems`.
 - **When to change it:** Pick the one you look at most.
 - **Depends on:** `calls.views` on your computer.
+
+### `app.viewsOrgans`
+
+Views shows the being as four pages, Brain, Heart, Senses and Memory, each organ alone with its parts listed under it.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to see the whole being in one drawing, with the dashboard's panels, as before
+  0.8.10's organ pages.
+- **Depends on:** `calls.views` and `calls.views_being` on your computer.
+
+### `app.viewOrgan`
+
+Which organ page Views opens on: the one you looked at last.
+
+- **Values:** `brain`, `heart`, `senses` or `memory`. **Default:** `brain`.
+- **When to change it:** Nothing to set: tap another page and Views remembers it.
+- **Depends on:** `app.viewsOrgans`.
 
 ### `app.callTone`
 

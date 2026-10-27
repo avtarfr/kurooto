@@ -3518,6 +3518,10 @@ bottom sheet with the same Brain parts, features, settings, the coil's bars, the
 checked as the dashboard's are; a note's preview is fetched when you tap it, sealed for that phone. Needs WebGL 2 and
 WebView 80+ (else Systems shows, with a note). *Setting:* `calls.views_being` (on). *Undo:* turn it off: Systems' copies
 go without the being, and Views → Being says your computer isn't sending it.
+Since the organ pages (0.8.10, app setting `app.viewsOrgans`, on): Views has **Brain · Heart · Senses · Memory** (and
+More: Systems, Notes map, Brain console), each that organ alone, drawn the same way, with its parts listed under it
+live; tapping one (there or on the drawing) zooms and lights it and lists it in full, with its switches. *Undo:* Settings
+→ Look → Organ pages in Views off: the whole being as above.
 
 **The wake-up alarm on the phone** (0.6.0): every alarm you set (and the next daily one) is also set on the phone with
 Android's alarm clock, so it rings with Stop and Snooze even when your computer, your call line or the internet can't

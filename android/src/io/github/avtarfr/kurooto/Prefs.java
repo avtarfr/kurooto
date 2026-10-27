@@ -153,6 +153,12 @@ final class Prefs {
     // Systems or the Notes map: the one the Views tab opens on (ViewsActivity)
     static String viewMode(Context c) { return sp(c).getString("viewMode", "systems"); }
     static void setViewMode(Context c, String mode) { sp(c).edit().putString("viewMode", mode).apply(); }
+    // the being as organ pages (0.8.10): Brain, Heart, Senses, Memory (off: the whole being in one drawing, as before),
+    // and the one Views opens on
+    static boolean viewsOrgans(Context c) { return sp(c).getBoolean("viewsOrgans", true); }
+    static void setViewsOrgans(Context c, boolean on) { sp(c).edit().putBoolean("viewsOrgans", on).apply(); }
+    static String viewOrgan(Context c) { return sp(c).getString("viewOrgan", "brain"); }
+    static void setViewOrgan(Context c, String organ) { sp(c).edit().putString("viewOrgan", organ).apply(); }
 
     static long lastUpdateCheck(Context c) { return sp(c).getLong("updateCheck", 0); }
     static void setUpdate(Context c, String name, String link) {

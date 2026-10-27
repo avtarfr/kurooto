@@ -48,6 +48,9 @@ import java.util.regex.Pattern;
  * with evaluateJavascript. The being's page asks for two things by address, answered here and nowhere else: /ask (a
  * setting, a feature on or off, a note's preview, mute: sealed requests to your computer, BeingRules) and /state
  * (how deep you are in the being, for the back button; whether it can draw).
+ * Organ pages (0.8.10, Prefs.viewsOrgans, on by default): the being is four pages, Brain, Heart, Senses and Memory, each
+ * that organ alone (being.js opts.only), switched on the same page with KurootoBeing.only (never loaded again); the page
+ * says on /state when what it lists changed (rev) and the app reads it (KurootoBeing.organState) for OrganViews' list.
  */
 public class ViewsPane {
     static final int SDK = Build.VERSION.SDK_INT;
@@ -59,6 +62,7 @@ public class ViewsPane {
     static final int BEING_MIN_CHROME = 80; // being.js uses ?? (tests/unit/test_being.py)
     static final long WATCH_MS = 20000, POLL_MS = 4000, BRAIN_MS = 8000;
     static final String[] MODES = {"being", "brain", "systems", "notes"};
+    static final String[] ORGANS = {"brain", "heart", "senses", "memory"}; // the being's organ pages
 
     /** Told when the being's state changes: whether it can draw here, and how deep you are in it (0: the whole body). */
     public interface Watcher { void changed(); }
@@ -78,6 +82,11 @@ public class ViewsPane {
     private String sent = "", notesSent = ""; // the last things handed to the page
     private volatile int depth;
     private Watcher watcher;
+    private String organ; // the organ page shown (one of ORGANS), or null: the whole being (organs off, or ViewsActivity)
+    private boolean still; // Remove animations: the organ pages' camera jumps instead of flying
+    private String organRev = "";
+    private JSONObject organState = new JSONObject();
+    private float insetTop, insetBottom; // CSS pixels of the page under the app's bars (OrganViews)
 
     /** a: the screen it's in; asked: one of MODES (null: the one you looked at last); onGone: the page's process
      *  ended (leave rather than take the app down). */
@@ -113,6 +122,67 @@ public class ViewsPane {
     public int depth() { return "being".equals(mode) ? depth : 0; }
 
     public void setWatcher(Watcher w) { watcher = w; }
+
+    /** The being as organ pages (OrganViews): on the one you looked at last. Call before page(). */
+    public ViewsPane organs(boolean reduced) {
+        String o = Prefs.viewOrgan(a);
+        organ = "brain";
+        for (String x : ORGANS) if (x.equals(o)) organ = o;
+        still = reduced;
+        return this;
+    }
+
+    /** The organ page shown, or null (the whole being). */
+    public String organ() { return organ; }
+
+    /** What the organ page lists (being.js describe(), with how fresh the copy is); {} until it has said. */
+    public JSONObject organState() { return organState; }
+
+    /** Another organ page: switched on the page as it is when the being is showing, else the being opens on it. */
+    public void showOrgan(String o) {
+        boolean known = false;
+        for (String x : ORGANS) known |= x.equals(o);
+        if (!known || organ == null) return;
+        organ = o;
+        Prefs.setViewOrgan(a, o);
+        if (!"being".equals(mode)) { show("being"); return; }
+        js("KurootoBeing.only(" + JSONObject.quote(o) + ")");
+    }
+
+    /** A part picked in the list (kind and key as the page named them; "" goes back to the whole organ). */
+    public void pick(String kind, String key) { js("KurootoBeing.pick(" + JSONObject.quote(kind) + "," + JSONObject.quote(key) + ")"); }
+
+    /** A switch in the list: a setting (key, true or false) or a feature on or off; sealed to your computer as before. */
+    public void setting(String key, boolean on) { js("KurootoBeing.setting(" + JSONObject.quote(key) + "," + on + ")"); }
+
+    public void feature(String id, boolean on) { js("KurootoBeing.feature(" + JSONObject.quote(id) + "," + on + ")"); }
+
+    /** The brain seen solid, cut away or in X-ray ("solid", "cut", "xray"). */
+    public void brainMode(String m) { js("KurootoBeing.mode(" + JSONObject.quote(m) + ")"); }
+
+    /** How much of the page the app's bars cover, in CSS pixels (dp): the organ is centred between them. */
+    public void inset(float top, float bottom) {
+        insetTop = top;
+        insetBottom = bottom;
+        js("KurootoBeing.inset(" + Math.round(top) + "," + Math.round(bottom) + ")");
+    }
+
+    /** Call into the being's page (organ pages only, once it has loaded). */
+    private void js(String call) {
+        if (web != null && loaded && "being".equals(mode) && organ != null) web.evaluateJavascript("window.KurootoBeing && " + call, null);
+    }
+
+    /** The page said what it lists changed: read it (on the main thread). */
+    private void pullOrgan() {
+        if (web == null || !"being".equals(mode) || organ == null) return;
+        web.evaluateJavascript("window.KurootoBeing && KurootoBeing.organState ? KurootoBeing.organState() : '{}'", v -> {
+            try {
+                Object o = new org.json.JSONTokener(v == null ? "" : v).nextValue();
+                if (o instanceof String) organState = new JSONObject((String) o);
+            } catch (Exception ignored) { return; }
+            if (watcher != null) watcher.changed();
+        });
+    }
 
     /** The back button in the being: one level up (the page does it, as Esc on the dashboard). */
     public void back() {
@@ -251,6 +321,8 @@ public class ViewsPane {
         notesSent = "";
         depth = 0;
         notesFetched = false;
+        organRev = "";
+        organState = new JSONObject();
         last = kept();
         notes = "being".equals(mode) ? keptNotes() : null;
         web.loadUrl(pageOf(mode));
@@ -289,7 +361,7 @@ public class ViewsPane {
         boolean ours = u != null && "https".equals(u.getScheme()) && HOST.equals(u.getHost()) && path != null;
         if (ours && "/ask".equals(path) && "being".equals(mode)) return text(head, ask(u.getQueryParameter("op"), u.getQueryParameter("a")));
         if (ours && "/state".equals(path)) {
-            state(u.getQueryParameter("depth"), u.getQueryParameter("gl"));
+            state(u.getQueryParameter("depth"), u.getQueryParameter("gl"), u.getQueryParameter("rev"));
             return text(head, "{}");
         }
         if (ours && ASSET.matcher(path).matches()) {
@@ -309,11 +381,12 @@ public class ViewsPane {
     }
 
     /** The being's page said how deep you are, or that it can't draw (no WebGL 2): remembered, and ViewsTab told. */
-    private void state(String d, String gl) {
+    private void state(String d, String gl, String rev) {
         if ("0".equals(gl)) sp().edit().putBoolean("beingGl", false).apply();
         try { if (d != null) depth = Integer.parseInt(d); } catch (NumberFormatException ignored) { }
         h.post(() -> {
             if ("0".equals(gl) && "being".equals(mode)) show("being"); // shows Systems now
+            if (rev != null && !rev.equals(organRev)) { organRev = rev; pullOrgan(); } // an organ page's list changed
             if (watcher != null) watcher.changed();
         });
     }
@@ -427,6 +500,7 @@ public class ViewsPane {
                 .append(",\"off\":").append(d.optBoolean("off"))
                 .append(",\"demo\":").append(demo)
                 .append(",\"palette\":").append(palette());
+        if ("being".equals(mode) && organ != null) j.append(",\"only\":").append(JSONObject.quote(organ)).append(",\"still\":").append(still);
         String text = j.toString() + "}";
         String noteSnap = notes == null ? "" : notes.optString("snap", "");
         boolean newNotes = "being".equals(mode) && !noteSnap.isEmpty() && (force || !noteSnap.equals(notesSent));
@@ -436,6 +510,7 @@ public class ViewsPane {
         String all = newNotes ? text.substring(0, text.length() - 1) + ",\"notes\":" + noteSnap + "}" : text;
         String fn = "being".equals(mode) ? "KurootoBeing" : "KurootoView"; // the Brain's page takes it as Systems' does
         web.evaluateJavascript("window." + fn + " && " + fn + ".take(" + JSONObject.quote(all) + ")", null);
+        if (force && organ != null && "being".equals(mode)) inset(insetTop, insetBottom); // the page is new: where the bars are
     }
 
     /** The app's colours (light or dark, Material You's on Android 12+) under the names the drawing uses. */

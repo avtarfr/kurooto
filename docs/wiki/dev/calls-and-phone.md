@@ -747,6 +747,18 @@ computer answers "doesn't know that yet"). `beingOk()`: WebView 80+ (`??` in bei
 Views after the update shows the being (`beingShown`). `ViewsTab`: an Expressive connected `ButtonGroup` of
 `ToggleButton`s; `BackHandler` while `depth() > 0` calls `KurootoBeing.back()`. Tests: `tests/unit/test_being_phone.py`,
 `android/test/BeingTest.java`.
+**Organ pages** (0.8.10, `Prefs.viewsOrgans`, on; Look → Organ pages in Views; off: `ViewsTab`'s `WholeViews`, the
+above as it was): `OrganViews.kt`. A floating pill of connected `ToggleButton`s, Brain · Heart · Senses · Memory and a
+More toggle with a menu (Systems, Notes map, Brain console: `pane.show(m)` as before). `ViewsPane.organs(reduced)`
+(before `page()`) sets `organ` (`Prefs.viewOrgan`, `ORGANS`), and `hand` adds `"only"` and `"still"` to the being's
+copy; `showOrgan(o)` calls `KurootoBeing.only(o)` on the page as it is (the WebView and its WebGL stay; from More it
+loads `being.html` once). `/state?rev=` (a new list) makes it read `KurootoBeing.organState()` with
+`evaluateJavascript`; `organState()` is that JSON, and the watcher re-reads it into `OrganState`. Under the drawing a
+floating panel: the organ's name and line, Solid · Cutaway · X-ray on Brain, a `LazyRow` of part cards (the picked one
+filled, scrolled into sight when picked on the drawing), and the part in full (rows, bars, Brain parts, features and
+the yes-or-no settings as `Switch`es: `pane.setting`, `pane.feature`, sealed through `/ask` as before; a neighbourhood's
+notes; a note's text). Taps call `pane.pick(kind, key)`. The bars' heights go to the page as `pane.inset(top, bottom)`
+in dp, re-sent when the page loads. Depth on an organ page is 0 or 1 (a part), so Back leaves from the organ.
 
 ## The settings guide in the app (0.8.10)
 

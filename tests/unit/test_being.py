@@ -176,3 +176,55 @@ def test_a_selection_leaves_only_its_part_solid_and_the_brain_has_three_views():
     for nm in ("thalamus", "hippocampus", "caudate", "callosum"):
         assert f'"{nm}"' in js  # the deep structures, shown in X-ray and through the glass
     assert '["solid", "cut", "xray"]' in js and 'if (p.organ === "mind") setMode("solid")' in js  # opens solid
+
+
+def test_organ_pages_draw_one_organ_and_leave_the_dashboard_as_it_was():
+    # 0.8.10: the phone app's Views pages (Brain, Heart, Senses, Memory) pass opts.only; the dashboard never does
+    js = static("being.js").decode()
+    pages = re.search(r"const PAGE_ORGAN = \{([^}]*)\}", js).group(1)
+    assert dict(re.findall(r"(\w+): \"(\w+)\"", pages)) == {
+        "brain": "mind",
+        "heart": "heart",
+        "senses": "senses",
+        "memory": "memory",
+    }
+    assert "let ONLY = PAGE_ORGAN[opts.only] || null;" in js and "const OM = !!ONLY, STILL = OM && !!opts.still;" in js
+    mount = re.search(r"window\.beingMount\(host, \{([^}]*)\}", static("home.js").decode()).group(1)
+    assert "only" not in mount and "still" not in mount  # the dashboard's own mount
+    # each place the organ pages differ is behind OM: the panel, empty space, the words over the drawing, back
+    assert "function openPanel(html, kind) { if (OM) { PANEL = kind; organDirty(); return; }" in js
+    assert "if (OM) organDirty(); else if (PH) PH.sheet(panel, false);" in js
+    assert "else if (!OM) { closePanel(); focusOn(null); }" in js  # an organ page never leaves its organ
+    assert "if (OM) { /* an organ page: the app shows its name and parts */ } else if (UI) UI.header(" in js
+    assert "if (OM) { /* an organ page: no voice lanes */ } else if (UI) UI.lanes(" in js
+    assert "goal.d = OM ? ONLY_D[name] : T.d;" in js and "goal.d = OM ? s.d * ONLY_SUB : s.d;" in js
+    assert "(STILL ? 1 : Math.min(1, dt * 6))" in js  # Remove animations: the camera jumps
+    assert "...(OM ? { only, pick, setting, feature, mode:" in js  # the dashboard's being has none of it
+    assert "if (OM) only(opts.only);" in js and "if (OM) OTIMER = setInterval(" in js
+    # alone: the other organs and everything between them hidden, and nothing hidden can be picked
+    only = js[js.index("function only(page)") :]
+    only = only[: only.index("\n  }\n")]
+    assert "g.visible = k === o" in only and "for (const l of LINKS) l.visible = false;" in only
+    assert js.count("LINKS.push(add(") == 3  # the vessels, the nerves and the blood
+    assert "(!OM || shown(o))" in js
+    for ref in ("ONLY_D", "PAGE_OF", "KREC"):
+        assert ref in js
+    # every kind of part the list can pick is one the dashboard can focus
+    pick = js[js.index("function pick(kind, key)") :]
+    pick = pick[: pick.index("\n  }\n")]
+    for kind in ("region", "heart", "sense", "hood", "note", "feature"):
+        assert f'kind === "{kind}"' in pick and f'kind: "{kind}"' in js, kind
+
+
+def test_an_organ_pages_list_has_every_part_with_its_live_state():
+    js = static("being.js").decode()
+    d = js[js.index("async function describe()") :]
+    d = d[: d.index("\n  }\n")]
+    for org, table, kind in (("mind", "REGIONS", "region"), ("heart", "HEART_PARTS", "heart"), ("senses", "SENSES", "sense")):
+        assert f'if (o === "{org}") parts = Object.entries({table}).map(([k, r]) => ({{ kind: "{kind}", key: k,' in d
+        assert f'live: partLive("{kind}", k)' in d
+    assert 'if (o === "memory") parts = memory.hoods' in d
+    assert "detail: SUB ? await detail(SUB) : null" in d and "said: SAID" in d
+    # its switches go the dashboard's own ways (api settings, modules), so the phone's sealed requests carry them
+    assert 'await api("settings", { key, value })' in js
+    assert 'await api(on ? "modules/enable" : "modules/disable", on ? { ids: [id] } : { id })' in js

@@ -360,6 +360,12 @@ class MainActivity : ComponentActivity() {
         recreate()
     }
 
+    /** Look → Organ pages in Views (0.8.10): Brain, Heart, Senses and Memory, or the whole being; Views opens with it next. */
+    internal fun toggleViewsOrgans() {
+        Prefs.setViewsOrgans(this, !Prefs.viewsOrgans(this))
+        ui.tick++
+    }
+
     /** The call screen (0.8.7): the Compose one, or the one from before; the next call opens with it. */
     internal fun toggleNewCallScreen() {
         Prefs.setNewCallScreen(this, !Prefs.newCallScreen(this))

@@ -199,3 +199,32 @@ def test_the_brain_choice_uses_the_brain_consoles_own_page_and_is_watched():
     assert 'Views.watch(a, brain ? "brain" : "systems")' in pane and "(live || brain)" in pane
     assert '"?kind=brain"' in views_java
     assert not (STATIC / "views" / "brain-phone.js").exists()
+
+
+def test_the_organ_pages_call_only_what_the_page_offers_and_have_a_switch():
+    # 0.8.10: Views → Brain, Heart, Senses, Memory (OrganViews.kt): one WebView, the organ switched on the page
+    js = (STATIC / "being-phone.js").read_text(encoding="utf-8")
+    offered = set(re.search(r"window\.KurootoBeing = \{([^}]*)\}", js).group(1).replace(" ", "").split(","))
+    assert {"take", "back", "only", "organState", "pick", "setting", "feature", "mode", "inset"} <= offered
+    src = ANDROID / "src/io/github/avtarfr/kurooto"
+    pane = (src / "ViewsPane.java").read_text(encoding="utf-8")
+    called = set(re.findall(r"KurootoBeing\.(\w+)\(", pane))
+    assert called and called <= offered, called - offered
+    assert 'js("KurootoBeing.only(" + JSONObject.quote(o) + ")");' in pane  # switched, never loaded again
+    assert 'u.getQueryParameter("rev")' in pane and "rev=${encodeURIComponent(rev)}" in js  # the list changed: read it
+    assert 'only: PV.only || undefined, still: PV.still' in js  # the page mounts as an organ page
+    # the switch (off: the whole being as before), and its guide entry
+    prefs = (src / "Prefs.java").read_text(encoding="utf-8")
+    assert 'getBoolean("viewsOrgans", true)' in prefs
+    tab = (src / "ViewsTab.kt").read_text(encoding="utf-8")
+    assert "if (remember { Prefs.viewsOrgans(a) }) OrganViews(a, ui, room) else WholeViews(a, ui, room)" in tab
+    settings = (src / "SettingsPane.kt").read_text(encoding="utf-8")
+    assert 'help = "app.viewsOrgans"' in settings
+    guide = (Path(kurooto.__file__).parents[2] / "tools" / "settings_guide" / "26-phone-app.toml").read_text(encoding="utf-8")
+    assert '[s."app.viewsOrgans"]' in guide and '[s."app.viewOrgan"]' in guide
+    organs = (src / "OrganViews.kt").read_text(encoding="utf-8")
+    for page in ("brain", "heart", "senses", "memory"):
+        assert f'"{page}" to "' in organs  # each a page of its own
+    for more in ("systems", "notes", "brain"):
+        assert f'"{more}" to "' in organs  # and the rest of Views behind More
+    assert "LocalReducedMotion.current" in organs and ".organs(reduced)" in organs

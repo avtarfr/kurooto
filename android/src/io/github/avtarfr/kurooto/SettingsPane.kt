@@ -283,6 +283,7 @@ private fun index(a: MainActivity): List<Hit> {
         h(SetGroup.LOOK, "Vivid colours", "calm colour color bright quiet"),
         h(SetGroup.LOOK, "Floating bar", "docked navigation toolbar bottom"),
         h(SetGroup.LOOK, "Moving background", "sky animation still cell"),
+        h(SetGroup.LOOK, "Organ pages in Views", "being brain heart senses memory views organ whole"),
         h(SetGroup.NOTIFICATIONS, "Notifications allowed", "permission alerts"),
         h(SetGroup.NOTIFICATIONS, "Notification categories", "channels sound vibrate silent importance"),
         h(SetGroup.CHAT, "Chat settings", "sessions files replies messages titles"),
@@ -391,6 +392,7 @@ private fun ColumnScope.Look(a: MainActivity) {
             Item("Vivid colours", "Off (Calm): quieter colours and plain cards", checked = Prefs.vivid(a), onClick = { a.toggleVivid() }, help = "app.vivid"),
             Item("Floating bar", "Off: the bar sits on the bottom edge", checked = Prefs.floatingBar(a), onClick = { a.toggleFloatingBar() }, help = "app.floatingBar"),
             Item("Moving background", "Off: a still picture", checked = Prefs.moving(a), onClick = { a.toggleMoving() }, help = "app.moving"),
+            Item("Organ pages in Views", "Off: the whole being in one drawing", checked = Prefs.viewsOrgans(a), onClick = { a.toggleViewsOrgans() }, help = "app.viewsOrgans"),
         ),
     )
 }
