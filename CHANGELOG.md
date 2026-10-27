@@ -1,19 +1,22 @@
 # Changelog
 
-## 0.8.9 (unreleased)
+## 0.8.9 (2026-10-27)
+
+0.8.6, 0.8.7 and 0.8.8 were never published on their own; their changes come with this release (below 0.8.9's own).
 
 - **The being** (the dashboard's board now; `look.board`): Kurooto drawn as one body on its live data. Sparks in the
   brain region that does each kind of work, a heart that beats with how busy it is, blood carrying work to the organ
   doing it and back, the senses (the coil is this computer, with every core's bar), your notes as memory, laid out by
-  their links, and each feature a point of light. Drag turns everything, and each organ on its own; click any part
-  (a brain region, a heart part, a sense, a neighbourhood, a note, a feature) and the view flies to it, it brightens and
-  the rest dims; Esc goes back. A region shows its Brain parts and their switches, a feature its switch and every
-  setting, a note its preview. Mute works; H hides the hints (`look.being_hints`). The three-pane and classic boards stay
-  in the panes menu.
+  their links like the NOTES map, and each feature a point of light. Drag an organ to turn it; click any part (a brain
+  region, the thalamus or hippocampus, a heart part, the coronaries, a sense, a neighbourhood, a note, a feature) and the
+  view flies to it: it stays solid, glowing in its colour with a ring round it, while the rest of its organ turns to
+  faint glass; Esc goes back. The brain opens solid and has Cutaway and X-ray views. A region shows its Brain parts and
+  their switches, a feature its switch and every setting, a note its preview. Mute works; H hides the hints
+  (`look.being_hints`). The three-pane and classic boards stay in the panes menu.
 - **The talk box** (`look.talk_box`, Alt+K): a small box on every board to talk to Kurooto as on Telegram.
 - For developers: `tools/dash_preview.py` runs a working copy's dashboard against a running Kurooto.
 
-## 0.8.8 (unreleased)
+### From 0.8.8
 
 - **Voice: talk and listen** (a new feature, off; Features → Voice: talk and listen → Set up): Kurooto speaks through
   this computer's speakers with a voice made here (Kokoro-82M, or Piper), sentence by sentence so it starts quickly.
