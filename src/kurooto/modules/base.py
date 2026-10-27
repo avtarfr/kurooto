@@ -29,6 +29,8 @@ class Incoming:
     reply_to: dict | None = None  # {"kind": ..., "ref": ...} when it answers one of Kurooto's messages
     voice: bool = False
     respond: Callable[..., Any] | None = None  # respond(text, buttons=None) -> message id
+    session: str = ""  # the phone app's chat it was written in (calls/sessions.py); "" or "main": the usual one
+    quote: dict | None = None  # {"from", "text"}: the phone app message it replies to, for the AI's context
 
     def reply(self, text: str, buttons: list | None = None) -> Any:
         buttons = buttons if buttons is not None else getattr(text, "buttons", None)  # an Answer brings its own

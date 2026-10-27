@@ -7,7 +7,7 @@ What it covers, all in Kurooto's own folders (your notes folder is never touched
                 what calls searched your notes for (calls/searches.json, 8 days at most: modules/curious.py)
     requests    what was asked and answered in finished AI requests (jobs.db: the row stays, without its words, for
                 /usage and the Space keeper) and long answers kept as files (jobs/<id>-result.md)
-    chats       Chat's recent turns (chat/history.json)
+    chats       Chat's recent turns (chat/history.json, and each phone app chat's: chat/sessions/)
     questions   answered and expired questions (ask/; ask.keep_days when you set it)
     cases       Wrong-button cases you didn't make test cases (cases/; cases.keep_days when you set it)
     messages    the words of messages that came by themselves (calm.db keeps when and why for 45 days)
@@ -144,12 +144,16 @@ def _requests(app: App, lo: float, hi: float) -> int:
 
 
 def _chats(app: App, lo: float, hi: float) -> int:
-    f = Path(app.paths.state) / "chat" / "history.json"
-    turns = (jload(f, []) or []) if f.exists() else []
-    keep = [t for t in turns if not (isinstance(t, dict) and _in(float(t.get("at") or 0), lo, hi))]
-    if len(keep) != len(turns):
-        jsave(f, keep)
-    return len(turns) - len(keep)
+    from kurooto.modules.chat import history_files  # Telegram's and main's, and each phone app chat's (0.8.10)
+
+    n = 0
+    for f in history_files(app):
+        turns = (jload(f, []) or []) if f.exists() else []
+        keep = [t for t in turns if not (isinstance(t, dict) and _in(float(t.get("at") or 0), lo, hi))]
+        if len(keep) != len(turns):
+            jsave(f, keep)
+        n += len(turns) - len(keep)
+    return n
 
 
 def _cases(app: App, lo: float, hi: float) -> int:

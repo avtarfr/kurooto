@@ -21,7 +21,13 @@
 //     NTFY_KEY), or wait here till it's back.
 //   - Chat (0.5.16): what you type in the phone app goes through /chat to your computer like a Telegram message;
 //     its answers come back the way messages do (chat-say), and this keeps the chat's last 50 messages (3 days at
-//     most) so a phone can catch up with the computer off.
+//     most) so a phone can catch up with the computer off. 0.8.10: separate chats ("sessions"): every message
+//     carries its `session` (none: "main", Kurooto's own); the last 50 of each are kept here (under "chat" for main,
+//     "chat:<id>" for the others) with the list of chats your computer pushed ("chat-sessions"), so a phone can
+//     catch up with the computer off (GET /chat?sessions=1; without it, only main, as older app versions expect).
+//     A change to a message (edited, deleted, pinned) keeps its place and gets a new seq. "chat-status" (working /
+//     idle) only goes to the phones connected straight to this line: not kept, no notification. A sealed message
+//     marked `live` (the being's requests) never waits in the outbox: with the computer off it's refused at once.
 //   - Tell Kurooto (0.6.0): a paired phone can make one Shortcut link for itself ("tk1.<id>.<secret>", only its hash
 //     kept here). The iPhone Shortcut posts what you said to /tell/<token>; it goes on as a chat message from that
 //     phone, and nothing else: the link opens no other door here. Your computer lists them and can revoke one;
@@ -174,11 +180,14 @@ function phoneMessage(it) {
 }
 
 // A chat message from Kurooto as the Android app gets it (it fetches the whole chat from /chat when it's opened).
-function chatMessage(m) {
+// A change to one (0.8.10: edited, deleted, pinned) is tagged "chat-update" instead, which older apps ignore.
+function chatMessage(m, update = false) {
   const out = {
-    title: String(m.title || 'Kurooto').slice(0, 120), message: m.text, priority: 3, tags: ['stop', 'chat'],
+    title: String(m.title || 'Kurooto').slice(0, 120), message: m.text, priority: 3, tags: ['stop', update ? 'chat-update' : 'chat'],
     time: Math.floor(Date.now() / 1000), id: m.id, seq: m.seq, re: m.re || '', reply: !!m.reply, buttons: m.buttons,
+    session: m.session || 'main', from: m.from,
   };
+  for (const k of ['file', 'quote', 'edited', 'deleted', 'pinned']) if (m[k] !== undefined) out[k] = m[k];
   const size = () => new TextEncoder().encode(JSON.stringify(out)).length;
   while (size() > 2800 && out.message.length > 80) out.message = out.message.slice(0, Math.floor(out.message.length * 0.8)) + '…';
   return out;
@@ -233,6 +242,11 @@ const OUTBOX_MAX = 100, OUTBOX_BYTES = 20 * 1024 * 1024, PART = 512 * 1024, QUEU
 const OUTBOX_FULL = 'Your call line is holding as much as it can for your computer. Wait till it is back on, or use Telegram.';
 // the chat: messages kept, for how long, longest text kept
 const CHAT_MAX = 50, CHAT_KEEP_S = 3 * 86400, CHAT_TEXT = 6000, DONE_KEEP_MS = 86400e3;
+// the chats (0.8.10): an id, the most kept, how long a "working" status counts without an "idle"
+const SESSION_ID = /^[0-9a-f]{16}$/, SESSIONS_MAX = 100, STATUS_MS = 3 * 3600e3;
+const OFF_NOW = "Your computer is off, try again when it's on.";
+// what a plain (iPhone app) chat message may carry, besides its id
+const CHAT_FIELDS = ['text', 'to', 'button', 'msg', 'ts', 'n', 'session', 'reply', 'file', 'voice', 'op', 'args', 'title', 'target', 'on', 'upto', 'key', 'value'];
 // files for the chat (sealed on your computer): the id, a part's most, a file's most, all of them at once
 const FILE_ID = /^[0-9a-f]{32}$/;
 const FILE_PART = 400 * 1024, FILE_MAX = 10 * 1024 * 1024 + 64, FILES_BYTES = 30 * 1024 * 1024;
@@ -261,6 +275,7 @@ export class Line {
     this.env = env;
     this.store = state.storage;
     this.pending = new Map();
+    this.chatStatus = {}; // the chats an AI request is working for (chat-status): kept in memory only
     // The computer's heartbeat: "ping" is answered "pong" by the runtime without waking this object.
     this.state.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
   }
@@ -393,7 +408,9 @@ export class Line {
       if (p === '/chat' && req.method === 'POST') return this.chat(req, who);
       if (p === '/chat') {
         const after = Number(url.searchParams.get('after')) || 0, log = await this.chatLog();
-        return json({ seq: log.seq, msgs: log.msgs.filter((m) => m.seq > after), ...(await this.outboxFor(who.id)), assistant: ((await this.store.get('names')) || {}).assistant || '' });
+        const assistant = ((await this.store.get('names')) || {}).assistant || '';
+        if (url.searchParams.get('sessions') !== '1') return json({ seq: log.seq, msgs: log.msgs.filter((m) => m.seq > after), ...(await this.outboxFor(who.id)), assistant });
+        return json({ ...(await this.chatAll(after)), ...(await this.outboxFor(who.id)), assistant }); // 0.8.10: every chat
       }
       if (p === '/outbox') return json(await this.outboxFor(who.id));
       if (p === '/today') { // this phone's sealed copy of the Today list (null until your computer sent one for it)
@@ -641,7 +658,9 @@ export class Line {
     if (m.op === 'sealed-put') return this.sealedPut(Array.isArray(m.items) ? m.items : [], Number(m.rev) || 0);
     if (m.op === 'sealed-claim') return this.sealedClaim((Array.isArray(m.ids) ? m.ids : []).map(String));
     if (m.op === 'outbox') return this.outbox(m.done);
-    if (m.op === 'chat-say') return this.chatSay(m.msg || {}, m.assistant);
+    if (m.op === 'chat-say') return this.chatSay(m.msg || {}, m.assistant, !!m.update);
+    if (m.op === 'chat-sessions') return this.chatSessionsPut(m);
+    if (m.op === 'chat-status') return this.chatStatusPut(m);
     if (m.op === 'file-put') return this.filePut(m);
     if (m.op === 'today-put') return this.todayPut(m);
     if (m.op === 'view-put') return this.viewPut(m);
@@ -1097,37 +1116,84 @@ export class Line {
     if (!ITEM_ID.test(id)) return json({ error: 'no id' }, 400);
     const body = { device: who.id, at: Date.now(), id };
     if (b.k1) body.k1 = String(b.k1);
-    else for (const k of ['text', 'to', 'button', 'msg', 'ts', 'n']) if (b[k] !== undefined) body[k] = b[k];
-    if (this.online() && !(await this.outboxBusy())) {
+    else for (const k of CHAT_FIELDS) if (b[k] !== undefined) body[k] = b[k];
+    // `live` (the being's requests, 0.8.10): now or not at all, ahead of what waits in the outbox
+    if (this.online() && (b.live || !(await this.outboxBusy()))) {
       const r = await this.relay('POST', '/chat', JSON.stringify(body));
-      if (r.status !== 503) return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json', ...CORS } });
+      if (r.status !== 503 || b.live) return new Response(r.status === 503 ? JSON.stringify({ ok: false, offline: true, note: OFF_NOW }) : r.body, { status: r.status, headers: { 'content-type': 'application/json', ...CORS } });
     }
+    if (b.live) return json({ ok: false, offline: true, note: OFF_NOW }, 503);
     if (!(await this.outboxPut('chat', who, id, body))) return json({ error: 'full', note: OUTBOX_FULL }, 507);
     const texts = (await this.store.get('texts')) || {};
     return json({ ok: true, queued: true, note: texts.chat_queued || 'Your computer is off: this waits on your call line and goes to it when it is back.' });
   }
 
-  async chatLog() {
-    const log = (await this.store.get('chat')) || { seq: 0, msgs: [] };
+  // One chat's kept messages ("main": Kurooto's own, under "chat", which also holds the seq all chats share).
+  async chatLog(sid = 'main') {
+    const main = (await this.store.get('chat')) || { seq: 0, msgs: [] };
+    const log = sid === 'main' ? main : (await this.store.get(`chat:${sid}`)) || { msgs: [] };
     const cut = Date.now() / 1000 - CHAT_KEEP_S;
-    return { seq: log.seq, msgs: log.msgs.filter((m) => m.at > cut) };
+    return { seq: main.seq, msgs: log.msgs.filter((m) => m.at > cut) };
+  }
+
+  async chatPut(sid, seq, msgs) {
+    if (sid === 'main') return this.store.put('chat', { seq, msgs });
+    const main = (await this.store.get('chat')) || { seq: 0, msgs: [] };
+    await this.store.put('chat', { seq: Math.max(main.seq, seq), msgs: main.msgs });
+    await this.store.put(`chat:${sid}`, { msgs });
+    const idx = (await this.store.get('chatIdx')) || [];
+    if (!idx.includes(sid)) await this.store.put('chatIdx', idx.concat([sid]));
+  }
+
+  // Every chat's messages after `after` (in seq order), the list of chats and the commands, and which are working.
+  async chatAll(after) {
+    const ids = ['main', ...((await this.store.get('chatIdx')) || [])];
+    let seq = 0, msgs = [];
+    for (const sid of ids) {
+      const log = await this.chatLog(sid);
+      seq = Math.max(seq, log.seq);
+      msgs = msgs.concat(log.msgs.filter((m) => m.seq > after));
+    }
+    msgs.sort((a, b) => a.seq - b.seq);
+    const list = (await this.store.get('chatSessions')) || { rev: 0, sessions: [], commands: [], switches: {} };
+    const now = Date.now(), status = {};
+    for (const [sid, st] of Object.entries(this.chatStatus)) if (now - st.t < STATUS_MS) status[sid] = { state: st.state, job: st.job };
+    return { seq, msgs, sessions: list.sessions, commands: list.commands, switches: list.switches || {}, srev: list.rev, status };
   }
 
   // Your computer puts a message in the chat: yours (once it took it) or Kurooto's (then it goes to your phones).
-  async chatSay(msg, assistant = '') {
+  // update: a change to one already here (edited, deleted, pinned): it keeps its place, gets a new seq, and goes to
+  // the phones connected straight to this line ("chat-update"; the others see it when they catch up).
+  async chatSay(msg, assistant = '', update = false) {
     if (!ITEM_ID.test(String(msg.id)) || !['you', 'kurooto'].includes(msg.from)) return { error: 'bad message' };
-    const log = await this.chatLog();
+    const sid = SESSION_ID.test(String(msg.session || '')) ? String(msg.session) : 'main';
+    const log = await this.chatLog(sid);
     const had = log.msgs.find((m) => m.id === msg.id);
-    if (had) return { ok: true, seq: had.seq }; // said already (sent again after the link dropped)
-    const m = {
-      id: msg.id, seq: log.seq + 1, from: msg.from, text: String(msg.text || '').slice(0, CHAT_TEXT),
+    if (had && !update) return { ok: true, seq: had.seq }; // said already (sent again after the link dropped)
+    const m = had || {
+      id: msg.id, from: msg.from,
       at: Number.isFinite(msg.at) ? Math.floor(msg.at) : Math.floor(Date.now() / 1000),
       buttons: (Array.isArray(msg.buttons) ? msg.buttons : []).slice(0, 6).map((x) => (String(x?.url || '').startsWith('https://') ? { label: String(x.label).slice(0, 40), url: String(x.url) } : { label: String(x?.label || '').slice(0, 40) })),
       reply: !!msg.reply,
     };
+    m.seq = log.seq + 1;
+    m.text = String(msg.text || '').slice(0, CHAT_TEXT);
+    m.session = sid;
     if (msg.title) m.title = String(msg.title).slice(0, 120);
     if (ITEM_ID.test(String(msg.re || ''))) m.re = String(msg.re);
-    await this.store.put('chat', { seq: m.seq, msgs: log.msgs.concat([m]).slice(-CHAT_MAX) });
+    for (const k of ['edited', 'deleted']) if (msg[k]) m[k] = true;
+    if (msg.pinned !== undefined) m.pinned = !!msg.pinned;
+    if (msg.deleted) { delete m.file; delete m.quote; m.buttons = []; }
+    else {
+      const f = msg.file;
+      if (f && typeof f === 'object') m.file = { name: String(f.name || '').slice(0, 120), size: Number(f.size) || 0, mime: String(f.mime || '').slice(0, 100), ...(String(f.url || '').startsWith('http') ? { url: String(f.url).slice(0, 600) } : {}) };
+      const q = msg.quote;
+      if (q && typeof q === 'object' && ITEM_ID.test(String(q.id || ''))) m.quote = { id: String(q.id), from: String(q.from || '').slice(0, 10), text: String(q.text || '').slice(0, 200) };
+    }
+    const msgs = had ? log.msgs.map((x) => (x.id === m.id ? m : x)) : log.msgs.concat([m]).slice(-CHAT_MAX);
+    await this.chatPut(sid, m.seq, msgs);
+    if (!had) await this.chatTouch(sid, m);
+    if (had) { await this.toLinked(chatMessage(m, true)); return { ok: true, seq: m.seq }; }
     if (m.from !== 'kurooto') return { ok: true, seq: m.seq };
     const devices = (await this.store.get('devices')) || {};
     let android = false;
@@ -1135,6 +1201,63 @@ export class Line {
     const { web, changed, errors } = await pushAll(this.env, devices);
     if (changed) await this.store.put('devices', devices);
     return { ok: true, seq: m.seq, android, web, errors };
+  }
+
+  // A new message: the chat's last line and time in the kept list (your computer pushes the list only when chats
+  // change, not with every message).
+  async chatTouch(sid, m) {
+    const list = await this.store.get('chatSessions');
+    const row = list?.sessions?.find((x) => x.id === sid);
+    if (!row) return;
+    row.updated = m.at;
+    row.last = String(m.text || m.file?.name || '').replace(/\s+/g, ' ').slice(0, 120);
+    await this.store.put('chatSessions', list);
+  }
+
+  // The list of chats and the commands ("/" in the composer), from your computer after each change: kept, and the
+  // phones told (quiet: a read mark, only the ones connected straight here). A chat no longer listed loses what's
+  // kept of it here.
+  async chatSessionsPut(m) {
+    const clean = (x) => ({
+      id: String(x?.id || ''), title: String(x?.title || '').slice(0, 80), created: Number(x?.created) || 0, updated: Number(x?.updated) || 0,
+      pinned: !!x?.pinned, last: String(x?.last || '').slice(0, 120), read: String(x?.read || '').slice(0, 16),
+    });
+    const sessions = (Array.isArray(m.sessions) ? m.sessions : []).map(clean).filter((x) => x.id === 'main' || SESSION_ID.test(x.id)).slice(0, SESSIONS_MAX);
+    const commands = (Array.isArray(m.commands) ? m.commands : []).slice(0, 100).map((c) => ({ name: String(c?.name || '').slice(0, 32), help: String(c?.help || '').slice(0, 100) })).filter((c) => c.name);
+    const switches = {};
+    for (const [k, v] of Object.entries(m.switches || {})) if (/^chat_[a-z_]{1,30}$/.test(k)) switches[k] = !!v;
+    const rev = Number(m.rev) || 0;
+    await this.store.put('chatSessions', { rev, sessions, commands, switches });
+    const live = new Set(sessions.map((x) => x.id)), idx = (await this.store.get('chatIdx')) || [];
+    const gone = idx.filter((sid) => !live.has(sid));
+    for (const sid of gone) { await this.store.delete(`chat:${sid}`); delete this.chatStatus[sid]; }
+    if (gone.length) await this.store.put('chatIdx', idx.filter((sid) => live.has(sid)));
+    const note = { title: 'stop', message: '', tags: ['stop', 'sessions'], kind: 'sessions', srev: rev, time: Math.floor(Date.now() / 1000) };
+    if (new TextEncoder().encode(JSON.stringify(sessions)).length < 2000) note.sessions = sessions; // else: GET /chat?sessions=1
+    if (m.quiet) await this.toLinked(note);
+    else await this.toPhones(note).catch(() => false);
+    return { ok: true, rev };
+  }
+
+  // "working" / "idle" for one chat: in memory here (GET /chat?sessions=1 shows it) and to the connected phones.
+  async chatStatusPut(m) {
+    const sid = SESSION_ID.test(String(m.session || '')) ? String(m.session) : 'main';
+    const state = m.state === 'working' ? 'working' : 'idle', job = String(m.job || '').slice(0, 40);
+    if (state === 'working') this.chatStatus[sid] = { state, job, t: Date.now() };
+    else delete this.chatStatus[sid];
+    await this.toLinked({ title: 'stop', message: '', tags: ['stop', 'status'], kind: 'status', session: sid, state, job });
+    return { ok: true };
+  }
+
+  // To the Android phones connected straight to this line only: sealed as always, not kept for a phone that
+  // reconnects, never through ntfy (no seq, so the phone's count of what it got stays as it was).
+  async toLinked(fields) {
+    if (!this.env.NTFY_KEY) return false;
+    const sockets = this.state.getWebSockets('phone');
+    if (!sockets.length) return false;
+    const k1 = await sealK1(this.env.NTFY_KEY, JSON.stringify({ ...fields, mid: randomHex(8) }));
+    for (const ws of sockets) { try { ws.send(JSON.stringify({ k1 })); } catch { /* gone */ } }
+    return true;
   }
 
   // ------------------------------------------------------------------------------------ files for the chat

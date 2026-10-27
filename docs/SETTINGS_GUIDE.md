@@ -193,6 +193,10 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 
 | Setting | Default | What it does |
 |---|---|---|
+| `calls.chat_edit` | `true` | edit (15 minutes), delete and pin your messages in the phone app's chat |
+| `calls.chat_files_inline` | `true` | files in the phone app's chat both ways, shown in place (photos, documents, audio) |
+| `calls.chat_sessions` | `true` | separate chats in the phone app, each its own AI conversation that keeps its context |
+| `calls.chat_titles` | `"first words"` | a new chat's name: "first words" of its first message, or "ai" (a short title) |
 | `calls.later_min` | `30` | "Later" on a ringing call calls back after this long |
 | `calls.lessons_max` | `12` | the most lessons every call is told; a new one that says the same replaces the old |
 | `calls.live_model` | `"gemini-3.8-live"` | the Gemini Live voice model for calls |
