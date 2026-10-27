@@ -197,3 +197,12 @@ object InboxCard {
         }
     }
 }
+
+
+/** "2 waiting for you" (0.8.10; owned by the shell part): a bar at the top of Chat's session list that opens what's
+ *  waiting (this tab's content) in a sheet. This stub is the contract: its signature stays. */
+@Composable
+fun WaitingBar(a: MainActivity, ui: HomeState) {
+    val n = ui.waiting?.size ?: 0
+    if (n > 0) Text("$n waiting for you", Modifier.padding(16.dp))
+}

@@ -132,7 +132,7 @@ private fun Tabs(a: MainActivity, ui: HomeState) {
                         when (tab) {
                             0 -> TodayPage(a, ui, room)
                             1 -> InboxPage(a, ui, room)
-                            3 -> ViewsPage(a, ui, room)
+                            3 -> ViewsTab(a, ui, room)
                             else -> PhonePage(a, ui, room)
                         }
                     }
@@ -141,29 +141,6 @@ private fun Tabs(a: MainActivity, ui: HomeState) {
             }
         }
     }
-}
-
-/** The Views tab (0.8.0): Systems and the Notes map in the shut-in WebView of ViewsPane, inside this screen so the bar stays. It
- *  fetches while the tab is showing and the screen is in front, and stops otherwise. */
-@Composable
-private fun ViewsPage(a: MainActivity, ui: HomeState, room: PaddingValues) {
-    val pane = remember { ViewsPane(a, null, ui.demo, null) }
-    DisposableEffect(pane) {
-        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
-            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) pane.resume() else if (e == androidx.lifecycle.Lifecycle.Event.ON_PAUSE) pane.pause()
-        }
-        a.lifecycle.addObserver(obs)
-        if (a.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) pane.resume()
-        onDispose {
-            a.lifecycle.removeObserver(obs)
-            pane.pause()
-            pane.destroy()
-        }
-    }
-    androidx.compose.ui.viewinterop.AndroidView(
-        factory = { pane.build() },
-        modifier = Modifier.fillMaxSize().padding(room).statusBarsPadding(),
-    )
 }
 
 /** How much room a page leaves at its end for the floating toolbar (its height plus the gap below it). */

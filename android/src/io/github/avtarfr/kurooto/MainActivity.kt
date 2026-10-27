@@ -429,6 +429,8 @@ class HomeState {
     var name by mutableStateOf("Kurooto")
     /** 0 Today, 1 Inbox, 2 Phone (kept across rotation, onSaveInstanceState). */
     var tab by mutableIntStateOf(0)
+    /** The pane showing (0.8.10): the app opens on Chat. */
+    var pane by mutableStateOf(Pane.CHAT)
     /** Today.load's copy: {"list", "at", "computer", "off", "old"}. */
     var today by mutableStateOf(JSONObject())
     /** What's waiting for you, newest first; null until the call line answered once. */
