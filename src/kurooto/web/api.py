@@ -988,7 +988,7 @@ class Api:
         return 404, {"error": "not found"}
 
     def _voice_id(self, vid, action: str, b: dict) -> tuple[int, dict]:
-        """POST voice/id/session {action: start|continue|pause|stop|keep, own_words?, conds?}, skip {cond},
+        """POST voice/id/session {action: start|again|continue|pause|stop|keep, own_words?, conds?}, skip {cond},
         train {use_anyway?}, undo (the last build), test {as: me|other|synthetic}, adapt {undo: today|all},
         forget {confirm: true}, parts/add {path}. Answers carry counts, grades and scores, never a vector."""
         if action == "session":
@@ -1045,6 +1045,8 @@ class Api:
             return out(f.test_stop(sid))
         if action == "retrain":
             return out(f.retrain())
+        if action == "undo":  # the last training (Add samples, Start over), this run only
+            return out(f.undo_train())
         if action == "strictness":
             return out(f.set_strictness(str(b.get("level") or "")))
         if action == "learn/undo":

@@ -5594,14 +5594,14 @@ How sure it must be that it's you: relaxed, normal or strict (strict turns you a
 
 ### `voice.speaker_id.threshold`
 
-0: worked out from your own samples when you train. A number from 0.3 to 0.9 overrides it.
+0: worked out from your own samples when you train. A number overrides it, held to 0.30 to 0.95.
 
 - **Values:** A number. **Default:** `0.0`.
 - **When to change it:** Leave it at 0 unless the Test step on the Your voice page shows it gets it wrong.
 
 ### `voice.speaker_id.margin`
 
-The 'not sure' band just below the threshold. Not sure always counts as not you.
+The 'not sure' band just below the threshold, at most 0.2 wide. Not sure always counts as not you.
 
 - **Values:** A number. **Default:** `0.05`.
 - **When to change it:** Widen it to be safer; narrow it if you're asked to repeat yourself too often.

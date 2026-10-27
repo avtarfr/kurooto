@@ -1318,3 +1318,66 @@ def test_others_nearby_is_a_shared_signal_with_no_details(app):
     assert not nearby.others(app)
     ev = [e for e in app.events.tail(20) if e["kind"] == "nearby_others"]
     assert [e["on"] for e in ev] == [True, False] and all(set(e) == {"ts", "kind", "on", "source"} for e in ev)
+
+
+def test_a_second_face_that_stays_keeps_others_nearby_on(app, monkeypatch):
+    """nearby.py drops a signal not refreshed for STALE_S: a second face in view for longer must keep it on (it
+    once said "others" only when it changed, so after two minutes Kurooto thought you were alone again)."""
+    from kurooto.core import nearby
+
+    f = app.modules["face"]
+    two = [frame([face(dx=i * 3.0), face(x=40, h=100, score=0.9)], [you(), rvec()]) for i in range(400)]
+    t = W(two)
+    t.w.emit = lambda kind, **kw: (t.got.append((kind, kw)), f._on_watch(kind, **kw))
+    now = [1000.0]
+    monkeypatch.setattr(nearby.time, "monotonic", lambda: now[0])
+    t.run(3)
+    assert nearby.others(app)
+    for _ in range(4):  # 4 x 60 s of frames, past STALE_S
+        now[0] += 60
+        t.run(1)
+    assert nearby.others(app)
+    assert [e["on"] for e in app.events.tail(50) if e["kind"] == "nearby_others"] == [True]  # one event, not per frame
+    t.cam.frames = mine(5)
+    t.run(2)
+    assert not nearby.others(app)
+
+
+def test_start_over_and_undo_the_last_training(app, trained):
+    f = trained
+    old = f.template()
+    old_cents = [c for _, c in old.cents]
+    ok, out = f.enrol_start(mode="new")  # Start over: a whole new plan
+    assert ok and not f.session.plan.have
+    assert f.template() is old  # the old model is still the one in use
+    feed_plan(f, f.session)
+    ok, out = f.train(f.session.id)
+    assert ok and out["can_undo"] and f.status()["can_undo"]
+    assert [c for _, c in f.template().cents] != old_cents
+    from kurooto.web.api import Api
+
+    code, r = Api(app).post("face/undo", {})
+    assert r["ok"] and "previous face model" in r["message"]
+    f._tpl = None  # read back from the sealed file (float16 inside it)
+    back = [c for _, c in f.template().cents]
+    assert len(back) == len(old_cents) and all(
+        abs(a - b) < 2e-3 for x, y in zip(back, old_cents, strict=True) for a, b in zip(x, y, strict=True)
+    )
+    assert len(f.template().samples) == len(old.samples)
+    assert Api(app).post("face/undo", {})[1]["ok"] is False  # once
+    f.enrol_start(mode="add")
+    feed_plan(f, f.session)
+    f.train(f.session.id)
+    f.forget()
+    assert not f.status()["can_undo"] and not f.store.exists()  # forget drops the undo too
+
+
+def test_start_over_never_overwrites_a_model_whose_key_cant_be_read(app, trained):
+    f = trained
+    f.enrol_start(mode="new")
+    feed_plan(f, f.session)
+    app.secrets.delete("face.key")
+    f._tpl = None
+    f.store._key = None
+    ok, out = f.train(f.session.id)
+    assert not ok and "key can't be read" in out["message"] and f.store.exists()

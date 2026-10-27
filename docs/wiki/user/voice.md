@@ -122,7 +122,7 @@ The dashboard shows each step (listening, hearing, talking to it, thinking, spea
 | `/voice stop` | stop speaking now |
 | `/voice say <text>` | say this now |
 | `/voice id` | Voice ID: whether it knows your voice, its grade, thresholds, last test, and counts since start |
-| `/voice enrol` | start (or continue) enrolling your voice at the computer; `/voice enrol stop`, `/voice enrol keep` |
+| `/voice enrol` | start (or continue) enrolling your voice at the computer; `/voice enrol again` (start over), `/voice enrol stop`, `/voice enrol keep` |
 | `/voice id test` | one try at the computer: was that you? |
 | `/voice id retrain` | build your voice print again from your samples (after changing the strictness) |
 | `/voice id undo today`, `/voice id undo all` | drop what it learned from your turns (improving over time) |
@@ -218,6 +218,12 @@ against your voice print, on this computer, and gets one of three answers: **you
    synthetic voice** (Kokoro's ten voices, if Kokoro is set up). The page shows the score on a dial with the "not
    sure" and "accept" marks.
 
+**Later:** **Manage → Add samples** adds a few in one condition (a new microphone, a cold), then **Retrain**. **Manage →
+Start over** (or `/voice enrol again`) records all six steps again from nothing; your voice print keeps working until
+the new one is built, **Keep for later** keeps the new samples and continues with the same plan next time, and
+**Undo** on the Train step puts the previous voice print back (until Kurooto restarts). **Forget my voice** deletes
+it.
+
 ### What "training" means here
 
 No neural network is trained or fine-tuned on your computer. A pretrained speaker model (CAM++) turns each sample into
@@ -239,8 +245,23 @@ back.
 
 `voice.speaker_id.strictness`: `relaxed`, `normal` or `strict` (strict turns you away more often; strangers almost
 never pass; a short reply right after your turn no longer carries). Press **Retrain** after changing it.
-`voice.speaker_id.threshold` (0 = worked out from your samples) sets your own; the page shows the calibrated one beside
-it.
+`voice.speaker_id.threshold` (0 = worked out from your samples) sets your own, held to 0.30 to 0.95 whatever is typed
+(below that most strangers would pass); the page shows the calibrated one beside it. `voice.speaker_id.margin` is held
+to at most 0.2.
+
+**How often it gets it wrong**, measured on recorded speech (LibriSpeech's 146 dev and test speakers: each enrolled
+with the real enrolment, from clean audiobook reading with quiet, far and noisy versions made from it, then tried
+against the others, the strangers never in the threshold's calibration; `tools/voiceid_eval.py`):
+
+| Strictness | You, long turn | You, 2 s | You, 1.5 s | A stranger passes (long turn) | Same gender | Short reply right after you |
+|---|---|---|---|---|---|---|
+| relaxed | 99.3 % | 98.5 % | 89 % | about 1 in 70 (1.4 %) | 2.5 % | you 95 %, a stranger 1.9 % |
+| normal | 99.3 % | 98.4 % | 89 % | about 1 in 180 (0.3 to 0.9 %) | 1.0 % | you 92 %, a stranger 0.8 % |
+| strict | 98.9 % | 97.3 % | 87 % | about 1 in 750 (0.13 %) | 0.26 % | never carries |
+
+Real rooms, colds and other microphones lower your numbers (more "not sure"); the strangers' numbers depend mostly on
+how much someone sounds like you: a few look-alike voices carry most of the misses, so a relative may pass more often.
+Strict is the one to use when strangers are around often.
 
 ### Short replies
 
@@ -253,7 +274,8 @@ pass.
 
 With Voice ID on, the voice is checked before the words are written out (`voice.speaker_id.gate`): someone else's
 talk that isn't calling Kurooto by name is dropped as chatter without being written out (only its first and last two
-seconds are, to hear its name). While another voice has been heard in the last minute, Kurooto is in **conversation
+seconds are, to hear its name). With the gate off, everything is written out as before, but conversation mode still
+checks each voice so it knows someone else is talking. While another voice has been heard in the last minute, Kurooto is in **conversation
 mode** (`voice.listen.conversation_mode`): it stays out of people talking to each other, you included, and only its
 name with a question or request after it ("Kurooto, …") or a reply right after its own answer opens the conversation.
 "Kurooto told me…" only mentions it. The dashboard's ear says "conversation: staying out".
@@ -286,10 +308,10 @@ name with a question or request after it ("Kurooto, …") or a reply right after
   it.
 - **Two people at once** in one turn give a mixed score (usually not sure); it can't separate voices inside one turn.
 - **Someone at your keyboard** isn't checked: typing is yours.
-- With agy as your AI, a guest's chat turn is told to use no tools and starts in an empty folder, and Kurooto's own
-  tools refuse it (even through agy's Kurooto connection). But agy doesn't enforce "no tools" the way Claude Code, the
-  Gemini key or Ollama do, and what you set up in agy itself (its own instructions file, other MCP servers such as
-  GBrain's) isn't Kurooto's to switch off for one turn; choose `guest_brain: local` if that matters to you.
+- A guest's chat turn runs on your AI only when it can be held to plain text (an API key, or Claude Code with no
+  tools). agy and Codex load their own MCP servers and instructions on every run, which Kurooto can't switch off for
+  one turn, so with one of them as your AI a guest is answered by the model on this computer, or told plainly that
+  Kurooto only chats with its owner when there's none. `guest_brain: local` always uses this computer.
 - A guest's words go to the AI as a request; once the answer is spoken, the request's words are blanked (the request
   list keeps only a row titled "Guest"), so nothing learns from them later.
 

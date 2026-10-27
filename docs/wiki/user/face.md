@@ -94,6 +94,11 @@ nudge. **Pause** and **Discard** do what they say; Discard drops every sample at
 Samples are kept in memory only while you enrol; if you don't train within 30 minutes, they're dropped. The camera
 closes when you leave the page (after 15 seconds) and after 10 minutes of capturing in all.
 
+**Start over** (on the Face page once you're enrolled) runs all nine steps again from nothing. Your current face model
+keeps working until you press **Finish and train**; **Discard** leaves it as it was. After a training (Start over or
+Add samples), **Undo the last training** puts the previous model back, until Kurooto restarts (the old one is held in
+memory only, never written down).
+
 ## What "training" means here
 
 Honestly: **Kurooto doesn't train a neural network.** Face detection (YuNet) and recognition (SFace) are pretrained

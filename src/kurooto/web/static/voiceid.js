@@ -43,7 +43,7 @@ function capture() {
   const left = Math.max(0, need - done);
   $("#overall-t").textContent = `${done} of ${need} · ${condsDone} of ${plan.length} conditions${s && left ? ` · about ${Math.max(1, Math.round(left * 15 / 60))} minute${left * 15 >= 90 ? "s" : ""} left` : ""}`;
   $("#conds").innerHTML = plan.map((c) => `<div class="cond${s && s.cond === c.cond ? " cur" : ""}${s && s.skipped.includes(c.cond) ? " skip" : ""}">${ring(by[c.cond] || 0, c.samples)}<div><b>${esc(c.label)}</b><small>${by[c.cond] || 0}/${c.samples}${s && s.skipped.includes(c.cond) ? " · skipped" : ""}</small></div></div>`).join("");
-  $("#prompt").textContent = s && s.prompt ? s.prompt : s ? "" : (S.enrolled ? "You're enrolled. Add samples from Manage." : "Press Start, then follow the prompts.");
+  $("#prompt").textContent = s && s.prompt ? s.prompt : s ? "" : (S.enrolled ? "You're enrolled. Add samples or Start over from Manage." : "Press Start, then follow the prompts.");
   $("#smsg").textContent = s ? `${s.state}${s.message ? `: ${s.message}` : ""}` : "";
   $("#attempts").innerHTML = (s ? s.attempts : []).slice().reverse().map((a) => `<li class="${a.ok ? "ok" : "no"}">${a.ok ? "✓" : "✗"} #${a.n} · ${esc(CW[a.cond] || a.cond)}${a.reason ? ` · ${esc(a.reason)}` : ""}</li>`).join("");
   const live = s && !["done", "stopped", "kept"].includes(s.state);
@@ -112,7 +112,9 @@ function manage() {
 }
 
 async function load() {
+  const was = S && S.session && !["done", "stopped", "kept"].includes(S.session.state);
   try { S = await api("voice/id"); } catch { $("#line").textContent = "Kurooto isn't answering right now."; return; }
+  if (was && step === "capture" && (!S.session || S.session.state === "done") && (S.pending || S.report)) show("train"); // the capture ended and was built: its report
   $("#line").textContent = S.line || (S.on ? "" : "Voice ID is off.");
   topBox(); capture(); report(); improve(); manage(); dial(S.test);
 }
@@ -140,6 +142,10 @@ document.querySelectorAll("[data-test]").forEach((b) => b.onclick = async () => 
 $("#adapt").onchange = async () => { const r = await api("modules/card", { id: "voice", act: "speaker_id.adapt", value: $("#adapt").checked }); $("#amsg").textContent = r.message || r.error || ""; load(); };
 document.querySelectorAll("[data-undo]").forEach((b) => b.onclick = async () => { const r = await api("voice/id/adapt", { undo: b.dataset.undo }); $("#amsg").textContent = r.message || ""; load(); });
 $("#add").onclick = async () => { await session("start", { conds: [$("#addc").value] }); show("capture"); };
+$("#again").onclick = async () => {
+  if (!confirm("Start over? You'll record all six steps again; your voice print keeps working until the new one is built.")) return;
+  await session("again"); show("capture");
+};
 $("#retrain").onclick = async () => { const r = await api("voice/id/train", {}); $("#fmsg").textContent = ""; $("#tmsg").textContent = r.message || ""; show("train"); load(); };
 $("#setmodel").onclick = async () => {
   const m = $("#model").value;

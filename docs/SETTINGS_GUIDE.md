@@ -1190,7 +1190,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.speaker_id.gate` | `true` | Check who's speaking before writing words out: other people not calling Kurooto are never transcribed. ([guide](wiki/user/settings-guide.md#voicespeakeridgate)) |
 | `voice.speaker_id.guest_brain` | `"main"` | Who answers other voices: your AI (none of your data, no tools) or the model on this computer. ([guide](wiki/user/settings-guide.md#voicespeakeridguestbrain)) |
 | `voice.speaker_id.guest_per_hour` | `20` | At most this many answers to other voices an hour. ([guide](wiki/user/settings-guide.md#voicespeakeridguestperhour)) |
-| `voice.speaker_id.margin` | `0.05` | The 'not sure' band just below the threshold. Not sure always counts as not you. ([guide](wiki/user/settings-guide.md#voicespeakeridmargin)) |
+| `voice.speaker_id.margin` | `0.05` | The 'not sure' band just below the threshold, at most 0.2 wide. Not sure always counts as not you. ([guide](wiki/user/settings-guide.md#voicespeakeridmargin)) |
 | `voice.speaker_id.min_speech_s` | `1.0` | Speech shorter than this is too short to tell who it is, so it counts as not sure. ([guide](wiki/user/settings-guide.md#voicespeakeridminspeechs)) |
 | `voice.speaker_id.mode` | `"owner_only_acts"` | What other voices get: a chat with no actions and none of your data, or just one line saying it only talks with you. ([guide](wiki/user/settings-guide.md#voicespeakeridmode)) |
 | `voice.speaker_id.model` | `"campplus-en"` | The speaker model: campplus-en (English, the most accurate) or campplus-multi. Changing it means enrolling again. ([guide](wiki/user/settings-guide.md#voicespeakeridmodel)) |
@@ -1198,7 +1198,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.speaker_id.spoken_enrol` | `true` | During enrolment Kurooto says each step aloud. Off: the page shows the steps only. ([guide](wiki/user/settings-guide.md#voicespeakeridspokenenrol)) |
 | `voice.speaker_id.strictness` | `"normal"` | How sure it must be that it's you: relaxed, normal or strict (strict turns you away more often). ([guide](wiki/user/settings-guide.md#voicespeakeridstrictness)) |
 | `voice.speaker_id.tell_guests` | `true` | Once per conversation, tell others they can chat but only you can make Kurooto act. ([guide](wiki/user/settings-guide.md#voicespeakeridtellguests)) |
-| `voice.speaker_id.threshold` | `0.0` | 0: worked out from your own samples when you train. A number from 0.3 to 0.9 overrides it. ([guide](wiki/user/settings-guide.md#voicespeakeridthreshold)) |
+| `voice.speaker_id.threshold` | `0.0` | 0: worked out from your own samples when you train. A number overrides it, held to 0.30 to 0.95. ([guide](wiki/user/settings-guide.md#voicespeakeridthreshold)) |
 
 ### `voice_notes`
 

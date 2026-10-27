@@ -178,6 +178,7 @@ class Face(Module):
         self._battery_at = (0.0, False)
         self._greets: dict = {}
         self.slow = 1.0
+        self._previous: dict | None = None  # the template before the last training, sealed nowhere: Undo, this run only
 
     # ------------------------------------------------------------------------------------------- the parts
     def wants(self) -> list[str]:
@@ -806,12 +807,16 @@ class Face(Module):
         if add and not plan.samples:
             return False, {"message": "No new samples yet."}
         new = list(plan.samples)
+        before = self._template_or_none()
         if add:
-            t = self._template_or_none()
+            t = before
             if t is None:
                 return False, {"message": "The face model's key can't be read just now."}
         else:
+            if before is None and not self.store.readable():  # never a new model over one whose key can't be read
+                return False, {"message": "The face model's key can't be read just now."}
             t = Template(face_parts.SFACE_SHA)
+        self._previous = before.to_payload() if before is not None else None  # Undo (in memory, this run only)
         t.samples += new
         if plan.baseline:
             t.baseline = {**t.baseline, **plan.baseline}
@@ -821,7 +826,18 @@ class Face(Module):
         del new
         kind = "face_trained" if add else "face_enrolled"
         self.app.events.emit(kind, **_event_safe(samples=len(t.samples), grade=t.grade))
-        return True, {"report": rep, "stage": "manage"}
+        return True, {"report": rep, "stage": "manage", "can_undo": self._previous is not None}
+
+    def undo_train(self) -> tuple[bool, str]:
+        """Back to the face model before the last training (Add samples or Start over), within this run of Kurooto."""
+        with self._tpl_lock:
+            prev, self._previous = self._previous, None
+            if prev is None:
+                return False, "Nothing to undo."
+            t = Template.from_payload(prev)
+            self._save(t)
+        self.app.events.emit("face_trained", **_event_safe(samples=len(t.samples), grade=t.grade))
+        return True, f"Back to your previous face model ({len(t.samples)} samples, {t.grade or '?'})."
 
     def test_mark(self, sid: str, who: str) -> tuple[bool, dict]:
         s = self._session(sid)
@@ -865,6 +881,7 @@ class Face(Module):
             self.watcher.release()
         with self._tpl_lock:
             self._tpl = None
+            self._previous = None
             gone = self.store.forget()
         self._greets = {}
         self.app.events.emit("face_forgotten")
@@ -991,6 +1008,7 @@ class Face(Module):
             "target": TARGET,
             "minimum": MINIMUM,
             "strictness": self.setting("recognise.strictness") or "normal",
+            "can_undo": self._previous is not None,
             "switches": {k: bool(self.setting(k)) for k in TOGGLES},
             "voice_speaks": bool(vo is not None and self.app.is_on("voice") and not vo.muted()),
         }

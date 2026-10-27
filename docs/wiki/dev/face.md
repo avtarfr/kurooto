@@ -22,7 +22,7 @@ checks that `core/tap.py`, `core/ask.py` and `core/tools.py` never read the face
 | `modules/face/watch.py` | `Watcher` (pure: injected clock, idle, locked, camera, models, classify, pause reasons, emit), `PAUSES` |
 | `modules/face/greet.py` | `compose()` (rules, ≤ 220 characters), `may_greet()` |
 | `core/biometric.py` | `BioStore(app, feature)` (key, seal, unseal, save, load, forget, `Locked`), `calibrate()`, `load_impostors()`, `npz_read`/`npz_write` (numpy's format without numpy), `BIOMETRIC_SECRETS`. Shared with Voice ID |
-| `core/nearby.py` | "others nearby": `set_others(app, source, on)`, `others(app)`; Face sets it, Voice (ID) can read it |
+| `core/nearby.py` | "others nearby": `set_others(app, source, on)`, `others(app)`; Face sets it, Voice (ID) can read it. The watcher sends `others on` with every frame while a second face is in view (nearby drops a signal older than `STALE_S`, 120 s), and the event only when it changes |
 | `web/static/face.js` | the Face page (`FACE.mount`, `FACE.live`), loaded on demand by `home.js:renderFace` |
 | `tools/face_impostors.py` | the maintainer's impostor-set builder (never at install) |
 | `tests/unit/test_face.py`, `tests/unit/test_biometric.py` | everything with fakes |
@@ -222,6 +222,7 @@ The live stream: `{t: "face", kind: "enrol" | "test" | "test_result" | "session"
 | `POST /api/face/test/start {cid}` | guarded `camera.open` (the page's Test) |
 | `POST /api/face/test/mark {session, who}`, `test/stop` | |
 | `POST /api/face/retrain`, `strictness {level}`, `learn/undo`, `learn/forget`, `pause {arg}` | |
+| `POST /api/face/undo` | back to the template before the last `train` (Start over, i.e. `enrol/start {mode: new}` while enrolled, or Add samples); held in memory (`Face._previous`, a payload) for this run only, dropped by forget; `status().can_undo`. A Start over never trains over a template whose key can't be read |
 | `POST /api/face/forget` | `data.delete` (after the page's confirm) |
 | `POST /api/face/install-from {folder}` | runs in the background; progress at `GET /api/progress` |
 

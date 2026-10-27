@@ -174,6 +174,23 @@ def test_frr_matches_a_hand_count_and_the_override_replaces_both():
     assert r["thresholds"].long.accept == 0.7 and r["calibrated"].long.accept != 0.7 and r["report"]["override"]
 
 
+def test_a_threshold_or_margin_setting_is_held_to_its_range():
+    """voice.speaker_id.threshold can't make a stranger "you" (a 0.05 would let nearly anyone act), and the margin
+    can't widen "not sure" so far that any short reply carries."""
+    t = sid.Thresholds(sid.Band(0.5, 0.45), sid.Band(0.42, 0.37))
+    low = sid.override(t, 0.05, 0.05)
+    assert low.long.accept == low.short.accept == sid.OVERRIDE[0] == 0.30
+    assert sid.override(t, 7.0, 0.05).long.accept == sid.OVERRIDE[1]
+    assert sid.override(t, float("nan"), 0.05) is t and sid.override(t, -1, 0.05) is t
+    assert sid.override(t, "x", 0.05) is t
+    wide = sid.override(t, 0.6, 5.0)
+    assert abs(wide.long.unsure - (0.6 - sid.MARGIN_MAX)) < 1e-9
+    assert sid.override(t, 0.6, -1).long.unsure < 0.6  # never above accept
+    b = sid.band([0.1, 0.2, 0.3] * 20, "normal", 9.0)
+    assert b.unsure >= b.accept - sid.MARGIN_MAX - 1e-9
+    assert sid.margin_of(None) == 0.05 and sid.margin_of(float("inf")) == 0.05
+
+
 def test_the_bank_file_round_trips(tmp_path):
     emb = FakeEmbedder()
     bank = make_bank(0.2, emb, speakers=5)
@@ -840,3 +857,47 @@ def test_add_samples_kept_for_later_keeps_the_voice_print_in_use(vid):
     vid._tpl = {k: x for k, x in vid.template().items() if k != "centroid"}  # damaged: never a crash, unsure
     assert vid.problem() == "no voice print"
     assert vid.check(bytes(pcm(1, 902, seconds=3.0).pcm), 3.0).decision == "unsure"
+
+
+def test_a_low_threshold_setting_never_lets_a_stranger_act(vid):
+    enrol_owner(vid)
+    vid.app.settings.set("voice.speaker_id.threshold", 0.01)
+    th = vid.thresholds(vid.template())
+    assert th.long.accept == th.short.accept == sid.OVERRIDE[0]
+    stranger = vid.check(bytes(pcm(55, 3, seconds=3.0).pcm), 3.0)
+    assert stranger.decision != "owner"
+
+
+def test_start_over_keeps_the_old_voice_print_until_the_new_one_is_built_and_undo_puts_it_back(vid):
+    enrol_owner(vid)
+    old = vid.template()
+    vid.capture_with = Plan(lambda: vid.session)
+    vid.stt_fn = lambda pcm: vid.session.prompt if vid.session else ""
+    from kurooto.web.api import Api
+
+    api = Api(vid.app)
+    r = api.post("voice/id/session", {"action": "again"})[1]
+    assert r["ok"], r
+    assert len(vid.session.plan) == 6 and vid.session.existing == []  # the whole plan, from nothing
+    assert vid.enrolled() and vid.template()["centroid"] == old["centroid"]  # still in use meanwhile
+    vid._thread.join(20)
+    new = vid.template()
+    assert vid.enrolled() and new["centroid"] != old["centroid"] and len(new["samples"]) == 21
+    assert api.get("voice/id")[1]["can_undo"]
+    assert api.post("voice/id/undo", {})[1]["ok"]
+    assert vid.template()["centroid"] == old["centroid"] and vid.template()["samples"] == old["samples"]
+
+
+def test_a_start_over_kept_for_later_goes_on_with_the_whole_plan(vid):
+    enrol_owner(vid)
+    old = vid.template()
+    some = owner_samples(vid.emb, 6, conds=["normal"] * 5 + ["quiet"], start=700)
+    vid._keep(SimpleNamespace(existing=[], samples=some, fresh=True))
+    t = vid.template()
+    assert t["reenrol"] and len(t["samples"]) == 6 and t["centroid"] == old["centroid"] and vid.enrolled()
+    assert vid.previous is old  # Undo brings the old samples back too
+    vid.capture_with = lambda timeout, cancel: None  # nothing heard: it only has to start
+    r = vid.start_session()
+    assert r["ok"] and len(vid.session.plan) == 6 and len(vid.session.existing) == 6
+    vid.session.command("stop")
+    vid._thread.join(5)

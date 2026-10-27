@@ -39,6 +39,8 @@ WORDS = {OWNER: "you", UNSURE: "unsure", GUEST: "someone else"}
 SHORT_S = 2.5  # a turn with less speech than this uses the short thresholds
 FAR = {"relaxed": 0.01, "normal": 0.002, "strict": 0.0}  # the target false-accept rate per strictness
 CLAMP = (0.30, 0.85)
+OVERRIDE = (0.30, 0.95)  # voice.speaker_id.threshold is held to this: a setting can't make a stranger "you"
+MARGIN_MAX = 0.20  # the "not sure" band is at most this wide (a short reply right after you carries from its bottom)
 STRICT_PAD = 0.03
 MIN_SAMPLES = 12
 MIN_CONDS = 3
@@ -131,6 +133,15 @@ class Thresholds:
         )
 
 
+def margin_of(margin: float) -> float:
+    """voice.speaker_id.margin, held to 0..MARGIN_MAX (a wide band would let almost anyone carry a short reply)."""
+    try:
+        m = float(margin)
+    except (TypeError, ValueError):
+        return 0.05
+    return min(MARGIN_MAX, max(0.0, m)) if math.isfinite(m) else 0.05
+
+
 def band(impostors: Sequence[float], strictness: str, margin: float) -> Band:
     """accept: the impostor quantile at the target false-accept rate (strict: above every impostor), clamped;
     unsure: the lower of the impostors' 99th percentile and accept - margin."""
@@ -140,7 +151,7 @@ def band(impostors: Sequence[float], strictness: str, margin: float) -> Band:
     else:
         accept = quantile(imp, 1 - FAR.get(strictness, FAR["normal"]))
     accept = min(CLAMP[1], max(CLAMP[0], accept))
-    unsure = min(quantile(imp, 0.99), accept - float(margin))
+    unsure = min(quantile(imp, 0.99), accept - margin_of(margin))
     return Band(accept, min(unsure, accept - 1e-6))
 
 
@@ -149,10 +160,16 @@ def derive(i_long: Sequence[float], i_short: Sequence[float], strictness: str, m
 
 
 def override(t: Thresholds, threshold: float, margin: float) -> Thresholds:
-    """voice.speaker_id.threshold > 0 replaces accept, long and short alike."""
-    if not threshold or threshold <= 0:
+    """voice.speaker_id.threshold > 0 replaces accept, long and short alike, held to OVERRIDE (0.30 to 0.95: below
+    that most strangers would pass)."""
+    try:
+        th = float(threshold or 0)
+    except (TypeError, ValueError):
+        th = 0.0
+    if not math.isfinite(th) or th <= 0:
         return t
-    b = Band(float(threshold), float(threshold) - float(margin))
+    th = min(OVERRIDE[1], max(OVERRIDE[0], th))
+    b = Band(th, th - max(1e-6, margin_of(margin)))
     return Thresholds(b, Band(b.accept, b.unsure))
 
 

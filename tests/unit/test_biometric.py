@@ -137,3 +137,28 @@ def test_pack_is_float16_base64():
     back = biometric.unpack(biometric.pack(v))
     assert len(back) == 128 and max(abs(a - b) for a, b in zip(v, back, strict=True)) < 1e-3
     assert json.dumps(biometric.pack(v))  # a plain string
+
+
+def test_the_face_template_is_owner_only_from_its_first_byte(app, monkeypatch):
+    import os
+    import stat
+
+    if os.name == "nt":
+        pytest.skip("POSIX modes")
+    seen = []
+    real = os.replace
+
+    def spy(src, dst):  # the temporary file, just before it becomes the template
+        seen.append(stat.S_IMODE(os.stat(src).st_mode))
+        return real(src, dst)
+
+    monkeypatch.setattr(os, "replace", spy)
+    old = os.umask(0o022)
+    try:
+        s = TemplateStore(app, "face")
+        s.save({"x": 1}, {"enrolled": True})
+    finally:
+        os.umask(old)
+    assert seen[0] == 0o600  # the template (then its status file)
+    assert stat.S_IMODE(s.file.stat().st_mode) == 0o600 and stat.S_IMODE(s.dir.stat().st_mode) == 0o700
+    assert not list(s.dir.glob("*.tmp*"))
