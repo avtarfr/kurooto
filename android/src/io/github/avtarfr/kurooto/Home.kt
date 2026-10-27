@@ -58,6 +58,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -139,7 +140,12 @@ private fun Panes(a: MainActivity, ui: HomeState) {
                     } using SizeTransform(clip = false)
                 },
             ) { p ->
-                CompositionLocalProvider(LocalNavShared provides this@SharedTransitionLayout, LocalNavPane provides this) {
+                // the panes' text on the sky (no Scaffold here gives it a colour; without this, titles came out black on dark)
+                CompositionLocalProvider(
+                    LocalNavShared provides this@SharedTransitionLayout,
+                    LocalNavPane provides this,
+                    LocalContentColor provides MaterialTheme.colorScheme.onBackground,
+                ) {
                     if (p == Pane.CHAT) holder.SaveableStateProvider(Pane.CHAT) { ChatPane(a, ui, PaddingValues()) }
                     else Others(a, ui, p, holder)
                 }

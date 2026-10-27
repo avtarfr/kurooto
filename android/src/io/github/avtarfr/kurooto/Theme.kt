@@ -5,6 +5,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
@@ -28,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * The look of the Compose screens: Material 3 Expressive (the expressive motion scheme, emphasized type, large rounded
+ * The look of the Compose screens: Material 3 Expressive (a calmer take on its motion, emphasized type, large rounded
  * shapes), coloured by the palette chosen in Look (0.8.10): **Material You** (the default, as before: the wallpaper's
  * colours on Android 12+, Vivid or Calm), **Apricot** (apricot and plum on near-black, the Rail design) or **Kuro** (the
  * dashboard's olive). The default stays Material You so nobody's colours change on an update (the settings' rule: what
@@ -245,7 +246,21 @@ private object StillMotion : MotionScheme {
     override fun <T> slowEffectsSpec(): FiniteAnimationSpec<T> = snap()
 }
 
-private val EXPRESSIVE = MotionScheme.expressive()
+/** Kurooto's motion: Expressive's roles (spatial and effects; fast, default, slow), but slower and settled, with
+ *  almost no overshoot, so a pane glides in instead of snapping and bouncing (the stock timing felt rushed). */
+private object CalmMotion : MotionScheme {
+    override fun <T> defaultSpatialSpec(): FiniteAnimationSpec<T> = spring(0.92f, 200f)
+
+    override fun <T> fastSpatialSpec(): FiniteAnimationSpec<T> = spring(0.88f, 420f)
+
+    override fun <T> slowSpatialSpec(): FiniteAnimationSpec<T> = spring(0.95f, 110f)
+
+    override fun <T> defaultEffectsSpec(): FiniteAnimationSpec<T> = spring(1f, 500f)
+
+    override fun <T> fastEffectsSpec(): FiniteAnimationSpec<T> = spring(1f, 1000f)
+
+    override fun <T> slowEffectsSpec(): FiniteAnimationSpec<T> = spring(1f, 250f)
+}
 
 val LocalKurooto = staticCompositionLocalOf { Palettes.apricot.darkK }
 
@@ -297,7 +312,7 @@ fun KurootoTheme(palette: String = Palettes.DEFAULT, dynamic: Boolean = true, fo
     CompositionLocalProvider(LocalKurooto provides k, LocalReducedMotion provides reduced, LocalVivid provides vivid) {
         MaterialExpressiveTheme(
             colorScheme = scheme,
-            motionScheme = if (reduced) StillMotion else EXPRESSIVE,
+            motionScheme = if (reduced) StillMotion else CalmMotion,
             shapes = SHAPES,
             typography = TYPE,
             content = content,

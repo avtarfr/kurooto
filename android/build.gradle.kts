@@ -49,6 +49,11 @@ android {
             applicationIdSuffix = ".dev" // installs beside the real app
             versionNameSuffix = "-dev"
             manifestPlaceholders["appLabel"] = "Kurooto dev"
+            // run like the release (R8, not debuggable: a debuggable Compose app janks), so a phone check of the
+            // motion shows what people get
+            isDebuggable = false
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = null // build.sh signs it with its debug key
             matchingFallbacks += listOf("debug")
         }
