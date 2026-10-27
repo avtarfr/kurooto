@@ -20,7 +20,7 @@ import java.io.FileOutputStream;
 final class Views {
     private Views() { }
 
-    static String file(String kind) { return "view-" + ("notes".equals(kind) ? "notes" : "systems") + ".json"; }
+    static String file(String kind) { return "view-" + ("notes".equals(kind) || "brain".equals(kind) ? kind : "systems") + ".json"; } // brain: the Brain console (0.8.10)
 
     static synchronized JSONObject load(Context c, String kind) {
         try {
@@ -91,11 +91,13 @@ final class Views {
         return ViewSeal.open(k.getPrivate(), ((java.security.interfaces.ECPublicKey) k.getPublic()).getParams(), head, B64.decode(data));
     }
 
-    /** Systems is on screen: tell your computer (through the call line) to send it live. The call line's answer, or
-     *  null if it couldn't be reached. Call off the main thread. */
-    static JSONObject watch(Context c) {
+    /** Systems (or the Brain, kind "brain", 0.8.10) is on screen: tell your computer (through the call line) to send it
+     *  live. The call line's answer, or null if it couldn't be reached. Call off the main thread. An older call line
+     *  ignores the kind and takes it as Systems. */
+    static JSONObject watch(Context c, String kind) {
         if (!Prefs.paired(c)) return null;
-        Net.Reply r = Net.request("POST", Prefs.url(c) + "/view/watch", "{}".getBytes(Crypto.UTF8), "application/json", Prefs.device(c), 20000);
+        String q = "brain".equals(kind) ? "?kind=brain" : "";
+        Net.Reply r = Net.request("POST", Prefs.url(c) + "/view/watch" + q, "{}".getBytes(Crypto.UTF8), "application/json", Prefs.device(c), 20000);
         if (r.code <= 0) return null;
         try { return new JSONObject(r.body); } catch (Exception e) { return new JSONObject(); }
     }
@@ -103,5 +105,6 @@ final class Views {
     static void forget(Context c) {
         c.deleteFile(file("systems"));
         c.deleteFile(file("notes"));
+        c.deleteFile(file("brain"));
     }
 }

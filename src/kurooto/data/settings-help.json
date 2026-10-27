@@ -99,6 +99,7 @@
 "calls.today": "Your phone app's Today screen and its copy of your alarm, kept up to date from this computer.",
 "calls.turn_brain": "Who answers turn-by-turn calls on your computer: Gemini with your key, or a local model.",
 "calls.views": "Systems and the Notes map in the phone app: your notes' titles and links, and each feature's health.",
+"calls.views_being": "Show the being in the phone app's Views: the dashboard's own body of Kurooto, drawn on the phone from a sealed copy.",
 "calls.views_brain": "Show the Brain console in the phone app's Views (the Brain choice), sealed for your phone like Systems and the Notes map.",
 "calls.views_links": "The most links on the phone's Notes map (a book's \"Seen in\" links go first).",
 "calls.views_notes": "The most notes on the phone's Notes map (best linked first).",

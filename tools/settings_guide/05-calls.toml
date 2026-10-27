@@ -194,3 +194,10 @@ when = "Turn it off if you'd rather the Brain's decisions and plans never travel
 cost = "A sealed copy of what the Brain logged (decisions, plans, beliefs: never health or money) passes through your call line while you watch it."
 needs = "Phone views (`calls.views`) and Brain on, with the Brain console (`mind.console.on`)."
 
+
+[s."calls.views_being"]
+tip = "Show the being in the phone app's Views: the dashboard's own body of Kurooto, drawn on the phone from a sealed copy."
+values = "`true` (each Systems copy carries the being's block: features on or off, AI requests and their titles, what's scheduled, the coil's readings, Voice's state, event kinds and times, the panels' settings), `false` (the Being choice says it's off)."
+when = "Turn it off if you'd rather the titles of your AI requests and schedule never travel to your phone. Note previews are only fetched when you tap a note."
+cost = "A slightly bigger sealed copy through your call line every few seconds while Views is open."
+needs = "Phone views (`calls.views`)."

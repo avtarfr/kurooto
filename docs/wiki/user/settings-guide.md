@@ -28,7 +28,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Your AI](#your-ai): 31 settings
 - [Messages and where they reach you](#messages-and-where-they-reach-you): 30 settings
 - [When it may interrupt you](#when-it-may-interrupt-you): 13 settings
-- [Phone calls and the call line](#phone-calls-and-the-call-line): 34 settings
+- [Phone calls and the call line](#phone-calls-and-the-call-line): 35 settings
 - [Morning alarm](#morning-alarm): 11 settings
 - [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 34 settings
 - [Check-ins, journal and the week](#check-ins-journal-and-the-week): 18 settings
@@ -1209,6 +1209,19 @@ map.
 - **Costs and what leaves this computer:** A sealed copy of what the Brain logged (decisions, plans, beliefs: never
   health or money) passes through your call line while you watch it.
 - **Depends on:** Phone views (`calls.views`) and Brain on, with the Brain console (`mind.console.on`).
+
+### `calls.views_being`
+
+Show the being in the phone app's Views: the dashboard's own body of Kurooto, drawn on the phone from a sealed copy.
+
+- **Values:** `true` (each Systems copy carries the being's block: features on or off, AI requests and their titles,
+  what's scheduled, the coil's readings, Voice's state, event kinds and times, the panels' settings), `false` (the Being
+  choice says it's off). **Default:** on.
+- **When to change it:** Turn it off if you'd rather the titles of your AI requests and schedule never travel to your
+  phone. Note previews are only fetched when you tap a note.
+- **Costs and what leaves this computer:** A slightly bigger sealed copy through your call line every few seconds while
+  Views is open.
+- **Depends on:** Phone views (`calls.views`).
 
 ## Morning alarm
 

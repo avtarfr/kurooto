@@ -3448,6 +3448,15 @@ last copy shows "as of" its time. Both go to your call line sealed for each Andr
 them. iPhones don't get them. *Setting:* `calls.views` (off), or dashboard → Phone → **Show Systems and the Notes map
 in the Android app**. *Undo:* turn it off: the call line drops its copies.
 
+**The being on the phone** (0.8.10, Android, with `calls.views` on): **Views → Being** (beside Brain, Systems and Notes,
+an Expressive button group) is the dashboard's being, drawn by the same `being.js` with the same anatomy and light: one
+finger turns an organ, pinch zooms, two fingers pan, a tap looks into a part (back goes up a level); the panel is a
+bottom sheet with the same Brain parts, features, settings, the coil's bars, the ear and note previews; Solid · Cutaway
+· X-ray, mute and hints. Switches and settings changed there go to your computer sealed over your call line and are
+checked as the dashboard's are; a note's preview is fetched when you tap it, sealed for that phone. Needs WebGL 2 and
+WebView 80+ (else Systems shows, with a note). *Setting:* `calls.views_being` (on). *Undo:* turn it off: Systems' copies
+go without the being, and Views → Being says your computer isn't sending it.
+
 **The wake-up alarm on the phone** (0.6.0): every alarm you set (and the next daily one) is also set on the phone with
 Android's alarm clock, so it rings with Stop and Snooze even when your computer, your call line or the internet can't
 be reached. The call for the same alarm and the phone's alarm ring as one; the first Stop, Snooze or Answer counts for

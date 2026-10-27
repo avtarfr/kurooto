@@ -216,6 +216,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `calls.today` | `true` | Your phone app's Today screen and its copy of your alarm, kept up to date from this computer. ([guide](wiki/user/settings-guide.md#callstoday)) |
 | `calls.turn_brain` | `"gemini"` | Who answers turn-by-turn calls on your computer: Gemini with your key, or a local model. ([guide](wiki/user/settings-guide.md#callsturnbrain)) |
 | `calls.views` | `false` | Systems and the Notes map in the phone app: your notes' titles and links, and each feature's health. ([guide](wiki/user/settings-guide.md#callsviews)) |
+| `calls.views_being` | `true` | Show the being in the phone app's Views: the dashboard's own body of Kurooto, drawn on the phone from a sealed copy. ([guide](wiki/user/settings-guide.md#callsviewsbeing)) |
 | `calls.views_brain` | `true` | Show the Brain console in the phone app's Views (the Brain choice), sealed for your phone like Systems and the Notes map. ([guide](wiki/user/settings-guide.md#callsviewsbrain)) |
 | `calls.views_links` | `20000` | The most links on the phone's Notes map (a book's "Seen in" links go first). ([guide](wiki/user/settings-guide.md#callsviewslinks)) |
 | `calls.views_notes` | `5000` | The most notes on the phone's Notes map (best linked first). ([guide](wiki/user/settings-guide.md#callsviewsnotes)) |

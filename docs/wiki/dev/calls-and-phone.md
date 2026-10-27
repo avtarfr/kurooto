@@ -718,6 +718,36 @@ fetched when opened. A WebView older than Chrome 58 (`MIN_CHROME`) gets a messag
 loaded afresh, as it draws one kind), and it opens on the one looked at last (`Prefs.viewMode`) unless the extra `mode`
 says. With `demo` (debug and dev builds) it shows `Demo.view(kind)`, made-up copies of both, and fetches nothing.
 
+**The being and the Brain (0.8.10).** `PhoneViews.being_snapshot(board)` adds `"being"` to each Systems copy while
+`calls.views_being` is on (default): `cells` (every feature, on or off: `{id, title, on, act, events}`), `jobs` (the
+running ones and the last `BEING_JOBS` 10: `{status, title}`), `schedule` (the next 12: `{when, what}`), `calls`
+(booked), `link` (`{connected, beat}` or `{off}`), `sys` (`Vitals.machine()` cut to what the coil draws: cpu, cores,
+mem, swap, gpu, 3 disks, battery, 4 temps, cpu_name, load), `events` (the last 40 within `BEING_EVENT_S` 10 minutes:
+`{kind, ts}`, plus `sensor`/`value` for `senses_phone`), `voice` (`Voice.status()` cut down, or null), `look` (`theme`,
+`hints`), and `settings_digest`; `settings` (`Api._settings()` without `tips`) and `brain` (`brainview.view` islands,
+comps as `[id, name, on, state, [], key, ""]`) only when their digest changed, `SETTINGS_S` (60) passed, or a phone
+started watching (`watch(m)` resets `being_sent` for a device new to the stretch, `watchers`). With 13 features a copy
+is ~7.5 KB of JSON (2 KB gzipped) with the settings, ~5.5 KB (1.5 KB) without.
+The app (`ViewsPane`, `ViewsTab`): modes `being` (`views/being.html`), `brain` (the brain-console part's
+`views/brain.html` and `brainconsole.js`, handed its copy with `KurootoView.take` as Systems is; the copy
+`view-brain.json` from `GET /view?kind=brain` every `BRAIN_MS` 8 s, watched with `POST /view/watch?kind=brain` every
+`WATCH_MS`, since the Brain is sent only while watched; demo builds hand it no copy), `systems`, `notes` (`phone.html`). Being watches
+and fetches as Systems does, fetches the Notes map once per opening, and keeps the last `settings`/`brain` in the kept
+copy when a new one comes without them (`carry`). `serve` adds the being's files at the dashboard's paths
+(`/static/being*.js`, `/static/vendor/three/*.js`, `/static/body/anatomy.bin|cerebrum.vol`, copied by
+`kurootoViewAssets`) and two answers of its own: `/ask?op=&a=` (only in `being`; on the WebView's IO thread) and
+`/state?depth=&gl=`. `/ask` is `BeingRules`: the fields `{op, args, id, ts, n}` sealed k1 with the chat key, POSTed to
+`/chat` as `{id, k1, live: true}` (the line passes it on now or answers 503 `offline`; an older line's `queued` counts as
+off too, and chat.py refuses a queued op), the answer `{ok, op, s1}` opened with this phone's own key (`Seal`) or
+`{k1}` with the chat key, a refusal with its `note` passed on. Ops: `settings.set {key, value}`, `module {id, on}`,
+`note.get {id}` (chat.py `_being`, the chat-core part: the dashboard's own `POST /api/settings`,
+`modules/enable|disable`, `GET /api/note`) and `voice.mute {on?}` (chat.py needs a branch for it: until then the
+computer answers "doesn't know that yet"). `beingOk()`: WebView 80+ (`??` in being.js) and WebGL 2 (the page says
+`gl=0` once, kept in the `kurooto-views` preferences); else Being shows Systems with a note. The first opening of
+Views after the update shows the being (`beingShown`). `ViewsTab`: an Expressive connected `ButtonGroup` of
+`ToggleButton`s; `BackHandler` while `depth() > 0` calls `KurootoBeing.back()`. Tests: `tests/unit/test_being_phone.py`,
+`android/test/BeingTest.java`.
+
 ## The settings guide in the app (0.8.10)
 
 `assets/settings-help.json` is written by `tools/gen_settings_guide.py` (committed, checked by `--check`, the same entries

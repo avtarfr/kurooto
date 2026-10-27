@@ -444,6 +444,32 @@ region's parts and their switches), `/api/note` and `open-note`, `/api/voice` an
 - `tools/dash_preview.py`: a worktree's dashboard against the running Kurooto (its key from its page, never printed).
 - Tests: `tests/unit/test_being.py`.
 
+### On the phone (0.8.10)
+
+The Android app runs the same `being.js` (Views → Being): `views/being.html` loads three.js and the passes, `common.js` and
+`notesmap.js` (for `assignHoods`), `static/being-phone.js`, then `being.js`, at the dashboard's own paths (the app serves
+them, `ViewsPane.serve`). `opts.mode = "phone"` with `window.beingPhone` present sets `PH`/`UI` in `being.js`; every hook
+is one marked line (`// phone:`) and with `PH` null the dashboard is exactly as before (`tests/unit/test_being_phone.py`
+checks each use is guarded):
+
+- `PH.css(P)` (appended to the style), `PH.dpr` (the pixel-ratio cap), `PH.fov(aspect)` in `size()` (an upright phone
+  sees as wide as a 1.7:1 board, so every focus distance frames the same), `PH.touch(ctx)` instead of the pointer and
+  wheel listeners (`ctx`: `gl, goal, spinning, pickAt, click, focus(), cam, size(), setDrag, organ(on)`): one finger turns
+  the organ under it (the camera on empty space, `spinning.obj = "cam"`), pinch sets `goal.d`, two fingers pan as
+  right-drag does (`drag.b = 2`), a tap is `click` (inside an organ, the nearest feature or note within 16 px).
+- `PH.sheet(panel, open, close, kind)` from `openPanel`/`closePanel`: the panel is a bottom sheet (`.grab`, half and
+  full height, follows the finger, flings), the camera's centre moves up while it's open (`cam.setViewOffset`), and the
+  panel's own subtitles say "tap" (never in a note's or a neighbourhood's).
+- `UI.header` (name, pulse, "live"/"as of", hints, the colours' key, where Solid · Cutaway · X-ray sit), `UI.tag` (the
+  four organs stacked, parts' labels never on top of each other), `UI.small`, `UI.lanes`, `UI.x0`; `showNote` has no
+  "open it". The returned object gains `escape()` and `depth()` (the app's back button).
+- `window.KurootoBeing.take(text)` (from `ViewsPane.hand`): the Systems copy with its `being` block (`calls/views.py
+  being_snapshot`) → `update` (cells, sys, jobs, schedule, link, calls), new `events` once each, spread over 3.5 s, voice
+  state → `voice({kind: "voice_state"})`; the Notes map's copy → `graph` (`graphOf`: `[path, title, …]` and `[i, j, via]`
+  to ids). `opts.api` answers `settings`, `brain3d`, `voice` from the copy and sends `settings.set`, `module`, `note.get`,
+  `voice.mute` to `/ask` (the app seals them, `BeingRules`). `/state?depth=&gl=` tells the app how deep you are and
+  whether WebGL 2 is there. In demo (`demo: true`) the being block and the answers are made up here.
+
 ## Threaded jobs (0.8.6)
 
 `Module.every(..., thread=True)` runs the action through `modules/base.on_daemon_thread`: a daemon thread per run, awaited

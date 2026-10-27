@@ -104,6 +104,8 @@ in a filled pill); in Chat the same five icons sit upright at the foot of the ch
 the rail slides away to the left while the upright icons stretch out into the bar (back to Chat, the other way). The
 Chat icon's number counts unread messages and what's waiting for you. Back from any pane goes to Chat (swipe slowly
 from the edge on Android 14 and newer and the move follows your thumb); back from Chat leaves the app.
+In **Views**, **Being**, **Brain**, **Systems** and **Notes** sit in a row of buttons at the top (see [The being on the
+phone](#the-being-on-the-phone)).
 
 - **Chat:** your conversations with Kurooto (see [Chat with Kurooto in the app](#chat-with-kurooto-in-the-app)). The
   **call button** is here, at the top: it's the only place the app starts a call. A bar at the top, "2 waiting for you",
@@ -398,11 +400,42 @@ internet just then), opening the app tries again (0.6.1; on 0.6.0, swipe the app
 
 **iPhone and browsers** don't get Today: it's sealed with a key only the Android app has.
 
+## The being on the phone
+
+Android, 0.8.10, with Systems and the Notes map turned on (`calls.views`, below): **Views → Being** is the dashboard's
+being, the same drawing by the same code (the same anatomy, light and glow), set for a phone. It opens there the first
+time; after that, Views opens on the one you looked at last.
+
+- **Turn and zoom:** drag an organ with one finger to turn it (on empty space, the whole view turns); pinch to zoom;
+  two fingers move the view. A flick keeps turning a little.
+- **Tap a part to look into it**, as a click does on the dashboard: an organ (the mind, the heart, the senses, your
+  notes), then a part of it (a brain region, a heart part, a sense, a neighbourhood of notes, a note, a feature's point
+  of light). The camera flies to it, it lights up and the rest turns to glass. **Back** goes up one level (a part, its
+  organ, the whole body) before it leaves Views. On the brain, **Solid · Cutaway · X-ray** under the title.
+- **The panel** opens as a sheet from the bottom, half height: drag its handle up for the whole of it, down to close
+  it, or tap ×. It has what the dashboard's panel has: the Brain's parts there with their switches, the features there
+  (each with its own switch and settings), the AI requests running and answered, what runs next, the call line, the
+  coil's bars (this computer's processor, memory, graphics, disks, battery), Voice's state, a neighbourhood's best
+  linked notes, and a note's preview.
+- **Switches and settings work from the phone**: a change goes to your computer sealed for it over your call line and
+  is checked there exactly as on the dashboard; the switch moves when your computer says it's done, or the panel says
+  why not. With your computer off it says "your computer is off: try again when it's on" (nothing waits to happen
+  later). **Mute** (top right) mutes Voice on your computer; **Hints** shows or hides the hints, as H does there.
+- **A note's preview** is asked for when you tap the note, sealed for this phone alone; the copy the being draws
+  from has notes' titles and links, never what they say.
+- It's live while it's open, like Systems (a fresh copy every few seconds); with your computer asleep it shows the
+  last one, "as of" its time.
+
+**"This phone can't draw the being"**: it needs WebGL 2 and Android System WebView 80 or newer; update the WebView (or
+Chrome) from the Play Store. Views shows Systems instead. **"Your computer isn't sending the being"**: update Kurooto
+there, or turn `calls.views_being` back on. **Brain** shows the Brain console when this app has it; until then it says
+it comes with this update.
+
 ## Systems and the Notes map on the phone
 
 Android, 0.7.0, off until you turn it on: dashboard → **Phone** → **Show Systems and the Notes map in the Android app**
-(the setting `calls.views`). Then the app's **Views** pane shows them: **Systems** and **Notes map** at its top switch
-between the two, and it opens on the one you looked at last.
+(the setting `calls.views`). Then the app's **Views** pane shows them: **Being**, **Brain**, **Systems** and **Notes** at its
+top switch between them, and it opens on the one you looked at last.
 They're the dashboard's own drawings, drawn on the phone by the same code, in the app's colours (light or dark).
 
 - **Systems:** the beating core and your features round it, as on the dashboard. **Tap a feature** for its card: how
@@ -416,7 +449,8 @@ They're the dashboard's own drawings, drawn on the phone by the same code, in th
   once an hour anyway. It holds up to 5,000 notes and 20,000 links (the best-linked first; a book's "Seen in" links
   are the first links left out); set `calls.views_notes` and `calls.views_links` lower if the map is slow on an old
   phone. A folder too big for your call line is cut just enough to fit, and the map says how many were left out.
-- **Read-only:** nothing on these screens changes anything. Notes' contents never reach the phone.
+- **Read-only:** nothing on these two screens changes anything (the being's panels can, above). Notes' contents never
+  reach the phone.
 - **When it's from:** "live" while your computer is sending Systems, else "as of 14:05". With your computer asleep
   the last copy shows with "your computer is asleep"; with no internet, "can't reach your call line".
 

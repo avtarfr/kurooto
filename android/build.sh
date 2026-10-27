@@ -14,9 +14,10 @@
 #                                                          the notification buttons and local alarm rules, bedside
 #                                                          mode's rules (brightness by the hour, hours), the call
 #                                                          screen's rules (CallRules, 0.8.7) and opening
-#                                                          Systems and the Notes map (ViewSeal, 0.7.0), and the
-#                                                          app's own connection to the call line (WebSock, 0.7.0),
-#                                                          and the chat's rules (ChatRules, 0.8.10)
+#                                                          Systems and the Notes map (ViewSeal, 0.7.0), the
+#                                                          being's requests to your computer (BeingRules, 0.8.10),
+#                                                          the app's own connection to the call line (WebSock,
+#                                                          0.7.0), and the chat's rules (ChatRules, 0.8.10)
 #
 # Needs: an Android SDK with platform 36 and build-tools (ANDROID_HOME), a JDK 17 (java on PATH or JAVA_HOME), and the
 # network the first time (Gradle 8.14.6, checked against its SHA-256 below, then the Android Gradle plugin, Kotlin and
@@ -28,8 +29,10 @@
 # the APK is named kurooto-debug.apk: fine for testing, but phones won't take it as an update to a release-signed app.
 # The version comes from pyproject.toml: versionCode = ((major*1000 + minor)*1000 + patch)*10 + (rc number, or 9).
 # Assets: android/assets plus the dashboard's own drawing code for Systems and the Notes map (0.7.0), copied in at build
-# time from src/kurooto/web/static (views/*.html|js|css to assets/views/, the Public Sans files to assets/fonts/) by
-# build.gradle.kts's kurootoViewAssets task, so there's one copy of it in the repository. ViewsActivity serves them.
+# time from src/kurooto/web/static (views/*.html|js|css to assets/views/, the Public Sans files to assets/fonts/; for
+# the being, 0.8.10: being.js, being-layout.js, being-phone.js, vendor/three/*.js and body/anatomy.bin, cerebrum.vol to
+# assets/static/ at the dashboard's own paths, about 10 MB before compression) by build.gradle.kts's kurootoViewAssets
+# task, so there's one copy of it in the repository. ViewsPane serves them.
 # KUROOTO_APP_ID (optional): another application id (Gradle's -PkurootoAppId), for a test build beside the real app;
 # --dev adds ".dev" to it.
 set -euo pipefail
@@ -52,6 +55,9 @@ crypto_test() {
   java -cp "$t" io.github.avtarfr.kurooto.DockTest
   java -cp "$t" io.github.avtarfr.kurooto.SensesTest
   java -cp "$t" io.github.avtarfr.kurooto.CallRulesTest # the call screen's rules (0.8.7)
+  # the being's requests to your computer (0.8.10): sealed out, opened back, refused plainly
+  javac -nowarn -encoding UTF-8 -cp "$t" -d "$t" "$HERE/src/$PKG/BeingRules.java" "$HERE/test/BeingTest.java"
+  java -Dfile.encoding=UTF-8 -cp "$t" io.github.avtarfr.kurooto.BeingTest "$ROOT/tests/fixtures/call-vectors.json"
   # the check-in and quiz cards' and location reminders' rules (0.6.0)
   javac -nowarn -encoding UTF-8 -d "$t" "$HERE/src/$PKG/CardRules.java" "$HERE/src/$PKG/PlaceRules.java" "$HERE/test/CardsPlacesTest.java"
   java -cp "$t" io.github.avtarfr.kurooto.CardsPlacesTest

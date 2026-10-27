@@ -94,21 +94,27 @@ kotlin {
 
 // Systems and the Notes map (0.7.0): the dashboard's own drawing code and its typeface, copied from
 // src/kurooto/web/static at build time (views/*.html|js|css -> assets/views/, the Public Sans files and their licence
-// -> assets/fonts/), so the repository has one copy of it. ViewsActivity serves exactly these to its WebView.
+// -> assets/fonts/; the being's code, three.js and the anatomy -> assets/static/ at the dashboard's own paths, 0.8.10),
+// so the repository has one copy of it. ViewsPane serves exactly these to its WebView.
 abstract class ViewAssets : DefaultTask() {
     @get:InputFiles @get:PathSensitive(PathSensitivity.NAME_ONLY) abstract val views: ConfigurableFileCollection
     @get:InputFiles @get:PathSensitive(PathSensitivity.NAME_ONLY) abstract val fonts: ConfigurableFileCollection
+    // the being (0.8.10): being.js and its phone part, three.js and its bloom passes, the anatomy, at the dashboard's paths
+    @get:InputFiles @get:PathSensitive(PathSensitivity.NAME_ONLY) abstract val being: ConfigurableFileCollection
+    @get:InputFiles @get:PathSensitive(PathSensitivity.NAME_ONLY) abstract val three: ConfigurableFileCollection
+    @get:InputFiles @get:PathSensitive(PathSensitivity.NAME_ONLY) abstract val body: ConfigurableFileCollection
     @get:OutputDirectory abstract val out: DirectoryProperty
 
     @TaskAction
     fun copy() {
         val o = out.get().asFile
         o.deleteRecursively()
-        for ((dir, files) in listOf("views" to views, "fonts" to fonts)) {
+        for ((dir, files) in listOf("views" to views, "fonts" to fonts, "static" to being, "static/vendor/three" to three, "static/body" to body)) {
             val d = File(o, dir).apply { mkdirs() }
             files.files.forEach { it.copyTo(File(d, it.name), overwrite = true) }
         }
         check(File(o, "views/phone.html").isFile) { "the views' files weren't found in src/kurooto/web/static" }
+        check(File(o, "static/being.js").isFile && File(o, "static/body/anatomy.bin").isFile) { "the being's files weren't found" }
     }
 }
 
@@ -116,6 +122,9 @@ val viewAssets = tasks.register<ViewAssets>("kurootoViewAssets") {
     val static = rootDir.resolve("../src/kurooto/web/static")
     views.from(fileTree(static.resolve("views")) { include("*.html", "*.js", "*.css") })
     fonts.from(fileTree(static.resolve("fonts")) { include("public-sans-latin*.woff2", "OFL.txt") })
+    being.from(static.resolve("being.js"), static.resolve("being-layout.js"), static.resolve("being-phone.js"))
+    three.from(fileTree(static.resolve("vendor/three")) { include("*.js") })
+    body.from(static.resolve("body/anatomy.bin"), static.resolve("body/cerebrum.vol"))
 }
 
 androidComponents {
