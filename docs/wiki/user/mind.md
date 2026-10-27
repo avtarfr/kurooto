@@ -544,10 +544,55 @@ were kept and broken.
 When this computer is down, your call line says it's offline once, and now adds which things in the next 12 hours (reminders,
 its promises) have no guarantee until it's back. Switches: `mind.promises.on`, `mind.heartbeat.on`.
 
+## Dreaming about the day (0.8.14)
+
+While it sleeps, Brain goes over the day, and what it brings waits in the morning message (Dreaming) for you to keep or
+drop. Nothing is added or written until you tap; a line shown on two mornings without a tap is let go.
+`mind.dream.on` turns all of it off; each piece has its own switch too.
+
+- **Cards for what you studied** (`mind.dream.cards`, on). Of the concepts you changed notes on, answered quiz cards
+  about or logged study time for that day, 1 to 3 that its model of what you know puts on your frontier (not mastered
+  yet, their prerequisites solid) become quiz cards. The model on this computer writes each from your own note; without
+  one it's a plain "What is ..., and when does it apply?" card. Never a cloud AI. **Keep** puts the card in Quiz, marked
+  as Kurooto's, first due about a day after it was written (with Undo); **Drop** drops it. `/mind` shows how well you
+  recall them next to your own cards. `mind.dream.cards_max` (3) sets how many a night. Needs Quiz and `mind.tom.on`.
+- **How to help you, from the day's outcomes** (`mind.dream.lessons`, on). It replays what you undid, its messages you
+  left unanswered or gave Less of this, the times you told Voice off, and its guesses about you that you marked wrong
+  (`/model wrong`). A clear pattern becomes a line for your how-to-help-me note, like "Fewer nudges in the evening (2
+  went unanswered or got Less of this)". **Keep** writes it under "Learned in the nightly look back" (with Undo); **Not
+  that** drops it for good.
+- **What Voice learned** (`mind.dream.voice`, on). With Voice's nightly learning on (`voice.listen.learn_nightly`), one
+  line: how many of yesterday's turns it learned from and how many you told off, and a misfire pattern seen twice or
+  more ("it woke to your name at the end of a sentence 3 times"). Counts only, never words.
+
+The night's work runs from 00:15, once an hour until 06:15, the first time Brain is asleep and the computer can spare its
+graphics card; at the last try it writes the cards without the model.
+
+## One worry, not five nudges (0.8.14)
+
+Each morning at 07:55 (`mind.study_push.when`) Brain says the one subject it's most uneasy about in one line, with **Yes**
+and **Later**: "Uneasy about Measure Theory: due Fri, 0 min logged this week, 9 cards due. 25 min at 16:00?" It picks
+among subjects with a deadline in the next 7 days (`mind.study_push.horizon_days`), by what it's uneasy about, else
+its concern for each deadline, else how close it is; nothing close enough, no line.
+
+**Yes** sets a reminder at that time for that many minutes (`mind.study_push.minutes`, 25; without Reminders, Start-by
+counts the deadline as started). That day, the subject's separate nudges are folded into the line: the day-before
+deadline reminder, Start-by's "Time to start" and exam mode's daily practice check-in. The six-hour reminder,
+"Overdue?" and the evening-before practice offer still come. Switch: `mind.study_push.on`.
+
+## Check-ins that come early (0.8.14)
+
+When the day departs strongly from what Brain expected at 21:00 the evening before, your next check-in planned today
+comes now instead of at its time, once a day, starting "A bit earlier than usual." Two things count: no sign of you
+with Kurooto two hours past the wake time it predicted while your phone shows you up (the phone's screen sense, when
+it's on), or a deadline moved twice in a day. Never during a class on your timetable, and never while you're asleep.
+Switch: `mind.checkins.surprise`.
+
 ## /mind
 
 - **`/mind`:** whether Brain's scorekeeper is running, how long the log is, whether it checks out, and the last
-  anchor; whether Kurooto is asleep, and the job gate's contention minutes this week (0.8.14).
+  anchor; whether Kurooto is asleep, and the job gate's contention minutes this week (0.8.14); with dreaming on, the
+  dream cards kept and dropped, your recall on them next to your own cards, and the lessons kept.
 - **`/mind gate`:** what the gate held back or removed today, and what it muted.
 - **`/mind verify`:** checks the whole log, record by record, and says the result in one line.
 - **`/capabilities`:** how it does on tasks it has never seen, per kind; `/capabilities run` measures now.

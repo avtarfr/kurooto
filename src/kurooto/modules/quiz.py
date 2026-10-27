@@ -18,6 +18,9 @@ Link recall cards (modules/quiz_links.py): the concept graph's links between not
 own words and graded by you, up to five a day with quiz.links on.
 
     /card                      a link card now            /cards [on|off]    how they're going (or turn them on, off)
+
+Cards Kurooto wrote (0.8.14, add_card): Brain's dream cards (mind/dream.py) that you kept, in the concept's subject
+(or "kurooto-cards"), marked with who wrote them and the answer it wrote for grading; /quiz asks them like your own.
 """
 
 from __future__ import annotations
@@ -107,6 +110,11 @@ TIME_PART = re.compile(
 )
 DAY_PART = re.compile(r"\b(?:tonight|tomorrow|in \d+\s*(?:min|mins|minutes|h|hours?))\b", re.I)
 BY_CALL = re.compile(r"\b(?:by|on a|over the|with a)\s+(?:call|phone)\b|\bcall me\b|^\s*call\b|\bcall\s*$", re.I)
+
+
+CARDS_FILE = "cards.json"  # subject -> how many cards Kurooto wrote there (Brain's dream cards), so /quiz finds them
+CARD_SECTION = "Kurooto's cards"
+CARD_FALLBACK = "kurooto-cards"  # the subject of a card whose concept belongs to none of yours
 
 
 def slugify(text: str) -> str:
@@ -211,8 +219,70 @@ class Quiz(Module):
         jsave(self._dir() / f"{subject}.json", st)
         return st
 
+    # ------------------------------------------------------------------------ cards Kurooto wrote (0.8.14)
+    def card_subjects(self) -> list[str]:
+        """Subjects with cards Kurooto added (add_card), with or without a quiz note of their own."""
+        idx = jload(self._dir() / CARDS_FILE, {}) or {}
+        return [s for s, n in idx.items() if isinstance(n, int) and n > 0] if isinstance(idx, dict) else []
+
+    def _count_cards(self, subject: str, delta: int) -> None:
+        idx = jload(self._dir() / CARDS_FILE, {}) or {}
+        idx = idx if isinstance(idx, dict) else {}
+        idx[subject] = max(0, int(idx.get(subject) or 0) + delta)
+        jsave(self._dir() / CARDS_FILE, {k: v for k, v in idx.items() if v})
+
+    def add_card(
+        self,
+        subject: str | None,
+        text: str,
+        by: str = "kurooto",
+        concept: str = "",
+        due: dt.date | None = None,
+        answer: str = "",
+    ) -> str | None:
+        """A card that isn't from a quiz note: Brain's dream cards (mind/dream.py), added only after a tap. It's marked
+        with who wrote it (`by`), so its recall can be told apart from your own cards'. Returns its id (the same text
+        twice is one card), or None for a text too short to ask."""
+        text = re.sub(r"\s+", " ", text or "").strip()
+        if len(text) < 12:
+            return None
+        subject = slugify(subject or "") or CARD_FALLBACK
+        iid = "k" + hashlib.sha1(f"{by}|{text}".encode(), usedforsecurity=False).hexdigest()[:7]
+        st = self.load(subject)
+        if iid in st["items"]:
+            return iid
+        today = dt.date.today()
+        st["items"][iid] = {
+            "text": text,
+            "section": CARD_SECTION,
+            "ef": 2.5,
+            "interval": 0,
+            "reps": 0,
+            "due": (due or today + dt.timedelta(days=1)).isoformat(),
+            "history": [],
+            "by": by,
+            "concept": concept,
+            "made": today.isoformat(),
+            **({"answer": re.sub(r"\s+", " ", answer).strip()[:300]} if answer else {}),
+        }
+        jsave(self._dir() / f"{subject}.json", st)
+        self._count_cards(subject, 1)
+        self.app.events.emit("quiz_card_added", by=by)
+        return iid
+
+    def remove_card(self, subject: str, iid: str) -> bool:
+        """Take out a card add_card made (an Undo); a card from your own notes is never removed here."""
+        st = self.load(subject)
+        it = st["items"].get(iid)
+        if not it or not it.get("by"):
+            return False
+        del st["items"][iid]
+        jsave(self._dir() / f"{subject}.json", st)
+        self._count_cards(subject, -1)
+        return True
+
     def due(self, subject: str | None) -> tuple[str | None, list]:
-        subjects = [subject] if subject else list(self.sources())
+        subjects = [subject] if subject else list(dict.fromkeys([*self.sources(), *self.card_subjects()]))
         today = dt.date.today().isoformat()
         best = (None, [])
         for s in subjects:
@@ -337,7 +407,11 @@ class Quiz(Module):
         brain = providers.build(self.app, self.app.settings.get("brain.main") or "") if self.app.is_on("chat") else None
         if brain and brain.available()[0]:
             r = brain.complete(
-                f"{GRADE}Question / note: {it['text']}\nTheir answer: {msg.text}", effort="low", timeout=90
+                f"{GRADE}Question / note: {it['text']}\n"
+                + (f"The expected answer: {it['answer']}\n" if it.get("answer") else "")
+                + f"Their answer: {msg.text}",
+                effort="low",
+                timeout=90,
             )
             m = re.search(r"\{.*\}", r.text, re.S)
             try:
@@ -352,7 +426,7 @@ class Quiz(Module):
                 msg.reply(text)
                 return self._continue()
         msg.reply(
-            f"The note says: {it['text']}\nHow did you do?",
+            f"The note says: {it.get('answer') or it['text']}\nHow did you do?",
             buttons=[
                 [
                     ("Forgot", f"qz:{subj}|{iid}:0"),
@@ -468,7 +542,7 @@ class Quiz(Module):
             return
         subject = e["subject"] or self.exam_subject()
         count = self.due_count(subject) if subject else len(self.due(None)[1])
-        if not count:
+        if not count or self._folded(subject):
             return
         if self.setting("by_call") and self._calls_ok() and self._season_call(e["id"]) is not False:
             self.call_quiz(subject, why="quiz.call")
@@ -485,6 +559,16 @@ class Quiz(Module):
             about=e["title"],
         )
         self.app.events.emit("quiz_checkin", via="message", exam=True)
+
+    def _folded(self, subject: str | None) -> bool:
+        """Brain's morning line about the subject it's most uneasy about (its cards due included) took this check-in's
+        place today (0.8.14, mind/study_push.py; mind.study_push.on)."""
+        try:
+            from kurooto.mind import study_push
+
+            return study_push.folded(self.app, subject, "quiz")
+        except Exception:
+            return False
 
     def _season_call(self, exam_id: str) -> bool | None:
         """Exam season (modules/exam_season.py) on: True when you picked the quiz call for this exam, False for its

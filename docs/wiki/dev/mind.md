@@ -1234,3 +1234,64 @@ Tests: `tests/unit/test_mind_sleep.py` (the window from the night hours, by hand
 early from the phone; the phone's alarm; woken by name and by a message and dozing again; holding and the exempt kinds; up
 ends the night; Voice's greeting; the gate for a foreign GPU process, a call, battery and heat, deferral and retry, giving up,
 the asleep preference, contention minutes, the job queue's gate and the Brain's; the jolt and the pickup).
+
+## 0.8.14: dreaming and study (`dream.py`, `frontier.py`, `study_push.py`, `forecast.py`)
+
+**The frontier score** (`mind/frontier.py`). `score(app, text) -> float` in [0, 1] for add-ons (to weigh what is on screen): the
+best grade among the concept notes `knowledge.mentions` finds in the text. Grades from one read of the knowledge rows
+(`masteries`): `FRONTIER` 1.0 (p < `SOLID_FROM` and every prerequisite solid; with no prerequisites only once a row exists),
+`NEAR` 0.5 (links to or from a frontier concept), `STARTED` 0.4, `SOLID` 0.1, `UNKNOWN` 0.0. The notes and grades are cached
+per app for `CACHE_S` (600 s), so an add-on may call it every few seconds. 0 with `mind.tom.on` off; never raises.
+
+**Dreaming** (`mind/dream.py`, `PART = "dream"`: `mind.dream.on`, then `cards`, `lessons`, `voice`; `frontier.py` is
+part of `tom`). `nightly(app)` runs at `WHEN` (`daily 00:15,...,06:15`, `modules/mind.py` job `mind:dream`,
+on a thread) for `the_day()` (now minus 12 h). Once a night each: `propose_lessons` and `make_cards`. The cards wait for
+`_gate()`: B's `mind.sleep.state(app) != "awake"` and B's `mind.senses.intero.ok(app, "gpu")`, both read through guarded
+imports (missing means yes); from `LAST_HOUR` (06:00) they're written with `use_model=False`.
+- `studied(app, day, notes)`: concept notes whose file changed that day, concepts named by quiz items graded that day
+  (read straight from `<state>/quiz/*.json`), and notes under a subject folder with 10+ min of study that day.
+- `write_card`: `tone.model(app)` and `local_models.api("/api/generate")` with `CARD_PROMPT` ("question :: answer"); a reply
+  that isn't one question ending in "?" and an answer falls back to "What is <title>, and when does it apply?" with the
+  note's summary as the answer. Never a cloud AI.
+- `outcomes(app, day)`: events ending `_undone`/`_undo` by feature, `mind-pest.json` pending rows settled as
+  ignored/less/mute by `(kind, band)`, `<state>/voice/gate-turns.jsonl` rows labelled 0 (and `voice_pattern`), and ToM
+  rows with `wrong` set that day. `distil` turns counts of 2+ (any wrong guess) into at most `LESSONS_MAX` lines.
+- `section(app, send)` is the morning message's part through a new Dreaming hook: any enabled module's
+  `dreaming_section(send) -> (text, button rows)` (`modules/dreaming.py` `report`); `Mind.dreaming_section` calls it. Only
+  a sent message counts as showing; `SHOWN_MAX` (2) shows without a tap let it go (`decided` keeps `c:<slug>` and
+  `l:<hash>`, so neither comes back).
+- Buttons `mdr:c<ref>:keep|drop`, `mdr:l<ref>:keep|no`, `mdr:u<uid>:undo` (`Mind.callbacks`). A kept card is
+  `Quiz.add_card(subject, q, by="kurooto", concept=slug, due=max(made + 1 day, today), answer=a)`; a kept lesson is
+  `remember.add_line(app, LEARNED, "<line> (from the day's outcomes, <day>)")`. Undo: `Quiz.remove_card` / `remove_line`.
+- `recall(app)`: graded answers with q >= 3 over all graded answers, Kurooto's cards (`by == "kurooto"`) against the rest;
+  `mind_lines(app)` adds it to `/mind` (`Mind.status`). Information only.
+- `voice_line(app)`: yesterday's rows of the voice learner's file, counts and the commonest pattern (`VOICE_PATTERNS`) at
+  `PATTERN_MIN` or more. Needs `voice` on and `voice.listen.learn_nightly`.
+
+**The quiz's add-card path** (`modules/quiz.py`). `add_card` writes an item with `by`, `concept`, `made` and `answer` into
+the subject's state file (`CARD_FALLBACK` "kurooto-cards" when there's none) and counts it in `<state>/quiz/cards.json`;
+`card_subjects()` lists those, and `due(None)` and `knowledge.from_quiz` look at them besides the note subjects. The
+grader prompt gets `answer` when there is one; the self-grade fallback shows it.
+
+**One worry** (`mind/study_push.py`, `mind.study_push.on`). `push(app)` at `mind.study_push.when` (job `mind:study_push`):
+`pick` over `candidates` (open deadlines with a subject, `urgent_h < hours <= horizon_days * 24`) by risk: 1.0 for D's
+`status.snapshot(app)["uneasy"]` when it names the deadline, else the feelings' concern for its title, else
+`1 - hours / horizon`; ties by fewer minutes logged (`study.totals(7)`), then more cards due. Under `RISK_MIN` (0.25), no line.
+`slot` is the first Start-by free stretch today from now + 30 min (quarter hours), before 21:30. The state file holds
+today's subject; `folded(app, subject, what)` is asked by `Deadlines._chase` ("ping" only), `Startby._morning` (the tell)
+and `Quiz._exam_daily`, each through a guarded import, so with Brain off they behave as 0.8.13. Buttons `msp:<day>:yes|later`:
+Yes is `reminders.add(slot, ...)`, else `Startby.start_today(id)`. Calm reason `mind.study_push`; pest kind "nudge".
+
+**Surprise check-ins** (`mind/forecast.py`, `mind.checkins.surprise`). `surprise_tick` every 15 min (job `mind:surprise`),
+once a day (`<state>/mind-surprise.json`), never while `_asleep` (B's sleep state, else `availability.night`) or
+`_in_class` (the `subjects:class` availability blocker). `surprise(app, t)`: "moved_twice" when one deadline id has 2+
+`deadline_moved` events today (the event now carries `id`); "late_wake" when now is past the frozen forecast's
+`wake_min` mean + `LATE_MIN` (120), there's no `signals.ACTIVE` event today, and the phone's screen sense has a reading
+today. It cancels `checkins:<name>` for the next planned check-in and calls `Checkins._fire({..., "early": True})`, which
+prefixes "A bit earlier than usual." The message goes through `notify` with the check-in's own reason, so the gate and
+A's workspace see it like any other.
+
+Tests: `tests/unit/test_mind_dream.py` (the frontier grades and the cache, cards from the day's study kept and undone,
+let go after two mornings, a card from a fake local model, lessons kept and undone, the voice line, the morning message's
+section and Brain off, the night's deferral, recall, the morning line and what it folds, the urgent reminder never folded,
+the switches, the surprise check-in and its exclusions, the late-wake rule).

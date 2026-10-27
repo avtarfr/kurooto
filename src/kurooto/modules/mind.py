@@ -33,7 +33,9 @@ from kurooto.mind import (
     attention,
     beliefs,
     breaks,
+    dream,
     feelings,
+    forecast,
     gate,
     improve,
     journal,
@@ -45,6 +47,7 @@ from kurooto.mind import (
     sleep,
     stimulation,
     story,
+    study_push,
     tone,
     workspace,
 )
@@ -178,6 +181,11 @@ class Mind(Module):
         self.every(
             "finetune", "daily 03:40", lambda p: self._heavy("finetune", "gpu", skill_finetune.run, True), thread=True
         )
+        # 0.8.14: dreaming about the day (cards, lessons; in the night, after the journal and the story), one morning
+        # line about the subject it's most uneasy about, and a check-in that comes early when the day surprises it
+        self.every("dream", dream.WHEN, lambda p: dream.nightly(self.app) and None, thread=True)
+        self.every("study_push", self._study_push_when(), lambda p: study_push.push(self.app) and None, thread=True)
+        self.every("surprise", "every 15m", lambda p: forecast.surprise_tick(self.app) and None, thread=True)
         # stage 09: the hidden harness, nightly and on the charger only
         self.every(
             "harness",
@@ -205,6 +213,14 @@ class Mind(Module):
         brain = info.get("brain") or self.app.settings.get("brain.main") or ""
         go, _ = senses_intero.ok(self.app, "gpu" if brain == "ollama" else "light")
         return None if go else time.time() + 600
+
+    def _study_push_when(self) -> str:
+        spec = str(self.app.settings.get("mind.study_push.when") or "daily 07:55")
+        return spec if spec.startswith(("daily ", "every ", "weekly ")) else "daily 07:55"
+
+    def dreaming_section(self, send: bool) -> tuple[str, list]:
+        """The morning message's part from Brain's night: the voice line, the cards and the lessons (mind/dream.py)."""
+        return dream.section(self.app, send)
 
     def _signals(self, payload: dict | None = None) -> int:
         """Hourly: the day's numbers go to the scorekeeper, then today's read is made from them."""
@@ -633,6 +649,8 @@ class Mind(Module):
         return {
             "skl": lambda ref, act: skill_demos.button(self.app, ref, act),
             "prec": lambda ref, act: mind_precedents.button(self.app, ref, act),
+            "mdr": lambda ref, act: dream.button(self.app, ref, act),  # a dream card or lesson: Keep, Drop, Undo
+            "msp": lambda ref, act: study_push.button(self.app, ref, act),  # the morning line: Yes / Later
         }
 
     def precedents_cmd(self, msg: Incoming, arg: str) -> str:
@@ -840,6 +858,10 @@ class Mind(Module):
             lines.append(f"Waiting to be logged: {st['waiting']} (kept aside until the scorekeeper takes them).")
         if st["dropped"]:
             lines.append(f"Dropped since Kurooto started: {st['dropped']} (more came than could be kept).")
+        try:  # what its dreaming brought, and how the cards are recalled (information only)
+            lines += dream.mind_lines(self.app)
+        except Exception as e:
+            self.app.events.emit("mind_dream_failed", error=type(e).__name__)
         return "\n".join(lines)
 
 
@@ -900,6 +922,9 @@ def button(app, ref: str, act: str) -> str:
         "mind-pest.json",
         "mind-stimulation.json",
         "mind-sleep.json",
+        "mind-dream.json",
+        "mind-study-push.json",
+        "mind-surprise.json",
     ):  # the gate's, the read's, the tone's, its promises' and its acts' own files
         (app.paths.state / f).unlink(missing_ok=True)
     app.events.emit("mind_deleted", records=n)

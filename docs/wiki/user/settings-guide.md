@@ -42,7 +42,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 49 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
-- [Brain](#brain): 105 settings
+- [Brain](#brain): 115 settings
 - [Voice and voice notes](#voice-and-voice-notes): 58 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
@@ -5507,6 +5507,103 @@ The Brain console: a dashboard page (Alt+O) and the phone's Brain view showing w
 - **When to change it:** Turn it off if you don't want its reasoning on screen. It only reads; nothing the Brain does
   depends on it.
 - **Depends on:** Brain on.
+
+### `mind.dream.on`
+
+Brain goes over the day at night and brings cards, how-to-help lines and a voice line to the morning message.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to stop all of its dreaming at once; each piece also has its own switch.
+
+### `mind.dream.cards`
+
+Each night, 1 to 3 quiz cards for concepts you studied that day that are on your frontier, kept by a tap.
+
+Concepts you changed notes on, answered quiz cards about or logged study time for, that Brain's model of what you know
+puts on your frontier (not mastered, prerequisites solid). The model on this computer writes each card from your note;
+without one it's a plain "what is ...?" card. They wait in the morning message with Keep and Drop; a kept card goes into
+Quiz, first due about a day after it was written. /mind shows your recall on them next to your own cards.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you'd rather write every card yourself.
+- **Costs and what leaves this computer:** Nothing leaves: the local model or a fixed card. A card you keep is graded
+  like any other (by your AI with Chat on).
+- **Depends on:** `mind.tom.on` and Quiz.
+
+### `mind.dream.cards_max`
+
+The most dream cards a night (1 to 3).
+
+- **Values:** A whole number. **Default:** `3`.
+- **When to change it:** Lower it for fewer cards to look at in the morning.
+- **Depends on:** `mind.dream.cards`.
+
+### `mind.dream.lessons`
+
+Each night, 1 to 3 lines for your how-to-help-me note from the day's outcomes, written only when you tap Keep.
+
+It replays what you undid, the messages left unanswered or given Less of this, the times you told Voice off and its
+guesses about you marked wrong; clear patterns become lines like "Fewer nudges in the evening". Keep writes the line
+(with Undo); Not that drops it for good.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you'd rather write that note yourself.
+
+### `mind.dream.voice`
+
+One morning line on what the nightly voice learning saw: turns it learned from and any misfire pattern.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you don't need it. Counts and flags only, never words.
+- **Depends on:** Voice with `voice.listen.learn_nightly`.
+
+### `mind.study_push.on`
+
+One morning line about the subject Brain is most uneasy about (due date, minutes logged, cards due), with Yes and Later.
+
+That day the subject's day-before deadline reminder, Start-by's "Time to start" and exam mode's daily practice check-in
+are folded into it. Yes sets a reminder at the time it offers (or counts the deadline as started). The six-hour
+reminder, "Overdue?" and the evening-before practice offer still come.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to get the separate reminders back.
+- **Depends on:** Deadlines (a deadline with a subject); Study and Quiz add their numbers when on.
+
+### `mind.study_push.when`
+
+When the morning line comes.
+
+- **Values:** A schedule like `daily 07:55`. **Default:** `daily 07:55`.
+- **When to change it:** Keep it before Start-by's morning pass (`startby.when`), so its message is folded.
+- **Depends on:** `mind.study_push.on`.
+
+### `mind.study_push.minutes`
+
+How long a study stretch the morning line offers.
+
+- **Values:** A whole number. **Default:** `25`.
+- **When to change it:** Change it to the length you'd actually start with.
+- **Depends on:** `mind.study_push.on`.
+
+### `mind.study_push.horizon_days`
+
+How far ahead a deadline can be for Brain to be uneasy about it.
+
+- **Values:** A whole number. **Default:** `7`.
+- **When to change it:** Lower it to hear only about what's close.
+- **Depends on:** `mind.study_push.on`.
+
+### `mind.checkins.surprise`
+
+The next check-in comes early when the day departs strongly from Brain's forecast.
+
+Two hours past the predicted wake time with no sign of you while your phone shows you up, or a deadline moved twice in a
+day: the next check-in planned today comes now instead of at its time, once a day. Never in a class or while you're
+asleep.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to have check-ins only at their times.
+- **Depends on:** `mind.forecast.on` and Check-ins (the phone's screen sense for the wake case).
 
 ## Voice and voice notes
 

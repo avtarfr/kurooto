@@ -4,9 +4,10 @@ handwritten notes it linked, things it set up from what you said: one message at
 with the loose ends worth a look (your own open doubts, notes nothing links to yet, links that point nowhere, tasks
 past due, AI requests that failed). Nothing new runs: it gathers what the night did from the event log and the
 features' own state, so it costs nothing. A feature (an add-on too) may add its own loose ends: dreaming_lines()
-(Night performance's "couldn't switch"). While it's on, the concept graph's own morning line is folded into it. The
-day after an exam or a heavy day it starts with one line saying the day will be lighter, with Not today; dreaming.when
-follows when you're usually up once that's learned (core/rhythm.py).
+(Night performance's "couldn't switch"), or a section with buttons: dreaming_section(send) -> (text, button rows)
+(Brain's dream cards and lessons, mind/dream.py). While it's on, the concept graph's own morning line is folded into
+it. The day after an exam or a heavy day it starts with one line saying the day will be lighter, with Not today;
+dreaming.when follows when you're usually up once that's learned (core/rhythm.py).
 
 The self-check (dreaming.self_check, on; the first part of Dream RSI): each morning it replays your test cases (Wrong
 button and test cases, modules/cases.py) and says which ones that went right yesterday go wrong now, after an update
@@ -332,6 +333,19 @@ class Dreaming(Module):
             self.app.events.emit("dreaming_check_failed", error=f"fold: {type(e).__name__}: {e}"[:200])
             folded, fold_buttons = "", []
         self.buttons = list(self.buttons or []) + tidy_buttons + fold_buttons
+        extra = []  # a feature's own section with buttons (Brain's dream cards and lessons, 0.8.14: dreaming_section)
+        for m in self.app.enabled():
+            fn = getattr(m, "dreaming_section", None)
+            if fn is None or m is self:
+                continue
+            try:
+                text_, rows = fn(send)
+            except Exception as e:  # never at the cost of the morning message
+                self.app.events.emit("dreaming_check_failed", error=f"{m.id}: {type(e).__name__}: {e}"[:200])
+                continue
+            if text_:
+                extra.append(str(text_))
+                self.buttons += list(rows or [])
         ig = self.app.modules.get("integrate")
         if ig is not None and self.app.is_on("integrate"):  # look-alike notes merged by themselves, each with Undo
             try:
@@ -349,7 +363,7 @@ class Dreaming(Module):
             prev = (jload(self.state_file, {}) or {}).get("passing")
             st["passing"] = passing if passing is not None else prev
             jsave(self.state_file, st)
-        if not did and not ends and not light and not tidy and not folded:
+        if not did and not ends and not light and not tidy and not folded and not extra:
             return ""
         parts = [light] if light else []
         if did:
@@ -358,6 +372,7 @@ class Dreaming(Module):
             parts.append(tidy)
         if folded:
             parts.append(folded)
+        parts += extra
         if ends:
             parts.append("Loose ends:\n" + "\n".join(f"- {x}" for x in ends))
         text = "\n\n".join(parts)

@@ -697,7 +697,13 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.backfill.study` | `true` | Read the study tracker's time per day, for your real pace in week plans. ([guide](wiki/user/settings-guide.md#mindbackfillstudy)) |
 | `mind.beliefs.on` | `true` | Keep where each belief came from (said, saw, inferred, imagined) and how sure it is. ([guide](wiki/user/settings-guide.md#mindbeliefson)) |
 | `mind.budget.on` | `true` | The body budget: a few things about Kurooto's own state it tries to keep level, and its drive. ([guide](wiki/user/settings-guide.md#mindbudgeton)) |
+| `mind.checkins.surprise` | `true` | The next check-in comes early when the day departs strongly from Brain's forecast. ([guide](wiki/user/settings-guide.md#mindcheckinssurprise)) |
 | `mind.console.on` | `true` | The Brain console: a dashboard page (Alt+O) and the phone's Brain view showing what the Brain decided and why. ([guide](wiki/user/settings-guide.md#mindconsoleon)) |
+| `mind.dream.cards` | `true` | Each night, 1 to 3 quiz cards for concepts you studied that day that are on your frontier, kept by a tap. ([guide](wiki/user/settings-guide.md#minddreamcards)) |
+| `mind.dream.cards_max` | `3` | The most dream cards a night (1 to 3). ([guide](wiki/user/settings-guide.md#minddreamcardsmax)) |
+| `mind.dream.lessons` | `true` | Each night, 1 to 3 lines for your how-to-help-me note from the day's outcomes, written only when you tap Keep. ([guide](wiki/user/settings-guide.md#minddreamlessons)) |
+| `mind.dream.on` | `true` | Brain goes over the day at night and brings cards, how-to-help lines and a voice line to the morning message. ([guide](wiki/user/settings-guide.md#minddreamon)) |
+| `mind.dream.voice` | `true` | One morning line on what the nightly voice learning saw: turns it learned from and any misfire pattern. ([guide](wiki/user/settings-guide.md#minddreamvoice)) |
 | `mind.expect.on` | `true` | Each message Kurooto starts says what it expects (a reply, or done within 2 hours), and what came of it is recorded. ([guide](wiki/user/settings-guide.md#mindexpecton)) |
 | `mind.feelings.empathy` | `true` | Concern for what it looks after (deadlines, projects, its machine): it notices sooner, speaks more gently. ([guide](wiki/user/settings-guide.md#mindfeelingsempathy)) |
 | `mind.feelings.express` | `true` | Brain may say a feeling about something open, through the gate, at most 3 times a week unasked. ([guide](wiki/user/settings-guide.md#mindfeelingsexpress)) |
@@ -766,6 +772,10 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.stimulation.on` | `true` | Its senses felt as a body (heat, load, touch), for its feelings and the dashboard. ([guide](wiki/user/settings-guide.md#mindstimulationon)) |
 | `mind.story.on` | `true` | One life story every part of Kurooto reads first: a fixed core, then its recent weeks. ([guide](wiki/user/settings-guide.md#mindstoryon)) |
 | `mind.story.tokens` | `800` | The life story's summary is at most this many tokens (about 4 characters each). ([guide](wiki/user/settings-guide.md#mindstorytokens)) |
+| `mind.study_push.horizon_days` | `7` | How far ahead a deadline can be for Brain to be uneasy about it. ([guide](wiki/user/settings-guide.md#mindstudypushhorizondays)) |
+| `mind.study_push.minutes` | `25` | How long a study stretch the morning line offers. ([guide](wiki/user/settings-guide.md#mindstudypushminutes)) |
+| `mind.study_push.on` | `true` | One morning line about the subject Brain is most uneasy about (due date, minutes logged, cards due), with Yes and Later. ([guide](wiki/user/settings-guide.md#mindstudypushon)) |
+| `mind.study_push.when` | `"daily 07:55"` | When the morning line comes. ([guide](wiki/user/settings-guide.md#mindstudypushwhen)) |
 | `mind.talk.met` | `true` | An add-on's chat with someone in the room is a smaller reward for Brain (at most 0.05 a day, 6 meetings). ([guide](wiki/user/settings-guide.md#mindtalkmet)) |
 | `mind.talk.on` | `true` | Being talked to is a small reward for Brain (at most 0.2 a day; nothing for answers to its own pings). ([guide](wiki/user/settings-guide.md#mindtalkon)) |
 | `mind.tom.attention` | `false` | Hold a message (at most 15 minutes) while you're deep in one project. ([guide](wiki/user/settings-guide.md#mindtomattention)) |

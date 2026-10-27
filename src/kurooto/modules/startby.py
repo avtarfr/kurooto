@@ -560,7 +560,7 @@ class StartBy(Module):
                 if not first and big and self.setting("tell") and len(tell) >= 3:
                     continue  # tomorrow
                 told[r["id"]] = today.isoformat()
-                if not first and big and self.setting("tell"):
+                if not first and big and self.setting("tell") and not self._folded(r):
                     tell.append(r)
             live = set(self._dl().items())
             for k in ("told", "sizes"):
@@ -572,6 +572,26 @@ class StartBy(Module):
             self._tell(r)
         self._ask_exams(rows)
         self.app.events.emit("startby_planned", deadlines=len(rows), told=len(tell))
+
+    def _folded(self, r: dict) -> bool:
+        """Brain's morning line about the subject it's most uneasy about took this message's place today (0.8.14,
+        mind/study_push.py; mind.study_push.on)."""
+        try:
+            from kurooto.mind import study_push
+
+            return study_push.folded(self.app, r.get("subject"), "startby")
+        except Exception:
+            return False
+
+    def start_today(self, i: str) -> bool:
+        """Count a deadline as started today (Yes under Brain's morning line, when Reminders is off)."""
+        with Lock(self.app.paths.state, "startby"):
+            st = self._state()
+            if i not in self._dl().items():
+                return False
+            st.setdefault("told", {})[i] = now().date().isoformat()
+            jsave(self.file, st)
+        return True
 
     def _hello(self, rows: list[dict], today: dt.date) -> None:
         start = [r for r in rows if r["start"] <= today]

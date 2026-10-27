@@ -255,6 +255,8 @@ class Checkins(Module):
             return
         else:
             q = (self.setting("questions") or {}).get(name) or "How's it going?"
+            if p.get("early"):  # Brain's surprise check-in (0.8.14): the day looks unlike what it expected
+                q = "A bit earlier than usual. " + q
             later = [("Tomorrow morning", f"chk:{name}|{day}:defer")] if name == "night" else []
             skip = ("Skip today", f"chk:{name}|{day}:skip")
             if name == "evening" and self.setting("reflect"):  # the day's reflection: what you did, one for tomorrow
