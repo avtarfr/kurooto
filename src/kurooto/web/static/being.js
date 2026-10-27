@@ -974,7 +974,7 @@ window.beingMount = async function (host, opts) {
     if (o === "heart") parts = Object.entries(HEART_PARTS).map(([k, r]) => ({ kind: "heart", key: k, name: r.name, sub: r.sub, live: partLive("heart", k) }));
     if (o === "senses") parts = Object.entries(SENSES).map(([k, r]) => ({ kind: "sense", key: k, name: r.name, sub: r.sub, live: partLive("sense", k) }));
     if (o === "memory") parts = memory.hoods.filter((h) => h.n > 0).sort((x, y) => y.n - x.n).slice(0, 40).map((h) => ({ kind: "hood", key: String(h.key), name: h.name, sub: `most linked: ${h.hub}`, live: `${h.n} notes` }));
-    const head = { mind: `${recent.length} events in 10 minutes · ${Math.round(BPM)} a minute`, heart: `${Math.round(BPM)} a minute: faster when it's busier`, senses: "sight, hearing, touch, balance, its own body", memory: `${memory.nodes.length} notes · they light up as they link` }[o];
+    const head = { mind: `${recent.length} ${recent.length === 1 ? "event" : "events"} in 10 minutes · ${Math.round(BPM)} a minute`, heart: `${Math.round(BPM)} a minute: faster when it's busier`, senses: "sight, hearing, touch, balance, its own body", memory: `${memory.nodes.length} notes · they light up as they link` }[o];
     const sel = SUB ? { kind: SUB.kind, key: String(SUB.key) } : null;
     return { page: PAGE_OF[o], head, mode: mind.mode, sel, parts, detail: SUB ? await detail(SUB) : null, feats: o === "memory" && !SUB ? featsAt("memory", null) : [], said: SAID };
   }
@@ -1051,7 +1051,7 @@ window.beingMount = async function (host, opts) {
     if (OM) { /* an organ page: the app shows its name and parts */ } else if (UI) UI.header(c, { W, H, BPM, n: recent.length, HINTS, PROC, P, focus: FOCUS }); // phone: its own header and key
     else {
     c.font = "300 11px Inter,sans-serif"; c.fillStyle = P.mute; c.fillText("KUROOTO", 40, 34); c.font = "300 19px Inter,sans-serif"; c.fillStyle = P.ink; c.fillText("the being", 40, 58);
-    c.font = "400 10px ui-monospace,monospace"; c.fillStyle = P.mute; c.fillText(`${Math.round(BPM)} / min · ${recent.length} events in 10 min${HINTS ? " · drag an organ to turn it, wheel to zoom, right-drag to pan, click a part to look at it, Esc goes back, H hides these" : ""}`, 40, 76);
+    c.font = "400 10px ui-monospace,monospace"; c.fillStyle = P.mute; c.fillText(`${Math.round(BPM)} / min · ${recent.length} ${recent.length === 1 ? "event" : "events"} in 10 min${HINTS ? " · drag an organ to turn it, wheel to zoom, right-drag to pan, click a part to look at it, Esc goes back, H hides these" : ""}`, 40, 76);
     let ly = 104; c.font = "400 10px Inter,sans-serif"; if (HINTS) for (const k of Object.keys(PROC)) { c.fillStyle = "#" + new THREE.Color(PROC[k].c).getHexString(); c.beginPath(); c.arc(46, ly - 3, 3, 0, 6.3); c.fill(); c.fillStyle = P.mute; c.fillText(PROC[k].name, 56, ly); ly += 14; }
     }
     c.font = "400 10px Inter,sans-serif";
