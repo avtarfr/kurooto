@@ -204,11 +204,14 @@ def test_a_model_is_on_the_receipt_only_when_ollama_did_not_have_it(env, monkeyp
             return False
 
     monkeypatch.setattr(lm, "api", lambda path, body=None, timeout=10: Stream())
-    monkeypatch.setattr(lm, "have", lambda: {"yours:latest"})
+    monkeypatch.setattr(lm, "have_now", lambda: {"yours:latest"})
     assert lm.pull("yours", 1.0, progress=lambda s: None)[0]
     assert lm.pull("new-model:7b", 2.0, progress=lambda s: None, by="local_helper")[0]
     items = uninstall.load(env.app.paths.app)
     assert list(items) == ["model:new-model:7b"] and items["model:new-model:7b"]["features"] == ["local_helper"]
+    monkeypatch.setattr(lm, "have_now", lambda: None)  # Ollama didn't say what it had: never on the receipt
+    assert lm.pull("unsure:1b", 1.0, progress=lambda s: None)[0]
+    assert "model:unsure:1b" not in uninstall.load(env.app.paths.app)
 
 
 def receipt_model(app, tag, by="local_models", size=3 * 1024**3):
@@ -266,8 +269,10 @@ def test_the_switch_turns_the_offer_off(env, home):
     assert uninstall.after_off(app, "local_helper") == ""  # never asked twice while a question waits
 
 
-def test_a_model_in_use_is_never_offered_and_a_tap_rechecks(env, no_real_ollama):
+def test_a_model_in_use_is_never_offered_and_a_tap_rechecks(env, no_real_ollama, monkeypatch):
     app = env.app
+    app.settings.set("modules.enabled", [*app.settings.get("modules.enabled"), "local_models"])
+    monkeypatch.setattr(app.modules["local_models"], "wanted", lambda: [])
     no_real_ollama["tags"] = {"gemma-test:4b": 5, "other:1b": 7}
     receipt_model(app, "gemma-test:4b", by="local_helper")
     receipt_model(app, "other:1b", by="local_models")
@@ -343,5 +348,84 @@ def test_uninstall_follows_the_receipt_unless_told_not_to(tmp_path, home, monkey
     exe(tool)
     uninstall._put(app, "program:thing", {"kind": "program", "key": "thing", "title": "Fake", "paths": [str(tool)]})
     monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+    monkeypatch.setenv("KUROOTO_NO_AUTOSTART", "1")
+    monkeypatch.setattr(cli, "stop", lambda *a, **k: 0)
+    monkeypatch.setattr(cli, "BIN", tmp_path / "bin")
+    assert cli.uninstall(keep_data=True, keep_programs=True) == 0
+    assert tool.exists()  # --keep-programs
+    cfg = tmp_path / "k" / "config"
+    cfg.mkdir(parents=True, exist_ok=True)
+    (cfg / "settings.json").write_text(json.dumps({"uninstall": {"with_programs": False}}))
+    cli.uninstall_receipt(yes=False)
+    assert tool.exists()  # uninstall.with_programs off
+    (cfg / "settings.json").write_text("{}")
     cli.uninstall_receipt(yes=False)
     assert not tool.exists()
+
+
+def test_turning_local_models_off_offers_ollama_though_its_setup_set_the_classifier(env, home, no_real_ollama):
+    """Local AI models' setup points brain.classify at Ollama; once it's off, that alone doesn't keep Ollama (the
+    classifier falls back to the rules without it), so the offer names Ollama and its models."""
+    app = env.app
+    no_real_ollama["tags"] = {"helper-test:3b": 5}
+    receipt_model(app, "helper-test:3b", by="local_models")
+    d = app.paths.app / "ollama"
+    exe(d / "bin" / "ollama")
+    uninstall._put(
+        app.paths.app,
+        "program:ollama",
+        {"kind": "program", "key": "ollama", "title": "Ollama", "paths": [str(d)], "owns": []},
+    )
+    app.settings.set("brain.classify", "ollama")
+    app.settings.set("brain.models", {"ollama": {"low": "helper-test:3b"}})
+    msg = uninstall.after_off(app, "local_models")
+    assert "Ollama" in msg and "helper-test:3b" in msg
+    app.settings.set("brain.main", "ollama")  # Ollama as your main AI keeps it, on or off
+    app.ask.answer(app.ask.pending(source="uninstall")[0]["id"], "Keep", via="test")
+    assert uninstall.after_off(app, "local_models") == ""
+
+
+@pytest.mark.skipif(OSN != "linux", reason="kitty's Linux manifest")
+def test_a_folder_the_install_did_not_make_is_never_on_the_receipt(tmp_path, home, monkeypatch):
+    """kitty's manifest names ~/.local/kitty.app/bin (where kitty's own installer puts it): Kurooto's install doesn't
+    make it, so a kitty you install there yourself later is never removed with Kurooto's."""
+    pre = Prereqs(tmp_path / "app", tmp_path / "cache")
+    p = pre.items["kitty"]
+    before = uninstall.look(pre, p)
+    exe(tmp_path / "app" / "kitty" / "bin" / "kitty")
+    entry = uninstall.record_program(pre, p, before, str(tmp_path / "app" / "kitty" / "bin" / "kitty"))
+    assert entry is not None and entry["paths"] == [str(tmp_path / "app" / "kitty")]
+
+
+def test_bun_goes_but_its_folder_and_your_packages_in_it_stay(tmp_path, home):
+    """Bun's install made ~/.bun and ~/.bun/bin; you added a global package of your own since: only bun (and bunx,
+    its link) go, your package and its link stay."""
+    app = tmp_path / "app"
+    b = home / ".bun"
+    exe(b / "bin" / "bun")
+    (b / "bin" / "bunx").symlink_to("bun")
+    (b / "bin" / "yourtool").symlink_to("../install/global/node_modules/yourtool/cli.js")
+    (b / "install" / "global").mkdir(parents=True)
+    (b / "install" / "global" / "package.json").write_text(json.dumps({"dependencies": {"yourtool": "1"}}))
+    uninstall._put(
+        app,
+        "program:bun",
+        {"kind": "program", "key": "bun", "title": "Bun", "paths": [str(b / "bin")], "owns": [str(b)]},
+    )
+    ok, lines = uninstall.remove(app, uninstall.things(app), say=lambda s: None)
+    assert ok, lines
+    assert "stays" in lines[0]
+    assert not (b / "bin" / "bun").exists() and not (b / "bin" / "bunx").is_symlink()
+    assert (b / "bin" / "yourtool").is_symlink() and (b / "install" / "global" / "package.json").exists()
+
+
+def test_a_hardware_change_offers_only_the_setups_models_while_it_is_on(env, no_real_ollama, monkeypatch):
+    app = env.app
+    no_real_ollama["tags"] = {"setup-old:7b": 5, "helper-kept:1b": 5}
+    receipt_model(app, "setup-old:7b", by="local_models")
+    receipt_model(app, "helper-kept:1b", by="local_helper")  # offered when the helper went off, not here
+    assert uninstall.after_hardware(app) == ""  # Local AI models is off: no setup stopped using anything
+    app.settings.set("modules.enabled", [*app.settings.get("modules.enabled"), "local_models"])
+    monkeypatch.setattr(app.modules["local_models"], "wanted", lambda: [])
+    said = uninstall.after_hardware(app)
+    assert "setup-old:7b" in said and "helper-kept" not in said

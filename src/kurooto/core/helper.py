@@ -419,10 +419,9 @@ class Helper:
         self.app.settings.set("local_helper.on", False)
         from kurooto.core import uninstall  # a model Kurooto downloaded for it: Remove / Keep (uninstall.offer)
 
-        return (
-            "The offline helper is off. Its model stays in Ollama (about 1 GB; /helper on uses it again). With the "
-            "internet down, requests still wait until it's back." + uninstall.after_off(self.app, "local_helper")
-        )
+        said = uninstall.after_off(self.app, "local_helper")
+        stays = "" if said else " Its model stays in Ollama (about 1 GB; /helper on uses it again)."
+        return f"The offline helper is off.{stays} With the internet down, requests still wait until it's back.{said}"
 
     def _in_background(self, fn, label: str) -> None:
         from kurooto.core.calm import ASKED

@@ -314,7 +314,7 @@ removed until it's off. In the chat, **Remove…** under `/installed` asks Remov
 **Turning a feature off** (or `/helper off`) asks whether to remove what Kurooto installed for it that nothing else
 uses, with the size: **Remove** / **Keep**, in Today → Waiting for you on the dashboard, Telegram or the phone app.
 Changing This computer's setup (Settings → `hardware.force_profile`, `hardware.extra_models`, `kurooto hardware
---profile`) asks the same about models the new setup doesn't use. Nothing is removed without that tap, and never by
+--profile`) asks the same about Local AI models' models the new setup doesn't use. Nothing is removed without that tap, and never by
 the AI or a schedule. `uninstall.offer` off: no questions (the commands still work).
 
 **Uninstalling Kurooto** follows the receipt: `kurooto uninstall` lists what Kurooto installed outside its own folder

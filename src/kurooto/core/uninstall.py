@@ -104,9 +104,12 @@ class Thing:
 
 
 def human(n: int) -> str:
-    for unit, div in (("GB", GB), ("MB", 1024**2), ("KB", 1024)):
+    """1.4 GB, 150 MB, 12 KB."""
+    if n >= GB:
+        return f"{n / GB:.1f} GB"
+    for unit, div in (("MB", 1024**2), ("KB", 1024)):
         if n >= div:
-            return f"{n / div:.1f} {unit}"
+            return f"{round(n / div)} {unit}"
     return f"{n} B"
 
 
@@ -296,11 +299,11 @@ def record_program(pre: Prereqs, p: Prereq, before: dict, exe: str | None) -> di
         if _inside(t, app) and t != app:  # Kurooto's own folder for it: the folder right under <app>
             paths.append(app / t.relative_to(app).parts[0])
             continue
-        now = _names(t) or []
-        if had is None and t != into and safe(t, app):  # a vendor's own folder that wasn't there (…/Programs/Ollama)
-            paths.append(t)
+        now = _names(t)
+        if had is None and now is not None and t != into and safe(t, app):  # a vendor's folder the install made
+            paths.append(t)  # (…/Programs/Ollama); one it didn't make (kitty's own ~/.local/kitty.app) isn't Kurooto's
             continue
-        new = [n for n in now if n not in (had or [])]
+        new = [n for n in now or [] if n not in (had or [])]
         if t == into:
             want = p.step.get("app")
             new = [n for n in new if not want or n == want]
@@ -543,7 +546,9 @@ def model_users(app: App) -> dict[str, list[str]]:
         except Exception:
             pass
     brain = app.settings.get("brain") or {}
-    picks = [brain.get("main"), brain.get("classify")]
+    picks = [brain.get("main")]
+    if app.is_on("local_models"):  # its setup points the classifier at Ollama; without Ollama it uses the rules
+        picks.append(brain.get("classify"))
     fb = brain.get("fallback")
     picks += fb if isinstance(fb, list) else [fb]
     if "ollama" in picks:
@@ -658,6 +663,18 @@ def _pkg_remove(pre: Prereqs, pkg: dict) -> tuple[bool, str]:
     return res.ok, (res.err or res.out).strip()[-200:]
 
 
+def _just_the_program(d: Path, progs: set[str]) -> bool:
+    """In a folder that stays: only the program's own files, and links to them (bunx is a link to bun)."""
+    names = {x.name for x in d.iterdir() if _stem(x.name).lower() in progs}
+    for x in d.iterdir():
+        try:
+            if x.is_symlink() and os.readlink(x).replace("\\", "/").rsplit("/", 1)[-1] in names:
+                names.add(x.name)
+        except OSError:
+            continue
+    return all(_rm(d / n) for n in sorted(names))
+
+
 def _remove_program(app_dir: Path, pre: Prereqs, t: Thing, going: set[str]) -> tuple[bool, str]:
     from kurooto.core import proc
 
@@ -675,19 +692,30 @@ def _remove_program(app_dir: Path, pre: Prereqs, t: Thing, going: set[str]) -> t
             return False, f"{t.title}: its uninstaller didn't run ({e})"[:200]
         if not res.ok:
             return False, f"{t.title}: its uninstaller failed"
+    keep: dict[Path, str] = {}  # folders its install made that hold things of yours now: they stay
+    for o in it.get("owns") or []:
+        o = _abs(o)
+        if _there(o) and safe(o, app_dir) and o.is_dir():
+            why = _still_holds(t.name, o, going)
+            if why:
+                keep[o] = why
+    progs = {_stem(n).lower() for n in (pre.items[t.name].programs if t.name in pre.items else [t.name])}
     left = []
     for p in _roots(it.get("paths") or []):
-        if _there(p) and safe(p, app_dir) and not _rm(p):
-            left.append(str(p))
-    kept = []
-    for o in it.get("owns") or []:
-        o = Path(o)
-        if not _there(o) or not safe(o, app_dir):
+        if not _there(p) or not safe(p, app_dir):
             continue
-        why = _still_holds(t.name, o, going) if o.is_dir() else ""
-        if why:
-            kept.append(f"{o} stays: {why}")
-        elif not _rm(o):
+        if p.is_dir() and not p.is_symlink() and any(_inside(p, o) for o in keep):
+            gone = _just_the_program(p, progs)  # Bun's ~/.bun/bin with your packages' links: only bun goes
+        else:
+            gone = _rm(p)
+        if not gone:
+            left.append(str(p))
+    kept = [f"{o} stays: {why}" for o, why in keep.items()]
+    for o in it.get("owns") or []:
+        o = _abs(o)
+        if o in keep or not _there(o) or not safe(o, app_dir):
+            continue
+        if not _rm(o):
             left.append(str(o))
     if left:
         return False, f"{t.title}: couldn't remove {', '.join(left[:3])} (in use, or no permission)"
@@ -752,7 +780,8 @@ def _open_offers(app: App) -> set[str]:
 
 
 def _listing(ts: list[Thing]) -> str:
-    return ", ".join(f"{t.title} ({t.size})" for t in ts)
+    """ "Ollama (1.4 GB), gemma4:e4b (Ollama model, 3.2 GB)"."""
+    return ", ".join(f"{t.title[:-1]}, {t.size})" if t.title.endswith(")") else f"{t.title} ({t.size})" for t in ts)
 
 
 def offer(app: App, chosen: list[Thing], because: str) -> str:
@@ -777,7 +806,8 @@ def offer(app: App, chosen: list[Thing], because: str) -> str:
         about=because[:80],
     )
     return (
-        f" It installed {_listing(chosen)}; Remove or Keep is waiting for you (Today → Waiting for you, or your chat)."
+        f" Kurooto installed {_listing(chosen)} for it: Remove or Keep is waiting for you (Today → Waiting for you, or "
+        "your chat)."
     )
 
 
@@ -801,9 +831,11 @@ def after_hardware(app: App) -> str:
     Kurooto downloaded that nothing uses now."""
     if app.settings.get("uninstall.offer") is False:
         return ""
+    if not app.is_on("local_models"):  # no setup in use, so nothing it stopped using
+        return ""
     try:
         ts = things_for(app)
-        idle = [t for t in ts if t.kind == "model" and not t.users]
+        idle = [t for t in ts if t.kind == "model" and "local_models" in t.features and not t.users]
         return offer(app, idle, "This computer's new setup doesn't use some models.")
     except Exception as e:
         app.events.emit("uninstall_offer_failed", feature="hardware", error=f"{type(e).__name__}: {e}"[:200])

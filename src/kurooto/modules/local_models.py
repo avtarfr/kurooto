@@ -82,11 +82,15 @@ class LocalModels(Module):
             return False
 
     def have(self) -> set[str]:
+        return self.have_now() or set()
+
+    def have_now(self) -> set[str] | None:
+        """What Ollama has, or None when it didn't answer (so "it has none" and "it didn't say" stay apart)."""
         try:
             with self.api("/api/tags", timeout=5) as r:
                 return {m["name"] for m in json.loads(r.read()).get("models", [])}
-        except OSError:
-            return set()
+        except (OSError, ValueError):
+            return None
 
     def serve(self) -> bool:
         """Start Ollama's server if it isn't running (Windows and macOS usually start it themselves)."""
@@ -176,7 +180,8 @@ class LocalModels(Module):
         have goes on the receipt for `by` (core/uninstall.py); one it had stays yours."""
         from kurooto.core import uninstall
 
-        had = uninstall.norm(tag) in {uninstall.norm(h) for h in self.have()}
+        known = self.have_now()  # Ollama didn't say: treated as yours, so it never goes on the receipt
+        had = known is None or uninstall.norm(tag) in {uninstall.norm(h) for h in known}
         progress(f"Downloading {tag} ({size_gb:g} GB)…")
         egress.handed("Ollama", feature)  # Ollama downloads it from its registry
         with (
