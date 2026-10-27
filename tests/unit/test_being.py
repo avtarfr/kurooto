@@ -277,3 +277,60 @@ def test_0811_a_heard_stretch_draws_dimmer_in_the_you_lane():
     assert 'm.kind === "voice_heard"' in js and "heard: true" in js
     assert '"heard, not to Kurooto"' in js and "L.heard ? .45 : 1" in js
     assert '"heard, not to Kurooto"' in static("being-phone.js").decode()
+
+
+def _fn(js: str, head: str) -> str:
+    body = js[js.index(head) :]
+    return body[: body.index("\n  }\n")]
+
+
+def test_0813_the_you_lane_is_live_from_the_microphones_levels_behind_its_switch():
+    import kurooto.web.server  # noqa: F401 (registers the look defaults)
+    from kurooto.core.config import _DEFAULTS
+
+    js = static("being.js").decode()
+    assert _DEFAULTS["look"]["being_live_waveform"] is True
+    # voice_level feeds a fixed ring (no allocation as it comes), only with the switch on; the ear's glow as before
+    assert 'if (m.kind === "voice_level" && m.levels) { liveIn(m); senses.level' in js
+    assert "on: opts.liveWave !== false, ring: new Float32Array(320)" in js
+    live_in = _fn(js, "  function liveIn(m) {")
+    assert "if (!LIVE.on || !Array.isArray(m.levels)) return;" in live_in and "r[LIVE.n++ % r.length]" in live_in
+    assert "new " not in live_in and "LIVE.at = NOW" in live_in
+    # it shows while levels come, settles into the turn's outline, fades out after 1.5 s without one
+    assert (
+        "if (age > 1.5 || (LANES.you && LIVE.loud <= LIVE.settled)) return 0; return Math.min(1, (1.5 - age) / .5);"
+        in js
+    )
+    for settle in (
+        'if (m.who === "you") { senses.hit.hearing = NOW; LIVE.settled = NOW; }',
+        "heard: true }; senses.hit.hearing = NOW; LIVE.settled = NOW; }",
+        "else { senses.hit.hearing = NOW; LIVE.settled = NOW; } } // the talk box",
+    ):
+        assert settle in js, settle
+    assert "const setLive = (v) => { LIVE.on = v !== false;" in js and "setRest, setLive," in js
+    # reduced motion or Remove animations: a sweep, not a scroll
+    assert "if (calmEye()) { // a sweep" in _fn(js, "  function liveWave(c, y, h, x0, x1, d) {")
+    # the dashboard draws it in the YOU lane only; the phone gets no levels and passes no live argument
+    assert "const lv = liveShow();" in js and 'say its name, or type in the talk box", lv);' in js
+    assert "if (live > 0) { liveWave(c, y, h, x0, x1, live); return; }" in js
+    # the dashboard's path: the setting at mount, on load and when it changes on the Settings page
+    home = static("home.js").decode()
+    assert "liveWave: BEING_LIVE" in home and "BEING.setLive(BEING_LIVE)" in home
+    assert 'key === "look.being_live_waveform"' in home and "look.values.being_live_waveform !== false" in home
+    assert '"look.being_live_waveform"' in static("settings-guide.js").decode()
+
+
+def test_0813_the_lanes_are_smooth_waveforms_not_bars():
+    js = static("being.js").decode()
+    lane = _fn(js, "  function lane(c, y, h, L, lab, sub, live) {")
+    # one fillRect: the baseline; the samples go through wave(), a filled mirrored path with its top edge stroked
+    assert lane.count("fillRect(") == 1 and "for (let i = 0; i < shown; i++)" not in lane
+    assert "wave(c, y, h, S, 0, shown," in lane and "L.heard ? .45 : 1" in lane
+    wave = _fn(js, "  function wave(c, y, h, src, o, n, xa, xb, xn, span, d) {")
+    assert "fillRect" not in wave and "cr(at(" in wave and "c.fill();" in wave and "c.stroke();" in wave
+    assert "y + WY[k]" in wave and "y - WY[k]" in wave  # mirrored
+    assert "createLinearGradient" in wave and "${.3 * d}" in wave  # older samples dimmer, .3 to 1 as the bars were
+    assert "const WX = new Float32Array(1600), WY = new Float32Array(1600);" in js  # reused every frame
+    # the phone draws through the same lane(), lower and thinner
+    phone = static("being-phone.js").decode()
+    assert 'lane(c, H - 60, 20, L.you, "YOU",' in phone and 'lane(c, H - 22, 26, L.me, "KUROOTO",' in phone

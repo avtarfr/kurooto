@@ -116,7 +116,11 @@ hearing and speaking. `look.being_theme`: `void` (white light on black) or `them
 palette nothing glows, so the being stays visible).
 
 **The voice lanes** at the bottom: YOU shows the shape of what you said to Kurooto; speech it heard that wasn't to it
-(chatter, a call in the room) shows too, fainter, as "heard, not to Kurooto": only its loudness, never words.
+(chatter, a call in the room) shows too, fainter, as "heard, not to Kurooto": only its loudness, never words. While
+Voice listens, YOU is live: the microphone's loudness scrolls through it as you speak (the last six seconds, newest at
+the right), settles into your turn's outline when the turn ends, and fades out when nothing has come for a moment and a
+half. Turn the live trace off with `look.being_live_waveform`; Remove animations and your system's reduced motion keep it
+still (it sweeps across instead of scrolling). Both lanes are smooth waveforms, older parts fainter.
 
 **The talk box** (bottom right, on every board; **Alt+K**): type to Kurooto as on Telegram; the answer prints in it.
 Turn it off with `look.talk_box`.

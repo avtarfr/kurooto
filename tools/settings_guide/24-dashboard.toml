@@ -54,6 +54,12 @@ what = "Each reading of its body (every 2 seconds) is a spark in the insula, one
 when = "Turn it off if you'd rather the brain sparked only for events. Remove animations and the system's reduced motion turn it off too."
 needs = "`look.board` = `being`."
 
+[s."look.being_live_waveform"]
+tip = "The being's YOU lane live: a trace of the microphone's loudness as you speak, the last six seconds."
+what = "While Voice listens and the dashboard is open, the microphone's loudness (five numbers every 100 ms, never sound or words) scrolls through the YOU lane, newest at the right; when your turn ends it settles into that turn's outline, and with nothing heard for a moment and a half the trace fades out. Remove animations and the system's reduced motion keep it still: it sweeps across instead of scrolling. Off, the lane shows only each turn's outline once it's over."
+when = "Turn it off if the moving trace distracts you."
+needs = "`look.board` = `being`, Voice listening, and `voice.listen.levels` on."
+
 [s."look.talk_box"]
 tip = "A small box over the board to talk to Kurooto in plain English (Alt+K)."
 when = "Turn it off if you use the terminal or Telegram instead."

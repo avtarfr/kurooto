@@ -9,6 +9,9 @@
    The vessels and nerves are joined to the organs and stay joined as they turn; the nerves leave the brainstem as the
    spinal cord and split at a plexus behind the heart, fibre bundles with nerve cells along them.
 
+   While the microphone's levels come (0.8.13, look.being_live_waveform) the YOU lane is a live trace of them; both
+   lanes are smooth mirrored waveforms.
+
    beingMount(host, {api, token, theme}) -> {update(body), event(ev), graph(g), voice(m), stop()}
    Needs vendor/three (three.js r128 and its bloom passes) and body/anatomy.bin, body/cerebrum.vol (tools/gen_body_meshes.py).
    Turn and zoom: drag, wheel; right-drag pans. Click an organ to look into it, a part of it for its settings, a point of
@@ -942,16 +945,65 @@ window.beingMount = async function (host, opts) {
   async function muteState() { try { const v = await api("voice"); if (v.error) throw 0; VOICE = v; muteB.classList.toggle("on", !!v.muted); muteB.textContent = v.muted ? "● MUTED" : "● MUTE"; muteB.title = v.listening ? "it's listening; mute stops it hearing and speaking" : "Voice isn't listening"; } catch { muteB.title = "Voice isn't on this install yet (Features → Voice)"; muteB.style.opacity = .5; } }
   muteB.onclick = async () => { let r = null; try { r = await api("voice/mute", {}); } catch { /* below */ } if (!r || r.error) { muteB.textContent = "● Voice isn't on this install"; setTimeout(() => (muteB.textContent = "● MUTE"), 2500); return; } muteB.classList.toggle("on", !!r.muted); muteB.textContent = r.muted ? "● MUTED" : "● MUTE"; muteB.title = r.message || ""; };
   muteState();
-  async function typed(text, who) { LANES[who === "kurooto" ? "me" : "you"] = { text, s: await shape(text), t: NOW, typed: true }; if (who === "kurooto") mind.fire("speak", NOW, 8); else senses.hit.hearing = NOW; } // the talk box (home.js)
+  async function typed(text, who) { LANES[who === "kurooto" ? "me" : "you"] = { text, s: await shape(text), t: NOW, typed: true }; if (who === "kurooto") mind.fire("speak", NOW, 8); else { senses.hit.hearing = NOW; LIVE.settled = NOW; } } // the talk box (home.js)
   const LANES = { you: null, me: null };
   async function shape(text) { try { const r = await api("voice/shape", { text }); if (r && r.samples) return r.samples; } catch { /* the estimate below */ }
     const out = []; for (const ch of text.toLowerCase()) { const v = "aeiou".includes(ch) ? .85 : "lmnryw".includes(ch) ? .5 : "szfhxc".includes(ch) ? .25 : "pbtdkgq".includes(ch) ? .9 : ch === " " ? .03 : /[.,!?;:]/.test(ch) ? 0 : .3; const n = /[.!?]/.test(ch) ? 12 : 3; for (let i = 0; i < n; i++) out.push(v * (.6 + .4 * Math.sin(Math.PI * (i + .5) / n))); } return out; }
-  function lane(c, y, h, L, lab, sub) {
+  // the lanes' waveform (0.8.13): a smooth mirrored shape, not bars. A Catmull-Rom curve through the samples, taken
+  // every 2 px or so, so a short utterance is a soft shape rather than a few wide blocks; filled with the ink, its top
+  // edge stroked a little brighter. Older samples are dimmer, as the bars were: a gradient along x from .3 to 1.
+  const INK = (() => { const k = new THREE.Color(P.ink).getHex(); return `${(k >> 16) & 255},${(k >> 8) & 255},${k & 255}`; })();
+  const WX = new Float32Array(1600), WY = new Float32Array(1600); // the top edge's points, reused every frame
+  const cr = (a, b, p, q, t) => b + .5 * t * (p - a + t * (2 * a - 5 * b + 4 * p - q + t * (3 * (b - p) + q - a)));
+  // n samples of src from o (wrapping, so a ring works), the first at xa and the last at xb; the alpha is d at xn (the
+  // newest) and falls to .3 of it span px before, holding beyond that
+  function wave(c, y, h, src, o, n, xa, xb, xn, span, d) {
+    if (n < 1 || d <= 0) return; if (xb - xa < 3) xb = xa + 3; // one sample: a small soft mark, not nothing
+    const at = (i) => +src[(o + i) % src.length] || 0, dx = n > 1 ? (xb - xa) / (n - 1) : 0, step = Math.max(2, (xb - xa) / (WX.length - 2));
+    let m = 0, u0 = 0;
+    for (let x = xa; m < WX.length; x += step) {
+      const xe = Math.min(x, xb), u = dx > 0 ? (xe - xa) / dx : 0; let v;
+      if (n < 2) v = at(0); else if (dx >= step) { const i = Math.min(n - 2, Math.floor(u)); v = cr(at(Math.max(0, i - 1)), at(i), at(i + 1), at(Math.min(n - 1, i + 2)), Math.min(1, u - i)); }
+      else { v = at(Math.min(n - 1, Math.round(u))); for (let k = Math.ceil(u0); k < u; k++) v = Math.max(v, at(k)); } // several samples a step: their loudest
+      WX[m] = xe; WY[m++] = Math.max(.5, Math.min(1, v) * h / 2); u0 = u; if (xe >= xb) break;
+    }
+    const g = c.createLinearGradient(xn - Math.max(1, span), 0, xn, 0), e = c.createLinearGradient(xn - Math.max(1, span), 0, xn, 0);
+    g.addColorStop(0, `rgba(${INK},${.3 * d})`); g.addColorStop(1, `rgba(${INK},${d})`); e.addColorStop(0, `rgba(${INK},${Math.min(1, .3 * d + .3)})`); e.addColorStop(1, `rgba(${INK},${Math.min(1, d + .3)})`);
+    c.beginPath(); c.moveTo(WX[0], y - WY[0]); for (let k = 1; k < m; k++) c.lineTo(WX[k], y - WY[k]); for (let k = m - 1; k >= 0; k--) c.lineTo(WX[k], y + WY[k]); c.closePath(); c.fillStyle = g; c.fill();
+    c.beginPath(); c.moveTo(WX[0], y - WY[0]); for (let k = 1; k < m; k++) c.lineTo(WX[k], y - WY[k]); c.lineWidth = 1; c.lineJoin = "round"; c.strokeStyle = e; c.stroke();
+  }
+  // the YOU lane, live (look.being_live_waveform, 0.8.13): the microphone's levels as they come (voice_level, five every
+  // 100 ms, 50 a second) in a fixed ring, the last 6 seconds across the lane, newest at the right. Each batch is let in
+  // over the next 100 ms so the trace scrolls smoothly rather than in steps. When the turn ends (voice_text, voice_heard,
+  // or typing) the lane settles into its outline until sound comes again; with no level for 1.5 s the trace fades out.
+  // Reduced motion (or Remove animations): it doesn't scroll but sweeps, each value staying where it was drawn.
+  const LIVE = { on: opts.liveWave !== false, ring: new Float32Array(320), n: 0, batch: 5, rate: 50, at: -9, loud: -9, settled: -9 }, LIVE_WIN = 300;
+  function liveIn(m) {
+    if (!LIVE.on || !Array.isArray(m.levels)) return; const r = LIVE.ring; let k = 0;
+    for (const x of m.levels) { const v = +x; if (!isFinite(v)) continue; r[LIVE.n++ % r.length] = Math.max(0, Math.min(1, v)); k++; if (v > .4) LIVE.loud = NOW; } // .4: about -36 dB, speech rather than the room
+    if (k) { LIVE.batch = Math.min(15, k); LIVE.rate = +m.rate || 50; LIVE.at = NOW; }
+  }
+  const liveShow = () => { if (!LIVE.on || !LIVE.n) return 0; const age = NOW - LIVE.at; if (age > 1.5 || (LANES.you && LIVE.loud <= LIVE.settled)) return 0; return Math.min(1, (1.5 - age) / .5); };
+  const setLive = (v) => { LIVE.on = v !== false; if (!LIVE.on) { LIVE.n = 0; LIVE.ring.fill(0); } };
+  function liveWave(c, y, h, x0, x1, d) {
+    const R = LIVE.ring, n = LIVE.n, dx = (x1 - x0) / (LIVE_WIN - 1), span = (x1 - x0) / 1.4;
+    if (calmEye()) { // a sweep: this pass from the left, the last pass's rest beyond a small gap
+      const s = Math.floor((n - 1) / LIVE_WIN) * LIVE_WIN, cur = n - s, gap = 8, old = LIVE_WIN - cur - gap;
+      wave(c, y, h, R, s, cur, x0, x0 + (cur - 1) * dx, x0 + cur * dx, span, d);
+      if (s > 0 && old > 1) wave(c, y, h, R, n - LIVE_WIN + gap, old, x0 + (cur + gap) * dx, x1, x1 + cur * dx, span, d);
+      return;
+    }
+    const vis = Math.min(n - 1, n - 1 - LIVE.batch + (NOW - LIVE.at) * LIVE.rate), top = Math.floor(vis); // the head, let in over 100 ms
+    if (top < 0) return; const first = Math.max(0, top - (LIVE_WIN - 2)), xb = x1 - (vis - top) * dx;
+    wave(c, y, h, R, first, top - first + 1, xb - (top - first) * dx, xb, x1, span, d);
+  }
+  function lane(c, y, h, L, lab, sub, live) {
     const x0 = UI ? UI.x0 : 40, x1 = W - (UI ? UI.x0 : opts.talkWidth || 190); /* phone: edge to edge */ c.font = "600 10px Inter,sans-serif"; c.fillStyle = P.mute; c.fillText(lab, x0, y - h / 2 - 8); c.font = "400 10px Inter,sans-serif"; c.fillText(sub, x0 + 74, y - h / 2 - 8);
-    c.globalAlpha = .15; c.fillStyle = P.ink; c.fillRect(x0, y, x1 - x0, 1); c.globalAlpha = 1; if (!L) return;
+    c.globalAlpha = .15; c.fillStyle = P.ink; c.fillRect(x0, y, x1 - x0, 1); c.globalAlpha = 1;
+    if (live > 0) { liveWave(c, y, h, x0, x1, live); return; } if (!L) return;
     const S = L.s, N = S.length, prog = Math.min(1, (NOW - L.t) / Math.max(1.2, N / 50)), shown = Math.floor(N * prog), dx = (x1 - x0) / Math.max(N, 120);
     const dim = L.heard ? .45 : 1; // heard, not to Kurooto: fainter
-    for (let i = 0; i < shown; i++) { const v = S[i] * h / 2; c.globalAlpha = dim * (.3 + .7 * Math.max(0, 1 - (shown - i) / N * 1.4)); c.fillRect(x0 + i * dx, y - v, Math.max(1, dx * .6), Math.max(1, v * 2)); } c.globalAlpha = 1;
+    if (shown) wave(c, y, h, S, 0, shown, x0, x0 + (shown - 1) * dx, x0 + shown * dx, N * dx / 1.4, dim);
   }
 
   /* ===================== the live stream ===================== */
@@ -998,12 +1050,12 @@ window.beingMount = async function (host, opts) {
   }
   function graph(g) { if (memory.nodes.length && REST.on) mind.fire("memory", NOW, 3); memory.build(g); } // a note changed
   async function voice(m) {
-    if (m.kind === "voice_text") { const s = await shape(m.text || ""); LANES[m.who === "you" ? "you" : "me"] = { text: m.text, s, t: NOW }; if (m.who === "you") senses.hit.hearing = NOW; else { mind.fire("speak", NOW, 8); } }
+    if (m.kind === "voice_text") { const s = await shape(m.text || ""); LANES[m.who === "you" ? "you" : "me"] = { text: m.text, s, t: NOW }; if (m.who === "you") { senses.hit.hearing = NOW; LIVE.settled = NOW; } else { mind.fire("speak", NOW, 8); } }
     if (m.kind === "voice_speak" && m.samples) LANES.me = { text: "", s: m.samples, t: NOW };
     // speech heard that wasn't a turn (chatter, or not to it): only its loudness, never words; drawn dimmer
-    if (m.kind === "voice_heard" && Array.isArray(m.samples) && m.samples.length) { LANES.you = { text: "", s: m.samples.slice(0, 120).map((x) => Math.max(0, Math.min(1, +x || 0))), t: NOW, heard: true }; senses.hit.hearing = NOW; }
+    if (m.kind === "voice_heard" && Array.isArray(m.samples) && m.samples.length) { LANES.you = { text: "", s: m.samples.slice(0, 120).map((x) => Math.max(0, Math.min(1, +x || 0))), t: NOW, heard: true }; senses.hit.hearing = NOW; LIVE.settled = NOW; }
     if (m.kind === "voice_state") muteState();
-    if (m.kind === "voice_level" && m.levels) { senses.level = Math.max(senses.level || 0, ...m.levels.map(Number).filter(isFinite)); if (REST.on && senses.level > .15 && NOW - REST.heard > .4) { REST.heard = NOW; mind.fire("hear", NOW, 1); } }
+    if (m.kind === "voice_level" && m.levels) { liveIn(m); senses.level = Math.max(senses.level || 0, ...m.levels.map(Number).filter(isFinite)); if (REST.on && senses.level > .15 && NOW - REST.heard > .4) { REST.heard = NOW; mind.fire("hear", NOW, 1); } }
   }
   function face(m) { // Face presence (t:"face"): where faces are in the camera's frame (places, an owner flag), nothing else
     if (!m) return;
@@ -1263,13 +1315,14 @@ window.beingMount = async function (host, opts) {
     if (FOCUS && (OPEN[FOCUS] || 0) > .3) for (const id in ORG) { const o = ORG[id]; if (o.org !== FOCUS || (o.part !== PICKED && FOCUS !== "memory")) continue; const [x, y, z] = proj(o.g.getWorldPosition(V(0, 0, 0))); if (z > 1) continue; c.save(); c.globalAlpha = OPEN[FOCUS] * (o.on ? .85 : .4); c.font = UI ? UI.small : "400 9px Inter,sans-serif"; c.lineJoin = "round"; c.lineWidth = 3.5; c.strokeStyle = P.bg; c.strokeText(o.title, x + 8, y + 3); c.fillStyle = o.on ? P.ink : P.mute; c.fillText(o.title, x + 8, y + 3); c.restore(); }
     if (OM) { /* an organ page: no voice lanes */ } else if (UI) UI.lanes(c, lane, LANES, W, H); // phone: lower and thinner, no talk box
     else {
-    lane(c, H - 100, 34, LANES.you, "YOU", LANES.you ? (LANES.you.typed ? "typed to Kurooto" : LANES.you.heard ? "heard, not to Kurooto" : "heard, and said to Kurooto") : "say its name, or type in the talk box");
+    const lv = liveShow(); // the YOU lane live while the microphone's levels come
+    lane(c, H - 100, 34, LANES.you, "YOU", lv ? (NOW - LIVE.loud < 2 ? "hearing you, live" : "listening") : LANES.you ? (LANES.you.typed ? "typed to Kurooto" : LANES.you.heard ? "heard, not to Kurooto" : "heard, and said to Kurooto") : "say its name, or type in the talk box", lv);
     lane(c, H - 48, 44, LANES.me, "KUROOTO", LANES.me ? (LANES.me.typed ? "answered" : "speaking") : "");
     }
   }
   frame();
   return {
-    update, event, graph, voice, body, typed, setHints, face, setRest, senses: far,
+    update, event, graph, voice, body, typed, setHints, face, setRest, setLive, senses: far,
     // phone: the back button goes up one level (as Esc), and how deep you are (0: the whole being)
     escape() { if (OM) { if (!SUB) return false; back(); return true; } if (SUB) back(); else if (FOCUS || panel.style.display === "block") { closePanel(); focusOn(null); } else return false; return true; },
     depth() { if (OM) return SUB ? 1 : 0; return SUB ? 2 : FOCUS || panel.style.display === "block" ? 1 : 0; },
