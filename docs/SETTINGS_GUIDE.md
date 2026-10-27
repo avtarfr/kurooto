@@ -753,6 +753,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.senses.phone` | `"(computed)"` | Each of your phone's sensors, off until you switch it on (here and in the phone app). ([guide](wiki/user/settings-guide.md#mindsensesphone)) |
 | `mind.skills.from_demos` | `false` | Also offer skills from what you do over and over (asked once). ([guide](wiki/user/settings-guide.md#mindskillsfromdemos)) |
 | `mind.skills.on` | `true` | Solved tasks become tested, reusable skills; each new one starts out asking first. ([guide](wiki/user/settings-guide.md#mindskillson)) |
+| `mind.stimulation.addons` | `true` | Let an add-on feed another device's sensors into its body (light, motion, battery, loudness...). ([guide](wiki/user/settings-guide.md#mindstimulationaddons)) |
 | `mind.stimulation.on` | `true` | Its senses felt as a body (heat, load, touch), for its feelings and the dashboard. ([guide](wiki/user/settings-guide.md#mindstimulationon)) |
 | `mind.story.on` | `true` | One life story every part of Kurooto reads first: a fixed core, then its recent weeks. ([guide](wiki/user/settings-guide.md#mindstoryon)) |
 | `mind.story.tokens` | `800` | The life story's summary is at most this many tokens (about 4 characters each). ([guide](wiki/user/settings-guide.md#mindstorytokens)) |

@@ -42,7 +42,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 49 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
-- [Brain](#brain): 90 settings
+- [Brain](#brain): 91 settings
 - [Voice and voice notes](#voice-and-voice-notes): 44 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
@@ -4810,6 +4810,17 @@ Its senses felt as a body (heat, load, touch), for its feelings and the dashboar
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off to drop the body. What it senses about you never moves its mood either way.
 - **Depends on:** `mind.senses.intero`.
+
+### `mind.stimulation.addons`
+
+Let an add-on feed another device's sensors into its body (light, motion, battery, loudness...).
+
+Each reading is felt as its physical analogue (light on its face, being moved, being picked up, hunger, heat, sound) and
+drawn by the being's senses; numbers only, kept in memory and the body map.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to ignore what add-ons report; its own body and your phone's sensors are untouched.
+- **Depends on:** `mind.stimulation.on` and an add-on that reports a device.
 
 ### `mind.autonomy.on`
 

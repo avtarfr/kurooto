@@ -1968,6 +1968,7 @@ function connect() {
       if (m.kind === "camera") { let d = $("#camera-dot"); if (!d) { d = document.createElement("span"); d.id = "camera-dot"; d.className = "badge hidden"; d.textContent = "● camera"; d.title = "Kurooto is using the camera (Face presence)"; $(".bar .right").prepend(d); } d.classList.toggle("hidden", !m.on); }
       if (window.FACE) window.FACE.live(m);
     }
+    else if (m.t === "senses") { if (BEING) BEING.senses(m); } // another device an add-on reports for: numbers only
     else if (m.t === "body") {
       const first = !last; last = m; LIGHT = m.sys.profile === "light" || matchMedia("(prefers-reduced-motion: reduce)").matches;
       body.update(m); renderStatus(m); if (BEING) BEING.update(m);

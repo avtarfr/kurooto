@@ -14,6 +14,11 @@
   microphone (written out here, never sent), have Kurooto chat with someone the guest way (no tools, none of your
   data), and give Brain a small capped reward for a good conversation. Every pause and mute still applies; switches
   `face.addons.watch`, `face.addons.hold`, `voice.addons.listen`, `voice.addons.chat`, `mind.talk.met`.
+- **Brain: another device's senses as a body.** An add-on can report another device's sensors (light, proximity,
+  motion, tilt, turning, compass, battery, its temperature, the room's loudness, being picked up, its screen) and
+  Brain feels each as its physical analogue on the body map's new face region, while the being's pupil, lids,
+  balance organ, cilia, cochlea and coil react; numbers only, in memory, never moving its mood
+  (`mind.stimulation.addons`).
 - **Voice: the waveform shows speech that wasn't for Kurooto too.** People talking to each other and noise now move
   the dashboard's waveform as well, as their loudness only: no words ever reach the page. `voice.listen.levels`
   turns it off with the live levels.

@@ -486,17 +486,21 @@ window.beingMount = async function (host, opts) {
     const sizes = { sight: .95, hearing: .4, touch: .45, balance: .3, heat: .45 };
     for (const [k, o] of Object.entries(O)) { const px = new THREE.Mesh(new THREE.SphereGeometry(sizes[k], 12, 8), new THREE.MeshBasicMaterial({ visible: false })); px.userData.pick = { organ: "senses", part: k }; o.add(px); }
     ticks.push((t, dt) => {
-      rings[0].rotation.y += dt * .3; rings[1].rotation.x += dt * .22; const mot = Math.min(1, (SENSE.motion || 0) / 15), scr = Math.min(1, (SENSE.screen || 0) / 15);
+      rings[0].rotation.y += dt * .3; rings[1].rotation.x += dt * .22; const mot = Math.max(Math.min(1, (SENSE.motion || 0) / 15), Math.min(1, (fc("sway") || 0) / 3)), scr = Math.min(1, (SENSE.screen || 0) / 15);
+      // another device (FAR): its light sets the pupil over your phone's band, its screen off shuts the lids
+      const glow = fc("brightness"), lids = fc("eyes") === 0 ? .12 : null, dil0 = glow != null ? .42 - .22 * Math.min(1, glow / 4) : SENSE.light == null ? .32 : [.42, .32, .2][Math.min(2, Math.max(0, SENSE.light | 0))];
       const seen = GAZE.at && performance.now() - GAZE.at < 3000, right = V(1, 0, 0).applyQuaternion(cam.quaternion), upv = V(0, 1, 0).applyQuaternion(cam.quaternion);
       // the camera faces you and isn't mirrored: your right is the frame's left, so x and y turn round
       GAZE.tx += ((seen ? -GAZE.x : 0) - GAZE.tx) * Math.min(1, dt * 5); GAZE.ty += ((seen ? -GAZE.y : 0) - GAZE.ty) * Math.min(1, dt * 5);
       const look = cam.position.clone().add(right.multiplyScalar(GAZE.tx * view.d * .45)).add(upv.multiplyScalar(GAZE.ty * view.d * .3));
-      for (const e of eyes) { const u = e.userData; if (Math.abs(t - (hit.sight ?? -9)) < .02 || rnd() < .002) u.blink = t; const bk = Math.max(0, 1 - Math.abs(t - u.blink) / .12); u.set(Math.max(.05, (OPEN.senses ? 1 : .82) - bk)); e.lookAt(look); u.ball.material.uniforms.dil.value = (SENSE.light == null ? .32 : [.42, .32, .2][Math.min(2, Math.max(0, SENSE.light | 0))]) + (SENSE.face ? .06 : 0); }
-      senses.level = (senses.level || 0) * Math.exp(-dt * 3); const hh = Math.max(Math.min(1, senses.level * 1.5), 1 - (t - (hit.hearing ?? -9)) / 1.2); for (let i = 0; i < hcN; i++) hca[i] = .15 + hh * Math.max(0, Math.sin(i / hcN * 30 - t * 14)); hcg.attributes.a.needsUpdate = true; cm.uniforms.k.value = hh;
-      const th = Math.max(scr * .5, 1 - (t - (hit.touch ?? -9)) / 1.4); for (let i = 0; i < cil.length; i++) { const [x, z, ph] = cil[i], bend = .05 * Math.sin(t * 2 + ph * 6) + th * .18 * Math.sin(t * 9 - Math.hypot(x, z) * 20); cpos.set([x, 0, z, x + bend, .22 + ph * .08, z + bend * .4], i * 6); tipP.set([x + bend, .22 + ph * .08, z + bend * .4], i * 3); }
+      for (const e of eyes) { const u = e.userData; if (Math.abs(t - (hit.sight ?? -9)) < .02 || rnd() < .002) u.blink = t; const bk = Math.max(0, 1 - Math.abs(t - u.blink) / .12); u.set(Math.max(.05, (lids ?? (OPEN.senses ? 1 : .82)) - bk)); e.lookAt(look); u.ball.material.uniforms.dil.value = dil0 + (SENSE.face ? .06 : 0); }
+      senses.level = (senses.level || 0) * Math.exp(-dt * 3); const loud = fc("loudness"); if (loud != null) senses.level = Math.max(senses.level, .6 * Math.min(1, Math.max(0, (loud - 35) / 50))); const hh = Math.max(Math.min(1, senses.level * 1.5), 1 - (t - (hit.hearing ?? -9)) / 1.2); for (let i = 0; i < hcN; i++) hca[i] = .15 + hh * Math.max(0, Math.sin(i / hcN * 30 - t * 14)); hcg.attributes.a.needsUpdate = true; cm.uniforms.k.value = hh;
+      const th = Math.max(scr * .5, 1 - (t - (hit.touch ?? -9)) / 1.4, .8 * (fc("closeness") || 0)); for (let i = 0; i < cil.length; i++) { const [x, z, ph] = cil[i], bend = .05 * Math.sin(t * 2 + ph * 6) + th * .18 * Math.sin(t * 9 - Math.hypot(x, z) * 20); cpos.set([x, 0, z, x + bend, .22 + ph * .08, z + bend * .4], i * 6); tipP.set([x + bend, .22 + ph * .08, z + bend * .4], i * 3); }
       tipA.fill(.04 + th * .7); cgeo.attributes.position.needsUpdate = tipG.attributes.position.needsUpdate = tipG.attributes.a.needsUpdate = true;
-      for (let i = 0; i < otN; i++) { const v = ot0[i]; otp.set([v.x + Math.sin(t * 6 + i) * .03 * mot, v.y - .02 + Math.cos(t * 4 + i * 1.7) * .03 * mot, v.z], i * 3); } otg.attributes.position.needsUpdate = true;
-      const temp = SYS && SYS.temps ? Math.max(0, ...Object.values(SYS.temps).flat().map(Number).filter(isFinite)) : 50; hm.uniforms.k.value = Math.min(1, Math.max(0, (temp - 40) / 50)); for (const m of [cm, hm]) m.uniforms.t.value = t;
+      // the otoliths: shaken by motion, settled the way gravity pulls (tilt), swirled round by turning (the canals')
+      const tl = (fc("tilt") || 0) * Math.PI / 180; senses.swirl = (senses.swirl || 0) + dt * Math.min(6, fc("turning") || 0); const sc = Math.cos(senses.swirl), sn = Math.sin(senses.swirl);
+      for (let i = 0; i < otN; i++) { const v = ot0[i], x0 = v.x * sc - v.z * sn, z0 = v.x * sn + v.z * sc; otp.set([x0 + Math.sin(t * 6 + i) * .03 * mot + Math.sin(tl) * .035, v.y - .02 + Math.cos(t * 4 + i * 1.7) * .03 * mot - (1 - Math.cos(tl)) * .015, z0], i * 3); } otg.attributes.position.needsUpdate = true;
+      const temp = SYS && SYS.temps ? Math.max(0, ...Object.values(SYS.temps).flat().map(Number).filter(isFinite)) : 50; const ft = fc("temperature"); hm.uniforms.k.value = Math.min(1, Math.max(0, (temp - 40) / 50, ft != null ? (ft - 25) / 25 : 0)); for (const m of [cm, hm]) m.uniforms.t.value = t;
     });
   }
 
@@ -658,7 +662,7 @@ window.beingMount = async function (host, opts) {
   /* ===================== the camera: you turn it ===================== */
   const view = { th: 0, ph: 1.42, d: 10.4, tx: 0, ty: .2, tz: 0 }, goal = { ...view }, HOME = { ...view };
   const TARGETS = { mind: { c: BRAIN_C, d: 4.4 }, heart: { c: HEART_C, d: 2.8 }, senses: { c: SENSE_C.clone().add(V(.1, .15, 0)), d: 5.4 }, memory: { c: MEM_C, d: 2.4 } };
-  let FOCUS = null, OPEN = {}, HOVER = null, HOVER_NOTE = null, HOVER_FEATURE = null, HINT = 1, hintUntil = 0, NOW = 0, SYS = null, SENSE = {}, CELLS = [];
+  let FOCUS = null, OPEN = {}, HOVER = null, HOVER_NOTE = null, HOVER_FEATURE = null, HINT = 1, hintUntil = 0, NOW = 0, SYS = null, SENSE = {}, FAR = null, CELLS = [];
   function focusOn(name) {
     FOCUS = name; SUB = null; hintUntil = NOW + 3;
     if (!name) Object.assign(goal, HOME);
@@ -850,6 +854,7 @@ window.beingMount = async function (host, opts) {
     if (r.panel === "pc") live = pcHTML();
     if (r.panel === "ear") live = callRows() + await voiceRows();
     if (k === "balance" || k === "touch") live = `<div class="grow"><span>moving</span><span>${SENSE.motion != null ? `${Math.round(SENSE.motion)} min of the last 15` : "no reading"}</span></div><div class="grow"><span>steps</span><span>${SENSE.steps != null ? SENSE.steps : "no reading"}</span></div><div class="grow"><span>screen on</span><span>${SENSE.screen != null ? `${Math.round(SENSE.screen)} min` : "no reading"}</span></div>`;
+    live += farRows(k).map(([a, b]) => `<div class="grow"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join("");
     openPanel(`<h2>${esc(r.name)}</h2><div class="s">${esc(r.sub)}</div>${live ? `<h3>Now</h3>${live}` : ""}${r.parts.length ? `<h3>Brain parts</h3>${await partRows(r.parts)}` : ""}${r.feats.some((f) => ORG[f]) ? `<h3>Features</h3>${featureRows(r.feats)}` : ""}${await settingsHTML(r.sections)}`, r.panel || "sense");
     PANEL_SENSE = k;
   }
@@ -949,6 +954,26 @@ window.beingMount = async function (host, opts) {
   function face(m) { // Face presence (t:"face"): where the owner's face is in the camera's frame, nothing else
     if (m && m.owner && Number.isFinite(+m.x) && Number.isFinite(+m.y)) { GAZE.x = Math.max(-1, Math.min(1, +m.x)); GAZE.y = Math.max(-1, Math.min(1, +m.y)); GAZE.at = performance.now(); }
   }
+  // Another device an add-on reports for (t:"senses", mind/stimulation.py feed): its numbers, kept apart from your
+  // phone's SENSE; each message may carry a few readings, so they're merged over the last ones from the same device,
+  // and all let go 30 s after its last message. Being picked up flinches the cilia.
+  function far(m) {
+    if (!m || !m.channels || typeof m.channels !== "object") return; const src = String(m.source || "another device").slice(0, 30);
+    const was = FAR && FAR.src === src && farOn() ? FAR : { r: {}, c: {} };
+    FAR = { src, r: { ...was.r, ...(m.readings || {}) }, c: { ...was.c, ...m.channels }, at: performance.now() };
+    if ((+m.channels.handled || 0) > (+was.c.handled || 0)) senses.hit.touch = NOW;
+  }
+  const farOn = () => !!FAR && performance.now() - FAR.at < 30000;
+  function fc(k) { if (!farOn()) return null; const v = +FAR.c[k]; return FAR.c[k] != null && Number.isFinite(v) ? v : null; }
+  function farRows(k) { // [name, words] for the senses' panels
+    if (!farOn()) return []; const r = FAR.r, c = FAR.c, n = (v, d = 0) => Number(v).toFixed(d), rows = [];
+    if (k === "sight") { if (r.light_lux != null) rows.push(["light", `${n(r.light_lux)} lux`]); if (c.eyes != null) rows.push(["its eyes", c.eyes ? "open" : "shut (screen off)"]); }
+    if (k === "touch") { if (c.closeness != null) rows.push(["something near", c.closeness > .5 ? "yes" : "no"]); if (c.handled != null) rows.push(["picked up", c.handled ? "yes" : "no"]); }
+    if (k === "balance") { if (c.sway != null) rows.push(["moved", `${n(c.sway, 2)} m/s²`]); if (c.tilt != null) rows.push(["tilt", `${n(c.tilt)}°`]); if (c.turning != null) rows.push(["turning", `${n(c.turning, 2)} rad/s`]); if (r.heading_deg != null) rows.push(["heading", `${n(((+r.heading_deg % 360) + 360) % 360)}°`]); }
+    if (k === "hearing" && c.loudness != null) rows.push(["the room", `${n(c.loudness)} dB`]);
+    if (k === "heat") { if (c.temperature != null) rows.push(["its temperature", `${n(c.temperature, 1)}°C`]); if (r.battery_pct != null) rows.push(["its battery", `${n(r.battery_pct)}%${r.charging ? ", charging" : ""}`]); }
+    return rows.map(([a, b]) => [`${FAR.src}: ${a}`, b]);
+  }
   async function body(b) { // GET /api/body (0.8.8 stimulation): the phone's latest readings for the senses
     const ch = (b && b.regions && b.regions.hands && b.regions.hands.channels) || {}; if (ch.motion) SENSE.motion = 15 * ch.motion.intensity;
   }
@@ -1045,7 +1070,7 @@ window.beingMount = async function (host, opts) {
     const k = s.key;
     if (s.kind === "region") { const r = REGIONS[k], pk = procOf(k); return { title: r.name, sub: r.sub + (pk ? ` · its sparks are ${PROC[pk].name}` : ""), rows: [], parts: await brainParts(r.parts), feats: featsAt("mind", k), settings: [] }; }
     if (s.kind === "heart") { const r = HEART_PARTS[k]; return { title: r.name, sub: r.sub, rows: heartRows(k), parts: [], feats: featsAt("heart", k), settings: await settingRows(r.sections) }; }
-    if (s.kind === "sense") { const r = SENSES[k]; return { title: r.name, sub: r.sub, rows: await senseRows(k), bars: k === "heat" ? sysBars() : [], parts: await brainParts(r.parts), feats: featsAt("senses", k), settings: await settingRows(r.sections) }; }
+    if (s.kind === "sense") { const r = SENSES[k]; return { title: r.name, sub: r.sub, rows: (await senseRows(k)).concat(farRows(k)), bars: k === "heat" ? sysBars() : [], parts: await brainParts(r.parts), feats: featsAt("senses", k), settings: await settingRows(r.sections) }; }
     if (s.kind === "hood") {
       const h = memory.hoods[k]; if (!h) return null;
       const top = memory.nodes.map((n, i) => [n, i]).filter(([, i]) => memory.hood[i] === k).sort((x, y) => memory.deg[y[1]] - memory.deg[x[1]]).slice(0, 12);
@@ -1175,7 +1200,7 @@ window.beingMount = async function (host, opts) {
   }
   frame();
   return {
-    update, event, graph, voice, body, typed, setHints, face, setRest,
+    update, event, graph, voice, body, typed, setHints, face, setRest, senses: far,
     // phone: the back button goes up one level (as Esc), and how deep you are (0: the whole being)
     escape() { if (OM) { if (!SUB) return false; back(); return true; } if (SUB) back(); else if (FOCUS || panel.style.display === "block") { closePanel(); focusOn(null); } else return false; return true; },
     depth() { if (OM) return SUB ? 1 : 0; return SUB ? 2 : FOCUS || panel.style.display === "block" ? 1 : 0; },

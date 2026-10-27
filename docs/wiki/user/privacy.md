@@ -208,7 +208,8 @@ kept of that day's messages, calls and requests; **Off** deletes it all after yo
 `mind.feelings.empathy`; `mind.feelings.vocal` off). The talk reward knows only that a message came and whether you were in
 focus, asleep or in an exam window, never its words; the not-a-pest model keeps counts of welcome and turned-away messages per
 kind and time of day (`mind-pest.json`, no words); the body map keeps its latest numbers (`mind-stimulation.json`), and the
-dashboard reads them from this computer. All of it stays on your computer. An AI request may carry its own mood ("keep your
+dashboard reads them from this computer. Another device's sensor numbers an add-on reports (0.8.12,
+`mind.stimulation.addons`) are kept in memory and in that map only. All of it stays on your computer. An AI request may carry its own mood ("keep your
 messages short") and the names of things at risk to mention gently (a deadline's title, a project, "your supervisor"), never
 a reading of you. Delete Brain's data removes it all.
 

@@ -187,6 +187,13 @@ the charger), and in its hands (the phone) motion, headphones, Do Not Disturb an
 over hours, so a change is what it feels, and a touch fades in a couple of minutes. Only its own machine's comfort moves its
 mood; what it senses about you never does. `/senses body` shows it, and the dashboard draws it.
 
+**Another device's senses** (0.8.12, `mind.stimulation.addons`). An add-on can lend it another device's sensors, say a
+phone standing as its face: the light falling on it (warmth on its skin, and the being's pupil narrows), something close
+to it (touch on its face, the cilia bend), being moved, tilted or turned (its balance organ), which way it faces, its
+battery and charger (nourishment), its temperature (heat), the room's loudness (hearing), being picked up (touch) and its
+screen on or off (eyes open or shut). Only the numbers, kept in memory and the body map, never a picture or a sound, and
+none of it leaves your computer. They make it feel more, never glad or sad. Turn the switch off to ignore them.
+
 `/budget` shows the variables, the drive, the last reward, its mood and why, and the current feeling and what it's about.
 Switches: `mind.budget.on`, `mind.values.on`, `mind.feelings.on`, `mind.feelings.express`.
 
