@@ -9,14 +9,16 @@ with listening a second switch. User page: [../user/voice.md](../user/voice.md).
 
 | File | What's in it |
 |---|---|
-| `modules/voice/__init__.py` | `Voice` (the module: settings, parts it wants, `hear()`, `ask_brain()`, the listener's lifecycle in `background()`, the API's `status()`/`say()`/`mute()`/`shape()`, `add_output()`, `/voice`), `Speaker` (sentence-by-sentence speech, played by an output or the `Player`), `strip_wake()` |
+| `modules/voice/__init__.py` | `Voice` (the module: settings, parts it wants, `hear()`, `ask_brain()`, the listener's lifecycle in `background()`, the API's `status()`/`say()`/`mute()`/`shape()`, `add_output()`, `/voice`), `Speaker` (speech a piece at a time, played by an output or the `Player`), `strip_wake()` |
 | `modules/voice/names.py` | `NameMatcher`: its name as Whisper may spell it (`MISHEARD`, `voice.listen.name_variants`, `skeleton()` + `distance()` near misses); `called()`, `anywhere()`, `uncall()` |
 | `modules/voice/gate.py` | `Gate.decide(Heard, Context) -> Decision`: the rules, then the local model; `PROMPT`; `parse()` |
 | `modules/voice/portal.py` | `Portal`: open/closed, `take(heard, decision)`, `tick()` (silence), `close(why)`, `context()` for the gate |
 | `modules/voice/audio.py` | engines, all lazily imported: `Kokoro`, `Piper`, `Player`, `Mic`, `microphone()`, `Silero`, `Energy`, `Whisper`, `Wake`, `Listener` |
 | `modules/voice/parts.py` | what to fetch: `PACKAGES` (pip specs into `<app>/voice/py-<X.Y>`), `models()` (URLs and sizes into `<app>/voice/models`), `Parts.install()` |
-| `modules/voice/shape.py` | the waveform outline: `estimate()`, `from_pcm()`, `levels()`, `clean()`, `sentences()` |
+| `modules/voice/shape.py` | the waveform outline: `estimate()`, `from_pcm()`, `levels()`, `clean()`, `spoken()`, `sentences()`, `join()` |
+| `modules/voice/numbers.py` | numbers as words for the voice (`voice.speak.numbers_as_words`, 0.8.13): `say(text)` and its parts `words()`, `indian()`, `ordinal()`, `year()`, `number()`; pure Python, no dependency |
 | `tests/unit/test_voice.py` | everything above with fakes (no device, no model) |
+| `tests/unit/test_voice_numbers.py` | `numbers.say()` case by case, and the switch |
 
 ## Used by Face presence (0.8.10)
 
@@ -184,7 +186,7 @@ unknown `t`, so a page that doesn't draw Voice is unaffected.
 | `voice_state` | `state`: `listening`, `hearing`, `addressed`, `thinking`, `speaking`, `closed`, `off`; `portal` (bool), `listening` (bool, the microphone is on), `why` | every change; `closed` = the portal closed (still listening); `off` = the microphone closed (`why`: muted, a call, night ...); `listening` after a non-addressed stretch carries the class as `why` |
 | `voice_level` | `levels`: 5 numbers 0..1 (two decimals: RMS on a -60..0 dB scale, 20 ms each), `rate`: 50 | every 100 ms while listening and a page is in sight (`voice.listen.levels`) |
 | `voice_text` | `who`: `you` or `kurooto`; `text` | an addressed turn and its reply, `/voice say` and `POST /api/voice/say` |
-| `voice_speak` | `samples` (the sentence's shape, `from_pcm`), `rate`: 50 | as each sentence starts playing |
+| `voice_speak` | `samples` (the piece's shape, `from_pcm`), `rate`: 50 | as each piece (a sentence, or short ones joined) starts playing |
 | `voice_heard` | `samples`: at most 120 numbers 0..1 (`shape.envelope`: one per 20 ms of the stretch on the `voice_level` scale, fewer and wider buckets for a long one), `addressed`: `false`; nothing else, no words | a stretch that wasn't a turn (chatter, noise, not to it, or someone else dropped by Voice ID's gate), from `Voice._heard_wave` on the `voice-hear` thread, while a page is in sight (`voice.listen.levels`) |
 
 Example: `{"t":"voice","kind":"voice_state","state":"thinking","portal":true,"listening":true,"why":""}`.
@@ -209,6 +211,43 @@ Otherwise `"estimate"` (`shape.py:estimate`, deterministic): vowels 0.55 rise, 0
 fricatives (`s f h x`, `sh ch th ph zh`) three of 0.22/0.31/0.18/0.27/0.24 in turn; 0.05 between words; 8 zeros at
 `, ; : - ( )` and 15 at `. ! ?` and line breaks; digits 0.5, 0.85, 0.85, 0.5; other letters 0.5, 0.8, 0.6; trailing
 silence trimmed; `voice.speak.rate` resamples the length. Text is `clean()`ed first (Markdown, links, code).
+
+### Pieces, not single sentences (0.8.13)
+
+`Speaker._speak` used to synthesise each sentence alone. Kokoro picks its style vector by the number of phonemes
+(`voices[name][len(tokens) - 1]`) and a few words alone come out hurried and flat. With `voice.speak.join_sentences`
+(default on) `shape.join()` packs consecutive sentences into pieces of at most 200 characters (120 for the first, so
+the first sound is ready about as soon as before), after `max_chars` has cut the answer; a line with no closing mark
+gets a full stop so a list item still ends. Inside a piece the model makes its own pause at each full stop (about
+0.1 s: Kokoro v1.0's ONNX export has no duration output, so kokoro-onnx can't top those up). `Voice.shape()` joins the
+same way. Outputs (`add_output`) get a piece per call instead of a sentence; the sample rate is unchanged. Sentences
+longer than 220 characters are still split at commas by `sentences()`; `join()` never cuts.
+
+Between pieces, `pause_after(tts, piece, sr)` appends silence to every piece but the last (and in `Voice.shape()`'s
+engine path): kokoro-onnx's `create()` trims leading and trailing silence (`trim=True`, librosa's 60 dB trim) and adds
+`sentence_pause` 0.25 s or `clause_pause` 0.1 s only between batches of one call, so separate calls ran together. The
+same values are used: 0.25 s after `. ! ?`, else 0.1 s. Piper keeps its silence and gets none. The pause is part of
+the PCM, so outputs, `voice_speak`'s shape and `holding()` all include it.
+
+The sample rate is Kokoro's own (`kokoro_onnx.config.SAMPLE_RATE`, 24000) from `Kokoro.create()`, passed unchanged
+from `Kokoro.synth` through `_play` to each output and the `Player` (pw-play `--rate`, paplay, aplay, sounddevice,
+WAV headers); nothing resamples it on the way out. (Voice ID's synthetic impostors resample a copy to 16 kHz for the
+embedder only.)
+
+### Numbers as words (0.8.13)
+
+Kokoro's pronunciation comes from espeak-ng, which reads digits literally ("21:31" → "twenty one : thirty one",
+"0.8.13" → "zero. eight point one three", "₹3,000" → "rupee three thousand", "12 GB" → "gee bee"). With
+`voice.speak.numbers_as_words` (default on) `shape.spoken(text, numbers=True)` runs `numbers.say()` after `clean()`
+and before the text is split into sentences, so "a.m." no longer ends a sentence. It's applied to the speech engine's
+input (`Speaker._speak`) and to both shape paths (`Voice.shape`: the engine's and the estimate's), never to
+`voice_text` or anything shown. Passes in order: dates, versions, ranges, times, money, percentages, decades, units,
+"/month", ordinals, years, fractions, ratios, "1920x1080", "±", minus signs, letters joined to digits, then any number
+left. Each pass only touches a number standing on its own (`LEFT`/`RIGHT`: not inside a word, a decimal or a
+code-like token), so `7c12897`, `x86_64` and `0x1F` stay as written. AM and PM are written `A-M`, `P-M`: espeak reads a
+bare "AM" before a full stop as the word "am". Years: 1900 to 2099 always, 1100 to 1899 after a year word (in, since,
+by ...) or a month. Indian commas (`1,00,000`) are read in lakhs and crores. Check a reading with the Kokoro
+tokenizer's `phonemize(text, "en-us")` (phonemes only, no sound).
 
 ## Parts and setting up
 

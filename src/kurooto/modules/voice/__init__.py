@@ -63,6 +63,8 @@ register_defaults(
             "rate": 1.0,  # speaking speed: 1.0 normal, 0.8 slower, 1.2 faster
             "what": "voice",  # what's read aloud: voice (answers to what you said aloud), all (every AI answer) or off
             "max_chars": 800,  # a longer answer is read this far, then "the rest is on screen"
+            "numbers_as_words": True,  # say times, dates, money, versions and units as a person would (only aloud)
+            "join_sentences": True,  # short sentences spoken together (up to ~200 characters), not each on its own
         },
         "listen": {
             "on": False,  # listen through the microphone, all on this computer; only turns said to Kurooto leave
@@ -118,8 +120,8 @@ ONCE_WORK_S = 30.0  # and this long more for a stretch it took to be written out
 
 
 class Speaker:
-    """Speaks text sentence by sentence: the next sentence is made while this one plays, so speech starts as soon
-    as the first sentence is ready."""
+    """Speaks text a piece at a time (a sentence, or short ones joined: shape.join): the next piece is made while this
+    one plays, so speech starts as soon as the first piece is ready."""
 
     def __init__(self, v: Voice):
         self.v = v
@@ -154,7 +156,7 @@ class Speaker:
 
     def _speak(self, tts, text: str) -> None:
         limit = int(self.v.setting("speak.max_chars") or 800)
-        parts = shape_mod.sentences(text)
+        parts = shape_mod.sentences(text, numbers=bool(self.v.setting("speak.numbers_as_words")))
         out, n = [], 0
         for p in parts:
             if n + len(p) > limit and out:
@@ -162,6 +164,8 @@ class Speaker:
                 break
             out.append(p)
             n += len(p)
+        if self.v.setting("speak.join_sentences"):
+            out = shape_mod.join(out)
         if not out:
             return
         with self.lock:
@@ -174,6 +178,7 @@ class Speaker:
                     pcm, sr = fut.result()
                     if i + 1 < len(out):
                         fut = pool.submit(tts.synth, out[i + 1])
+                        pcm += pause_after(tts, out[i], sr)
                     if self._cancel.is_set():
                         break
                     self.v.publish("voice_speak", samples=shape_mod.from_pcm(pcm, sr), rate=shape_mod.RATE)
@@ -489,21 +494,26 @@ class Voice(Module):
     def shape(self, text: str) -> dict:
         """POST /api/voice/shape: the text's waveform outline (shape.py), from the speech engine when it's here."""
         text = (text or "")[: shape_mod.MAX_CHARS]
+        words = bool(self.setting("speak.numbers_as_words"))  # the shape of what's said, numbers and all
         if self.app.is_on(self.id):
             tts, _why = self.tts()
             if tts is not None:
                 try:
                     pcm = b""
                     sr = 24000
-                    for part in shape_mod.sentences(text) or [text]:
+                    parts = shape_mod.sentences(text, numbers=words)
+                    if self.setting("speak.join_sentences"):
+                        parts = shape_mod.join(parts)
+                    parts = parts or [text]
+                    for i, part in enumerate(parts):
                         got, sr = tts.synth(part)
-                        pcm += got
+                        pcm += got + (pause_after(tts, part, sr) if i + 1 < len(parts) else b"")
                     if pcm:
                         return shape_mod.payload(shape_mod.from_pcm(pcm, sr), "tts")
                 except Exception:
                     pass
         rate = float(self.setting("speak.rate") or 1.0)
-        return shape_mod.payload(shape_mod.estimate(shape_mod.clean(text), rate), "estimate")
+        return shape_mod.payload(shape_mod.estimate(shape_mod.spoken(text, words), rate), "estimate")
 
     # ----------------------------------------------------------------------------------------- the switches
     def muted(self) -> bool:
@@ -754,9 +764,10 @@ class Voice(Module):
             self.speaker.say(result.text, wait=False)
 
     def add_output(self, fn: Output) -> Callable[[], None]:
-        """Play Kurooto's voice elsewhere (an add-on: another device). fn(pcm, sr, stop) gets each sentence's 16-bit
-        mono PCM, newest output first, instead of this computer's speakers; it blocks until the sound has played (or
-        `stop` is set: /voice stop, mute, Voice off) and returns True, or False when it can't now (the next output,
+        """Play Kurooto's voice elsewhere (an add-on: another device). fn(pcm, sr, stop) gets each piece's 16-bit
+        mono PCM at the engine's own rate `sr` (a sentence, or short ones joined), newest output first, instead of
+        this computer's speakers; it blocks until the sound has played (or `stop` is set: /voice stop, mute, Voice
+        off) and returns True, or False when it can't now (the next output,
         finally the speakers, play it). Raising counts as False (voice_failed part="output", once). It runs on the
         speaking thread while holding() is true, so the microphone doesn't hear Kurooto. Returns remove()."""
         return self.speaker.add_output(fn)
@@ -1135,6 +1146,16 @@ class Voice(Module):
             "two are never kept)."
             + "\n/voice mute, /voice unmute, /voice stop, /voice say <text>; /voice id (Voice ID), /voice enrol"
         )  # fmt: skip
+
+
+def pause_after(tts, part: str, sr: int) -> bytes:
+    """The silence after a piece when another follows (16-bit, at the piece's rate). kokoro-onnx trims the silence at
+    both ends of what it makes and puts a pause back only between the batches it joins itself (0.25 s after a
+    sentence, 0.1 s after a clause), so pieces made one at a time ran into each other with no breath between; this is
+    its own pause, put back. Piper keeps its silence, so it gets none."""
+    if getattr(tts, "name", "") != "kokoro":
+        return b""
+    return bytes(2 * int(sr * (0.25 if part.rstrip()[-1:] in ".!?" else 0.1)))
 
 
 def _edges(pcm: bytes, seconds: float = 2.0) -> bytes:

@@ -43,7 +43,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
 - [Brain](#brain): 91 settings
-- [Voice and voice notes](#voice-and-voice-notes): 44 settings
+- [Voice and voice notes](#voice-and-voice-notes): 46 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
@@ -5415,6 +5415,31 @@ How much of a long answer is read aloud before it says "the rest is on screen".
 
 - **Values:** Characters. **Default:** `800`.
 - **When to change it:** Raise it to hear long answers in full.
+- **Depends on:** `voice.speak.on`.
+
+### `voice.speak.join_sentences`
+
+Speak short sentences together, up to about 200 characters at a time, instead of each on its own.
+
+Kokoro reads a few words on their own with a hurried, flat tune; joined to their neighbours they get a natural one, and
+it still pauses at each full stop. The first piece is kept under about 120 characters, so speech starts as soon as
+before.
+
+- **Values:** `true` (short sentences joined) or `false` (one sentence at a time, as before 0.8.13). **Default:** on.
+- **When to change it:** Turn it off if a long pause before the first word bothers you on a slow computer.
+- **Depends on:** `voice.speak.on`.
+
+### `voice.speak.numbers_as_words`
+
+Say numbers as a person would: 21:31 as "nine thirty-one PM", ₹3,000 as "three thousand rupees".
+
+Times, dates, years, money, versions, ranges, percentages and units are said in words: 12 GB as "twelve gigabytes",
+0.8.13 as "zero point eight point thirteen", 2026 as "twenty twenty-six". Only what's said changes; the screen shows
+what was written.
+
+- **Values:** `true` (times, dates, years, money, versions, ranges and units in words) or `false` (the speech engine
+  reads the digits itself). **Default:** on.
+- **When to change it:** Turn it off if it ever reads a number wrongly and you'd rather hear the engine's own reading.
 - **Depends on:** `voice.speak.on`.
 
 ### `voice.listen.on`

@@ -604,6 +604,7 @@ class Output:
 @pytest.fixture
 def speakers(voice, monkeypatch):
     monkeypatch.setattr(voice, "tts", lambda: (Tts(), ""))
+    voice.app.settings.set("voice.speak.join_sentences", False)  # these count sentences: one sound each
     voice.speaker.player = Speakers()
     return voice.speaker.player
 
@@ -662,6 +663,71 @@ def test_a_removed_output_isnt_used(voice, speakers):
     second()
     voice.say("Two.", wait=True)
     assert len(out.got) == 1 and len(speakers.got) == 1
+
+
+class Engine(Tts):
+    """A speech engine that keeps the text it was given."""
+
+    def __init__(self):
+        self.said = []
+
+    def synth(self, text):
+        self.said.append(text)
+        return super().synth(text)
+
+
+def test_numbers_are_said_as_words_and_shown_as_written(voice, speakers, monkeypatch):
+    engine = Engine()
+    monkeypatch.setattr(voice, "tts", lambda: (engine, ""))
+    voice.say("Lab at 21:31 costs ₹3,000.", wait=True)
+    assert engine.said == ["Lab at nine thirty-one P-M costs three thousand rupees."]
+    shown = [m for m in voice.app.live.sent if m["kind"] == "voice_text"]
+    assert shown[-1]["text"] == "Lab at 21:31 costs ₹3,000."  # the screen keeps what was written
+    voice.app.settings.set("voice.speak.numbers_as_words", False)
+    engine.said.clear()
+    voice.say("Lab at 21:31 costs ₹3,000.", wait=True)
+    assert engine.said == ["Lab at 21:31 costs ₹3,000."]
+
+
+def test_short_sentences_are_spoken_together_unless_switched_off(voice, speakers, monkeypatch):
+    engine = Engine()
+    monkeypatch.setattr(voice, "tts", lambda: (engine, ""))
+    voice.app.settings.set("voice.speak.join_sentences", True)
+    voice.say("Done. It's on your list.\n- Milk\n- Eggs", wait=True)
+    assert engine.said == ["Done. It's on your list. Milk. Eggs"]  # one piece; a list item still ends
+    assert sum(m["kind"] == "voice_speak" for m in voice.app.live.sent) == 1
+    voice.app.settings.set("voice.speak.join_sentences", False)
+    engine.said.clear()
+    voice.say("Done. It's on your list.", wait=True)
+    assert engine.said == ["Done.", "It's on your list."]
+
+
+def test_kokoros_pause_is_put_back_between_pieces(voice, speakers, monkeypatch):
+    class Kokoro(Tts):
+        name = "kokoro"  # kokoro-onnx trims the silence off both ends of what it makes
+
+    monkeypatch.setattr(voice, "tts", lambda: (Kokoro(), ""))
+    voice.say("One, and then. Two.", wait=True)
+    voice.say("Three, four", wait=True)
+    first, last, alone = speakers.got
+    assert first == Kokoro().synth("One, and then.")[0] + bytes(2 * 4000)  # 0.25 s after a sentence, at 16 kHz
+    assert last == Kokoro().synth("Two.")[0]  # nothing after the last piece: the microphone's tail covers it
+    assert alone == Kokoro().synth("Three, four")[0]
+    from kurooto.modules.voice import pause_after
+
+    assert pause_after(Kokoro(), "a clause,", 24000) == bytes(2 * 2400)  # 0.1 s after a clause
+    assert pause_after(Tts(), "Piper keeps its own.", 24000) == b""
+
+
+def test_joining_keeps_the_first_piece_short_and_long_sentences_whole():
+    long = "This sentence is a fairly long one, made to be more than half of the limit on its own here."
+    assert len(long) > 60
+    parts = ["Sure.", long, long, "Okay.", "Bye."]
+    joined = shape_mod.join(parts)
+    assert joined == [f"Sure. {long}", f"{long} Okay. Bye."]  # the first stays under 120 so speech starts soon
+    assert all(len(p) <= 200 for p in joined)
+    assert shape_mod.join([long * 3]) == [long * 3]  # never cut, only joined
+    assert shape_mod.join([]) == []
 
 
 # ------------------------------------------------------------------------------------- Voice ID (0.8.10)

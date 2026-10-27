@@ -50,6 +50,20 @@ values = "Characters."
 when = "Raise it to hear long answers in full."
 needs = "`voice.speak.on`."
 
+[s."voice.speak.join_sentences"]
+tip = "Speak short sentences together, up to about 200 characters at a time, instead of each on its own."
+what = "Kokoro reads a few words on their own with a hurried, flat tune; joined to their neighbours they get a natural one, and it still pauses at each full stop. The first piece is kept under about 120 characters, so speech starts as soon as before."
+values = "`true` (short sentences joined) or `false` (one sentence at a time, as before 0.8.13)."
+when = "Turn it off if a long pause before the first word bothers you on a slow computer."
+needs = "`voice.speak.on`."
+
+[s."voice.speak.numbers_as_words"]
+tip = "Say numbers as a person would: 21:31 as \"nine thirty-one PM\", ₹3,000 as \"three thousand rupees\"."
+what = "Times, dates, years, money, versions, ranges, percentages and units are said in words: 12 GB as \"twelve gigabytes\", 0.8.13 as \"zero point eight point thirteen\", 2026 as \"twenty twenty-six\". Only what's said changes; the screen shows what was written."
+values = "`true` (times, dates, years, money, versions, ranges and units in words) or `false` (the speech engine reads the digits itself)."
+when = "Turn it off if it ever reads a number wrongly and you'd rather hear the engine's own reading."
+needs = "`voice.speak.on`."
+
 [s."voice.listen.on"]
 tip = "Listen through the microphone, all on this computer; only what's said to Kurooto leaves it."
 when = "Turn it on to talk to Kurooto out loud. It stops during calls, when paused, on battery saver and when muted."

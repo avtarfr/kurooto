@@ -18,6 +18,8 @@ import array
 import math
 import re
 
+from kurooto.modules.voice import numbers as numbers_mod
+
 RATE = 50  # samples a second
 VOWELS = set("aeiouy")
 VOICED = set("lmnrwvzj")
@@ -131,9 +133,15 @@ def clean(text: str) -> str:
     return re.sub(r"[ \t]+", " ", t).strip()
 
 
-def sentences(text: str) -> list[str]:
+def spoken(text: str, numbers: bool = False) -> str:
+    """clean(), and with `numbers` its numbers in words (numbers.py): the text as the voice says it, never shown."""
+    t = clean(text)
+    return numbers_mod.say(t) if numbers else t
+
+
+def sentences(text: str, numbers: bool = False) -> list[str]:
     """Sentence by sentence, so speech starts after the first one is ready; long ones split at commas."""
-    parts = [p.strip() for p in re.split(r"(?<=[.!?])\s+|\n+", clean(text)) if p.strip()]
+    parts = [p.strip() for p in re.split(r"(?<=[.!?])\s+|\n+", spoken(text, numbers)) if p.strip()]
     out = []
     for p in parts:
         while len(p) > 220:
@@ -142,5 +150,20 @@ def sentences(text: str) -> list[str]:
             out.append(p[:cut].strip())
             p = p[cut:].strip()
         if p:
+            out.append(p)
+    return out
+
+
+def join(parts: list[str], first: int = 120, most: int = 200) -> list[str]:
+    """Short sentences spoken together (voice.speak.join_sentences), up to `most` characters a piece and `first` for
+    the first, so speech still starts soon. Kokoro reads a few words on their own with a hurried, flat tune (its style
+    is picked by length, and a sentence alone has no neighbours to lean on); inside one piece it pauses at each full
+    stop itself. A line with no mark at its end (a list item) gets a full stop, so it still ends where it ended."""
+    out: list[str] = []
+    for p in parts:
+        if out and len(out[-1]) + 1 + len(p) <= (first if len(out) == 1 else most):
+            prev = out[-1] if out[-1][-1] in ".!?;:," else out[-1] + "."
+            out[-1] = f"{prev} {p}"
+        else:
             out.append(p)
     return out

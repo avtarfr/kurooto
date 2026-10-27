@@ -2,6 +2,19 @@
 
 ## 0.8.13 (unreleased)
 
+- **Kurooto says numbers as a person would.** The speech engine read digits literally: "21:31" with a pause in the
+  middle, "0.8.13" as "zero. eight point one three", dates with "slash", "₹3,000" as "rupee three thousand", "12 GB"
+  as "gee bee". Times, dates, years, money (₹, Rs, $, €, £, lakh and crore), versions, ranges, percentages, ordinals
+  and units are now said in words ("nine thirty-one PM", "three thousand rupees", "twelve gigabytes", "twenty
+  twenty-six"), and the waveform follows what's said. Only the voice changes; the screen shows what was written
+  (`voice.speak.numbers_as_words`).
+- **Short sentences are spoken together.** Each sentence was made on its own, and Kokoro reads a few words alone with a
+  hurried, flat tune ("Done." "Sure."). Short sentences are now joined into pieces of up to about 200 characters (the
+  first kept short, so speech starts as soon as before) and Kokoro pauses at each full stop inside them
+  (`voice.speak.join_sentences`).
+- **Sentences no longer run into each other.** The speech engine trims the silence off both ends of what it makes and
+  puts a pause back only between parts it joins itself, so sentences made one at a time followed each other with no
+  breath. Kokoro's own pause (a quarter of a second after a sentence, a tenth after a clause) is put back between them.
 - **A backup could freeze Voice and Face.** A backup ran on Kurooto's main loop, so while it worked, the parts that
   share it waited; and one that met a named pipe in Kurooto's folders (an add-on's stream left behind by a hard stop)
   read it forever, so listening and Face presence never started. Backups now leave out anything that isn't a plain
