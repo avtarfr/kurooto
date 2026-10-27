@@ -1,0 +1,25 @@
+{
+ "doc": {
+  "version": "0.8.14",
+  "notes": "Voice answers only someone in front of it: a roommate's phone call no longer wakes it.",
+  "created": 1793124062.1829157,
+  "files": {
+   "kurooto-0.8.14.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.8.14/kurooto-0.8.14.tar.gz",
+    "sha256": "2dfca64192ca31babbe3c13c70ff38adfc34f4ae69372845a9449070a72f3530",
+    "size": 12116392
+   }
+  },
+  "android": {
+   "file": "kurooto.apk",
+   "url": "https://avtarfr.github.io/kurooto/releases/0.8.14/kurooto.apk",
+   "sha256": "1c5b6db986fb141b0ed890d38b86b9969137b5cdc992dbf17353a89cef76d16a",
+   "size": 6725412,
+   "versionCode": 80149,
+   "versionName": "0.8.14",
+   "cert_sha256": "bad55b2e9de40d31a40d19767bf6e53ac372fb9e8e67e63d01d21e3d3ef8d325",
+   "source": "3e3e5407b663fa38bee7dc6ad9a533166db921b029cf8b8fd4cd9ef6b7ec5198"
+  }
+ },
+ "sig": "ojHT0nvjo/MI4dOQ8k2WmOjO1od0jWHrT1C97Gg1GussKIlW9R3n9zqxBWFJIDdwsSRz0dQD5ZRktm0XyLhBAQ=="
+}
