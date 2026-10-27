@@ -333,6 +333,16 @@ class Speaker:
         return self.busy or time.monotonic() < self.until
 
 
+def _gated(app, fn):
+    """(0.8.13) The nightly learner runs while you sleep (learn.py); (0.8.16) through Brain's body gate like its own
+    heavy work (mind/senses/intero.py: it waits while your own work holds the machine, a call or the battery)."""
+    try:
+        from kurooto.mind.senses import intero
+    except ImportError:
+        return fn()
+    return intero.gated(app, "voice:learn", "cpu", fn, nightly=True)
+
+
 class Voice(Module):
     id = "voice"
     title = "Voice: talk and listen"
@@ -1475,7 +1485,7 @@ class Voice(Module):
 
     # ---------------------------------------------------------------------------------------- running
     def start(self) -> None:
-        self.every("learn", NIGHT_AT, self.learn_nightly, thread=True)  # (0.8.13) while you sleep: learn.py
+        self.every("learn", NIGHT_AT, lambda p: _gated(self.app, lambda: self.learn_nightly(p)), thread=True)
         if not self._watching:
             self.app.jobs.watchers.append(self._job_done)
             self._watching = True

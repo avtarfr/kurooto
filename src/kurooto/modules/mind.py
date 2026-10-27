@@ -42,6 +42,7 @@ from kurooto.mind import (
     measure,
     mood,
     pest,
+    presence_forecast,
     promises,
     signals,
     sleep,
@@ -189,6 +190,8 @@ class Mind(Module):
         self.every("dream", dream.WHEN, lambda p: dream.nightly(self.app) and None, thread=True)
         self.every("study_push", self._study_push_when(), lambda p: study_push.push(self.app) and None, thread=True)
         self.every("surprise", "every 15m", lambda p: forecast.surprise_tick(self.app) and None, thread=True)
+        # 0.8.16: when you'll be at your desk and free, forecast hours ahead and scored against the senses
+        self.every("presence", "every 15m", lambda p: presence_forecast.tick(self.app) and None, thread=True)
         # stage 09: the hidden harness, nightly and on the charger only
         self.every(
             "harness",
@@ -869,7 +872,12 @@ class Mind(Module):
             lines += dream.mind_lines(self.app)
         except Exception as e:
             self.app.events.emit("mind_dream_failed", error=type(e).__name__)
-        return "\n".join(lines)
+        try:  # 0.8.16: each kind of act its trust decides, and the presence forecast's accuracy
+            lines += act.kinds_lines(self.app)
+            lines.append(presence_forecast.line(self.app))
+        except Exception as e:
+            self.app.events.emit("mind_status_failed", error=type(e).__name__)
+        return "\n".join(x for x in lines if x)
 
 
 def _when(iso) -> str:
@@ -932,6 +940,7 @@ def button(app, ref: str, act: str) -> str:
         "mind-dream.json",
         "mind-study-push.json",
         "mind-surprise.json",
+        "mind-presence.json",
     ):  # the gate's, the read's, the tone's, its promises' and its acts' own files
         (app.paths.state / f).unlink(missing_ok=True)
     app.events.emit("mind_deleted", records=n)

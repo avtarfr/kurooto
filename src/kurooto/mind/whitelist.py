@@ -30,6 +30,7 @@ REWARD_SOURCES = frozenset(
         "core.vitals",  # health numbers only
         "mind.forecast",  # skill scores only
         "mind.talk",  # 0.8.8 (I-3'): the bounded talk reward's own arithmetic
+        "mind.presence_reward",  # 0.8.16: the presence forecast's accuracy reward (Brier skill, bounded a day)
     }
 )
 REWARD_MODULES = frozenset(f"kurooto.{s}" for s in REWARD_SOURCES)

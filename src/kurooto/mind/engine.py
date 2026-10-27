@@ -21,6 +21,10 @@ One `reward_tick` record per tick goes into the log: numbers and ids only.
 The talk reward (0.8.8, I-3'): talk_heard, talk_unprompted and talk_rejected facts are paid by mind/talk.py (small,
 saturating, nothing for a reply to its own ping, rejections cost 3w); talk_met (0.8.12) by its own smaller budget. It
 moves the mood and the week's sum only, never V or Q, and each one is a `talk_reward` record.
+
+The presence reward (0.8.16): presence_check facts (a forecast of an hour at your desk and free, what the hour showed,
+the same-as-yesterday baseline) are paid by mind/presence_reward.py for accuracy only, within +-0.05 a day, into the
+mood and the week's sum; each is a `presence_reward` record.
 """
 
 from __future__ import annotations
@@ -29,7 +33,7 @@ import json
 import time
 from typing import Any
 
-from kurooto.mind import budget, reward, stops, talk, values, whitelist
+from kurooto.mind import budget, presence_reward, reward, stops, talk, values, whitelist
 
 HIST_MAX = 72  # (time, D) pairs kept for the slope
 SKILL_DAYS = 14
@@ -210,6 +214,25 @@ class Engine:
         self.put("talk", float(st.get("paid", 0.0)), st)
         n = int(st.get("met" if kind == "talk_met" else "n", 0))
         seq = self.k.log.append("talk_reward", {"what": kind[5:], "r": round(r, 6), "n": n, "why": why or "paid"})
+        return {"ok": True, "seq": seq, "r": round(r, 6), "why": why}
+
+    def presence(self, b: dict, t: float | None = None) -> dict:
+        """0.8.16: one hour of the presence forecast checked against what the senses showed (presence_check: p, y,
+        base, numbers only). Paid by mind/presence_reward.py into the mood and the week's sum; its running Brier sums
+        are kept for /mind. Nothing is paid inside a stop."""
+        t = float(t if t is not None else time.time())
+        st = self.meta("presence")
+        if stops.frozen(self.k.spans(), t):
+            r, why = 0.0, "stopped"
+        else:
+            r, why = presence_reward.pay(st, t, b.get("p"), b.get("y"), b.get("base"))
+        if r:
+            m = reward.Mood(self.maybe("M") if self.maybe("M") is not None else 0.0, t)
+            self.put("M", m.update(t, r), {"at": round(t, 1)})
+            week = time.strftime("%G-W%V", time.localtime(t))
+            self.put(f"weekr:{week}", self.get(f"weekr:{week}", 0.0) + r)
+        self.put("presence", float(st.get("sum", 0.0)), st)
+        seq = self.k.log.append("presence_reward", {"r": round(r, 6), "n": int(st.get("n", 0)), "why": why})
         return {"ok": True, "seq": seq, "r": round(r, 6), "why": why}
 
     def claimed_actions(self) -> list[str]:

@@ -570,6 +570,17 @@ def left_out_line(left_out: list[tuple[str, str]]) -> str:
 
 
 # ------------------------------------------------------------------------------------------- module
+
+
+def _register_undo() -> None:
+    """Brain's Undo for a revision pack it started by itself (mind/act.py, mind.act.more)."""
+    try:
+        from kurooto.mind import act
+    except ImportError:
+        return
+    act.register("job.revision_pack", undoer=lambda app, p: app.modules["skills"].pack_undo(p))
+
+
 class Skills(Module):
     id = "skills"
     title = "Skills"
@@ -599,6 +610,7 @@ class Skills(Module):
         for r in self.routines():
             self._schedule(r)
         self.every("autopack", "every 30m", self.auto_packs)
+        _register_undo()  # 0.8.16: Undo under a pack Brain started by itself works after a restart too
 
     # -------------------------------------------------------------------------------------- running
     def all(self) -> dict[str, Skill]:
@@ -1106,6 +1118,18 @@ class Skills(Module):
                 self.pack_for(text, title_prefix="Before your exam: ", lane="bg")
                 self.app.events.emit("auto_pack", mode="auto")
                 continue
+            did = self._pack_auto(e["id"], text)  # 0.8.16 (mind.act.more): trusted, it starts one and says so
+            if did is not None:
+                self.app.notify(
+                    f"{e['title']} is {e['when']}. I've started a revision pack for it; it comes here when it's done.",
+                    kind="info",
+                    title="Revision pack",
+                    buttons=did["buttons"] or None,
+                    why="packs.offer",
+                    about=e["title"],
+                )
+                self.app.events.emit("auto_pack", mode="trusted")
+                continue
             self.app.notify(
                 f"{e['title']} is {e['when']}. A revision pack for it tonight?",
                 kind="question",
@@ -1132,13 +1156,44 @@ class Skills(Module):
             return "OK, no pack."
         if d.get("built"):
             return "It's on its way already."
+        self._pack_start(ref, d["text"], lane=None)
+        self.app.events.emit("auto_pack_accepted")
+        try:  # 0.8.16: a yes to a pack is an OK for its kind (mind.act.more), so trust can grow
+            from kurooto.mind import act as _act
+
+            _act.answered(self.app, "job.revision_pack", True)
+        except ImportError:
+            pass
+        return "Building it; it comes here in a few minutes."
+
+    def _pack_start(self, ref: str, text: str, lane: str | None) -> str:
+        """Start the pack offered for this quiz or exam, noted as built (once). Its job id."""
         with Lock(self.app.paths.state, "skills-packs"):
             all_ = jload(self.dir / "auto-packs.json", {}) or {}
-            all_.setdefault(ref, d)["built"] = True
+            all_.setdefault(ref, {"text": text})["built"] = True
             jsave(self.dir / "auto-packs.json", all_)
-        self.pack_for(d["text"], title_prefix="Before your exam: ")
-        self.app.events.emit("auto_pack_accepted")
-        return "Building it; it comes here in a few minutes."
+        return self.pack_for(text, title_prefix="Before your exam: ", lane=lane)
+
+    def _pack_auto(self, ref: str, text: str) -> dict | None:
+        try:
+            from kurooto.mind import act
+        except ImportError:
+            return None
+        _register_undo()
+        return act.attempt(
+            self.app,
+            "job.revision_pack",
+            lambda _: self._pack_start(ref, text, lane="bg"),  # nobody waits for it: never ahead of your requests
+            summary="started a revision pack the evening before an exam",
+            undo_from=lambda jid: {"job": jid, "ref": ref},
+        )
+
+    def pack_undo(self, p: dict | None) -> str:
+        """Undo under a pack Brain started by itself: the request is cancelled if it hasn't finished."""
+        p = p or {}
+        j = self.app.jobs.cancel(str(p.get("job") or "")) if p.get("job") else None
+        self.app.events.emit("auto_pack_undone", stopped=bool(j))
+        return "Stopped: no revision pack." if j else "It had finished already; the pack is here as it came."
 
     def _studypack(self, msg: Incoming, arg: str) -> str:
         """/studypack <subject> [what it's for]: the subject's notes and course files in a zip with a prompt for another

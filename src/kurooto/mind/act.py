@@ -53,10 +53,28 @@ register_defaults(
     },
 )
 
+register_defaults(
+    "mind",
+    {
+        "act": {
+            "more": True,  # its trust decides more of what it proposes: below the bar it asks, above it acts and tells
+        }
+    },
+)
+
 FILE = "mind-acts.json"
 KEEP_ACTS = 200
 DIGEST_MAX = 6
 PENDING_MAX = 20
+# 0.8.16 (mind.act.more): what Kurooto proposes that its trust decides, each with its risk class in risk.CLASSES.
+# Below the class's bar it asks with the feature's own buttons, as before; above it, it acts and tells, with Undo.
+KINDS: dict[str, str] = {
+    "study.block": "a study block it offers in the morning (a reminder at the time)",
+    "deadline.reshape": "moving part of a slipping deadline's work to tomorrow",
+    "job.revision_pack": "building a revision pack the evening before a quiz or exam",
+    "dream.keep_card": "keeping a quiz card it wrote at night",
+    "dream.keep_lesson": "keeping a how-to-help-me line from the night",
+}
 RUNNERS: dict[str, Callable[[App, object], str]] = {}  # an action's runner, so a question that waited can do it later
 UNDOERS: dict[str, Callable[[App, object], str]] = {}
 
@@ -158,6 +176,92 @@ def run(
     out = fn(args)
     payload = undo_from(out) if (undo_from is not None and out) else None
     record(app, action, summary or action, {"runner": action, "payload": payload} if payload else None, v["klass"])
+    return out
+
+
+# ---------------------------------------------------------------------------------- 0.8.16: more of what it proposes
+def more_on(app: App) -> bool:
+    """mind.act.more (and autonomy, and Brain): its trust decides the kinds in KINDS."""
+    return on(app) and bool(app.settings.get("mind.act.more"))
+
+
+def trusted(app: App, action: str) -> bool:
+    """Should Kurooto do this itself now and tell you (True), or ask with the feature's own buttons (False)? Only
+    with mind.act.more on, only for a class trust lets act (the uncertainty knob and a low mood still make it ask
+    first, in verdict()), never for an always-ask action. Counted per kind for /mind. Never raises."""
+    if not more_on(app):
+        return False
+    try:
+        v = verdict(app, action)
+    except Exception as e:  # unsure: it asks, as it did before
+        app.events.emit("mind_act_failed", error=type(e).__name__)
+        return False
+    do = bool(v["do"]) and v["klass"] != "ALWAYS"
+    with Lock(app.paths.state, "mind-acts"):
+        st = _state(app)
+        k = st.setdefault("kinds", {}).setdefault(action, {"done": 0, "asked": 0})
+        k["done" if do else "asked"] += 1
+        _save(app, st)
+    return do
+
+
+def attempt(
+    app: App,
+    action: str,
+    fn: Callable[[object], object],
+    args: object = None,
+    summary: str = "",
+    undo_from: Callable[[object], object] | None = None,
+) -> dict | None:
+    """Do it itself when trust allows (trusted()): runs fn(args), writes the act down (with Undo when undo_from gives
+    a payload for the undoer registered under `action`) and returns {"out", "id", "buttons"}: put `buttons` (Undo)
+    under the message that tells it. None when it should ask instead, or fn did nothing: the caller asks as before."""
+    if not trusted(app, action):
+        return None
+    out = fn(args)
+    if not out:
+        return None
+    payload = undo_from(out) if undo_from is not None else None
+    undo = {"runner": action, "payload": payload} if payload and action in UNDOERS else None
+    aid = record(app, action, summary or KINDS.get(action, action), undo, klass_of(app, action))
+    app.events.emit("mind_act_did", action=action[:40])
+    return {"out": out, "id": aid, "buttons": [[("Undo", f"aut:{aid}:undo")]] if undo else []}
+
+
+def answered(app: App, action: str, yes: bool) -> None:
+    """Your answer to a feature's own question about a kind in KINDS: a yes is an OK for its class (trust grows from
+    them); a no isn't a complaint about something it did, so it counts for nothing."""
+    if yes and more_on(app):
+        try:
+            evidence(app, action, "ok")
+        except Exception as e:
+            app.events.emit("mind_act_failed", error=type(e).__name__)
+
+
+def kinds_lines(app: App) -> list[str]:
+    """For /mind and /autonomy: each kind its trust decides, its class, its trust against the bar and what it does."""
+    if not more_on(app):
+        return []
+    st = _state(app)
+    try:
+        rows = {r["key"]: r for r in mind.connect(app).trust_rows()}
+    except Exception:
+        rows = {}
+    th = {**risk.THRESH, **(app.settings.get("mind.autonomy.thresholds") or {})}
+    now = time.time()
+    out = ["What its trust decides (below the bar it asks, above it acts and tells with Undo):"]
+    for action, label in KINDS.items():
+        k = klass_of(app, action, None, st)
+        p = trust.p10((rows.get(k) or {}).get("meta") or {}, k, now) if k in risk.PRIORS else 0.0
+        try:
+            does = "acts and tells" if verdict(app, action)["do"] else "asks first"
+        except Exception:
+            does = "asks first"
+        n = (st.get("kinds") or {}).get(action) or {"done": 0, "asked": 0}
+        out.append(
+            f"- {label}: {k}, trust {p:.2f} (needs {float(th.get(k, 1)):.2f}), {does}; "
+            f"done itself {n['done']}, asked {n['asked']}"
+        )
     return out
 
 
@@ -354,6 +458,7 @@ def status(app: App) -> tuple[str, list]:
     lines.append(f"Always asks: {n_always} kinds, never unlockable.")
     if st["never"]:
         lines.append("Told never: " + ", ".join(st["never"]))
+    lines += kinds_lines(app)
     buttons = [[(f"{k}: always ask", f"aut:class:{k}") for k in ("R1", "R2", "R3")]]
     return "\n".join(lines), buttons
 

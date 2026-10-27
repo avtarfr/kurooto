@@ -148,6 +148,15 @@ def parse_window(spec: str) -> tuple[dt.time, dt.time]:
         return dt.time(9), dt.time(22)
 
 
+def _register_undo() -> None:
+    """Brain's Undo for a plan it reshaped by itself (mind/act.py, mind.act.more)."""
+    try:
+        from kurooto.mind import act
+    except ImportError:
+        return
+    act.register("deadline.reshape", undoer=lambda app, p: app.modules["startby"].reshape_undo(p))
+
+
 def free_slots(
     day: dt.date,
     window: tuple[dt.time, dt.time],
@@ -234,6 +243,7 @@ class StartBy(Module):
         self.app.ask.hooks["startby.exam_size"] = lambda q, a: self._exam_answer(q.get("hook_payload") or {}, a)
         self.every("learn_window", "weekly sun 12:00", lambda p: self.learn_window())
         self.action("moved", self._moved)  # (negotiate) the part you moved to tomorrow, at its time
+        _register_undo()  # 0.8.16: Undo under a plan Brain reshaped by itself works after a restart too
 
     # ------------------------------------------------------------------------------ the learned window
     def learn_window(self) -> str:
@@ -741,6 +751,20 @@ class StartBy(Module):
         x = self._take_offer(i)
         if x is None:
             return False
+        did = self._reshape_auto(i)  # 0.8.16 (mind.act.more): trusted with this, it moves the hours and says so
+        if did is not None:
+            self.app.notify(
+                f"{x['title']} ({'on' if x['kind'] == 'exam' else 'due'} {when_text(x['due'].isoformat())}): today's "
+                f"free time doesn't fit your Start-by plan's {hours(x['planned'])} h of it. {did['out']['said']}",
+                kind="deadline",
+                title="Plan reshaped",
+                buttons=did["buttons"] or None,
+                why="startby.negotiate",
+                about=x["title"],
+                item=i,
+                due=x["due"].isoformat(),
+            )
+            return True
         self.app.notify(
             self.reshape_text(x),
             kind="deadline",
@@ -764,11 +788,48 @@ class StartBy(Module):
                 return "That offer was for another day."
             if rec.get("state") != "offered":
                 return "Already answered."
-            rec["state"] = "done" if yes else "declined"
-            jsave(self.file, st)
+            if not yes:
+                rec["state"] = "declined"
+                jsave(self.file, st)
         self.app.events.emit("startby_reshape_" + ("done" if yes else "declined"))
         if not yes:
             return "OK, not today. I won't bring it up again today."
+        out = self._reshape_do(i, "done")
+        if out is None:
+            return "Already answered."
+        try:  # 0.8.16: a yes to a reshaped plan is an OK for its kind (mind.act.more), so trust can grow
+            from kurooto.mind import act
+
+            act.answered(self.app, "deadline.reshape", True)
+        except ImportError:
+            pass
+        return out["said"]
+
+    def _reshape_auto(self, i: str) -> dict | None:
+        try:
+            from kurooto.mind import act
+        except ImportError:
+            return None
+        _register_undo()
+        return act.attempt(
+            self.app,
+            "deadline.reshape",
+            lambda _: self._reshape_do(i, "auto"),
+            summary="moved part of a slipping deadline's work to tomorrow",
+            undo_from=lambda out: out.get("undo"),
+        )
+
+    def _reshape_do(self, i: str, how: str) -> dict | None:
+        """The reshaped plan, done (Do that, or Kurooto by itself once trusted): tomorrow's part gets a reminder at its
+        time (and blocks in the Agent plan calendar when that's on). {"said", "undo"}; None when it isn't on offer."""
+        today = now().date().isoformat()
+        with Lock(self.app.paths.state, "startby", timeout=5):
+            st = self._state()
+            rec = (st.get("reshape") or {}).get(i)
+            if not rec or rec.get("day") != today or rec.get("state") != "offered":
+                return None
+            rec["state"] = how
+            jsave(self.file, st)
         it = self._dl().items().get(i) or {}
         at, later, now_h = dt.datetime.fromisoformat(rec["at"]), float(rec["later"]), float(rec["now"])
         if later > 0:
@@ -776,17 +837,53 @@ class StartBy(Module):
                 at, "startby.moved", {"id": i, "hours": later}, key=f"startby:moved:{i}", module=self.id
             )
         said = (f"{hours(now_h)} h now, " if now_h >= 0.5 else "") + f"{hours(later)} h tomorrow from {at:%H:%M}"
+        blocks = []
         plan = self.app.modules.get("agent_plan")
         if plan is not None and self.app.is_on("agent_plan") and getattr(plan, "plan_ready", lambda: False)():
             try:  # blocks in Kurooto's own calendar when you use it (modules/google_plan.py)
                 t = now()
+                title = it.get("title") or "Deadline"
                 if now_h >= 0.5:
-                    plan.plan_block(t, t + dt.timedelta(hours=now_h), it.get("title") or "Deadline")
-                plan.plan_block(at, at + dt.timedelta(hours=later), it.get("title") or "Deadline")
+                    plan.plan_block(t, t + dt.timedelta(hours=now_h), title)
+                    blocks.append([t.replace(second=0, microsecond=0).isoformat(), title])
+                plan.plan_block(at, at + dt.timedelta(hours=later), title)
+                blocks.append([at.replace(second=0, microsecond=0).isoformat(), title])
                 said += "; blocks are in your Agent plan calendar"
             except Exception as e:
                 self.app.events.emit("startby_failed", error=f"blocks: {type(e).__name__}: {e}"[:200])
-        return f"OK: {said}. I'll remind you then."
+        lead = "OK:" if how == "done" else "I've moved it:"
+        return {"said": f"{lead} {said}. I'll remind you then.", "undo": {"id": i, "day": today, "blocks": blocks}}
+
+    def reshape_undo(self, p: dict | None) -> str:
+        """Undo under a plan Kurooto reshaped by itself: tomorrow's reminder and its Agent plan blocks go."""
+        p = p or {}
+        i = str(p.get("id") or "")
+        self.app.scheduler.cancel(f"startby:moved:{i}")
+        with Lock(self.app.paths.state, "startby", timeout=5):
+            st = self._state()
+            rec = (st.get("reshape") or {}).get(i)
+            if rec and rec.get("day") == p.get("day") and rec.get("state") == "auto":
+                rec["state"] = "undone"
+                jsave(self.file, st)
+        plan = self.app.modules.get("agent_plan")
+        left = 0
+        for start, title in p.get("blocks") or []:
+            try:  # only Kurooto's own calendar, only the blocks this reshape put there
+                t = dt.datetime.fromisoformat(start)
+                cid = plan.calendar_id(create=False)
+                b = next(
+                    (b for b in plan.plan_blocks(t.date()) if b["title"] == title and b["start"] == t and b.get("id")),
+                    None,
+                )
+                if cid and b:
+                    plan._delete(cid, b["id"])  # noqa: SLF001
+                else:
+                    left += 1
+            except Exception:
+                left += 1
+        self.app.events.emit("startby_reshape_undone", blocks=len(p.get("blocks") or []), left=left)
+        tail = f" {left} block{'s' if left != 1 else ''} stayed in your Agent plan calendar (/blocks clear)."
+        return "Taken back: the plan is as it was, with no reminder tomorrow." + (tail if left else "")
 
     def _moved(self, p: dict) -> None:
         """Tomorrow's part of a reshaped plan, at its time (a reminder of what you agreed to)."""

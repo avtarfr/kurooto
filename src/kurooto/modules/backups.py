@@ -70,6 +70,7 @@ SKIP_STATE = {
     "mind-promises.json",  # what Kurooto said it would do (mind/promises.py); this computer only
     "mind-acts.json",  # what it did on its own and your answers (mind/act.py); this computer only
     "mind-feelings.json",  # its computed state about an item (mind/feelings.py); this computer only
+    "mind-presence.json",  # when you were at your desk, by hour of the week (mind/presence_forecast.py); this computer
     "profile.json",  # this computer's own id for the encrypted profile: it mustn't move to another computer
 }
 # cases: what you typed, kept on this computer only. mind: Brain's log and scores (0.8.0) stay on this computer; an

@@ -419,8 +419,30 @@ class Calls(Module):
             held = self._held_call({"reason": reason, "key": key, "why": why, "due": due})
             if held:
                 return held
+            later = self._presence_later(why, due)
+            if later is not None:
+                return self._hold_until(later, {"reason": reason, "key": key, "why": why, "due": due},
+                                        "you're usually free then")  # fmt: skip
         self.ring(reason, alarm=alarm, key=key, why=why, due=due)
         return f"Calling you now: {reason}"
+
+    def _presence_later(self, why: str | None, due: str | None) -> dt.datetime | None:
+        """(Brain, 0.8.16: mind.presence_forecast.prefer) a call Kurooto places by itself (not one you asked for, not
+        an alarm, not a deadline under 12 hours away) when Brain forecasts you won't be at your desk and free now and
+        you aren't seen there: the likelier time within the setting's minutes, else None (it rings now)."""
+        if not why or why in ("calls.own", "alarm.ring"):
+            return None
+        try:
+            if due and dt.datetime.fromisoformat(due).replace(tzinfo=None) - now() < dt.timedelta(hours=12):
+                return None
+            from kurooto.mind import presence_forecast as pf
+        except (ImportError, ValueError, TypeError):
+            return None
+        if not pf.prefer_on(self.app) or pf.free_now(self.app):
+            return None
+        t = now()
+        to = pf.prefer(self.app, t, earliest=t)
+        return to if to - t >= dt.timedelta(minutes=10) else None
 
     def _held_call(self, p: dict) -> str | None:
         """If calls are blocked now: schedule this one for when they're allowed, say so, and return what was said."""
@@ -429,13 +451,16 @@ class Calls(Module):
         if not why:
             return None
         when, _ = av.next_callable()
+        return self._hold_until(when, p, why)
+
+    def _hold_until(self, when: dt.datetime, p: dict, why: str) -> str:
         key = p.get("key") or "held-" + hashlib.sha256(str(p.get("reason", "")).encode()).hexdigest()[:10]
         # the same call held twice is still one booking
         self.schedule(when, p.get("reason", ""), key=key, why=p.get("why"), due=p.get("due"))
         at = f"{when:%H:%M}" if when.date() == now().date() else f"{when:%a %H:%M}"
         text = f"Held a call until {at} ({why}): {p.get('reason', '')}"
         self.app.notify(text, kind="info", why=p.get("why") or "calls.held", due=p.get("due"))
-        self.app.events.emit("call_held", reason=why, until=when.isoformat())
+        self.app.events.emit("call_held", reason=why[:40], until=when.isoformat())
         return text
 
     async def background(self, stop):

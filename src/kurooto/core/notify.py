@@ -147,6 +147,7 @@ class Notifier:
         verdict, msg, _receipt = self.gate(msg)  # Brain's gate, when it's on (mind/gate.py): only ever quieter
         if verdict != "send":
             return None
+        msg = self.temperament(msg)  # (Brain, 0.8.16) its temperament sets how long its own words are
         go, door = workspace.door(self.app, msg)  # (Brain, 0.8.14) it bids at the door; only winners go, at a break
         if not go:
             return None
@@ -171,6 +172,26 @@ class Notifier:
             did = records.decide(self.app, f"message:{msg.kind}", scored_reason=msg.why, source="rules", expect=expect)
             records.track(self.app, did, msg, expect, door)
         return self.release(msg)
+
+    def temperament(self, msg: Message) -> Message:
+        """(Brain, 0.8.16: mind.register.templates) a message that came by itself, not exempt and not an answer,
+        keeps the register's number of sentences (mind/register.py: shorten). Never raises: on any failure it goes as
+        it was."""
+        if not msg.why or msg.why == "asked" or msg.reply_to:
+            return msg
+        try:
+            from kurooto.mind import register
+
+            if not register.templates_on(self.app) or workspace.exempt(self.app, msg):
+                return msg
+            text = register.shorten(msg.text, register.sentences(self.app), msg.buttons)
+        except Exception as e:
+            self.app.events.emit("mind_register_failed", error=f"{type(e).__name__}"[:60])
+            return msg
+        if text == msg.text:
+            return msg
+        self.app.events.emit("mind_register_shortened", why=str(msg.why)[:40], cut=len(msg.text) - len(text))
+        return replace(msg, text=text)
 
     def gate(self, msg: Message):
         """("send" | "hold" | "block", the message maybe changed, its receipt): Brain's gate. Never raises: with it

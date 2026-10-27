@@ -4,6 +4,7 @@
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 - **Voice no longer crashes Kurooto.** Turning listening off, muting, or a microphone that came and went could close
   the microphone's sound stream while the listening thread was still reading it, and the whole of Kurooto died (a
   segmentation fault in the sound library, seen several times a day with PipeWire). Each sound stream is now opened,
@@ -42,6 +43,23 @@
   quickest lately; anything that mentions your things, the time, the web or an action still goes to your AI. `same`
   (the default) changes nothing.
 >>>>>>> f/v0816-fast
+=======
+- **Brain's trust decides more of what it proposes.** A study block from the morning line, moving part of a slipping
+  deadline's work to tomorrow, a revision pack the evening before an exam, and keeping the quiz cards and
+  how-to-help-me lines it wrote at night: below the trust bar for their class it asks with the same buttons as before,
+  and each yes counts toward that trust; above it, it does it and says so with Undo, and an Undo sends it back to
+  asking. A low mood or beliefs no better than a guess still make it ask first. `/mind` and `/autonomy` list each kind
+  with its trust (`mind.act.more`).
+- **Brain forecasts when you'll be at your desk and free.** For the next six hours, learned from the activity sense
+  and Face presence, scored each hour against what they then show and against "same as yesterday", and rewarded for
+  accuracy only (at most 0.05 a day of its reward; nothing about talking to Kurooto counts). Check-ins planned into a
+  class or an hour you're usually away move to a likelier time nearby, and calls Kurooto places by itself wait for one
+  (`mind.presence_forecast.on`, `.prefer`, `.within_min`). `/mind` shows its accuracy and the next likely-free hour.
+- **Quieter ready-made messages, and a polite voice learner.** With Brain on, a nudge a feature sends by itself keeps
+  the register's 2 to 4 sentences, plus the question its buttons answer; digests, lists, answers and anything exempt
+  stay whole (`mind.register.templates`). The nightly voice learning now waits for the machine like Brain's own heavy
+  work.
+>>>>>>> f/v0816-brain
 
 ## 0.8.15 (unreleased)
 
