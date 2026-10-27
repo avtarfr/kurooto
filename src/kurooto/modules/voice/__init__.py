@@ -30,7 +30,11 @@ Listening better (0.8.13): careful calls when someone else may be talking (voice
 conversation going on without its name (voice.listen.follow_s), being told off (voice.listen.told_off: it stops,
 closes the conversation, notes a misfire), and the gate learning at night from how its turns went
 (voice.listen.learn_nightly, learn.py). Voice ID gets Face presence's help (voice.speaker_id.face_assist) and keeps a
-"not sure" voice the owner's in a conversation he opened (voice.speaker_id.carry_talk)."""
+"not sure" voice the owner's in a conversation he opened (voice.speaker_id.carry_talk).
+
+Barge-in (voice.listen.barge_in, barge.py): while Kurooto speaks, the microphone isn't dropped any more; your voice
+(Voice ID) or a stretch clearly louder than its own echo stops it at once, and what you said is then a told-off stop, a
+new turn in the same conversation, or it just listens."""
 
 from __future__ import annotations
 
@@ -48,7 +52,19 @@ from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Module
 from kurooto.modules.voice import shape as shape_mod
-from kurooto.modules.voice.gate import ADDRESSED, CHATTER, NOISE, TOLD_OFF, Context, Decision, Gate, Heard
+from kurooto.modules.voice.barge import Barge
+from kurooto.modules.voice.gate import (
+    ADDRESSED,
+    CHATTER,
+    NOISE,
+    TOLD_OFF,
+    Context,
+    Decision,
+    Gate,
+    Heard,
+    asks,
+    told_off,
+)
 from kurooto.modules.voice.learn import NIGHT_AT, Learner
 from kurooto.modules.voice.parts import KOKORO_VOICES, STT_MODELS, Parts
 from kurooto.modules.voice.portal import Portal
@@ -97,6 +113,7 @@ register_defaults(
             "follow_s": 20,  # after it answers, what the same voice says this soon counts, statements too (0: off)
             "told_off": True,  # "stop", "not you", "never mind" right after it opened or spoke: it stops and closes
             "learn_nightly": True,  # learn at night from turns that went well or were told off (numbers only)
+            "barge_in": True,  # talk over Kurooto to stop it: your voice (Voice ID) or louder than its own echo
         },
         "speaker_id": {
             "on": False,  # Voice ID: only your voice can make Kurooto act; others can only chat (enrol first)
@@ -183,6 +200,10 @@ class Speaker:
             out = shape_mod.join(out)
         if not out:
             return
+        try:  # barge-in: what it's about to say (the echo's words), and its own voice print made if wanted
+            self.v.barge.speaking(out)
+        except Exception:
+            pass
         with self.lock:
             self.busy = True
             self._cancel.clear()
@@ -210,6 +231,10 @@ class Speaker:
         so holding() covers an output's whole play exactly as the Player's."""
         with self._out_lock:
             outs = list(self._outputs)
+        try:  # barge-in: what's played and when, for the echo's expected level (numbers only)
+            self.v.barge.played(pcm, sr)
+        except Exception:
+            pass
         for entry in outs:
             if self._cancel.is_set():
                 return
@@ -295,6 +320,7 @@ class Voice(Module):
         self.mic_error = ""
         self._retry_at = 0.0
         self.voiceid = VoiceID(self)  # (voice id) the owner's voice: voiceid.py
+        self.barge = Barge(self)  # talking over it while it speaks: barge.py
         self._once: dict | None = None  # listen_once's hold: the next stretch goes to it, not to hear()
         self._once_lock = threading.Lock()  # one holder at a time
 
@@ -523,6 +549,7 @@ class Voice(Module):
                 "face_learned": self.voiceid.face_learned,
             },
             "learned": {**self.learner.status(), "on": bool(s("listen.learn_nightly")), "misfires_now": self.misfires},
+            "barge_in": {"on": bool(s("listen.barge_in")), "since_start": self.barge.count},
         }
 
     def shape(self, text: str) -> dict:
@@ -792,6 +819,52 @@ class Voice(Module):
         if not p.close("told off"):
             p.state("listening", "told off")
 
+    def barge_turn(self, pcm: bytes, flags: bytes, how: dict) -> str | None:
+        """(barge.py) A stretch that talked over Kurooto; it has already stopped speaking. Written out here, then: a
+        told-off phrase -> the told-off path (no reply); a question or a request -> a new turn in the same
+        conversation (the chat's context carries); anything else -> it listens, the conversation open for
+        voice.listen.follow_s. Returns the reply when there was one. An event with how and what came of it, never
+        words."""
+        if self.blocked() or not self.app.is_on(self.id):
+            return None
+        self.speaker.stop()  # already stopped; a piece that slipped through is ended too
+        seconds = len(pcm) / 32000
+        speech_s = sum(1 for f in flags if f) * 512 / 16000 if flags else seconds
+        h = Heard(speech=True, seconds=seconds, speech_s=speech_s)
+        h.text = self._write_out(pcm)
+        g = self.gate()
+        self._pending = None  # the interrupted turn: how it went isn't known, nothing learned from it
+        outcome = "listen"
+        reply = None
+        if self.setting("listen.told_off") and told_off(h.text, g.matcher):
+            outcome = "told off"
+            self._told_off(h, pcm)
+        else:
+            said = g.matcher.uncall(h.text).strip()
+            who = None
+            vid = self.voiceid
+            if vid.on():
+                from kurooto.modules.voice import barge as barge_mod
+                from kurooto.modules.voice.speakerid import OWNER, Verdict
+
+                if how.get("how") == barge_mod.VOICE:  # checked against its own voice already: you
+                    who = Verdict(OWNER, barge_mod.OWN_WHY, how.get("score"), speech_s)
+                else:  # never learned from: its own voice may be in it
+                    who = vid.check(pcm, speech_s, adapt=False)
+            if said and asks(said):
+                outcome = "turn"
+                self.heard[ADDRESSED] = self.heard.get(ADDRESSED, 0) + 1
+                if who is not None:
+                    self.publish("voice_state", state="addressed", portal=True, listening=True, why="barged in",
+                                 who=who.word)  # fmt: skip
+                reply = self.portal.take(h, Decision(ADDRESSED, 0.9, "barged in"), text=said, who=who)
+            else:
+                h.text = ""  # not sent: dropped here
+                self.portal.listen_on("barged in", who.decision if who is not None else "")
+        del pcm
+        self.app.events.emit("voice_barge", how=how.get("how", ""), outcome=outcome)
+        return reply
+
     def learn_nightly(self, payload=None) -> dict | None:
         """The nightly fit (learn.py), on a thread of its own: numbers only into the event."""
         if not self.setting("listen.learn_nightly"):
@@ -1009,6 +1082,7 @@ class Voice(Module):
             on_start=lambda: self.portal.state("hearing"),
             hold=lambda: self.speaker.holding() or self.portal.busy,
             wake_threshold=float(self.setting("listen.wake_threshold") or 0.5),
+            barge=self.barge,
         )
         self.listener.start()
         self.portal.state("addressed" if self.portal.open else "listening")
@@ -1018,6 +1092,7 @@ class Voice(Module):
             self.listener.stop()
             self.listener = None
             self._level_buf = bytearray()
+            self.barge.reset()
             self.publish("voice_state", state="off", portal=self.portal.open, listening=False, why=why)
         while not self._work.empty():  # sound not yet written out is dropped
             try:
@@ -1025,14 +1100,17 @@ class Voice(Module):
             except queue.Empty:
                 break
 
-    def _heard_audio(self, pcm: bytes, woke: bool, seconds: float, flags: bytes = b"") -> None:
-        """From the listener's thread: queued for writing out (the oldest dropped when it can't keep up)."""
+    def _heard_audio(
+        self, pcm: bytes, woke: bool, seconds: float, flags: bytes = b"", barge: dict | None = None
+    ) -> None:
+        """From the listener's thread: queued for writing out (the oldest dropped when it can't keep up). barge: the
+        stretch talked over Kurooto (barge.py), with how it was noticed."""
         try:
-            self._work.put_nowait((pcm, woke, seconds, flags))
+            self._work.put_nowait((pcm, woke, seconds, flags, barge))
         except queue.Full:
             try:
                 self._work.get_nowait()
-                self._work.put_nowait((pcm, woke, seconds, flags))
+                self._work.put_nowait((pcm, woke, seconds, flags, barge))
             except (queue.Empty, queue.Full):
                 pass
 
@@ -1040,11 +1118,14 @@ class Voice(Module):
         while True:
             self._work_one(*self._work.get())
 
-    def _work_one(self, pcm: bytes, woke: bool, seconds: float, flags: bytes = b"") -> None:
-        """One stretch from the listener: an add-on's listen_once takes it while it holds, else hear()."""
+    def _work_one(self, pcm: bytes, woke: bool, seconds: float, flags: bytes = b"", barge: dict | None = None) -> None:
+        """One stretch from the listener: a barge-in goes to barge_turn(); an add-on's listen_once takes it while it
+        holds, else hear()."""
         try:
             slot = self._once
-            if slot is not None and not slot["done"].is_set():
+            if barge is not None:
+                self.barge_turn(pcm, flags, barge)
+            elif slot is not None and not slot["done"].is_set():
                 self._take_once(slot, pcm, seconds, flags)
             else:
                 self.hear(Heard(speech=True, wake=woke, seconds=seconds), pcm, flags)

@@ -2,6 +2,13 @@
 
 ## 0.8.13 (unreleased)
 
+- **Voice: cut in while it speaks.** It used to drop every sound while it spoke (so it wouldn't hear itself), so only
+  `/voice stop` could end a long answer. Now it keeps listening: your voice (Voice ID, checked against Kurooto's own
+  voice print, made once in memory) or speech clearly louder than its own echo, whose words aren't its own, stops it
+  at once, on this computer or on a device an add-on plays it on. "Stop" or "never mind" just stops it, a question or
+  a request becomes the next turn in the same conversation, anything else and it stops and listens. Its own voice
+  coming back through the room never stops it. Limits: on a speakerphone or at a high volume speak up; a guest can't
+  cut in by voice. `voice.listen.barge_in` (on).
 - **Kurooto says numbers as a person would.** The speech engine read digits literally: "21:31" with a pause in the
   middle, "0.8.13" as "zero. eight point one three", dates with "slash", "₹3,000" as "rupee three thousand", "12 GB"
   as "gee bee". Times, dates, years, money (₹, Rs, $, €, £, lakh and crore), versions, ranges, percentages, ordinals

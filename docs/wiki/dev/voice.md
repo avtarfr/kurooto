@@ -21,6 +21,8 @@ with listening a second switch. User page: [../user/voice.md](../user/voice.md).
 | `tests/unit/test_voice.py` | everything above with fakes (no device, no model) |
 | `tests/unit/test_voice_numbers.py` | `numbers.say()` case by case, and the switch |
 | `tests/unit/test_voice_listening.py` | (0.8.13) careful calls, the conversation window, told off, the learner, face assist, the talk carry |
+| `modules/voice/barge.py` | (0.8.13) barge-in: `Barge` (the listener's frames while it speaks, the echo's expected level, the voice and loudness-and-words checks on the `voice-barge` thread, its own voice print); `Voice.barge_turn()` handles what was said |
+| `tests/unit/test_voice_barge.py` | (0.8.13) barge-in with synthetic voices, a fake clock, VAD and transcriber: own echo never stops it, the owner's voice does, told off, listen, loudness, the switch, an output's stop |
 
 ## Used by Face presence (0.8.10)
 
@@ -81,6 +83,49 @@ speakers. `fn(pcm: bytes, sr: int, stop: threading.Event) -> bool`:
   sentence loop ends; after a stop nothing falls back to the `Player`. It's cleared when the next utterance starts.
 - **Unchanged:** `voice_speak` is published as each sentence starts, wherever it plays; `status()` still names the
   local player. The sound is handed over in memory only; the output must not write or keep it either.
+
+## Barge-in (`barge.py`, 0.8.13)
+
+`voice.listen.barge_in` (on). Before it, `Listener` dropped every frame while `hold()` (`Speaker.holding() or
+portal.busy`). Now `Listener(barge=Voice.barge)` asks `Barge.wants()` per frame first: true while
+`Speaker.holding()` (speaking, plus its 0.4 s tail), and while a stretch that barged in (or has a check in flight)
+goes on after it stopped. Then the frame and `vad.prob(frame)` go to `Barge.feed()` and the normal path never sees
+it (the VAD is reset on the way in and out, the wake word buffer and pre-roll cleared). Off, or the portal busy only
+thinking: the old drop. Nothing else in the listener changes.
+
+- **What's played.** `Speaker._speak` calls `barge.speaking(pieces)` (their words, memory only, for the echo words
+  check; it queues making its own voice print when the voice check can run) and `Speaker._play` calls
+  `barge.played(pcm, sr)` as each piece starts, wherever it plays: per-32 ms RMS levels with the start time. Both
+  only while the listener runs. `expected(now)` = the loudest level over `[now - ECHO_LAG_S (0.8 s), now + 0.05]`,
+  which covers an add-on output's delay (a phone next to the laptop) and the room.
+- **The echo's share.** Each speech frame (VAD >= 0.5) heard while something audible plays adds `level / expected`;
+  `gain()` is the median of the last `GAIN_FRAMES` (125, ~4 s), needing `GAIN_MIN` (15). Not added while a stretch
+  is confirmed. A frame is *loud* when `level > max(FLOOR 0.01, LOUD_X 2.5 * gain * expected)`.
+- **Stretches** are cut as the listener does (start 0.5, 700 ms below 0.35 ends, 320 ms pre-roll, 15 s max), each
+  with an id. A check is queued when the stretch has `MIN_SPEECH_S` (0.6 s) of speech or `LOUD_MIN_S` (0.3 s) of loud
+  speech, again every `RECHECK_S` (0.5 s) more, one in flight at a time; when the stretch ends unconfirmed (with a
+  check in flight or 0.3 s+ of speech), a final check of the whole of it.
+- **`check()`**, on the `voice-barge` daemon thread (`sync = True` in tests runs it inline): (1) the voice, when
+  Voice ID is on, has no `problem()` and its own print exists: `VoiceID.embed(pcm)`, `owner = dot(e, centroid)`,
+  `itself = dot(e, own)`; barge when `owner >= thresholds(t).pick(speech_s).accept` and `owner - itself >=
+  SELF_MARGIN` (0.10). (2) Else loudness then words: loud frames >= 0.3 s and >= half the speech frames, then
+  `Voice._write_out(pcm)`; `words_ok()`: real words (not `made_up()`), a told-off phrase always, else fewer than
+  `ECHO_WORDS` (60%) of them in what it's saying.
+- **On a barge-in** the checking thread calls `Speaker.stop()` (the `Player`, and `_cancel`, the stop event an add-on
+  output was handed) and publishes `voice_state hearing, why "barged in"`. The stretch is still collected to its end,
+  then `Voice._heard_audio(..., barge={"sid", "how", "score"})` queues it like any stretch (never blocking the
+  listener); `_work_one` sends it to `Voice.barge_turn()`.
+- **`barge_turn(pcm, flags, how)`** on `voice-hear` (after the interrupted `portal.take` has returned): written out;
+  `_pending = None` (the interrupted turn isn't learned from); told off (with `voice.listen.told_off`) ->
+  `_told_off()` (misfire, close); else the verdict: `how == "voice"` -> `Verdict(OWNER, "your voice, over its own")`,
+  loud with Voice ID on -> `VoiceID.check(pcm, speech_s, adapt=False)` (never adapted from: its echo may be in it);
+  `asks()` -> `portal.take(h, Decision(ADDRESSED, 0.9, "barged in"), text=uncall(text), who)` (the chat's context
+  carries, as any turn); anything else -> `Portal.listen_on("barged in", who)` (open, `answered`, `last` and
+  `spoke_at` now, so the follow window and `tick()` hold it for `follow_s`). Event `voice_barge {how, outcome}`
+  (`voice`/`loud`; `told off`/`turn`/`listen`), never words. `status()["barge_in"] = {on, since_start}`.
+- **Its own voice print**: `own_print()` synthesizes `OWN_PHRASE` with `Voice.tts()`, `voiceid.resample()` to 16 kHz,
+  `VoiceID.embed()`; cached in memory per `(Voice._tts_key, VoiceID.model())`, never played or saved. No engine or
+  no model: `[]`, and the voice check doesn't run (fail closed: only loudness).
 
 ## The flow
 
@@ -235,7 +280,8 @@ Example: `{"t":"voice","kind":"voice_state","state":"thinking","portal":true,"li
 
 Logged events (`app.events.emit`, so also in the feed with `cell: "voice"` via `web/live.py:EVENT_CELL`), with no
 words: `voice_portal {open, why}`, `voice_listening {on, why}`, `voice_mute {on}`, `voice_failed {part, error}`,
-(0.8.13) `voice_misfire {rule, turn}` and `voice_learned {rows, good, misfires, active}`.
+(0.8.13) `voice_misfire {rule, turn}`, `voice_learned {rows, good, misfires, active}` and `voice_barge {how,
+outcome}`.
 
 ## Learning at night (`learn.py`, 0.8.13)
 
@@ -530,8 +576,12 @@ then `pactl` on Linux, else "can't tell". Subprocesses it starts are its own chi
 ## Not verified
 
 0.8.13 (careful calls, the conversation window, told off, the learner, face assist, the talk carry): unit tests with
-fakes only. Not run with a real room, real Face presence frames feeding Voice ID, or a night's real fit; the told-off
-phrases can't be heard while Kurooto is speaking (the microphone is held then), only after.
+fakes only. Not run with a real room, real Face presence frames feeding Voice ID, or a night's real fit.
+
+Barge-in (0.8.13): unit tests with synthetic voices (FakeEmbedder markers), a fake clock, VAD and transcriber only.
+Never run: a real room's echo (speakers or a phone next to the laptop), CAM++ on a stretch with its own voice mixed
+in, Kokoro's own voice print through CAM++, and the constants (`SELF_MARGIN`, `LOUD_X`, `ECHO_LAG_S`) against real
+sound; they're first guesses to tune from the owner's room.
 
 Voice ID (0.8.10): the unit tests use fakes and synthetic data only (a fake embedder, fake banks, a fake microphone
 and transcriber). The CAM++ models, kaldi-native-fbank's features, the enrolment session, the calibration and the

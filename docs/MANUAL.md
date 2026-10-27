@@ -2129,12 +2129,16 @@ that. Packages go into Kurooto's own folder, never your system.
   `voice.listen.night` off.
 - **Speaking:** `voice.speak.what` = `voice` (answers to what you said aloud, the default), `all` (every AI answer) or
   `off`; `voice.speak.voice`, `voice.speak.rate`; `/voice say <text>`, `/voice stop`.
+- **Cutting in** (`voice.listen.barge_in`, on): talk over it while it speaks. Your voice (Voice ID, checked against
+  its own voice print, made once in memory) or speech clearly louder than its own echo stops it at once; "stop" just
+  stops it, a question or a request is the next turn, anything else and it listens. Its own echo never stops it.
 - `/voice` says what it's doing and counts what it heard (`/health` has a line too).
 
 *Leaves:* nothing while no conversation is open; then only the turns said to Kurooto, as text, to your AI (and kept
 in the chat history like typed ones). Sound is never saved; the words of noise and chatter are dropped at once and
 never stored, logged or sent. Setting up downloads from PyPI, GitHub and Hugging Face.
-*Undo:* `/voice mute` stops listening and speaking at once; `voice.listen.on` off stops listening; turning Voice off
+*Undo:* `/voice mute` stops listening and speaking at once; `voice.listen.barge_in` off drops the microphone while it
+speaks, as before; `voice.listen.on` off stops listening; turning Voice off
 (Features) stops both. To free the space, delete the `voice` folder in Kurooto's app folder (`kurooto paths`, `app`).
 
 ### Voice ID: only your voice can make it act

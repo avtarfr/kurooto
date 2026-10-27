@@ -117,9 +117,44 @@ mention. With you alone and no one talking, its name first or last wakes it as b
 
 If it wakes when you weren't talking to it, say "stop", "not you", "I wasn't talking to you", "shut up", "be quiet",
 "go away" or "never mind" within about 10 seconds of it opening the conversation or speaking: it stops speaking at
-once, closes the conversation and says nothing. While it's speaking the microphone is held so it doesn't hear itself,
-so say it as soon as it stops (or `/voice stop`, the dashboard). It notes the misfire (which rule woke it, never your
-words) for the night's learning. `voice.listen.told_off` (on).
+once, closes the conversation and says nothing. You can say it while it's still speaking (below, "Cutting in"); with
+that switched off, say it as soon as it stops (or `/voice stop`, the dashboard). It notes the misfire (which rule woke
+it, never your words) for the night's learning. `voice.listen.told_off` (on).
+
+### Cutting in while it speaks
+
+You don't have to wait for a long answer to finish: talk over it. Kurooto keeps listening while it speaks, stops at
+once when it hears you, and then:
+
+- **"Stop", "never mind", "not you"** and the like: it just stops and closes the conversation (as above).
+- **A question or a request** ("wait, what about Sunday?", "set it for six instead"): it stops and answers that, in the
+  same conversation, so it knows what you were talking about.
+- **Anything else** ("hmm, hold on"): it stops and listens; what you say in the next `voice.listen.follow_s` seconds
+  goes to it without its name.
+
+It never takes its own voice coming back through the room for you. It counts as you cutting in when:
+
+- **Voice ID** (on and enrolled) recognises your voice: at least about 0.6 seconds of speech that matches your voice
+  print and is clearly closer to it than to Kurooto's own voice. Kurooto's own voice print is made once, in memory,
+  from a phrase its voice says silently; it's never played or saved.
+- **Or you're clearly louder than its echo.** It knows what it's playing and when, and learns how loud its own voice
+  comes back to the microphone; speech well above that whose words, written out here, aren't what it's saying, counts.
+
+Limits:
+
+- **Speakerphone or a high volume:** its echo can drown you out. Speak up, come closer to the microphone, or turn it
+  down. The same goes for the phone app playing its voice next to the computer: the computer's microphone hears that
+  too, a little late, and it allows for that.
+- **A single short word** like "stop" is too short for the voice check: say it clearly louder than it, or say a
+  little more ("stop talking", "Kurooto, stop").
+- **A guest can't cut in by voice:** with Voice ID only your voice passes the voice check, so someone else has to be
+  clearly louder than Kurooto (and what they then say goes through the usual guest rules).
+- **Without Voice ID** only the loudness check works, so a loud TV or someone shouting nearby may stop it; turn the
+  switch off if that happens.
+
+`voice.listen.barge_in` (on). Off, the microphone is dropped while it speaks, as before; `/voice stop` always works.
+Nothing extra is kept: the sound stays in memory as for anything it hears, and the event log only says how it noticed
+you and what came of it, never your words.
 
 ### Learning at night
 
@@ -398,8 +433,9 @@ after its name alone, so people talking nearby close it instead of reaching your
 
 ## What it can't do yet
 
-- It can't be interrupted while it speaks: it doesn't listen while speaking (so it doesn't hear itself). `/voice stop`
-  or mute stops it.
+- Cutting in while it speaks works best near the microphone at a normal volume: a loud echo (a speakerphone, the volume
+  up high) can drown you out, and a guest can't cut in by voice (see "Cutting in while it speaks"). `/voice stop` or
+  mute always stops it.
 - Without Voice ID it doesn't know who is speaking; with it, it knows you from anyone else, but can't tell two voices
   apart inside one turn, and can't tell a recording of you from you.
 - Its name has to be heard and written out first, so waking takes a moment longer than a dedicated wake word model

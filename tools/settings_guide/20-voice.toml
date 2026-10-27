@@ -292,9 +292,24 @@ when = "Shorten it (or 0) if it takes what you say to someone else right after i
 tip = "\"Stop\", \"not you\", \"never mind\" and the like, right after it woke or spoke, stop it at once and close the talk."
 what = """Within about 10 seconds of the conversation opening or of Kurooto speaking: it stops speaking, closes the
 conversation and doesn't reply. It notes a misfire (the rule that opened it, never your words) and, with
-voice.listen.learn_nightly, a training row of numbers for the night's learning. While Kurooto is speaking the
-microphone is held (so it doesn't hear itself): say it as soon as it stops, or use /voice stop."""
+voice.listen.learn_nightly, a training row of numbers for the night's learning. With voice.listen.barge_in you can
+say it over Kurooto while it speaks; without it, say it as soon as it stops, or use /voice stop."""
 when = "Turn it off if one of those phrases is something you often say to Kurooto as a request."
+
+[s."voice.listen.barge_in"]
+tip = "Talk over Kurooto while it speaks to stop it: \"stop\", a new question, or anything you want to say."
+what = """While Kurooto speaks it keeps listening, but never takes its own voice coming back through the room for you.
+A stretch of speech counts as you cutting in when Voice ID (on and enrolled) recognises your voice in it (at least
+about 0.6 seconds of speech, closer to your voice print than to Kurooto's own, which is made once in memory from a
+phrase its voice says silently), or when it's clearly louder than the echo of what's playing just then and its words,
+written out here, aren't Kurooto's own. Then it stops speaking at once (on this computer, or on another device an
+add-on plays it on), and what you said is: a told-off phrase ("stop", "never mind"): it just stops; a question or a
+request: a new turn in the same conversation; anything else: it stops and listens. Limits: on a speakerphone or at a
+high volume its echo can drown you out, so speak up or come closer; without Voice ID only the loudness check works;
+and with Voice ID only your voice can cut in by voice (a guest has to be louder than its echo). Nothing extra is kept:
+the sound stays in memory as for any stretch, and the event says only how it was noticed and what came of it."""
+values = "`true` (default), `false` (the microphone is dropped while it speaks, as before; /voice stop still stops it)."
+when = "Turn it off if Kurooto stops for the TV or other people talking loudly near it while it speaks."
 
 [s."voice.listen.learn_nightly"]
 tip = "Every night Kurooto learns from how its voice turns went: ones you carried on with, and ones you told off."
