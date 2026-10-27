@@ -465,12 +465,46 @@ on your call line and is done when it's back, in order.
 
 ## Chat with Kurooto in the app
 
-**Android:** open the app: it opens on **Chat**. Type as you would on Telegram: a question, "remind me
+**Android:** the app opens on **Chat** (0.8.10). Type as you would on Telegram: a question, "remind me
 at 9 to call Dr Sam Okafor", a /command. It's handled exactly like a Telegram message: the same commands, plain-English
 requests and, with Chat on, your AI. The answer comes back in the chat ("On it." first, then the AI's answer when it's
-done), and as a notification when the chat isn't open. Buttons under an answer work as on Telegram. **Reply** under a
-message that takes one (a reminder, a check-in) answers it. Answers to what you wrote in the app come back to the app
-only, not to Telegram.
+done; "Kurooto is working…" shows under the chat's name meanwhile), and as a notification when that chat isn't open.
+Buttons under an answer work as on Telegram. Answers to what you wrote in the app come back to the app only, not to
+Telegram.
+
+**Chats (sessions).** Down the left edge is a rail of shapes, one per chat, each its own shape and colour, with a
+number for what you haven't read. The top one is **Kurooto**: its own messages (reminders, results, what it found) land
+there, and it can't be deleted. Every other chat is a separate conversation with your AI that remembers what was said
+in it for as long as the chat lives, like an AI web app (Telegram's chat only keeps the last two hours). Tap a shape to
+switch; **+** starts a new chat (it's named after its first words). Drag the rail to the right, or tap the chat you're
+in, to pull open the list: names, last lines, the time, **Search** (chats and the messages in them), what's **waiting
+for you**, **New chat**, and the chats under **Pinned**, **Recent** and **Archived**. Hold a chat there to rename, pin,
+archive (on this phone) or delete it (**Undo** for a few seconds). The bar to the other screens sits at the rail's foot.
+The **call button** at the top of a chat (and of the list) calls Kurooto, as Today's Call did.
+
+**In a conversation:**
+
+- **Reply:** swipe a message to the right, or hold it → **Reply**. The box shows what you're replying to; Kurooto gets
+  that message as context, and your message shows it quoted (tap the quote to jump to it).
+- **Hold a message** for **Copy**, **Share**, **Pin** (a bar at the top shows the newest pinned one; tap it to go
+  there), **Edit** (your own, for 15 minutes: it's marked "edited", and Kurooto isn't asked again), **Delete** (on this
+  phone, or everywhere for yours) and **Select** (several at once, to copy or share together).
+- **Files:** **+** in the box opens Photo or video, Camera, File and Voice note. **Hold the mic** to record a voice note;
+  slide left to cancel, let go to send. Files are up to 10 MB (a bigger one says so before anything is sent). Photos
+  from Kurooto show in the chat (tap: full screen, Share, Save); other files show as a card with their name and size
+  (tap: the app fetches it, opens it on the phone, and hands it to the app for that kind of file); voice notes and audio
+  play in place. A file from Kurooto stays on your call line for a day.
+- **Commands:** type `/` for the list of commands, with a line about each (it comes from your computer).
+- Long answers show their start and **Show more**; bold, italic, code, lists and links show as Kurooto writes them.
+- When you've scrolled up, a round button at the bottom right takes you back to the newest, with how many came since.
+
+**Notifications:** one per chat, with Kurooto's unread messages in it. **Reply** writes back from the notification
+(Android 7+), **Mark read** clears it, and a reminder's **Done** or **Snooze** are there as before. Tapping it opens
+that chat.
+
+**Chat settings on this phone** (Settings → Chat): message notifications, reply from the notification, swipe to reply,
+formatting, folding long answers, loading photos by themselves, the command list, Enter sends, and haptics. Each is a
+switch; all but Enter sends are on.
 
 **iPhone (and any paired browser):** open Kurooto from the Home Screen and tap **Chat** (or open `<your call
 line>/talk`). It works like the Android chat: buttons, **Reply**, and "Waiting for your computer" while it's off. A
@@ -508,9 +542,11 @@ approvals stay under **Waiting for you**, with their answer buttons.
 
 | Under your message | Means |
 |---|---|
-| Sending… | On its way to your call line. |
-| Waiting for your computer | Your computer is off. It waits on your call line and goes to the computer when it's back; then this goes away and the answer comes. |
-| Not sent: tap to try again | The phone was offline, or your call line refused it (the reason is in brackets). Tap the message to send it again. |
+| A clock | Sending: on its way to your call line. |
+| One tick, "Waiting for your computer" | Your computer is off. It waits on your call line and goes to the computer when it's back; then this goes away and the answer comes. |
+| Two ticks | Your computer has it. |
+| Two coloured ticks | Kurooto has answered it. |
+| "Not sent: tap to try again" | The phone was offline, or your call line refused it (the reason is in brackets). Tap the message to send it again. |
 
 ## Using the app instead of Telegram
 
@@ -571,7 +607,7 @@ Android only. None of these need setting up beyond pairing; each opens the app's
 
 | What | Where to add it | What it does |
 |---|---|---|
-| **Talk to Kurooto** widget (1x1) | Home screen: long-press an empty spot → Widgets → Kurooto | One tap opens the chat with the keyboard up, ready to type (use your keyboard's microphone to speak). |
+| **Talk to Kurooto** widget (1x1) | Home screen: long-press an empty spot → Widgets → Kurooto | One tap opens the app on Chat with the keyboard up, ready to type (use your keyboard's microphone to speak). |
 | **Talk, and what's waiting** widget (2x1) | The same list | The same Talk button, and beside it the newest question or message waiting for you ("2 waiting: ..."), or "Nothing waiting for you". Tap the text to open the app. |
 | **Quick note** shortcut (Android 7.1+) | Long-press Kurooto's app icon; drag it out to make its own icon | A small box: type a note, tap **Save to notes**. |
 | **Quick note** tile (Android 7+) | Pull down Quick Settings → the pencil (edit) → drag **Quick note** in | The same box. On a locked phone it asks you to unlock first. |

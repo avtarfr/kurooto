@@ -15,7 +15,8 @@
 #                                                          mode's rules (brightness by the hour, hours), the call
 #                                                          screen's rules (CallRules, 0.8.7) and opening
 #                                                          Systems and the Notes map (ViewSeal, 0.7.0), and the
-#                                                          app's own connection to the call line (WebSock, 0.7.0)
+#                                                          app's own connection to the call line (WebSock, 0.7.0),
+#                                                          and the chat's rules (ChatRules, 0.8.10)
 #
 # Needs: an Android SDK with platform 36 and build-tools (ANDROID_HOME), a JDK 17 (java on PATH or JAVA_HOME), and the
 # network the first time (Gradle 8.14.6, checked against its SHA-256 below, then the Android Gradle plugin, Kotlin and
@@ -54,6 +55,9 @@ crypto_test() {
   # the check-in and quiz cards' and location reminders' rules (0.6.0)
   javac -nowarn -encoding UTF-8 -d "$t" "$HERE/src/$PKG/CardRules.java" "$HERE/src/$PKG/PlaceRules.java" "$HERE/test/CardsPlacesTest.java"
   java -cp "$t" io.github.avtarfr.kurooto.CardsPlacesTest
+  # the chat's rules (0.8.10): Markdown, sessions, the f1 file link, the edit window, dates, slash commands
+  javac -nowarn -encoding UTF-8 -d "$t" "$HERE/src/$PKG/ChatRules.java" "$HERE/test/ChatTest.java"
+  java -cp "$t" io.github.avtarfr.kurooto.ChatTest
   # the app's own connection to the call line (0.7.0): its rules and the WebSocket client against a local server
   javac -nowarn -encoding UTF-8 -cp "$t" -d "$t" "$HERE/src/$PKG/LinkRules.java" "$HERE/src/$PKG/WebSock.java" "$HERE/test/LinkTest.java"
   java -cp "$t" io.github.avtarfr.kurooto.LinkTest

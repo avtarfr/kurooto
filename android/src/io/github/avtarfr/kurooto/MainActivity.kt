@@ -461,7 +461,7 @@ class HomeState {
     var settingsGroup by mutableStateOf<String?>(null)
     /** What's waiting for you, open in its sheet (WaitingBar, Today's Waiting tile, the "inbox" extra). */
     var waitingSheet by mutableStateOf(false)
-    /** Unread chat messages: the Chat icon's badge (with what's waiting). The chat sets it. */
+    /** Unread chat messages, across sessions: the Chat icon's badge (with what's waiting). ChatPane sets it. */
     var unread by mutableIntStateOf(0)
     /** Today.load's copy: {"list", "at", "computer", "off", "old"}. */
     var today by mutableStateOf(JSONObject())

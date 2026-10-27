@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What the chat's FileProvider may hand to other apps (0.8.10, ChatFiles): the copies made to open or share a file,
+     and the camera's photo before it's sent. Never the store, the keys or the other files. -->
+<paths>
+    <cache-path name="open" path="chat-open/" />
+    <cache-path name="camera" path="chat-cam/" />
+</paths>
