@@ -1,0 +1,25 @@
+{
+ "doc": {
+  "version": "0.8.13",
+  "notes": "Voice that knows when it is spoken to and can be cut off, numbers said as words, study packs with what the syllabus cites, and fixes for backups, phone sensors and the phone camera as an eye.",
+  "created": 1793123090.5073109,
+  "files": {
+   "kurooto-0.8.13.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.8.13/kurooto-0.8.13.tar.gz",
+    "sha256": "24ece8cd8a6c9eed0559f0acef5e69c985895e7c30b43b05e1d988c4871d0b86",
+    "size": 12099144
+   }
+  },
+  "android": {
+   "file": "kurooto.apk",
+   "url": "https://avtarfr.github.io/kurooto/releases/0.8.13/kurooto.apk",
+   "sha256": "e7193f000bfdf4ba4e4b6921b74d813037789209de83bd068534181681b324f9",
+   "size": 6721316,
+   "versionCode": 80139,
+   "versionName": "0.8.13",
+   "cert_sha256": "bad55b2e9de40d31a40d19767bf6e53ac372fb9e8e67e63d01d21e3d3ef8d325",
+   "source": "081a913752483559e2f6410cfab8784d6468044fd555a783af85eca06434e7ab"
+  }
+ },
+ "sig": "wB7r+WkFNx16gyDzK6VN3Yo+7GO1yPd7EoEsQ8Wa978EZbD1u+Z7n9JlpFWjiAOVIt4WF6PhBqBi3rYXrCbXAQ=="
+}
