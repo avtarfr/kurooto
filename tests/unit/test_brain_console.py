@@ -68,7 +68,7 @@ def brain(app, monkeypatch):
             ("stop_span", {"start": now - 7200, "end": now - 3600, "gap": "sleep"}, now - 3600),
             ("forget_event", {"hash": "ab12", "n": 4}, now - 100),
             ("lab_result", {"project": "ring-model", "wins": 2, "replicated": 1}, now - 90),
-            ("budget_tick", {"payment_amount": 999, "load": 0.4}, now - 50),
+            ("budget_tick", {"payment_amount": 31337.77, "load": 0.4}, now - 50),
         ],
     )
     s = app.paths.state
@@ -183,7 +183,7 @@ def test_the_timeline_filters_by_part_and_day_and_pages(app, brain):
 def test_nothing_named_for_money_or_health_and_senses_are_counts(app, brain):
     _, out = console.view(app, {})
     text = json.dumps(out)
-    assert "payment_amount" not in text and "999" not in text  # a field named for money
+    assert "payment_amount" not in text and "31337.77" not in text  # a money field (no timestamp holds 31337.77)
     assert "Rent goes out" not in text and out["beliefs"]["hidden"] == 1
     assert "see the doctor" not in text and out["model"]["counts"]["goal"] == 1
     assert PRIVATE_LINE not in text  # a private spotlight item, the story's sentences
