@@ -718,6 +718,7 @@
 "study.research_paths": "Words or folders whose windows count as Research time.",
 "study.sample_s": "Seconds between looks at the window you're working in.",
 "study.timer_ends_mode": "When a focus ends, Study mode ends too, instead of starting a break.",
+"studypack.cited_pages": "Pages of the readings your class cites (\"B&D S2.3\") a study pack takes whole, past the usual 250; `0`: off.",
 "studypack.extra": "Your own rules for the other AI, added to the end of every study pack's prompt.",
 "studypack.instructions": "Your own extra lines and a format phrase (\"pdf too\") go into the study pack's prompt.",
 "subjects.catch_up": "A class you missed gets a catch-up task and a lecture note to fill in.",

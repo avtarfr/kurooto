@@ -1099,6 +1099,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 
 | Setting | Default | What it does |
 |---|---|---|
+| `studypack.cited_pages` | `400` | Pages of the readings your class cites ("B&D S2.3") a study pack takes whole, past the usual 250; `0`: off. ([guide](wiki/user/settings-guide.md#studypackcitedpages)) |
 | `studypack.extra` | `""` | Your own rules for the other AI, added to the end of every study pack's prompt. ([guide](wiki/user/settings-guide.md#studypackextra)) |
 | `studypack.instructions` | `true` | Your own extra lines and a format phrase ("pdf too") go into the study pack's prompt. ([guide](wiki/user/settings-guide.md#studypackinstructions)) |
 

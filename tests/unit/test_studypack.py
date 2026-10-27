@@ -436,8 +436,9 @@ def test_readings_the_class_cites_come_first_and_match_a_book_by_its_name(tmp_pa
         "Physics of the Atmosphere and Climate relevant Chapter 1"
     ]
     cited = studypack.citations(lecture)
-    names = sorted((sorted(n), ch, secs) for n, ch, secs in cited)
-    assert (["salby"], 2, []) in names and (["hobbs", "wallace"], 3, ["3.2", "3.4"]) in names
+    names = sorted((sorted(c.names), c.kind, c.num) for c in cited)
+    assert (["salby"], "chapter", "2") in names
+    assert (["hobbs", "wallace"], "section", "3.2") in names and (["hobbs", "wallace"], "section", "3.4") in names
     assert not any("climate" in n or "relevant" in n for n, _, _ in names)  # what a book is about isn't its name
     d = tmp_path / "wh"
     (d / "pages").mkdir(parents=True)
@@ -452,7 +453,8 @@ def test_readings_the_class_cites_come_first_and_match_a_book_by_its_name(tmp_pa
     )
     other = studypack.Source(Path(tmp_path / "Thermal Physics.pdf"), "Thermal Physics", 30, d, is_class=False)
     rx = studypack.pattern(["knitting"])
-    assert studypack.book_tiers(wh, rx, cited)[0] == list(range(10, 16))  # sections 3.2 to 3.4
+    # 3.2 up to 3.4's page, and 3.4 up to the page where 4.1 starts (0.8.13: a section runs to the next heading)
+    assert studypack.book_tiers(wh, rx, cited)[0] == list(range(10, 22))
     assert studypack.book_tiers(other, rx, cited)[0] == []  # not cited: no name in common
 
 

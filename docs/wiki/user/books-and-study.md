@@ -214,9 +214,12 @@ focus and break timer: a focus holds calls and messages and logs its minutes her
 it to another AI (any chat AI that takes file uploads) and ask it for deeper study notes. Nothing here uses your own
 AI: Kurooto only collects files and fills in the prompt.
 
-**What goes in.** The subject's folders and course map, and other notes that link to them. A note kept in another
-course's or project's folder doesn't come along just because it links this course (0.6.1: a project's book note
-that mentioned the course did); with a topic, it comes if it's about the topic.
+**What goes in.** The subject's folders and course map, other notes that link to them, and notes whose header says
+they're for it (`course: <subject>`, as handwritten notes get). A note kept in another course's or project's folder
+doesn't come along just because it links this course (0.6.1: a project's book note that mentioned the course did).
+With a topic, other notes about it come too, but not one that belongs to another subject (0.8.13): kept in its folder,
+or with `course:` or a tag naming another subject in its header, as a handwritten note for Linear Algebra that keeps
+saying "autocorrelation" would; the notes brain's finds are checked the same way.
 
 **Turn it on.** It's part of Skills: Features → Skills.
 
@@ -229,15 +232,48 @@ professors post books on Classroom too: over 80 pages, or a title with "Ch 8", "
 is a book; 40 pages or less, or a lecture, notes, slides, cheat sheet, quiz, assignment or exam paper, is class
 material. Class material always comes first: in the zip (`class/`, then `books/`, then `notes/`) and in the prompt,
 which tells the other AI to follow the class where a book disagrees. **A whole book never goes in**: it would flood
-the other AI's context. Without a topic, books are only listed in `INDEX.md`; name a topic to get their pages. A book
+the other AI's context. Without a topic, only the pages your class material cites go in (below), and other books are
+only listed in `INDEX.md`; name a topic to get their pages. A book
 Books hasn't read yet can't be cut to its pages, so it stays out too. The AI can do the same when you ask in plain
 words ("send me everything on thermodynamics for my POTA quiz").
 
-Which pages of a book go in, in order: first the readings your class material cites ("Reference: Salby Chapter 2",
-"Wallace and Hobbs Chapter 3 Section 3.2, 3.3"), then whole chapters and sections whose titles name the topic (from
-the book's own bookmarks), then other pages that mention it, those mentioning it most first. All the books together
-keep to 250 pages, about what another AI can hold at once; `INDEX.md` lists what didn't fit. Lecture files Books hasn't
-read are judged by Classroom's text of them, and a file that's both in Classroom and in your books folder goes in once.
+Which pages of a book go in, in order: first the readings your class material cites, then whole chapters and sections
+whose titles name the topic (from the book's own bookmarks), then other pages that mention it, those mentioning it most
+first. Lecture files Books hasn't read are judged by Classroom's text of them, and a file that's both in Classroom and
+in your books folder goes in once.
+
+**What the class cites (0.8.13).** Kurooto reads citations in your class material in these forms:
+
+- by name: "Reference: Salby Chapter 2", "Wallace and Hobbs Chapter 3 Section 3.2, 3.3";
+- a syllabus's abbreviations, inline: "B&D S2.3", "S&S 3.5, Ch. 4";
+- a syllabus's table with a column per book: a heading row naming the abbreviations, the codes under them.
+
+The abbreviations come from the syllabus's own list ("B&D: Brockwell & Davis (Third Ed., 2016). S&S: Shumway &
+Stoffer (Fifth Ed., 2025)."), and so do the code letters ("C: Chapter, S: Section, D: Definition, P: Paragraph, E:
+Example", "SA = section in appendix A"; those five are assumed when it gives none). Each abbreviation is matched to one
+of your books by its authors: their surnames in the book's title, even misspelt (a book titled "Tsa Brockfield Davis"
+is Brockwell & Davis), the abbreviation's letters as a word of the title ("Tsa Ss"), or the surnames on the book's
+first pages. What each code becomes:
+
+| Code | Pages |
+|---|---|
+| `C3` | chapter 3: its bookmark, else from its "Chapter 3" heading to the next chapter's |
+| `S2.3` | section 2.3: from its heading to the next heading after it (a subsection with no heading of its own, such as `S1.5.1.1`, goes as `1.5.1`) |
+| `D1.11`, `E3.2.2` | the page where "Definition 1.11" or "Example 3.2.2" is, and the next |
+| `C3 P1` | chapter 3's first two pages |
+| `SA.3` | section A.3 of the appendix |
+
+Cited pages go in whole, with or without a topic, up to `studypack.cited_pages` (400 for all the books), past the 250
+pages the books otherwise keep to. Then pages on the topic fill what's left of the 250; a book the syllabus cites gives
+those only from the chapters it's cited in (so a book cited for its section 1.2 doesn't bring its chapter on process
+control). `INDEX.md` has a **Readings the class cites** list: each citation and the pages it became ("B&D S2.3 → Tsa
+Brockfield Davis: pages 45-52"), or why it couldn't be found ("B&D E3.2.2 (Tsa Brockfield Davis): not found in the
+book's text", "no book in Books matches it"), so you can see the gaps. `studypack.cited_pages` at `0` turns this off:
+cited pages then share the 250 and come only with a topic.
+
+**A whole syllabus as the aim.** When what you type is long (over 8 topics, or 300 characters, as when you paste the
+syllabus), its words don't pick book pages, since they'd match nearly every page: the citations do, and the words only
+put the class files and notes that name the most topics first. All the subject's class files and notes go in.
 
 **Your own prompt.** `/studypack prompt` puts the prompt every pack gives the other AI into your notes
 (`kurooto/study-pack-prompt.md`) to edit; `{name}`, `{topics}`, `{aim}` and the other words listed at its top are

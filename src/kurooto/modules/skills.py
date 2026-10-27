@@ -1205,7 +1205,7 @@ class Skills(Module):
             ok and "telegram" in self.app.notifier.channels
         ):  # the prompt on its own, ready to copy (it's in the zip too)
             self.app.notify(
-                studypack.prompt_text(title, aim, info["topics"], self.app),
+                studypack.prompt_text(title, aim, info["topics"], self.app, cited=info.get("cited", False)),
                 kind="result",
                 title=f"Prompt for the {title} pack",
                 why="asked",
@@ -1231,9 +1231,10 @@ class Skills(Module):
                 )
         at = f" The zip: {zip_path} (send_file sends it again; to=drive for a Drive link)." if where and ok else ""
         if info["topics"]:
+            what = "the sections the class cites, and pages on it" if info.get("cited") else "only their pages on it"
             return (
-                f"On {', '.join(info['topics'])}: {info['class']} class files first, then {info['books']} book "
-                f"extracts (only their pages on it), and {info['notes']} notes, in one zip.{left} {said}{at}"
+                f"On {studypack.shown_topics(info['topics'])}: {info['class']} class files first, then "
+                f"{info['books']} book extracts ({what}), and {info['notes']} notes, in one zip.{left} {said}{at}"
             )
         return f"{info['notes']} notes and {info['files']} course files in one zip.{left} {said}{at}"
 

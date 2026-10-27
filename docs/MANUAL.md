@@ -3019,9 +3019,18 @@ works too.
   lecture, slides, notes, cheat sheet, quiz, assignment or exam paper, is class material. The zip has `class/`, then
   `books/`, then `notes/`, with `PROMPT.md` and `INDEX.md` (every file, and what was left out and why), and the prompt
   tells the other AI to follow the class where a book disagrees.
-- **Never a whole book:** it would flood the other AI's context. Without a topic, books are only listed in `INDEX.md`;
-  with one, only their pages on it go in. A book that [Books and PDFs](#books-and-pdfs) hasn't read yet can't be cut
+- **Never a whole book:** it would flood the other AI's context. Without a topic, only the pages the class cites go
+  in (below) and other books are only listed in `INDEX.md`; with one, only their pages on it go in. A book that [Books and PDFs](#books-and-pdfs) hasn't read yet can't be cut
   to its pages, so it stays out. Finding those pages reads Books' extracted text on this computer.
+- **What the class cites comes first (0.8.13).** A syllabus's readings, as a table with a column per book ("B&D",
+  "S&S" spelled out in its abbreviations: "B&D: Brockwell & Davis (Third Ed., 2016)") or inline ("B&D S2.3", "S&S
+  3.5", "Salby Chapter 2"), are matched to your books by their authors and go in whole, with or without a topic:
+  C3 a chapter, S2.3 a section (to the next heading), D1.11 or E3.2.2 the page of that definition or example and the
+  next, C3 P1 the chapter's opening pages, SA.3 section A.3 of the appendix. Up to `studypack.cited_pages` (400)
+  pages, past the usual 250 (`0` turns this off); then pages on the topic fill the rest of the 250, from a cited book
+  only within the chapters it's cited in. `INDEX.md` lists every citation and the pages it became, or why not ("not
+  found in the book's text"). A whole syllabus pasted as the aim goes by the citations, not its words. A note that
+  belongs to another subject (its folder, or `course:` or tags in its header) doesn't come in on the topic's words.
 - **What comes to Telegram:** the zip, then the prompt as its own message, ready to copy (it's in the zip too).
 - **Size:** Telegram takes up to 50 MB. With [Drive upload](#drive-upload) on, nothing is left out: a bigger pack comes
   as a temporary Drive link (`drive_upload.temp_days`). Without it, the zip is kept under 50 MB (notes first, then
