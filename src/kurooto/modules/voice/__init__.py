@@ -34,7 +34,16 @@ closes the conversation, notes a misfire), and the gate learning at night from h
 
 Barge-in (voice.listen.barge_in, barge.py): while Kurooto speaks, the microphone isn't dropped any more; your voice
 (Voice ID) or a stretch clearly louder than its own echo stops it at once, and what you said is then a told-off stop, a
-new turn in the same conversation, or it just listens."""
+new turn in the same conversation, or it just listens.
+
+Only someone in front of it (voice.listen.need_face, on by default; it does something only while Face presence is on
+and enrolled): a turn may be addressed, by any rule but the wake word, only when Face presence saw a face close to the
+camera (voice.listen.face_near of the owner's usual desk face height) and facing it (voice.listen.face_yaw_deg) during
+the stretch or within FACE_AFTER_S of its end (core/nearby.py keeps the times and counts only). Else it's chatter ("no
+one facing it nearby"): a roommate on a phone call across the room isn't answered. While Voice listens it holds the
+camera (Face.hold_watch, core=True), never past Face presence's own pauses; when the camera can't see,
+voice.listen.need_face_fallback says what happens: "voice" (the voice rules alone) or "none" (nothing answered by voice
+until it can). Told-off phrases are always heard; typed /voice commands never go through here."""
 
 from __future__ import annotations
 
@@ -114,6 +123,10 @@ register_defaults(
             "told_off": True,  # "stop", "not you", "never mind" right after it opened or spoke: it stops and closes
             "learn_nightly": True,  # learn at night from turns that went well or were told off (numbers only)
             "barge_in": True,  # talk over Kurooto to stop it: your voice (Voice ID) or louder than its own echo
+            "need_face": True,  # with Face presence on: answer only someone close to the camera and facing it
+            "face_near": 0.5,  # close: a face at least this share of your usual desk face height (0.5: twice as far)
+            "face_yaw_deg": 35,  # facing: turned at most this many degrees away from the camera
+            "need_face_fallback": "voice",  # the camera can't see (paused, covered, busy): voice (its rules) or none
         },
         "speaker_id": {
             "on": False,  # Voice ID: only your voice can make Kurooto act; others can only chat (enrol first)
@@ -149,6 +162,16 @@ JOB_WAIT_S = 600
 RETRY_S = 60  # a microphone that failed is tried again after this long
 ONCE_MAX_S = 60.0  # listen_once waits at most this long for speech to start
 ONCE_WORK_S = 30.0  # and this long more for a stretch it took to be written out
+# voice.listen.need_face: who's in front of it
+FACE_HOLD = "voice: who's talking"  # the camera hold's reason, shown on Face presence's card
+FACE_HOLD_S = 30.0  # each hold lasts this long (a crash can't keep the camera), renewed every FACE_RENEW_S
+FACE_RENEW_S = 10.0
+FACE_BEFORE_S = 0.5  # a frame this soon before the stretch began counts (frames come about a second apart)
+FACE_AFTER_S = 1.5  # a frame this soon after it ended counts
+FACE_SLOW_S = 2.0  # no frame in the stretch at all (3 s apart on battery): wait this much longer for one
+NO_FACE = "no one facing it nearby"
+BLIND = "the camera can't see: not answering by voice"
+FACE_FREE = ("the wake word",)  # rules a face isn't needed for (told off never opens anything, so it needs none)
 
 
 class Speaker:
@@ -323,6 +346,9 @@ class Voice(Module):
         self.barge = Barge(self)  # talking over it while it speaks: barge.py
         self._once: dict | None = None  # listen_once's hold: the next stretch goes to it, not to hear()
         self._once_lock = threading.Lock()  # one holder at a time
+        self._face_hold_at = 0.0  # (need_face) when the camera hold was last renewed; 0: not held
+        self._face_sleep = time.sleep  # (need_face) waiting for a frame; tests replace it
+        self.face_counts = {"no_face": 0, "blind": 0}  # (need_face) turns it turned down since start: counts only
 
     # ------------------------------------------------------------------------------------------- the parts
     def wants(self) -> list[str]:
@@ -398,7 +424,19 @@ class Voice(Module):
         if self.blocked_why:
             return f"{speak}; not listening: {self.blocked_why}{tail}"
         own = " or your wake word" if str(self.setting("listen.wake_word") or "").strip() else ""
-        return f"{speak}; listening here (its name{own} wakes it){tail}"
+        face = self.face_line()
+        face = f"; {face}" if face else ""
+        return f"{speak}; listening here (its name{own} wakes it){face}{tail}"
+
+    def face_line(self) -> str:
+        """(need_face) "" when it doesn't apply; else whether the camera sees, and the fallback when it can't."""
+        state, why = self.face_gate()
+        if state == "off":
+            return ""
+        if state == "on":
+            return "answers only someone facing it"
+        rules = "using voice rules" if self._fallback() == "voice" else "not answering by voice"
+        return f"needs a face: camera paused ({why}), {rules}" if why else f"needs a face: camera not looking, {rules}"
 
     def learned_line(self) -> str:
         """(0.8.13) What the gate learned, numbers only ("" with nothing learned or learn_nightly off)."""
@@ -506,6 +544,7 @@ class Voice(Module):
 
             self.parts.importable()
             player = Player.detect()
+        face_state, face_why = self.face_gate()
         return {
             "on": self.app.is_on(self.id),
             **self.last_state,
@@ -550,6 +589,15 @@ class Voice(Module):
             },
             "learned": {**self.learner.status(), "on": bool(s("listen.learn_nightly")), "misfires_now": self.misfires},
             "barge_in": {"on": bool(s("listen.barge_in")), "since_start": self.barge.count},
+            "need_face": {  # (0.8.13) words and counts only
+                "on": bool(s("listen.need_face")),
+                "state": face_state,
+                "why": face_why,
+                "fallback": self._fallback(),
+                "held": bool(self._face_hold_at),
+                "seen_s": self._face_seen_s(),  # seconds since a face close and facing it was last seen
+                **self.face_counts,
+            },
         }
 
     def shape(self, text: str) -> dict:
@@ -722,6 +770,7 @@ class Voice(Module):
         if d.why == TOLD_OFF:
             self._told_off(h, audio)
             return None
+        d = self.face_check(h, d)
         self.heard[d.klass] = self.heard.get(d.klass, 0) + 1
         if not d.addressed:
             self._heard_wave(audio)
@@ -780,6 +829,103 @@ class Voice(Module):
             if p.open and p.last_who:  # the voice it answered last, and that opened the talk
                 ctx.same_speaker = who.decision == p.last_who and who.decision == p.opener
 
+    # ------------------------------------------------------------------- need_face: only someone in front of it
+    def _face(self):
+        """Face presence, when need_face applies: the switch on, Face presence on and enrolled. Else None."""
+        if not self.setting("listen.need_face") or not self.app.is_on("face"):
+            return None
+        face = self.app.modules.get("face")
+        try:
+            return face if face is not None and face.enrolled() and not face.reenrol_needed() else None
+        except Exception:
+            return None
+
+    def face_gate(self) -> tuple[str, str]:
+        """("off", "") need_face doesn't apply (the voice rules as before); ("on", "") the camera may look;
+        ("blind", why) Face presence is paused or the camera can't be used (why: its pause reason)."""
+        face = self._face()
+        if face is None:
+            return "off", ""
+        try:
+            why = face.pause_reason()
+        except Exception:
+            why = "Face presence can't say"
+        return ("blind", why) if why else ("on", "")
+
+    def _face_seen_s(self) -> float | None:
+        at = nearby.last_facing(self.app)
+        return None if at is None else round(time.monotonic() - at, 1)
+
+    def _fallback(self) -> str:
+        how = str(self.setting("listen.need_face_fallback") or "voice").strip().lower()
+        return "none" if how == "none" else "voice"
+
+    def face_check(self, h: Heard, d: Decision) -> Decision:
+        """An addressed turn stays addressed only when a face close to the camera and facing it was seen during the
+        stretch or within FACE_AFTER_S of its end (core/nearby.py); else it's chatter. The wake word needs no face,
+        and neither does the request right after it. When the camera can't see: need_face_fallback."""
+        if not d.addressed or d.why in FACE_FREE:
+            return d
+        if d.why == "right after it was called" and self.portal.opened_why in FACE_FREE:
+            return d
+        state, _why = self.face_gate()
+        if state == "off":
+            return d
+        if state == "on":
+            end = h.ended_at if h.ended_at is not None else time.monotonic()
+            lo, hi = end - max(float(h.seconds or 0), 0.0) - FACE_BEFORE_S, end + FACE_AFTER_S
+            while True:
+                looked, ok = nearby.facing(self.app, lo, hi)
+                limit = hi
+                if not looked:  # no frame in the stretch yet: a slow camera gets a little longer
+                    limit = hi + FACE_SLOW_S
+                    looked, ok = nearby.facing(self.app, lo, limit)
+                if ok:
+                    return d
+                left = limit - time.monotonic()
+                if left <= 0:
+                    break
+                self._face_sleep(min(0.1, left))
+            if looked:
+                self.face_counts["no_face"] += 1
+                return self._not_to_it(d, NO_FACE)
+        if self._fallback() == "voice":  # paused, busy, covered, or no frame came: the voice rules alone
+            return d
+        self.face_counts["blind"] += 1
+        return self._not_to_it(d, BLIND)
+
+    @staticmethod
+    def _not_to_it(d: Decision, why: str) -> Decision:
+        out = Decision(CHATTER, 0.9, why, d.name, d.where, d.careful)
+        out.feats = dict(d.feats)
+        return out
+
+    def _face_hold(self) -> None:
+        """(need_face) While Voice listens, keep Face presence's camera looking (renewed); released otherwise."""
+        face = self._face()
+        listening = self.listener is not None and self.listener.running() and not self.blocked_why
+        if face is None or not listening:
+            self._face_release()
+            return
+        now = time.monotonic()
+        if not self._face_hold_at or now - self._face_hold_at >= FACE_RENEW_S:
+            try:
+                held = face.hold_watch(FACE_HOLD, FACE_HOLD_S, core=True)
+            except Exception:
+                held = False
+            self._face_hold_at = now if held else 0.0
+
+    def _face_release(self) -> None:
+        if not self._face_hold_at:
+            return
+        self._face_hold_at = 0.0
+        face = self.app.modules.get("face")
+        if face is not None:
+            try:
+                face.release_watch(FACE_HOLD)
+            except Exception:
+                pass
+
     def _went_well(self, who) -> None:
         """An addressed turn in the same conversation, from the same voice: the turn before it went well (a row
         labelled 1), and a face-confirmed one may now refine the voice print (voiceid.learn_face)."""
@@ -819,7 +965,7 @@ class Voice(Module):
         if not p.close("told off"):
             p.state("listening", "told off")
 
-    def barge_turn(self, pcm: bytes, flags: bytes, how: dict) -> str | None:
+    def barge_turn(self, pcm: bytes, flags: bytes, how: dict, ended_at: float | None = None) -> str | None:
         """(barge.py) A stretch that talked over Kurooto; it has already stopped speaking. Written out here, then: a
         told-off phrase -> the told-off path (no reply); a question or a request -> a new turn in the same
         conversation (the chat's context carries); anything else -> it listens, the conversation open for
@@ -830,7 +976,7 @@ class Voice(Module):
         self.speaker.stop()  # already stopped; a piece that slipped through is ended too
         seconds = len(pcm) / 32000
         speech_s = sum(1 for f in flags if f) * 512 / 16000 if flags else seconds
-        h = Heard(speech=True, seconds=seconds, speech_s=speech_s)
+        h = Heard(speech=True, seconds=seconds, speech_s=speech_s, ended_at=ended_at)
         h.text = self._write_out(pcm)
         g = self.gate()
         self._pending = None  # the interrupted turn: how it went isn't known, nothing learned from it
@@ -851,7 +997,13 @@ class Voice(Module):
                     who = Verdict(OWNER, barge_mod.OWN_WHY, how.get("score"), speech_s)
                 else:  # never learned from: its own voice may be in it
                     who = vid.check(pcm, speech_s, adapt=False)
-            if said and asks(said):
+            d = self.face_check(h, Decision(ADDRESSED, 0.9, "barged in")) if said and asks(said) else None
+            if d is not None and not d.addressed:  # (need_face) nobody in front of it: chatter, the talk closes
+                outcome = "no face"
+                self.heard[CHATTER] = self.heard.get(CHATTER, 0) + 1
+                h.text = ""
+                self.portal.take(h, d)
+            elif d is not None:
                 outcome = "turn"
                 self.heard[ADDRESSED] = self.heard.get(ADDRESSED, 0) + 1
                 if who is not None:
@@ -1037,6 +1189,7 @@ class Voice(Module):
                 if s is not None and self.muted():  # mute ends an enrolment
                     s.command("stop")
                 self.portal.tick()
+                self._face_hold()
                 try:
                     await asyncio.wait_for(stop.wait(), timeout=1)
                 except TimeoutError:
@@ -1088,6 +1241,7 @@ class Voice(Module):
         self.portal.state("addressed" if self.portal.open else "listening")
 
     def _stop_listening(self, why: str) -> None:
+        self._face_release()
         if self.listener is not None:
             self.listener.stop()
             self.listener = None
@@ -1105,12 +1259,13 @@ class Voice(Module):
     ) -> None:
         """From the listener's thread: queued for writing out (the oldest dropped when it can't keep up). barge: the
         stretch talked over Kurooto (barge.py), with how it was noticed."""
+        ended = time.monotonic()  # (need_face) when the stretch ended: the face must be seen around then
         try:
-            self._work.put_nowait((pcm, woke, seconds, flags, barge))
+            self._work.put_nowait((pcm, woke, seconds, flags, barge, ended))
         except queue.Full:
             try:
                 self._work.get_nowait()
-                self._work.put_nowait((pcm, woke, seconds, flags, barge))
+                self._work.put_nowait((pcm, woke, seconds, flags, barge, ended))
             except (queue.Empty, queue.Full):
                 pass
 
@@ -1118,17 +1273,25 @@ class Voice(Module):
         while True:
             self._work_one(*self._work.get())
 
-    def _work_one(self, pcm: bytes, woke: bool, seconds: float, flags: bytes = b"", barge: dict | None = None) -> None:
+    def _work_one(
+        self,
+        pcm: bytes,
+        woke: bool,
+        seconds: float,
+        flags: bytes = b"",
+        barge: dict | None = None,
+        ended: float | None = None,
+    ) -> None:
         """One stretch from the listener: a barge-in goes to barge_turn(); an add-on's listen_once takes it while it
         holds, else hear()."""
         try:
             slot = self._once
             if barge is not None:
-                self.barge_turn(pcm, flags, barge)
+                self.barge_turn(pcm, flags, barge, ended)
             elif slot is not None and not slot["done"].is_set():
                 self._take_once(slot, pcm, seconds, flags)
             else:
-                self.hear(Heard(speech=True, wake=woke, seconds=seconds), pcm, flags)
+                self.hear(Heard(speech=True, wake=woke, seconds=seconds, ended_at=ended), pcm, flags)
         except Exception as e:
             self.app.events.emit("voice_failed", part="hearing", error=f"{type(e).__name__}"[:100])
         finally:

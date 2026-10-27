@@ -135,9 +135,10 @@ Mic (sounddevice | pw-record | parec), 16 kHz mono, 512-sample frames
        wake word (only with your own openWakeWord .onnx, 1280-sample steps) -> woke_at
        Silero VAD per frame: start >= 0.5, end after 700 ms < 0.35, max 15 s; 320 ms pre-roll (a deque in memory)
   -> Voice._heard_audio: queue (max 3, oldest dropped)
-  -> worker thread "voice-hear": Voice.hear(Heard(speech, wake, seconds), pcm)
+  -> worker thread "voice-hear": Voice.hear(Heard(speech, wake, seconds, ended_at), pcm)
        blocked()? drop.  Whisper.text(pcm) (CPU, int8; the assistant's name as initial_prompt and hotwords) -> del pcm
        Gate.decide(heard, portal.context())
+       told off -> _told_off(); else face_check() (need_face: a face close and facing, or chatter)
        not addressed: heard.text = "" (dropped), its loudness outline -> voice_heard, portal.take() closes an open portal
        addressed: NameMatcher.uncall() (the call isn't sent); portal.take(heard, decision, text) -> ask_brain(text) -> Speaker.say(reply)
 ```
@@ -194,6 +195,25 @@ from the switches, `Speaker.holding()`, `core/nearby.py:view()` and Voice ID's v
 - **the learned veto**, after all: `Gate(veto=Learner.veto)` (with learn_nightly) is asked about an addressed decision
   only when `borderline(d)`: rule 4 by a near miss, rule 7, the conversation going on, rule 9. True -> chatter, why
   `VETOED`. Never its name first with its own or a known spelling (the cap).
+
+- **only someone in front of it** (`voice.listen.need_face`, after the gate, in `Voice.face_check(h, d)`; the gate
+  itself knows nothing of faces): applies only while `Voice._face()` finds the switch on and Face presence on, enrolled
+  and not needing re-enrolment. An addressed decision (any rule, and `barge_turn`'s "barged in"), except `FACE_FREE`
+  ("the wake word") and "right after it was called" when the portal's `opened_why` is the wake word, needs a frame in
+  `[ended_at - seconds - FACE_BEFORE_S (0.5), ended_at + FACE_AFTER_S (1.5)]` with `facing > 0`
+  (`core/nearby.py:facing(app, since, until) -> (frames, frames_with_one)`). `Heard.ended_at` is stamped in
+  `_heard_audio` (monotonic, when the listener handed the stretch over); None means "now". Before the window ends it
+  polls every 0.1 s (`_face_sleep`); with no frame in the window at all it waits up to `FACE_SLOW_S` (2 s) longer for
+  one. Frames but none close and facing -> chatter, why `NO_FACE` ("no one facing it nearby"), `face_counts.no_face`.
+  `face_gate()` -> `("blind", pause_reason)` (Face presence paused, busy, covered ...) or no frame at all -> the
+  fallback: `need_face_fallback` "voice" keeps the decision, "none" -> chatter, why `BLIND`, `face_counts.blind`. Told
+  off is decided before this, so it never needs a face. `_not_to_it` keeps `feats`; the turn then takes the usual
+  not-addressed path (dropped, closes the portal, counts as chatter for careful calls).
+- **the hold**: `Voice.background()` calls `_face_hold()` each second: while listening (listener running, not
+  `blocked_why`) and `_face()`, `Face.hold_watch(FACE_HOLD, FACE_HOLD_S=30, core=True)` renewed every
+  `FACE_RENEW_S` (10 s); else, and in `_stop_listening`, `_face_release()` -> `release_watch(FACE_HOLD)`. `core=True`
+  isn't subject to `face.addons.hold` ([face.md](face.md)). `line()` adds `face_line()`; `status()["need_face"]` has
+  `{on, state, why, fallback, held, seen_s, no_face, blind}` (words and counts).
 
 `Decision` carries `name` (exact/known/near), `where`, `careful` and `feats` (`features()`: rule, name flags, where,
 voices, speaker, score, since_chatter_s, faces, careful; never words).

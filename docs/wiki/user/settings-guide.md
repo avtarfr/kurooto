@@ -43,7 +43,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
 - [Brain](#brain): 91 settings
-- [Voice and voice notes](#voice-and-voice-notes): 54 settings
+- [Voice and voice notes](#voice-and-voice-notes): 58 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
@@ -5833,6 +5833,59 @@ memory as for any stretch, and the event says only how it was noticed and what c
 - **Values:** `true` (default), `false` (the microphone is dropped while it speaks, as before; /voice stop still stops
   it). **Default:** on.
 - **When to change it:** Turn it off if Kurooto stops for the TV or other people talking loudly near it while it speaks.
+
+### `voice.listen.need_face`
+
+Answer only someone in front of it: a face close to the camera and facing it while they speak.
+
+With Face presence on and enrolled, a turn is answered only when the camera saw a face close to it
+(voice.listen.face_near) and facing it (voice.listen.face_yaw_deg) while it was said or within about 1.5 seconds after.
+Anything else, by any rule (its name, a follow-up, the local model's judgement, cutting in), is chatter: someone on a
+phone call across the room, the TV, a person talking to you from the door. The wake word and the told-off phrases
+("stop", "never mind") work without a face, and typed /voice commands are never affected. While Voice listens it keeps
+Face presence's camera looking (its card says "voice: who's talking"), never past Face presence's own pauses: a call, a
+locked screen, /face pause, the night, a busy or covered camera; then voice.listen.need_face_fallback decides. Only the
+time of each look and how many faces were close and facing are kept, in memory: no picture, no face numbers. With Face
+presence off or not enrolled this does nothing.
+
+- **Values:** `true` (default), `false` (the voice rules alone, as before). **Default:** on.
+- **When to change it:** Turn it off if you often talk to Kurooto from across the room or without looking at the screen.
+- **Costs and what leaves this computer:** The camera's light stays on while Voice listens, and a little processor time;
+  on Linux a video call app can't use the camera then (/voice mute or /face pause frees it).
+- **Depends on:** Face presence on and enrolled; Voice listening.
+
+### `voice.listen.face_near`
+
+How close counts: a face at least this share of your usual face height at the desk (0.5 is about twice as far).
+
+Your usual height comes from Face presence's recent sightings of you at the desk (or your enrolment). Until it knows, a
+face at least face.recognise.min_face_px tall counts.
+
+- **Values:** A number from 0.1 to 1. **Default:** `0.5`.
+- **When to change it:** Lower it if it ignores you when you lean back or sit further away; raise it if it answers
+  people across the room.
+- **Depends on:** `voice.listen.need_face`.
+
+### `voice.listen.face_yaw_deg`
+
+How directly someone must face the camera: turned at most this many degrees away (an estimate).
+
+- **Values:** Degrees, 10 to 80. **Default:** `35`.
+- **When to change it:** Raise it if it ignores you when you glance at a second screen; lower it if it answers people
+  talking side-on.
+- **Depends on:** `voice.listen.need_face`.
+
+### `voice.listen.need_face_fallback`
+
+What happens when the camera can't see (paused, covered, busy, no camera): the voice rules alone, or nothing.
+
+`voice`: it answers by the voice rules alone, as without voice.listen.need_face. `none`: nothing is answered by voice
+until the camera can see again; the wake word and "stop" still work. /voice and /health say which applies now ("needs a
+face: camera paused (screen locked), using voice rules").
+
+- **Values:** `voice` (default) or `none`. **Default:** `voice`.
+- **When to change it:** Pick `none` if being answered when nobody's there is worse than not being answered.
+- **Depends on:** `voice.listen.need_face`.
 
 ### `voice.listen.learn_nightly`
 

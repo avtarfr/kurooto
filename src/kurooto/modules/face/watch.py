@@ -444,8 +444,11 @@ class Watcher:
                 judged[best_i] = True
             self._update_tracks(now, faces, self.frames.size(frame), judged)
         n_faces = sum(1 for f in faces if f.score >= SCORE_OTHER)
-        # (0.8.13) for Voice ID's face assist: how many faces, and whether the only one is the owner's
-        self.emit("view", faces=n_faces, owner_alone=best is not None and n_other == 0)
+        # (0.8.13) for Voice ID's face assist: how many faces, and whether the only one is the owner's; and for
+        # voice.listen.need_face each face's height (pixels) and yaw, numbers that say how close it is and where it
+        # looks, never who (Face.close_facing counts the close and facing ones and drops these with the frame)
+        sizes = [(float(f.height), _yaw(f)) for f in faces if f.score >= SCORE_OTHER]
+        self.emit("view", faces=n_faces, owner_alone=best is not None and n_other == 0, sizes=sizes)
         others = n_faces >= 2
         if others != self.others or others:  # while it lasts, every frame refreshes it (core/nearby.py's STALE_S)
             self.others = others
@@ -583,6 +586,14 @@ def _shown(tr: Track, fw: int, fh: int) -> dict:
     """One face in "faces": its track id, centre (-1..1, the camera's own picture), height's share, owner flag, m."""
     x, y = round(tr.cx / fw * 2 - 1, 3), round(tr.cy / fh * 2 - 1, 3)
     return {"id": tr.id, "x": x, "y": y, "h": round(tr.h / fh, 4), "owner": tr.owner, "m": round(tr.m, 3)}
+
+
+def _yaw(f) -> float | None:
+    """vision.pose's yaw, or None when the landmarks can't give one (then the face doesn't count as facing it)."""
+    try:
+        return round(pose(f).yaw, 3)
+    except Exception:
+        return None
 
 
 def _person(f, size: tuple[int, int]) -> dict:
