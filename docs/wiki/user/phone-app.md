@@ -58,8 +58,8 @@ From 0.8.10 the app opens on **Chat**, with four more panes beside it: **Today**
 
 **Switches** (0.7.2; since 0.8.10 in **Settings → Calls** and **Settings → Look**): **Connect straight to your call line** (on; off: calls and messages come through
 ntfy.sh only, as before 0.7.0) and **Moving background** (on; off: a still picture, as with Android's "Remove
-animations"). Since 0.7.5 two more: **Vivid colours** (on: a fuller, more colourful scheme made from your wallpaper's colour, with
-tinted cards; off: Android's own quieter colours) and **Floating bar** (on: the panes are a rounded bar floating over the page, the
+animations"). Since 0.7.5 two more: **Vivid colours** (on: a fuller, more colourful scheme in your wallpaper's own colours (0.8.10: before, it could turn
+them into other hues), with tinted cards; off: Android's own quieter colours) and **Floating bar** (on: the panes are a rounded bar floating over the page, the
 open one in a filled pill; off: the bar sits on the bottom edge as before). Views is off until you turn it on in the dashboard → Phone.
 Since 0.8.7: **New call screen** (on: the ringing screen and the call in the new style, below; off: the call screen from before
 0.8.7, kept while the new one gets used for real calls).

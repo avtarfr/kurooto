@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.10 (unreleased)
+## 0.8.10 (2026-10-27)
 
 The phone app, rebuilt around chat (the Rail design), and the remaining requested features.
 
@@ -21,7 +21,7 @@ The phone app, rebuilt around chat (the Rail design), and the remaining requeste
 - **The being, in faint organic colour** on the dashboard too, and its eyes look at you when Face presence sees you.
 - **Brain console** (Alt+O, and Brain in the app's Views): what the Brain decided and why, its timeline, search, each
   part's switches next to what it's doing, its beliefs, plans and experiments (`mind.console.on`, `calls.views_brain`).
-- **A guide to every setting** (765 entries, on the wiki, the dashboard and in the app), with a tooltip for each one.
+- **A guide to every setting** (767 entries, on the wiki, the dashboard and in the app), with a tooltip for each one.
 - **Uninstall what a feature brought:** Kurooto keeps a receipt of what it installs; `kurooto installed`,
   `kurooto remove`, and turning a feature off offers to remove what it brought, with its size, never without your tap
   and never what was there before Kurooto (`uninstall.offer`, `uninstall.with_programs`).
@@ -38,6 +38,9 @@ The phone app, rebuilt around chat (the Rail design), and the remaining requeste
   your conversation for as long as it's there. How often it's wrong, measured on 146 recorded speakers, is on the Voice
   page (`tools/voiceid_eval.py`).
 - The remaining older phone screens (questions, quick note, share, places) are Compose sheets in the same style.
+- **Calmer motion and your wallpaper's colours:** the app's animations are slower and settle without a bounce, and
+  Vivid colours now keeps your wallpaper's own hues (it used to turn them into others: a blue wallpaper gave green and
+  purple cards). Pane titles no longer turn black on a dark background.
 - For developers: `KUROOTO_NO_DESKTOP=1` keeps a scratch run off the real desktop.
 - Fixed: after one Claude account hit its limit, signing in to another one in Claude Code still got "Claude hit its
   limit" until the first one's reset. A limit now belongs to the account that hit it (only a hash of its id is kept).
