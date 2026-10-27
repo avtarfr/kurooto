@@ -155,6 +155,11 @@ tip = "Being talked to is a small reward for Brain (at most 0.2 a day; nothing f
 when = "Turn it off if talking to it shouldn't count for anything."
 needs = "`mind.budget.on`."
 
+[s."mind.talk.met"]
+tip = "An add-on's chat with someone in the room is a smaller reward for Brain (at most 0.05 a day, 6 meetings)."
+when = "Turn it off if meeting people shouldn't count for anything."
+needs = "`mind.talk.on`, and an add-on that reports meetings."
+
 [s."mind.feelings.on"]
 tip = "Brain's states about specific things (uneasy, relieved…) and what they make it do inwardly."
 when = "Turn it off to drop feelings; outward behaviour still passes the gate either way."

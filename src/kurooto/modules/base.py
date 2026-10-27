@@ -34,7 +34,7 @@ class Incoming:
     # who said it, when a channel can tell: "owner", "guest" or "unsure" (Voice ID); "" = not checked. Typed channels
     # are the paired owner's and leave it "": only Voice sets it, and only with voice.speaker_id.on
     speaker: str = ""
-    speaker_by: str = ""  # what decided it: "voice" (a face part may add "face")
+    speaker_by: str = ""  # what decided it: "voice" (a face part may add "face"; "addon": an add-on's guest chat)
 
     def reply(self, text: str, buttons: list | None = None) -> Any:
         buttons = buttons if buttons is not None else getattr(text, "buttons", None)  # an Answer brings its own

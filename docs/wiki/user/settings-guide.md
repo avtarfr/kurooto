@@ -42,15 +42,15 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 49 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
-- [Brain](#brain): 89 settings
-- [Voice and voice notes](#voice-and-voice-notes): 42 settings
+- [Brain](#brain): 90 settings
+- [Voice and voice notes](#voice-and-voice-notes): 44 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
 - [Dashboard and terminal](#dashboard-and-terminal): 22 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 26 settings
-- [Face presence](#face-presence): 29 settings
+- [Face presence](#face-presence): 31 settings
 
 ## You and how it talks to you
 
@@ -4754,6 +4754,14 @@ Being talked to is a small reward for Brain (at most 0.2 a day; nothing for answ
 - **When to change it:** Turn it off if talking to it shouldn't count for anything.
 - **Depends on:** `mind.budget.on`.
 
+### `mind.talk.met`
+
+An add-on's chat with someone in the room is a smaller reward for Brain (at most 0.05 a day, 6 meetings).
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if meeting people shouldn't count for anything.
+- **Depends on:** `mind.talk.on`, and an add-on that reports meetings.
+
 ### `mind.feelings.on`
 
 Brain's states about specific things (uneasy, relieved…) and what they make it do inwardly.
@@ -5655,6 +5663,32 @@ The speaker model: campplus-en (English, the most accurate) or campplus-multi. C
 
 - **Values:** `campplus-en`, `campplus-multi`. **Default:** `campplus-en`.
 - **When to change it:** Pick campplus-multi if you speak to Kurooto mostly in another language.
+
+### `voice.addons.listen`
+
+Let an add-on take one stretch of speech at a time through the microphone (written out here, never sent).
+
+An add-on may ask for the next thing said, by any voice, while Kurooto is listening: it's written out on this computer
+and handed to that add-on only, never to the gate, the conversation or your AI. Mute, the night, calls and every other
+pause still stop it, and it never takes a conversation that's open with you.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep add-ons from hearing anything.
+- **Depends on:** `voice.listen.on`, and an add-on that uses it.
+
+### `voice.addons.chat`
+
+Let an add-on have Kurooto chat with someone who isn't you, the guest way: no tools, none of your data.
+
+The add-on's chat goes through the same sealed path as another voice's (Voice ID's guests): text only, no tools, none of
+your notes, memory or history, refusals for commands and your things, and the hourly guest limit.
+voice.speaker_id.guest_brain picks who answers.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep add-ons from starting chats.
+- **Costs and what leaves this computer:** One AI turn per reply, from your main AI or this computer's model
+  (voice.speaker_id.guest_brain).
+- **Depends on:** An add-on that uses it.
 
 ### `voice.speaker_id.spoken_enrol`
 
@@ -6710,6 +6744,32 @@ When someone else is in view too: skip the greeting, say just "Welcome back.", o
 
 - **Values:** `skip`, `short`, `full`. **Default:** `skip`.
 - **When to change it:** Leave it on skip so your day isn't read out in front of others.
+
+### `face.addons.watch`
+
+Let an add-on see who's in view: each face's place, size and numbers, in memory only, never a picture.
+
+An add-on gets every face in each frame Face presence already looks at: where it is, how big, which way it's turned,
+whether it's you, someone else or unsure, and its numbers (kept by the add-on only if it says so). With no add-on
+asking, nothing is worked out for it.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep add-ons from seeing faces at all.
+- **Depends on:** An add-on that uses it; Face presence watching (every pause still applies).
+
+### `face.addons.hold`
+
+Let an add-on keep the camera looking while you type (never past a pause, the night, a call or a switch).
+
+Normally the camera closes while you use the keyboard and mouse. An add-on may ask it to keep looking, for at most 10
+minutes at a time unless it asks again; the Face card and /face then say which add-on and why. Every pause reason still
+comes first. While it looks, other programs (a video call) can't use the camera on Linux.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if the camera's light on while you type bothers you, or you want the camera free
+  for calls.
+- **Costs and what leaves this computer:** The camera's light on, and a little processor time, while an add-on holds it.
+- **Depends on:** An add-on that uses it; Face presence watching.
 
 ### `face.learn.on`
 

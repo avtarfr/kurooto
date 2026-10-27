@@ -6,6 +6,9 @@ face is a small encrypted template, a stranger's face is dropped with the frame,
 cost = "A little processor time while it watches (about 1-3% of one core), and the camera's light on while it looks."
 needs = "The Face presence feature, a camera, and Voice speaking for the greeting."
 
+[parent."face.addons"]
+tip = "What add-ons may do with Face presence: see who's in view, and keep the camera looking while you type."
+
 [parent."face.away"]
 tip = "Notice when you leave the desk, and hold what Kurooto would start by itself until you're back."
 
@@ -91,6 +94,23 @@ when = "Shorten it if it keeps listening longer than you'd like."
 tip = "When someone else is in view too: skip the greeting, say just \"Welcome back.\", or the full greeting."
 values = "`skip`, `short`, `full`."
 when = "Leave it on skip so your day isn't read out in front of others."
+
+[s."face.addons.watch"]
+tip = "Let an add-on see who's in view: each face's place, size and numbers, in memory only, never a picture."
+what = """An add-on gets every face in each frame Face presence already looks at: where it is, how big, which way it's
+turned, whether it's you, someone else or unsure, and its numbers (kept by the add-on only if it says so). With no
+add-on asking, nothing is worked out for it."""
+when = "Turn it off to keep add-ons from seeing faces at all."
+needs = "An add-on that uses it; Face presence watching (every pause still applies)."
+
+[s."face.addons.hold"]
+tip = "Let an add-on keep the camera looking while you type (never past a pause, the night, a call or a switch)."
+what = """Normally the camera closes while you use the keyboard and mouse. An add-on may ask it to keep looking, for at
+most 10 minutes at a time unless it asks again; the Face card and /face then say which add-on and why. Every pause
+reason still comes first. While it looks, other programs (a video call) can't use the camera on Linux."""
+when = "Turn it off if the camera's light on while you type bothers you, or you want the camera free for calls."
+cost = "The camera's light on, and a little processor time, while an add-on holds it."
+needs = "An add-on that uses it; Face presence watching."
 
 [s."face.learn.on"]
 tip = "Slowly refine your face template from times it was very sure it was you (never unsure ones), with Undo."

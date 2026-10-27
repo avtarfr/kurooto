@@ -225,6 +225,30 @@ def test_talk_math_alone():
     assert talk.rejected(st, T0 + 800) == pytest.approx(-0.6)
 
 
+def test_meeting_someone_pays_a_little_from_its_own_budget(keeper):
+    """0.8.12: an add-on's talk_met pays q times its step of MET_W (1 - exp(-m / MET_K)), the first MET_MAX a day,
+    under 0.05 in all; focus, asleep, exams and q = 0 pay nothing; values and the talk count don't move."""
+    assert talk.MET_W <= 0.05 and talk.MET_MAX == 6
+    rs = [keeper.append("talk_met", {"quality": 1.0, "flags": {}}, T0 + i * 60)["r"] for i in range(20)]
+    assert 0 < sum(rs) < talk.MET_W and sum(rs) == pytest.approx(talk.met_total(talk.MET_MAX), abs=1e-6)
+    assert all(r == 0.0 for r in rs[talk.MET_MAX :]) and rs[0] > rs[1] > 0
+    half = keeper.append("talk_met", {"quality": 0.5, "flags": {}}, T0 + 86400 + 60)["r"]  # a new day
+    assert half == pytest.approx(0.5 * rs[0], abs=1e-6)
+    cases = [
+        ({"quality": 0.0, "flags": {}}, "no talk"),
+        ({"quality": 1.0, "flags": {"focus": True}}, "focus"),
+        ({"quality": "lots", "flags": {}}, "no talk"),
+        ({"quality": 9e9, "flags": {}}, "no talk"),
+    ]
+    for body, why in cases:
+        out = keeper.append("talk_met", body, T0 + 86400 + 120)
+        assert out["r"] == 0.0 and out["why"] == why, body
+    rows = [r for r in keeper.log.read() if r.kind == "talk_reward" and r.body["what"] == "met"]
+    assert rows and all(set(r.body) == {"what", "r", "n", "why"} for r in rows)
+    assert keeper.score.get("vars", "talk")["meta"]["n"] == 0 and keeper.score.get("values", "V:x") is None
+    assert talk.met({}, T0, float("nan"), {}) == (0.0, "no talk")
+
+
 def test_the_shadow_period_and_ranking():
     assert values.in_shadow(T0 + 86400, T0) and not values.in_shadow(T0 + 22 * 86400, T0)
     assert values.rank(["a", "b", "c"], {"b": 0.4, "c": 0.1}) == ["b", "c", "a"]

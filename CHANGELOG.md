@@ -1,10 +1,18 @@
 # Changelog
 
-## 0.8.11 (unreleased)
+## 0.8.12 (unreleased)
 
+- **Hooks for add-ons in Face presence, Voice and Brain.** An add-on can see who's in view (each face's place, size
+  and whether it's you, in memory only) and keep the camera looking while you type, take one thing said through the
+  microphone (written out here, never sent), have Kurooto chat with someone the guest way (no tools, none of your
+  data), and give Brain a small capped reward for a good conversation. Every pause and mute still applies; switches
+  `face.addons.watch`, `face.addons.hold`, `voice.addons.listen`, `voice.addons.chat`, `mind.talk.met`.
 - **Voice: the waveform shows speech that wasn't for Kurooto too.** People talking to each other and noise now move
   the dashboard's waveform as well, as their loudness only: no words ever reach the page. `voice.listen.levels`
   turns it off with the live levels.
+
+## 0.8.11 (unreleased)
+
 - **Voice ID: Set up from its own page.** With Voice ID on but its files not downloaded yet, the Your voice page
   said to go to the dashboard; it now has a **Set up now** button that downloads them there and shows the progress.
 - **Face presence: the near step can be finished.** Sitting close to a laptop's camera, leaning in pushed your chin

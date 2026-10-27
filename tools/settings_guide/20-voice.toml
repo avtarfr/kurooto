@@ -7,6 +7,9 @@ Gemini."""
 cost = "Sound is handled on this computer and never touches the disk. Only turns said to Kurooto go to your AI, as a chat message would."
 needs = "The Voice feature."
 
+[parent."voice.addons"]
+tip = "What add-ons may do with Voice: hear one stretch of speech, and chat with someone the guest way."
+
 [parent."voice.speak"]
 tip = "How Kurooto speaks through this computer's speakers."
 [parent."voice.listen"]
@@ -214,6 +217,23 @@ when = "Lower it to make the voice print change more slowly."
 tip = "The speaker model: campplus-en (English, the most accurate) or campplus-multi. Changing it means enrolling again."
 values = "`campplus-en`, `campplus-multi`."
 when = "Pick campplus-multi if you speak to Kurooto mostly in another language."
+
+[s."voice.addons.listen"]
+tip = "Let an add-on take one stretch of speech at a time through the microphone (written out here, never sent)."
+what = """An add-on may ask for the next thing said, by any voice, while Kurooto is listening: it's written out on
+this computer and handed to that add-on only, never to the gate, the conversation or your AI. Mute, the night, calls
+and every other pause still stop it, and it never takes a conversation that's open with you."""
+when = "Turn it off to keep add-ons from hearing anything."
+needs = "`voice.listen.on`, and an add-on that uses it."
+
+[s."voice.addons.chat"]
+tip = "Let an add-on have Kurooto chat with someone who isn't you, the guest way: no tools, none of your data."
+what = """The add-on's chat goes through the same sealed path as another voice's (Voice ID's guests): text only, no
+tools, none of your notes, memory or history, refusals for commands and your things, and the hourly guest limit.
+voice.speaker_id.guest_brain picks who answers."""
+when = "Turn it off to keep add-ons from starting chats."
+cost = "One AI turn per reply, from your main AI or this computer's model (voice.speaker_id.guest_brain)."
+needs = "An add-on that uses it."
 
 [s."voice.speaker_id.spoken_enrol"]
 tip = "During enrolment Kurooto says each step aloud. Off: the page shows the steps only."

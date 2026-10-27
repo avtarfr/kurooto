@@ -793,3 +793,120 @@ def test_a_guest_s_request_is_blanked_once_voice_has_its_answer(vid, monkeypatch
     monkeypatch.setattr(v, "_wait_job", lambda msg: "Sure.")
     v.ask_brain("what's due?", vid.check(sound(1, 7)[0], 3.0))  # the owner's: kept as always
     assert forgot == ["jguest1"]
+
+
+# ------------------------------------------------------------------------------- hooks for add-ons (0.8.12)
+@pytest.fixture
+def once(voice, monkeypatch):
+    """Listening (a fake listener that says it runs), a fake transcriber and a fake voice model."""
+    from types import SimpleNamespace
+
+    from tests.unit.test_voiceid import FakeEmbedder
+
+    voice.listener = SimpleNamespace(running=lambda: True, stop=lambda: None, error="")
+    stt = Stt()
+    monkeypatch.setattr(voice, "stt", lambda: stt)
+    voice.voiceid.embed_fn = FakeEmbedder()
+    voice.stt_fake = stt
+    return voice
+
+
+def held_listen(v, timeout=5.0):
+    """listen_once on a thread of its own, as an add-on calls it; returns (thread, result list) once it holds."""
+    import threading
+    import time
+
+    out = []
+    th = threading.Thread(target=lambda: out.append(v.listen_once(timeout)), daemon=True)
+    th.start()
+    end = time.monotonic() + 5
+    while v._once is None and time.monotonic() < end:
+        time.sleep(0.01)
+    assert v._once is not None
+    return th, out
+
+
+def test_listen_once_takes_the_next_stretch_and_sends_it_nowhere(once):
+    v = once
+    v.stt_fake.said = "I'm Asha, nice to meet you"
+    th, out = held_listen(v)
+    pcm_, flags = sound(7)
+    v._work_one(pcm_, False, 3.0, flags)
+    th.join(5)
+    text, emb, speech_s = out[0]
+    assert text == "I'm Asha, nice to meet you" and len(emb) > 8 and speech_s > 0
+    assert v.brain.got == [] and not v.portal.open and v.heard == {NOISE: 0, CHATTER: 0, ADDRESSED: 0}
+    assert "Asha" not in everything_kept(v) and "Asha" not in json.dumps(v.app.live.sent)
+    assert v._once is None and not v._once_lock.locked()
+    v.judge.answers = ['{"class": "chatter", "confidence": 0.9}']
+    v._work_one(pcm_, False, 3.0, flags)  # released: the next stretch goes through hear() as usual
+    assert v.heard[CHATTER] == 1
+
+
+def test_listen_once_skips_noise_and_gives_up_on_time(once):
+    v = once
+    v.stt_fake.said = ""
+    th, out = held_listen(v, timeout=0.6)
+    pcm_, flags = sound(7)
+    v._work_one(pcm_, False, 3.0, flags)  # no words: skipped, it keeps waiting
+    th.join(5)
+    assert out == [None] and v._once is None
+
+
+def test_listen_once_refuses_when_it_shouldnt_hear(once):
+    v = once
+    v.app.settings.set("voice.addons.listen", False)
+    assert v.listen_once(0.5) is None
+    v.app.settings.set("voice.addons.listen", True)
+    v.mute(True)
+    assert v.listen_once(0.5) is None
+    v.mute(False)
+    v.portal.invite("Hello.", 10)  # the owner's conversation is open: never taken from it
+    assert v.listen_once(0.5) is None
+    v.portal.close("test")
+    v._once_lock.acquire()  # another holder
+    try:
+        assert v.listen_once(0.5) is None
+    finally:
+        v._once_lock.release()
+    v.listener = None
+    assert v.listen_once(0.5) is None
+
+
+def test_mute_ends_a_hold_at_once(once):
+    import time
+
+    v = once
+    th, out = held_listen(v, timeout=30)
+    t0 = time.monotonic()
+    v.mute(True)
+    th.join(5)
+    assert out == [None] and time.monotonic() - t0 < 3
+
+
+def test_guest_reply_goes_the_sealed_guest_way_with_the_name(voice, monkeypatch):
+    from kurooto.core import guest
+
+    v = voice
+    seen = {}
+    monkeypatch.setattr(guest, "sealed_brain", lambda app: True)
+
+    def submit(prompt, **kw):
+        seen.update(kw, prompt=prompt)
+        return "jg1"
+
+    monkeypatch.setattr(v.app.jobs, "submit", submit)
+    forgot = []
+    monkeypatch.setattr(v.app.jobs, "forget_guest", lambda jid: forgot.append(jid) or True)
+    monkeypatch.setattr(v, "_wait_job", lambda msg: "  Nice to meet you, Asha!  ")
+    v.voiceid.guest_turns.append(("the owner's guest said", "kept apart"))
+    guest._times.clear()
+    out = v.guest_reply("I study chemistry", name="Asha", history=[("Hi", "Hello! What's your name?")])
+    assert out == "Nice to meet you, Asha!" and forgot == ["jg1"]
+    assert seen["audience"] == "guest" and seen["text_only"] and seen["quiet"]
+    p = seen["prompt"]
+    assert "The visitor's name is Asha." in p and "Visitor: Hi" in p and "The visitor says: I study chemistry" in p
+    assert "kept apart" not in p  # the owner's conversation's turns are never mixed in
+    assert v.guest_reply("/forget all") == guest.COMMAND  # refusals as for any guest
+    v.app.settings.set("voice.addons.chat", False)
+    assert v.guest_reply("hello") is None

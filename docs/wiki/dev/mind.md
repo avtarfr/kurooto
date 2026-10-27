@@ -932,6 +932,14 @@ learns to seek it. Nothing is paid inside a stop span. Farming: a ping answered 
 `sum r` over any ping strategy is <= 0 (`test_talk_reward_cant_be_farmed*`). Switch `mind.talk.on` (registered in `pest.py`:
 a reward module may import only reward sources and plumbing).
 
+Meeting someone (0.8.12): an add-on that chatted with a person in the room calls `pest.met(app, quality)` (0..1, clipped;
+False when Brain, `mind.talk.on` or `mind.talk.met` is off; never raises). A `talk_met` fact `{quality, flags}` (a
+`TALK_KINDS` and `BUDGET_KINDS` member) goes to `Engine.talk`, which pays `talk.met`: its own budget,
+`MET_W (1 - exp(-m / MET_K))` with MET_W = 0.05, MET_K = 2, each meeting `q` times its step, only the first `MET_MAX` = 6 a
+day, the same exclusions (focus, asleep, exam), `q = 0` "no talk". The talk state gains `met` and `met_paid`; the log row is
+`talk_reward {what: "met", r, n: met, why}`. Like the rest of the talk reward it moves `M` and `weekr:` only, never V or Q
+(`test_meeting_someone_pays_a_little_from_its_own_budget`).
+
 ### The mood's full range
 
 `reward.CAP` and `NegativeState` are gone. `Mood.update(t, r, live_s, extra)` decays then applies `soft(M, A r + extra)`,

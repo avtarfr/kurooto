@@ -17,6 +17,11 @@ anything or widens what a voice turn may do (tests/unit/test_face.py checks no s
 The dashboard: GET /api/face (status and stage), POST /api/face/<action> (web/api.py), GET /api/face/frame?s=<session>
 (a JPEG made in memory, Cache-Control: no-store) and the live stream's {"t": "face"} messages (to the Face page only,
 and {kind: "camera", on} to every page). Events carry no scores, embeddings or image data.
+
+Hooks for add-ons (0.8.12): watch_people(cb) hands an add-on every face in each frame the watcher looks at (box, place,
+yaw, identity, score and its numbers, in memory only), hold_watch(reason) / release_watch(reason) keep the camera
+looking while you type (never past a pause reason), owner_desk_height() says how big your face usually is at the desk.
+Switches face.addons.watch and face.addons.hold; with no add-on using them, nothing changes and nothing runs.
 """
 
 from __future__ import annotations
@@ -80,6 +85,10 @@ register_defaults(
             "hold_calls": False,  # while you're away, calls Kurooto starts itself wait (at most hold_max_min)
             "hold_max_min": 60,  # the longest a call waits while you're away (minutes)
         },
+        "addons": {
+            "watch": True,  # an add-on may see who's in view (faces' places and numbers, in memory; never pictures)
+            "hold": True,  # an add-on may keep the camera looking while you type (never past a pause or a switch)
+        },
         "learn": {
             "on": False,  # refine your template slowly from confident recognitions (never unsure ones), with Undo
             "every_h": 6,  # at most one new sample this often (hours)
@@ -90,6 +99,9 @@ register_defaults(
 )
 
 TICK_S = 0.25  # the watcher's thread looks this often (frames are taken at the watcher's own rate)
+HOLD_MAX_S = 600.0  # an add-on's hold lasts at most this long unless renewed: a crashed add-on can't keep the camera
+DESK_EVERY_S = 5.0  # your face's size at the desk is noted at most this often (a running median, in memory)
+DESK_MIN = 10  # sightings before the running median is trusted over the enrolment's front step
 CONFIRM_FORGET_S = 7 * 86400  # Delete my face data, offered when Face presence is turned off, works this long
 IMPOSTORS = "face-impostors.npz"
 SIZE_GB = 0.18
@@ -179,6 +191,11 @@ class Face(Module):
         self._greets: dict = {}
         self.slow = 1.0
         self._previous: dict | None = None  # the template before the last training, sealed nowhere: Undo, this run only
+        self._people: list = []  # add-ons watching who's in view (watch_people)
+        self._holds: dict[str, float] = {}  # an add-on's reason -> until (monotonic): hold_watch
+        self._hooks_lock = threading.Lock()
+        self._desk: deque = deque(maxlen=240)  # (pixels, share) of your face's height, sightings 5 s apart
+        self._desk_at = 0.0
 
     # ------------------------------------------------------------------------------------------- the parts
     def wants(self) -> list[str]:
@@ -429,6 +446,8 @@ class Face(Module):
             emit=self._on_watch,
             learnable=self._learnable,
             clock=clock,
+            held=self._held_now,
+            people=self._people_on,
         )
 
     def tick(self) -> None:
@@ -511,13 +530,95 @@ class Face(Module):
             self.app.events.emit("face_failed", **_event_safe(part=f.get("part"), error=f.get("error")))
         elif kind == "slow":
             self.slow = float(f.get("factor") or 1)
+        elif kind == "people":
+            self._hand_people(f.get("faces") or [])
         elif kind == "seen":  # your face's place in the frame: to open dashboards only (the being's eyes), never kept
             now = time.monotonic()
+            if f.get("px") and now - self._desk_at >= DESK_EVERY_S:  # its size only, for owner_desk_height
+                self._desk_at = now
+                self._desk.append((float(f["px"]), float(f.get("h") or 0)))
             if now - getattr(self, "_seen_at", 0.0) >= 0.2:  # at most 5 a second
                 self._seen_at = now
                 self._push(
                     {"t": "face", "kind": "face_seen", "x": f.get("x"), "y": f.get("y"), "w": f.get("w"), "owner": True}
                 )
+
+    # -------------------------------------------------------------------------------------- hooks for add-ons
+    def watch_people(self, cb) -> object:
+        """cb(faces) on the watcher's thread for each frame it looks at, while face.addons.watch is on: a list (empty
+        when nobody's in view) of dicts with h_px, h (share of the frame's height), w, x, y (-1..1), yaw, det, and,
+        when the face was big and clear enough to judge, who (owner, unsure, stranger), score and e (its numbers, a
+        copy in memory: never keep them unasked). Keep it quick: it runs between frames. Returns the unsubscribe."""
+        with self._hooks_lock:
+            self._people.append(cb)
+
+        def unsubscribe() -> None:
+            with self._hooks_lock:
+                if cb in self._people:
+                    self._people.remove(cb)
+
+        return unsubscribe
+
+    def _people_on(self) -> bool:
+        return bool(self._people) and bool(self.setting("addons.watch"))
+
+    def _hand_people(self, faces: list) -> None:
+        if not self._people_on():
+            return
+        with self._hooks_lock:
+            cbs = list(self._people)
+        for cb in cbs:
+            try:
+                cb([dict(x) for x in faces])  # each its own copy: one add-on can't change what the next sees
+            except Exception as e:
+                self._failed("an add-on watching", e)
+
+    def hold_watch(self, reason: str, seconds: float = HOLD_MAX_S) -> bool:
+        """Keep the camera looking (while you type too) for `seconds` (at most HOLD_MAX_S; call again to renew),
+        until release_watch(reason). Every pause reason still applies first: off, not enrolled, /face pause, Kurooto
+        paused, battery, a locked screen, a call, focus, night, an enrolment, a camera problem. False when
+        face.addons.hold is off (nothing held)."""
+        if not self.setting("addons.hold"):
+            return False
+        why = (str(reason or "").strip() or "an add-on")[:60]
+        with self._hooks_lock:
+            self._holds[why] = time.monotonic() + max(1.0, min(float(seconds or HOLD_MAX_S), HOLD_MAX_S))
+        return True
+
+    def release_watch(self, reason: str) -> None:
+        with self._hooks_lock:
+            self._holds.pop((str(reason or "").strip() or "an add-on")[:60], None)
+
+    def holds(self) -> list[str]:
+        """The reasons add-ons hold the camera for now (shown on the card and in /face)."""
+        if not self.setting("addons.hold"):
+            return []
+        now = time.monotonic()
+        with self._hooks_lock:
+            for k in [k for k, until in self._holds.items() if until <= now]:
+                del self._holds[k]
+            return sorted(self._holds)
+
+    def _held_now(self) -> bool:
+        return bool(self.holds())
+
+    def owner_desk_height(self) -> dict | None:
+        """How tall your face usually is at the desk: {"px", "h" (share of the frame's height), "n", "from"}: the
+        running median of your recent sightings ("seen", from DESK_MIN of them), else the enrolment's front step
+        ("enrolment": its pixels over face.camera.height), else None. Sizes only, in memory."""
+        if len(self._desk) >= DESK_MIN:
+            import statistics
+
+            px = statistics.median(p for p, _ in self._desk)
+            hs = [h for _, h in self._desk if h]
+            return {"px": round(px, 1), "h": round(statistics.median(hs), 4) if hs else None, "n": len(self._desk),
+                    "from": "seen"}  # fmt: skip
+        t = self._template_or_none()
+        base = float((t.baseline or {}).get("height") or 0) if t is not None else 0.0
+        if base <= 0:
+            return None
+        fh = float(self.setting("camera.height") or 480)
+        return {"px": round(base, 1), "h": round(base / fh, 4) if fh else None, "n": 0, "from": "enrolment"}
 
     # ------------------------------------------------------------------------------------------- arriving
     def away_now(self) -> bool:
@@ -882,6 +983,7 @@ class Face(Module):
         with self._tpl_lock:
             self._tpl = None
             self._previous = None
+            self._desk.clear()
             gone = self.store.forget()
         self._greets = {}
         self.app.events.emit("face_forgotten")
@@ -934,7 +1036,8 @@ class Face(Module):
         if w is None:
             return "starting"
         if w.state == "watching":
-            return "camera on: looking for you"
+            held = self.holds()
+            return f"camera on: an add-on is looking ({', '.join(held)})" if held else "camera on: looking for you"
         if w.state == "away":
             return "you've stepped away" + (" (camera on)" if w.camera_open else "")
         return "resting: camera off while you use the computer"
@@ -1010,6 +1113,7 @@ class Face(Module):
             "strictness": self.setting("recognise.strictness") or "normal",
             "can_undo": self._previous is not None,
             "switches": {k: bool(self.setting(k)) for k in TOGGLES},
+            "holds": self.holds(),
             "voice_speaks": bool(vo is not None and self.app.is_on("voice") and not vo.muted()),
         }
 

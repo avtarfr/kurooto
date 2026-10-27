@@ -24,10 +24,14 @@ way Claude Code's --tools "" or an API without tools is); Kurooto's own tools re
 agy's own registration of `kurooto mcp`, but agy's own instructions file and other MCP servers it has are its own. The
 empty folder and the missing paths make it unlikely to wander, but that isn't a guarantee, so a guest never runs on
 agy or Codex: with one of them as the main AI, guests are answered by this computer's model (sealed_brain), or told
-plainly that Kurooto only chats with its owner here when there's none."""
+plainly that Kurooto only chats with its owner here when there's none.
+
+An add-on's chat (0.8.12, Voice.guest_reply) comes here too, the same way, with the person's name as context and the
+add-on's own last turns instead of Voice's (never the owner's conversation's)."""
 
 from __future__ import annotations
 
+import re
 import time
 from collections import deque
 from typing import TYPE_CHECKING
@@ -107,12 +111,18 @@ def kind(app: App, text: str) -> str:
     return ""
 
 
-def prompt(app: App, text: str) -> str:
-    """The guest's request with the last turns of this conversation (in memory on Voice; never written down)."""
-    v = app.modules.get("voice")
-    vid = getattr(v, "voiceid", None)
-    turns = list(getattr(vid, "guest_turns", []) or [])[-4:]
+def prompt(app: App, text: str, turns: list | None = None, name: str = "") -> str:
+    """The guest's request with the last turns of this conversation (in memory on Voice, or an add-on's own `turns`;
+    never written down) and, from an add-on, the name they gave."""
+    if turns is None:
+        v = app.modules.get("voice")
+        vid = getattr(v, "voiceid", None)
+        turns = list(getattr(vid, "guest_turns", []) or [])
+    turns = list(turns)[-4:]
     lines = []
+    name = re.sub(r"[^\w' .-]", "", str(name or ""))[:40].strip()  # a name, not instructions
+    if name:
+        lines.append(f"The visitor's name is {name}.")
     if turns:
         lines.append("Earlier in this conversation with the visitor:")
         for said, answer in turns:
@@ -134,8 +144,9 @@ def sealed_brain(app: App) -> bool:
     return b is not None and (getattr(b, "kind", "") == "api" or getattr(b, "id", "") == "claude")
 
 
-def handle(app: App, msg: Incoming) -> None:
-    """A guest's (or an unsure voice's) message: chat only. Nothing here acts, reads his data or learns."""
+def handle(app: App, msg: Incoming, name: str = "", turns: list | None = None) -> None:
+    """A guest's (or an unsure voice's) message: chat only. Nothing here acts, reads his data or learns. `name` and
+    `turns`: an add-on's (Voice.guest_reply), for the prompt only."""
     what = "unsure" if msg.speaker == "unsure" else "guest"
     if setting(app, "mode", "owner_only_acts") == "owner_only_at_all":
         app.events.emit("voiceid_refused", what="at_all", speaker=what)
@@ -167,7 +178,7 @@ def handle(app: App, msg: Incoming) -> None:
         msg.reply(BUSY)
         return
     jid = app.jobs.submit(
-        prompt(app, msg.text),
+        prompt(app, msg.text, turns, name),
         title="Guest",
         effort="low",
         quiet=True,

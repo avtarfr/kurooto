@@ -19,8 +19,8 @@ Each tick:
 One `reward_tick` record per tick goes into the log: numbers and ids only.
 
 The talk reward (0.8.8, I-3'): talk_heard, talk_unprompted and talk_rejected facts are paid by mind/talk.py (small,
-saturating, nothing for a reply to its own ping, rejections cost 3w). It moves the mood and the week's sum only, never V
-or Q, and each one is a `talk_reward` record.
+saturating, nothing for a reply to its own ping, rejections cost 3w); talk_met (0.8.12) by its own smaller budget. It
+moves the mood and the week's sum only, never V or Q, and each one is a `talk_reward` record.
 """
 
 from __future__ import annotations
@@ -200,15 +200,16 @@ class Engine:
             r, why = talk.heard(st, t, flags, bool(b.get("command")))
         elif kind == "talk_rejected":
             r = talk.rejected(st, t)
+        elif kind == "talk_met":  # 0.8.12: an add-on's meeting, its own smaller budget (talk.met)
+            r, why = talk.met(st, t, _num(b.get("quality"), -1.0, 2.0) or 0.0, flags)
         if r:
             m = reward.Mood(self.maybe("M") if self.maybe("M") is not None else 0.0, t)  # the decay is the tick's
             self.put("M", m.update(t, r), {"at": round(t, 1)})
             week = time.strftime("%G-W%V", time.localtime(t))
             self.put(f"weekr:{week}", self.get(f"weekr:{week}", 0.0) + r)
         self.put("talk", float(st.get("paid", 0.0)), st)
-        seq = self.k.log.append(
-            "talk_reward", {"what": kind[5:], "r": round(r, 6), "n": int(st.get("n", 0)), "why": why or "paid"}
-        )
+        n = int(st.get("met" if kind == "talk_met" else "n", 0))
+        seq = self.k.log.append("talk_reward", {"what": kind[5:], "r": round(r, 6), "n": n, "why": why or "paid"})
         return {"ok": True, "seq": seq, "r": round(r, 6), "why": why}
 
     def claimed_actions(self) -> list[str]:

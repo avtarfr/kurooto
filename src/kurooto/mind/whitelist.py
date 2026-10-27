@@ -14,7 +14,8 @@ TALK_KINDS (0.8.8) are the one way engagement reaches the reward: three facts wi
 only his focus/asleep/exam flags, one of Kurooto's own unprompted messages went out, a rejection of one), paid by
 mind/talk.py and only by it: at most W = 0.2 a day, saturating, nothing for a reply within 10 minutes of its own ping,
 3W for each rejection. Reply counts, speed, session length, sentiment and his mood still never reach it
-(test_talk_reward_is_bounded, test_talk_reward_cant_be_farmed).
+(test_talk_reward_is_bounded, test_talk_reward_cant_be_farmed). A fourth (0.8.12): talk_met, an add-on's chat with
+someone in the room, with only a quality in [0, 1] and the same flags, paid from its own budget of 0.05 a day.
 """
 
 from __future__ import annotations
@@ -73,7 +74,7 @@ BANNED_KINDS = frozenset(
 )
 
 
-TALK_KINDS = frozenset({"talk_heard", "talk_unprompted", "talk_rejected"})  # see above: bounded by mind/talk.py
+TALK_KINDS = frozenset({"talk_heard", "talk_unprompted", "talk_rejected", "talk_met"})  # bounded by mind/talk.py
 
 
 def is_banned(key: str) -> bool:

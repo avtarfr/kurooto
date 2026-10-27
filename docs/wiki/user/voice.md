@@ -171,6 +171,8 @@ downloaded to your computer as separate programs, not part of Kurooto.
 | `voice.listen.calls` | off | keep listening during calls |
 | `voice.listen.stt_model` | `base` | `tiny`, `base` or `small` |
 | `voice.listen.language` | (worked out) | the language you speak, e.g. `en` or `hi` |
+| `voice.addons.listen` | on | let an add-on take one thing said, written out here and never sent (mute still stops it) |
+| `voice.addons.chat` | on | let an add-on have Kurooto chat with someone the guest way: no tools, none of your data |
 
 All of them, each with its whole entry: [the settings guide](settings-guide.md#voice-and-voice-notes).
 

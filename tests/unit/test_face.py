@@ -1422,3 +1422,129 @@ def test_start_over_never_overwrites_a_model_whose_key_cant_be_read(app, trained
     f.store._key = None
     ok, out = f.train(f.session.id)
     assert not ok and "key can't be read" in out["message"] and f.store.exists()
+
+
+# ------------------------------------------------------------------------------- 13 hooks for add-ons (0.8.12)
+def test_nobody_watching_people_costs_nothing():
+    t = W(mine(10) + [frame([face(), face(x=40, h=100)], [you(), rvec()])])
+    t.run(12)
+    assert "people" not in t.kinds()  # off: no list built, nothing handed over
+
+
+def test_each_frame_hands_every_face_with_its_place_identity_and_numbers():
+    small = face(x=500, y=40, h=40.0, score=0.9)  # too small to judge: its place only
+    stranger = face(x=40, y=200, h=100.0, score=0.92, yaw=0.3)
+    fr = frame([face(), stranger, small], [you(), rvec(), rvec()])
+    t = W([fr] * 5 + [frame()])
+    t.w.people = lambda: True
+    t.run(6)
+    lists = [f["faces"] for k, f in t.got if k == "people"]
+    assert lists and lists[-1] == []  # an empty frame is handed over too
+    one = lists[0]
+    assert len(one) == 3
+    me, other, far = one
+    assert me["who"] == "owner" and me["score"] > 0.5 and len(me["e"]) == 128
+    assert other["who"] == "stranger" and len(other["e"]) == 128
+    assert other["yaw"] == pytest.approx(0.3, abs=0.01)  # as pose() gives it
+    assert far["who"] is None and far["e"] is None and far["score"] is None
+    assert me["h_px"] == 140.0 and me["h"] == pytest.approx(140 / 480, abs=1e-3)
+    assert me["w"] == pytest.approx(140 / 640, abs=1e-3)
+    assert -1 <= me["x"] <= 1 and -1 <= me["y"] <= 1 and far["x"] > 0.5 and far["y"] < 0
+    assert set(me) == {"h_px", "h", "w", "x", "y", "yaw", "det", "who", "score", "e"}
+    assert t.w.counts.you >= 1 and t.w.counts.not_you >= 1  # the usual bookkeeping still runs
+
+
+def test_a_hold_keeps_the_camera_open_while_you_type_but_never_past_a_pause():
+    t = W(mine(100), idle=0.0)  # typing: input is the presence signal
+    t.run(10)
+    assert not t.w.camera_open and t.w.state == "resting"
+    held = [True]
+    t.w.held = lambda: held[0]
+    t.run(2)
+    assert t.w.camera_open and t.w.state == "watching"
+    for why in ("night hours", "you're on a call", "paused by you", "screen locked"):
+        t.why = why
+        t.run(1)
+        assert not t.w.camera_open and (t.w.state, t.w.why) == ("paused", why)
+    t.why = ""
+    t.run(1)
+    assert t.w.camera_open
+    held[0] = False  # released: the input grace has long passed, so it closes
+    t.run(1)
+    assert not t.w.camera_open
+
+
+def test_face_hands_people_to_each_add_on_and_unsubscribes(app):
+    f = app.modules["face"]
+    got_a, got_b = [], []
+
+    def a(faces):
+        got_a.append(faces)
+        faces[0]["who"] = "changed by a"
+        raise RuntimeError("an add-on's mistake")
+
+    off_a = f.watch_people(a)
+    f.watch_people(got_b.append)
+    assert f._people_on()
+    faces = [{"h_px": 140.0, "who": "stranger", "e": [0.1] * 4}]
+    f._on_watch("people", faces=faces)
+    assert got_a and got_b[0][0]["who"] == "stranger"  # each its own copy; one add-on's mistake stops nothing
+    assert [e["kind"] for e in events(app)][-1] == "face_failed" and "e" not in events(app)[-1]
+    off_a()
+    off_a()  # twice is fine
+    app.settings.set("face.addons.watch", False)
+    assert not f._people_on()
+    f._on_watch("people", faces=faces)
+    assert len(got_a) == 1 and len(got_b) == 1
+    app.settings.set("face.addons.watch", True)
+    f._on_watch("people", faces=faces)
+    assert len(got_a) == 1 and len(got_b) == 2
+    assert f.build_watcher(camera=Cam(), detector=Det(), embedder=Emb(), frames=Frames()).people() is True
+
+
+def test_holds_are_capped_named_on_the_card_and_switchable(app, trained):
+    import time
+
+    f = trained
+    assert f.hold_watch("meeting people", 3600) and f.holds() == ["meeting people"]
+    assert f._holds["meeting people"] - time.monotonic() <= 600.5  # capped: renew it to keep it
+    w = f.build_watcher(camera=Cam(), detector=Det(), embedder=Emb(), frames=Frames())
+    assert w.held()
+    f.watcher = w
+    w.state = "watching"
+    assert "an add-on is looking (meeting people)" in f.line() and f.status()["holds"] == ["meeting people"]
+    f._holds["meeting people"] = time.monotonic() - 1  # expired: gone
+    assert f.holds() == [] and not w.held()
+    f.hold_watch("meeting people")
+    f.release_watch("meeting people")
+    assert f.holds() == []
+    app.settings.set("face.addons.hold", False)
+    assert not f.hold_watch("meeting people") and f.holds() == []
+
+
+def test_your_desk_height_from_enrolment_then_from_sightings(app, trained):
+    f = trained
+    app.modules["face"]._desk.clear()
+    d = f.owner_desk_height()
+    assert d["from"] == "enrolment" and d["px"] == pytest.approx(140.0, abs=1)
+    assert d["h"] == pytest.approx(140 / 480, abs=0.01)
+    for i in range(12):
+        f._desk_at = 0.0
+        f._on_watch("seen", x=0.0, y=0.0, w=0.2, h=0.25 + i * 0.001, px=120.0 + i)
+    d = f.owner_desk_height()
+    assert d["from"] == "seen" and d["n"] == 12 and 120 <= d["px"] <= 131 and 0.25 <= d["h"] <= 0.262
+    f.forget()
+    assert f.owner_desk_height() is None  # sizes go with your face model
+
+
+def test_people_events_never_reach_the_event_log_or_the_pages(app, trained):
+    t = W([frame([face(), face(x=40, h=100)], [you(), rvec()])] * 6)
+    f = trained
+    pushed = f.pushed
+    f.watch_people(lambda faces: None)
+    t.w.emit, t.w.people = f._on_watch, f._people_on
+    t.w.present_at -= 3600
+    t.run(5)
+    for e in events(app):
+        assert not any(k in e for k in ("score", "e", "emb", "faces", "h_px"))
+    assert all(m.get("kind") != "people" and "e" not in m and "h" not in m for m in pushed)

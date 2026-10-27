@@ -111,6 +111,7 @@ BUDGET_KINDS = frozenset(
         "talk_heard",  # 0.8.8 (I-3'): a message from him, only its focus/asleep/exam flags: the bounded talk reward
         "talk_unprompted",  # one of Kurooto's own unprompted messages went out (his answers in 10 minutes pay nothing)
         "talk_rejected",  # Less of this, a mute or an hour unanswered on one of them: it costs 3w
+        "talk_met",  # 0.8.12: an add-on chatted with someone in the room (a quality 0..1 only): its own small budget
     }
 )  # stages 05, 09 and 10: see mind/engine.py
 

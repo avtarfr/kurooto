@@ -35,6 +35,29 @@ with listening a second switch. User page: [../user/voice.md](../user/voice.md).
 
 Details: [face.md](face.md).
 
+## Hooks for add-ons (0.8.12)
+
+On `Voice` (`app.modules["voice"]`), both blocking: call them from the add-on's own thread, never the event loop.
+
+- `listen_once(timeout_s=8.0) -> (text, embedding or None, speech_s) | None`: holds the listener for the next stretch
+  of speech, any voice, no name needed. `_work_one` (the `voice-hear` thread) hands that stretch to `_take_once`
+  instead of `hear()`: written out (`_write_out`), embedded with Voice ID's model when its parts are set up (Voice ID
+  itself may be off; `voiceid.embed`, a list of floats), its speech seconds from the VAD flags; its outline still
+  moves the waveform (`voice_heard`). It never reaches the gate, the portal, the AI, `heard` counts, the event log or
+  the page's text. A stretch with no words is skipped and it keeps waiting. None when: Voice or
+  `voice.addons.listen` off, `blocked()` (listening off, muted, paused, battery saver, a call, the night, enrolling,
+  not set up), no running listener, the portal open or busy (never taken from your conversation), another holder
+  (`_once_lock`, one at a time), or nothing said within `timeout_s` (at most 60; a stretch already taken gets up to 30
+  s more to be written out). Mute or a block during the wait ends it at once.
+- `guest_reply(text, name=None, history=None) -> str | None`: one chat turn through `core/guest.py:handle` with
+  `speaker="guest"`, `speaker_by="addon"`: refusals for commands, actions and his things, `guest_per_hour`,
+  `owner_only_at_all`, then an `audience="guest"` job (text only, no tools, none of his data; `guest_brain`). `name`
+  goes into the prompt as "The visitor's name is ..." (letters, digits, `' . -` and spaces only, 40 chars); `history`
+  is the add-on's own `(said, answer)` pairs, last 4 used, instead of Voice ID's `guest_turns` (the owner's
+  conversation's guests never mix in). Waits like `ask_brain` (`_wait_job`), then `jobs.forget_guest`. None when Voice
+  or `voice.addons.chat` is off or the text is empty.
+- `say(text, wait=True)` (already there) speaks a scripted line.
+
 ## The flow
 
 ```

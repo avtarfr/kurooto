@@ -372,6 +372,16 @@ user's folder over Kurooto:
   `kurooto doctor`) and the call returns a safe default.
 - Extra hooks only add-ons get: `classify_intent(text, intents)` (runs before the built-in patterns, with
   `classify_timeout` seconds, default 2, at most 10; answers under `MIN_CONFIDENCE = 0.6` fall through).
+- What other features offer add-ons (0.8.12), each behind its own switch and never past a pause or a mute:
+
+  | Feature | Call | What an add-on can do |
+  |---|---|---|
+  | Face presence | `watch_people(cb)`, `hold_watch(reason)`, `release_watch(reason)`, `owner_desk_height()` | see every face in view each frame (place, size, yaw, owner/unsure/stranger, its numbers in memory), keep the camera looking while the owner types, know how big the owner's face is at the desk (`face.addons.watch`, `face.addons.hold`; [face.md](face.md#hooks-for-add-ons-0812)) |
+  | Voice | `say(text, wait=True)`, `listen_once(timeout_s)`, `guest_reply(text, name, history)` | speak a line, take the next stretch of speech (text, voice numbers, seconds; never sent anywhere), chat with someone the sealed guest way (`voice.addons.listen`, `voice.addons.chat`; [voice.md](voice.md#hooks-for-add-ons-0812)) |
+  | Brain | `kurooto.mind.pest.met(app, quality)` | a small, capped reward for a conversation that went well (`mind.talk.met`; [mind.md](mind.md#the-talk-reward-i-3-talkpy)) |
+
+  An add-on that keeps anything about other people (a face's or a voice's numbers) does so on its own terms: it should
+  ask them first, seal what it keeps (`core/biometric.py`'s stores) and delete it when asked.
 - The folder can't be inside Kurooto's own folders (`inside_kurooto`), and updates never touch it.
 - Turning add-ons on changes `core/places.py:write_roots` (their `skills/`), which makes agy's consent question appear
   again.
