@@ -698,12 +698,20 @@ def agent_tools(app: App) -> list[Tool]:
     return out
 
 
+def _guest_job(app: App, job: str | None) -> bool:
+    """(voice id) Is this AI request a guest's (core/guest.py)? Then it gets no tool, by any route."""
+    jobs = getattr(app, "jobs", None)
+    return bool(job and jobs is not None and hasattr(jobs, "audience") and jobs.audience(job) == "guest")
+
+
 def tools_for(app: App, job: str | None = None) -> list[Tool]:
     """The tools one AI request gets. A change request (it works in a scratch folder, core/scratch.py): reading as
     always, writing only in that folder. Any other request: agent_tools(), with edit_note's changes to your notes
-    becoming a proposal (proposals.notes_edits) instead of being made."""
+    becoming a proposal (proposals.notes_edits) instead of being made. A guest's request (Voice ID): none."""
     from kurooto.core import scratch
 
+    if _guest_job(app, job):  # (voice id) a voice that isn't the owner's: no tools at all (core/guest.py)
+        return []
     sc = scratch.for_job(app, job) if job else None
     if sc is not None and not sc.lazy:
         return scratch.tools(app, sc, job)
@@ -716,8 +724,7 @@ def tools_for(app: App, job: str | None = None) -> list[Tool]:
 def run_tool(app: App, name: str, args: dict, tools: list[Tool] | None = None, via: str = "ai", job: str | None = None):
     """Run one tool by name. Never raises: a problem comes back as a sentence the AI can read. job: the AI request
     this is a step of (its tool log, core/jobs.py:Jobs.note_step)."""
-    jobs = getattr(app, "jobs", None)
-    if job and jobs is not None and hasattr(jobs, "audience") and jobs.audience(job) == "guest":
+    if _guest_job(app, job):
         return "Not allowed: this request came from a voice that isn't the owner's."  # (voice id) core/guest.py
     tool = next((t for t in (tools if tools is not None else agent_tools(app)) if t.name == name), None)
     if not tool:

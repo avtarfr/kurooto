@@ -623,7 +623,15 @@ class Voice(Module):
         )
         self.app.handle(msg)
         if who is not None and who.decision != "owner":  # (voice id) a guest's turn: kept in memory for this talk only
-            answer = self._wait_job(msg) if getattr(msg, "job", None) else "\n".join(replies)
+            gid = getattr(msg, "job", None)
+            try:
+                answer = self._wait_job(msg) if gid else "\n".join(replies)
+            finally:
+                if gid:  # its words leave the request list once answered (or given up on)
+                    try:
+                        self.app.jobs.forget_guest(gid)
+                    except Exception as e:
+                        self.app.events.emit("voice_failed", part="guest words", error=f"{type(e).__name__}"[:100])
             if answer:
                 self.voiceid.heard_guest(text, answer)
             return answer

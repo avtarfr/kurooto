@@ -708,3 +708,21 @@ def test_not_enrolled_fails_closed(vid):
     assert "doesn't know your voice yet" in v.line()
     ok, why = v.health()
     assert not ok and "doesn't know your voice yet" in why
+
+
+def test_a_guest_s_request_is_blanked_once_voice_has_its_answer(vid, monkeypatch):
+    """The guest's words don't stay in the request list (nothing later learns from them)."""
+    v = vid.v
+    forgot = []
+    monkeypatch.setattr(v.app.jobs, "forget_guest", lambda jid: forgot.append(jid) or True)
+    monkeypatch.setattr(v, "_wait_job", lambda msg: "The moon is far.")
+
+    def handle(msg):
+        msg.job = "jguest1"
+
+    monkeypatch.setattr(v.app, "handle", handle)
+    assert v.ask_brain("tell me about the moon", vid.check(sound(55)[0], 3.0)) == "The moon is far."
+    assert forgot == ["jguest1"]
+    monkeypatch.setattr(v, "_wait_job", lambda msg: "Sure.")
+    v.ask_brain("what's due?", vid.check(sound(1, 7)[0], 3.0))  # the owner's: kept as always
+    assert forgot == ["jguest1"]

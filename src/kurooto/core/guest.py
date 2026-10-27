@@ -18,9 +18,11 @@ A guest gets chat only:
                           (providers/context.py: guest_context); `guest_brain: local` keeps it on this computer
 
 The guest's words aren't kept in his history or Brain's memory: the last four turns of this conversation stay in
-memory on Voice (cleared when it closes), and only a count lasts. Honest limit: agy only reads the text-only rule
-(it isn't enforced the way Claude Code's --tools "" or an API without tools is); the empty folder and the missing
-paths make it unlikely to wander. guest_brain: local is the choice for those who care."""
+memory on Voice (cleared when it closes), the request's words are blanked once Voice has the answer
+(jobs.forget_guest), and only a count lasts. Honest limit: agy only reads the text-only rule (it isn't enforced the
+way Claude Code's --tools "" or an API without tools is); Kurooto's own tools refuse a guest's job id, also through
+agy's own registration of `kurooto mcp`, but agy's own instructions file and other MCP servers it has are its own. The
+empty folder and the missing paths make it unlikely to wander. guest_brain: local is the choice for those who care."""
 
 from __future__ import annotations
 

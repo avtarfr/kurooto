@@ -825,3 +825,18 @@ def test_the_real_model_on_synthetic_noise():
     v = e.embed(noise)
     assert len(v) == int(e.meta.get("output_dim", len(v))) and abs(sid.dot(v, v) - 1) < 1e-4
     assert e.rate == 16000
+
+
+def test_add_samples_kept_for_later_keeps_the_voice_print_in_use(vid):
+    """Manage -> Add samples, then Keep for later: the voice print still checks turns (it once lost its centroid and
+    every turn crashed); a Retrain takes the new samples in."""
+    enrol_owner(vid)
+    more = owner_samples(vid.emb, 2, conds=["other"] * 2, start=500)
+    vid._keep(SimpleNamespace(existing=owner_samples(vid.emb), samples=more))
+    assert vid.enrolled() and vid.problem() == ""
+    assert len(vid.template()["samples"]) == 23
+    v = vid.check(bytes(pcm(1, 901, seconds=3.0).pcm), 3.0)
+    assert v.decision == "owner"
+    vid._tpl = {k: x for k, x in vid.template().items() if k != "centroid"}  # damaged: never a crash, unsure
+    assert vid.problem() == "no voice print"
+    assert vid.check(bytes(pcm(1, 902, seconds=3.0).pcm), 3.0).decision == "unsure"

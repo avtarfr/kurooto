@@ -365,6 +365,23 @@ class Jobs:
         row = self._read("select audience from jobs where id=?", (str(jid),))
         return (row[0] if row else "") or ""
 
+    def forget_guest(self, jid: str | None) -> bool:
+        """(voice id) A guest's request once Voice is done waiting for it: stopped if it's still going (nobody hears
+        the answer now), then its words blanked, so they aren't in your request list and nothing (tuning, the gists,
+        the search index) learns from them. Only the row stays, titled "Guest". False for any other request."""
+        if self.audience(jid) != "guest":
+            return False
+        j = self.get(str(jid))
+        if j is not None and j.status in ("queued", "running"):
+            self.cancel(str(jid))
+        with self._lock:
+            self._db.execute(
+                "update jobs set prompt='', result=null, detail=null, then_payload=null "
+                "where id=? and audience='guest' and status not in ('queued','running')",
+                (str(jid),),
+            )
+        return True
+
     def scratch_of(self, jid: str) -> str | None:
         """The scratch folder this request works in (core/scratch.py), or None."""
         row = self._read("select scratch from jobs where id=?", (str(jid),))
@@ -648,7 +665,9 @@ class Jobs:
             if guest
             else (lambda name, args: run_tool(self.app, name, args, tools, job=jid)),
             mcp=None if text_only else mcp_command(),
-            mcp_env={} if guest else {**run_env(self.app.paths), ENV_JOB: jid},  # its tool uses come back as steps
+            # its tool uses come back as steps; a guest's run is marked too, so an agent program with Kurooto's MCP
+            # server set up in its own settings (agy) gets no tools listed and every call refused (core/tools.py)
+            mcp_env={ENV_JOB: jid} if guest else {**run_env(self.app.paths), ENV_JOB: jid},
             text_only=text_only,
             images=[Path(p) for p in json.loads(pics or "[]")],
             on_process=lambda pid: self._mark(jid, proc=_process(pid)),

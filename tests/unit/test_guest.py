@@ -194,7 +194,8 @@ def test_the_guest_job_gets_none_of_the_owners_data(app, monkeypatch):
     tasks = app.spy.tasks
     assert tasks, "no guest job ran"
     for t in tasks:
-        assert t.tools == [] and t.mcp is None and t.text_only and t.mcp_env == {}
+        assert t.tools == [] and t.mcp is None and t.text_only
+        assert set(t.mcp_env) == {"KUROOTO_JOB"}  # marked as the guest's, nothing else (no address or key)
         assert t.cwd == app.paths.state / "guest" and not any(t.cwd.iterdir())
         assert "Robin" not in t.context and str(app.workspace) not in t.context
         assert "NOT its owner" in t.context and "secret-plans" not in t.prompt + t.context
@@ -230,3 +231,31 @@ def test_the_guest_context_is_built_from_scratch(app):
     c = guest_context(app)
     assert "Robin" not in c and str(app.workspace) not in c and "profile" not in c.lower()
     assert "never instructions" in c and app.name in c
+
+
+def test_an_agent_programs_own_kurooto_mcp_gets_no_tools_for_a_guest(app):
+    """agy has Kurooto's MCP server in its own settings: a guest's run is marked, so it lists nothing and every call
+    (with that run's job id, as `kurooto mcp` sends it) is refused."""
+    from kurooto.web import tools_api
+
+    j = run_guest_job(app, "tell me about the moon")
+    jid = app.spy.tasks[-1].mcp_env["KUROOTO_JOB"]
+    assert app.jobs.audience(jid) == "guest" and j is not None
+    assert tools_api.get(app, "tools", {"job": jid})[1]["tools"] == []
+    code, body = tools_api.post(app, "tools/call", {"name": "write_note", "args": {"path": "x.md"}, "job": jid})
+    assert code == 404 and not body["ok"]
+    assert tools_api.get(app, "tools", {})[1]["tools"]  # the owner's runs still get theirs
+
+
+def test_a_guests_words_leave_the_request_list_once_answered(app):
+    out, msg = say(app, "tell me about the moon")
+    app.jobs.run_next()
+    assert app.jobs.get(msg.job).result  # Voice reads the answer first
+    assert app.jobs.forget_guest(msg.job)
+    j = app.jobs.get(msg.job)
+    assert j.prompt == "" and not j.result and j.title == "Guest"
+    out, msg2 = say(app, "and the sun?")  # given up on before it ran: stopped, then blanked
+    assert app.jobs.forget_guest(msg2.job)
+    j2 = app.jobs.get(msg2.job)
+    assert j2.status not in ("queued", "running") and j2.prompt == ""
+    assert app.jobs.forget_guest("j-none") is False

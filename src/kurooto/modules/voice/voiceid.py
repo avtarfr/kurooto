@@ -182,7 +182,7 @@ class VoiceID:
         t = self.template()
         if self.locked_why:
             return "locked"
-        if not t or not t.get("report"):
+        if not t or not t.get("report") or not t.get("centroid"):
             return "no voice print"
         if t.get("model") != self.model():
             return "enrolled with another model"
@@ -503,7 +503,11 @@ class VoiceID:
         samples = [_pack(x) for x in s.existing + s.samples]
         if not samples:
             return
-        self._save({**self._base(t), "samples": samples, "report": t.get("report") if t.get("centroid") else None})
+        built = {}  # adding samples to a voice print in use: it stays in use (centroid, thresholds) until a Retrain
+        if t.get("centroid") and t.get("report") and t.get("model") == self.model():
+            keys = ("centroid", "centroid_enrolled", "thresholds", "calibrated", "genuine", "report", "adapted")
+            built = {k: t[k] for k in (*keys, "drift_stopped") if k in t}
+        self._save({**self._base(t), **built, "samples": samples, "report": built.get("report")})
 
     def session_cmd(self, action: str, own_words: bool = False) -> dict:
         if action in ("start", "continue"):

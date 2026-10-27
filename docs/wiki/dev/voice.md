@@ -293,9 +293,13 @@ dropped}`, `voiceid_session`, `voiceid_forgotten`, `voiceid_adapted`, `voiceid_a
 `threads`' and `ledger`'s question patterns, `repoproject.asked`, `turnon.find` -> refused as action or personal; the
 hourly limit; else `jobs.submit(prompt, audience="guest", text_only=True, quiet=True, effort="low", brain=<local id with
 guest_brain: local>)`. The runner for `audience == "guest"`: no `assembler.for_request`, no selfdoc or scratch,
-`guest_context()`, `tools=[]`, `mcp=None`, `mcp_env={}`, a `run_tool` that refuses, `cwd = <state>/guest` (emptied each
-run), the one AI it was given (no fallback, no last resort, no automatic order), no watchers (nothing learns).
-`core/tools.run_tool` also refuses any tool for a guest job id. The guest's last four turns of this portal session live
+`guest_context()`, `tools=[]`, `mcp=None`, `mcp_env={KUROOTO_JOB: id}` only (so agy's own registration of `kurooto mcp`
+carries the guest's job id), a `run_tool` that refuses, `cwd = <state>/guest` (emptied each run), the one AI it was
+given (no fallback, no last resort, no automatic order), no watchers (nothing learns). For a guest job id,
+`core/tools.tools_for` lists nothing (`kurooto mcp` shows no tools; `POST /api/tools/call` answers 404) and
+`run_tool` refuses. When Voice is done waiting (answered, failed or given up), `Jobs.forget_guest(id)` stops it if it's
+still going and blanks its prompt, result and detail: the row stays, titled "Guest", so tuning, gists and the search
+index never see the guest's words. The guest's last four turns of this portal session live
 in `VoiceID.guest_turns` (memory) and go into the next turn's prompt; Chat's history never sees them.
 
 ### Guarded

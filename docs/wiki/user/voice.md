@@ -272,8 +272,10 @@ name with a question or request after it ("Kurooto, …") or a reply right after
 
 ### Honest limits
 
-- **A recording of your voice will usually pass.** It checks whose voice it is, not whether it's live. What protects
-  you: actions the AI takes still ask for your tap (Approve / Deny) as always, and enrolment refuses identical samples.
+- **A recording of your voice will usually pass.** It checks whose voice it is, not whether it's live. A recorded
+  plain-English request ("wake me at 6", "remind me at five") runs at once, as when you say it yourself; what the AI
+  would do on its own (sending, calls, alarms, deleting) still asks for your tap (Approve / Deny) as always. Enrolment
+  refuses identical samples.
 - **A cloned voice** (made from a minute of you on video) can pass too. The synthetic test only covers Kokoro's stock
   voices.
 - **A close relative** with a similar voice may pass at normal strictness: use strict, and try "Try as someone else"
@@ -284,9 +286,12 @@ name with a question or request after it ("Kurooto, …") or a reply right after
   it.
 - **Two people at once** in one turn give a mixed score (usually not sure); it can't separate voices inside one turn.
 - **Someone at your keyboard** isn't checked: typing is yours.
-- With agy as your AI, a guest's chat turn is told to use no tools and starts in an empty folder, but agy doesn't
-  enforce "no tools" the way Claude Code, the Gemini key or Ollama do; choose `guest_brain: local` if that matters to
-  you.
+- With agy as your AI, a guest's chat turn is told to use no tools and starts in an empty folder, and Kurooto's own
+  tools refuse it (even through agy's Kurooto connection). But agy doesn't enforce "no tools" the way Claude Code, the
+  Gemini key or Ollama do, and what you set up in agy itself (its own instructions file, other MCP servers such as
+  GBrain's) isn't Kurooto's to switch off for one turn; choose `guest_brain: local` if that matters to you.
+- A guest's words go to the AI as a request; once the answer is spoken, the request's words are blanked (the request
+  list keeps only a row titled "Guest"), so nothing learns from them later.
 
 Licences: CAM++ (3D-Speaker, Apache-2.0), its ONNX conversion (sherpa-onnx, Apache-2.0), kaldi-native-fbank
 (Apache-2.0), onnxruntime (MIT), numpy (BSD-3-Clause); the strangers' voice prints are computed from LibriSpeech
