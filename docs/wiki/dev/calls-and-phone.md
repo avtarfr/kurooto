@@ -1114,7 +1114,11 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     secondaryContainer right, notes as tertiary pills, the partial `#heard` faded). A floating card holds Talk (72 dp),
     Interrupt and the level with **Mic gate** (its `Slider`, 0.6 to 3 in 0.2 steps, folds away); the floating pill bar has
     Mute and Speaker (`ToggleButton`s, `ic_mic_off`, `ic_volume_up`/`ic_phone_in_talk`) and Hang up (`ic_call_end`, error
-    colours), or Close and the page's Call/Answer when no call is on. "New call screen" off keeps the page itself.
+    colours), or Close and the page's Call/Answer when no call is on; each button is its icon over its word (`Face`, 72 dp),
+    as are the ringing screen's Decline / Later / Answer now (a word beside the icon was cut short on a 360 dp phone:
+    "An" for Answer). A phone on its side (wider than tall, under 560 dp high) gets two panes: the header, the controls
+    (scrolling, the gate's note left out) and the bar on the left, the transcript on the right. "New call screen" off
+    keeps the page itself.
   - `MainActivity` (a `ComponentActivity`, edge to edge, `enableOnBackInvokedCallback` for the predictive back
     gesture) holds `HomeState` (Compose state: paired, name, pane, settingsGroup, waitingSheet, unread, today, waiting,
     queued, the status lines, update, tick) and does what the screens ask (`refresh`, `pull`, `loadWaiting`, `requestCall`, `chat`, `dueAct`, `answer`,

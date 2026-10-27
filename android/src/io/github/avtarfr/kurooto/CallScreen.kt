@@ -18,8 +18,11 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -287,27 +290,52 @@ private fun InCall(a: ComponentActivity, page: View, ui: CallUi, act: CallAction
         )
         if (!ui.raw) {
             Sky(a, strength = { 0.45f }, scroll = { 0f }, modifier = Modifier.fillMaxSize())
-            Column(
-                Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                if (ui.lines.isEmpty() && ui.heard.isEmpty()) {
-                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { BigHeader(ui) }
+            BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).padding(horizontal = 16.dp, vertical = 12.dp)) {
+                val talked = ui.lines.isNotEmpty() || ui.heard.isNotEmpty()
+                if (maxWidth > maxHeight && maxHeight < 560.dp) {
+                    // a phone on its side: the call on the left, the transcript beside it (stacked, it would get no room)
+                    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+                            SmallHeader(ui)
+                            // the controls scroll if they don't fit (the mic gate open), so the bar always shows
+                            Box(Modifier.weight(1f).fillMaxWidth().padding(top = 10.dp), contentAlignment = Alignment.BottomCenter) {
+                                val sc = rememberScrollState()
+                                LaunchedEffect(sc.maxValue) { sc.animateScrollTo(sc.maxValue) } // what just opened (the gate's slider)
+                                Column(Modifier.verticalScroll(sc), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    TurnsHint(ui)
+                                    Controls(ui, act, compact = true)
+                                }
+                            }
+                            Bar(ui, act)
+                        }
+                        if (talked) Transcript(ui, Modifier.weight(1f).fillMaxHeight())
+                    }
                 } else {
-                    SmallHeader(ui)
-                    Transcript(ui, Modifier.weight(1f).widthIn(max = 640.dp).fillMaxWidth())
+                    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        if (!talked) {
+                            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { BigHeader(ui) }
+                        } else {
+                            SmallHeader(ui)
+                            Transcript(ui, Modifier.weight(1f).widthIn(max = 640.dp).fillMaxWidth())
+                        }
+                        TurnsHint(ui)
+                        Controls(ui, act)
+                        Bar(ui, act)
+                    }
                 }
-                if (ui.turnsHint.isNotEmpty()) {
-                    Text(
-                        ui.turnsHint, style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant, textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(bottom = 8.dp),
-                    )
-                }
-                Controls(ui, act)
-                Bar(ui, act)
             }
         }
     }
+}
+
+/** Turn by turn's hint ("speak after it finishes"), as the page words it. */
+@Composable
+private fun TurnsHint(ui: CallUi) {
+    if (ui.turnsHint.isEmpty()) return
+    Text(
+        ui.turnsHint, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center, modifier = Modifier.padding(bottom = 8.dp),
+    )
 }
 
 /** Kurooto's badge: a cookie that swells with your voice while the gate lets it through and turns slowly while the call
@@ -446,7 +474,7 @@ private fun Bubble(l: CallLine) {
 /** Turn by turn's Talk and the live call's Interrupt, and the microphone: its level and the mic gate (folded away until
  *  you open it), in a floating card above the bar. */
 @Composable
-private fun Controls(ui: CallUi, act: CallActions) {
+private fun Controls(ui: CallUi, act: CallActions, compact: Boolean = false) {
     if (!ui.talkShown && !ui.interrupt && !ui.gateShown) return
     val cs = MaterialTheme.colorScheme
     var tuning by remember { mutableStateOf(false) }
@@ -500,14 +528,26 @@ private fun Controls(ui: CallUi, act: CallActions) {
                             valueRange = 0.6f..3f,
                             steps = 11,
                         )
-                        Text(
-                            "Higher needs a louder voice, so a noisy room doesn't cut in; lower lets a quiet voice through.",
-                            style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant,
-                        )
+                        if (!compact) { // a phone on its side has no room for it
+                            Text(
+                                "Higher needs a louder voice, so a noisy room doesn't cut in; lower lets a quiet voice through.",
+                                style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+/** A bar button's face: its icon over its word, so the three fit side by side on any phone (a word beside the icon got
+ *  cut short on narrow ones). */
+@Composable
+private fun Face(icon: Int, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(24.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
     }
 }
 
@@ -524,38 +564,30 @@ private fun Bar(ui: CallUi, act: CallActions) {
         modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth(),
     ) {
         Row(Modifier.padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val h = Modifier.weight(1f).height(64.dp)
-            val text = MaterialTheme.typography.titleMedium
+            val h = Modifier.weight(1f).height(72.dp)
+            val pad = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
             if (ui.inCall) {
                 if (ui.muteShown) {
-                    ToggleButton(checked = ui.muted, onCheckedChange = { act.press("mute") }, modifier = h) {
-                        Icon(painterResource(if (ui.muted) R.drawable.ic_mic_off else R.drawable.ic_chat_mic), contentDescription = null, modifier = Modifier.size(22.dp))
-                        Spacer(Modifier.size(6.dp))
-                        Text(if (ui.muted) "Muted" else "Mute", style = text, maxLines = 1)
+                    ToggleButton(checked = ui.muted, onCheckedChange = { act.press("mute") }, modifier = h, contentPadding = pad) {
+                        Face(if (ui.muted) R.drawable.ic_mic_off else R.drawable.ic_chat_mic, if (ui.muted) "Muted" else "Mute")
                     }
                 }
                 if (ui.outShown) {
-                    ToggleButton(checked = ui.speaker, onCheckedChange = { act.press("out") }, modifier = h) {
-                        Icon(painterResource(if (ui.speaker) R.drawable.ic_volume_up else R.drawable.ic_phone_in_talk), contentDescription = null, modifier = Modifier.size(22.dp))
-                        Spacer(Modifier.size(6.dp))
-                        Text("Speaker", style = text, maxLines = 1)
+                    ToggleButton(checked = ui.speaker, onCheckedChange = { act.press("out") }, modifier = h, contentPadding = pad) {
+                        Face(if (ui.speaker) R.drawable.ic_volume_up else R.drawable.ic_phone_in_talk, "Speaker")
                     }
                 }
                 Button(
-                    onClick = { act.hangUp() }, shapes = ButtonDefaults.shapes(), modifier = h,
+                    onClick = { act.hangUp() }, shapes = ButtonDefaults.shapes(), modifier = h, contentPadding = pad,
                     colors = ButtonDefaults.buttonColors(containerColor = cs.error, contentColor = cs.onError),
-                ) {
-                    Icon(painterResource(R.drawable.ic_call_end), contentDescription = null, modifier = Modifier.size(24.dp))
-                    Spacer(Modifier.size(6.dp))
-                    Text("Hang up", style = text, maxLines = 1)
-                }
+                ) { Face(R.drawable.ic_call_end, "Hang up") }
             } else {
-                FilledTonalButton(onClick = { act.close() }, shapes = ButtonDefaults.shapes(), modifier = h) { Text("Close", style = text, maxLines = 1) }
+                FilledTonalButton(onClick = { act.close() }, shapes = ButtonDefaults.shapes(), modifier = h, contentPadding = pad) {
+                    Face(R.drawable.ic_chat_close, "Close")
+                }
                 if (!ui.callOff && ui.callLabel.isNotBlank()) {
-                    Button(onClick = { act.press("call") }, shapes = ButtonDefaults.shapes(), modifier = h) {
-                        Icon(painterResource(R.drawable.ic_call), contentDescription = null, modifier = Modifier.size(22.dp))
-                        Spacer(Modifier.size(6.dp))
-                        Text(ui.callLabel, style = text, maxLines = 1)
+                    Button(onClick = { act.press("call") }, shapes = ButtonDefaults.shapes(), modifier = h, contentPadding = pad) {
+                        Face(R.drawable.ic_call, ui.callLabel)
                     }
                 }
             }
@@ -625,20 +657,19 @@ private fun Ringing(
                 modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth(),
             ) {
                 Row(Modifier.padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val h = Modifier.weight(1f).height(64.dp)
-                    val text = MaterialTheme.typography.titleMedium
+                    // icon over word (0.8.16): a word beside the icon was cut short on narrow phones ("An" for Answer)
+                    val h = Modifier.weight(1f).height(72.dp)
+                    val pad = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
                     Button(
-                        onClick = { onDecline.run() }, shapes = ButtonDefaults.shapes(), modifier = h,
+                        onClick = { onDecline.run() }, shapes = ButtonDefaults.shapes(), modifier = h, contentPadding = pad,
                         colors = ButtonDefaults.buttonColors(containerColor = cs.error, contentColor = cs.onError),
-                    ) { Text(declineLabel, style = text, maxLines = 1) }
-                    FilledTonalButton(onClick = { onLater.run() }, shapes = ButtonDefaults.shapes(), modifier = h) {
-                        Text(laterLabel, style = text, maxLines = 1)
+                    ) { Face(R.drawable.ic_call_end, declineLabel) }
+                    FilledTonalButton(onClick = { onLater.run() }, shapes = ButtonDefaults.shapes(), modifier = h, contentPadding = pad) {
+                        Face(R.drawable.ic_clock, laterLabel)
                     }
                     if (canAnswer) {
-                        Button(onClick = { onAnswer.run() }, shapes = ButtonDefaults.shapes(), modifier = h) {
-                            Icon(painterResource(R.drawable.ic_call), contentDescription = null, modifier = Modifier.size(22.dp))
-                            Spacer(Modifier.size(6.dp))
-                            Text("Answer", style = text, maxLines = 1)
+                        Button(onClick = { onAnswer.run() }, shapes = ButtonDefaults.shapes(), modifier = h, contentPadding = pad) {
+                            Face(R.drawable.ic_call, "Answer")
                         }
                     }
                 }
