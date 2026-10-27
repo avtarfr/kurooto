@@ -268,6 +268,44 @@ lists them with their source, how sure it was and how each source has done. Swit
 `mind.workspace.cycle_s` (30), `mind.attention.on`, `mind.beliefs.on`. *Undo:* turn them off; Delete Brain's data removes `mind-workspace.json` and
 `mind-beliefs.json`.
 
+## One door, at a natural break (0.8.14)
+
+Everything Kurooto says by itself now goes through one door: check-ins, Calm's small touches (a quiet-days note, a
+lighter-day line), research watch, Dreaming's results, a feeling said aloud, and an add-on's ideas. After Brain's gate,
+each one **bids**: how much it matters (by its kind, scaled by how welcome that kind has been lately), how soon (its due
+time, and how long it has already waited) and how unexpected it is. The top few (`mind.workspace.capacity`, 3) win; a
+message about something already on its mind counts double. Losers wait and bid again next minute; one that kept losing
+for 6 hours (`mind.workspace.fold_h`) goes into the evening bundle, with its own line saying why. Nothing is dropped
+quietly: `/mind gate` lists what waits, what went and what was let go (a question you'd already answered, a time that
+passed).
+
+**A winner that isn't urgent waits for a natural break** (`mind.workspace.breaks`), so nothing lands mid-proof:
+
+- you switch windows after 25 minutes or more in one (`mind.workspace.break_after_min`; needs the activity sense);
+- a study session or focus time ends;
+- you unlock your phone (needs the phone's screen sense);
+- you come back to the desk (Face presence);
+- an add-on says you stood up, stepped away or looked up.
+
+It never waits longer than 90 minutes (`mind.workspace.max_hold_min`), except while Kurooto is asleep. If none of
+those can see a break coming (no activity or phone screen sense, no Face presence, no add-on), there's nothing to wait
+for and a winner goes at once.
+
+**Always straight through, never held:** the alarm, reminders you set, calls, approvals you're waiting on, deadlines less
+than 12 hours away and anything urgent, and answers to what you asked.
+
+**What it expected, and Why this?** (`mind.expect.on`, `mind.why.on`). Each message it starts records what it expects to
+come of it: a reply within 3 hours for a question or check-in, that you act on it within 2 hours for a nudge. Your reply,
+a tap on one of its buttons, Less of this or the time running out closes it, and that's written in Brain's log (ids and
+numbers, never the words). **Why?** under the message on Telegram, and **Why this?** under the phone app chat's copy, now
+also say what the gate did, what the door did ("waited 35 min at the door, then went (at a break: you switched windows
+after a long stretch); it won over 2 others"), what it expected and what came of it, and how many it has sent by itself
+today.
+
+Switches: `mind.workspace.arbiter`, `mind.workspace.breaks`, `mind.expect.on`, `mind.why.on` (Settings → Brain; all on
+with Brain). *Undo:* turn `mind.workspace.arbiter` off and messages go as they come, as before 0.8.14; whatever waited
+goes at once (turning Brain off does the same).
+
 ## Your values as case law, and free-time play
 
 Both are off until you turn them on (`mind.precedents.on`, `mind.play.on`), even with Brain on.

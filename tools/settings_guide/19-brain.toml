@@ -58,6 +58,10 @@ tip = "What Brain senses: its own machine, your activity, your phone's sensors."
 tip = "Skills Brain learns from solved tasks and from what you repeat."
 [parent."mind.tom"]
 tip = "Brain's model of what you know, believe and want."
+[parent."mind.expect"]
+tip = "What Kurooto expects of each message it starts, and what came of it."
+[parent."mind.why"]
+tip = "\"Why this?\" under a message Kurooto started."
 [parent."mind.workspace"]
 tip = "The small \"now\" stage that decides what's on Brain's mind."
 [parent."mind.play"]
@@ -250,6 +254,43 @@ needs = "`mind.workspace.on`."
 tip = "The least gap in seconds between two cycles (events poke it sooner)."
 when = "Raise it to save a little work on a slow computer."
 needs = "`mind.workspace.on`."
+
+[s."mind.workspace.arbiter"]
+tip = "One door for everything Kurooto says by itself: each message bids, and only winners are sent."
+what = "Check-ins, Calm's small touches, research watch, Dreaming's results, a feeling said aloud and add-on bids all compete at the door after Brain's gate. Each gets a bid from its kind, its due time, how long it has waited and how welcome that kind has been lately; the top few win. Losers wait and bid again, and one that kept losing for hours goes into the evening bundle. Alarms, your own reminders, calls, approvals, close deadlines and answers to you go straight past."
+when = "Turn it off to have messages go as they come (past the gate and Calm, as in 0.8.13). Whatever waited goes at once. `/mind gate` shows what waits."
+needs = "`mind.workspace.on`."
+
+[s."mind.workspace.breaks"]
+tip = "A winner that isn't urgent waits for a natural break: a window switch after a long stretch, a phone pickup, a session ending."
+what = "Breaks come from the activity sense (a window switch after `mind.workspace.break_after_min` minutes in one window), the phone's screen sense (an unlock), a study session or focus time ending, Face presence (you came back) and add-ons. With none of those on, there's nothing to wait for and winners go at once."
+when = "Turn it off to have winners go as soon as they win."
+needs = "`mind.workspace.arbiter`."
+
+[s."mind.workspace.max_hold_min"]
+tip = "The longest a winner waits for a break, in minutes (unless Kurooto is asleep)."
+when = "Lower it if things come too late; raise it for longer stretches undisturbed."
+needs = "`mind.workspace.breaks`."
+
+[s."mind.workspace.break_after_min"]
+tip = "Minutes in one window before switching to another counts as a natural break."
+when = "Lower it if your stretches are short; raise it so only long ones count."
+needs = "`mind.workspace.breaks` and the activity sense (`mind.senses.activity`)."
+
+[s."mind.workspace.fold_h"]
+tip = "Hours a message may keep losing at the door before it goes into the evening bundle instead."
+when = "Lower it to clear the door sooner; nothing is ever dropped, only moved to the bundle."
+needs = "`mind.workspace.arbiter` and Calm (`notify.calm.on`); with Calm off it simply goes."
+
+[s."mind.expect.on"]
+tip = "Each message Kurooto starts says what it expects (a reply, or done within 2 hours), and what came of it is recorded."
+what = "A question or check-in expects a reply within 3 hours; a nudge expects to be acted on within 2. Your reply, a tap on one of its buttons or the time running out closes it; the scorekeeper writes the outcome. Ids and numbers only, never the words."
+when = "Turn it off to stop recording expectations and outcomes."
+
+[s."mind.why.on"]
+tip = "\"Why this?\" under a message Kurooto started says what Brain's gate and door did with it, what it expected, and how many it has sent today."
+what = "It adds to Calm's Why? on Telegram, and puts a Why this? button on the phone app chat's copy."
+when = "Turn it off to keep Calm's Why? as it was."
 
 [s."mind.attention.on"]
 tip = "A model of its own attention: \"what are you thinking about?\" is answered from it."

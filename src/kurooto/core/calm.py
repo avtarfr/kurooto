@@ -1231,8 +1231,9 @@ class Calm:
             self.app.events.emit("calm_failed", error=f"spoken: {type(e).__name__}: {e}"[:200])
             return True
 
-    def hold(self, text: str, why: str | None, **kw) -> None:
-        """Straight into the evening bundle (a call that wasn't placed)."""
+    def hold(self, text: str, why: str | None, held: str = "calls", **kw) -> None:
+        """Straight into the evening bundle (a call that wasn't placed; held "workspace": a message that kept losing at
+        Brain's door for hours, mind/workspace.py)."""
         from kurooto.core.notify import Message
 
         msg = Message(text, why=why, **kw)
@@ -1252,7 +1253,7 @@ class Calm:
                 "title": (msg.title or "")[:120],
                 "text": text[:300],
                 "state": "held",
-                "held": "calls",
+                "held": held if held in HELD else "calls",
                 "buttons": "[]",
                 "budgeted": 0,
                 "msg": json.dumps(body, ensure_ascii=False, default=str),
@@ -1438,6 +1439,9 @@ class Calm:
         sent = dt.datetime.fromtimestamp(float(rec["ts"]))
         t = self.today()
         lines.append(f"Sent {sent:%a %H:%M}. Today: {t['messages']} of {t['messages_max']} messages.")
+        from kurooto.mind import records  # (Brain, 0.8.14) what its gate and door did, and what it expected
+
+        lines += records.why_lines(self.app, rec["id"])
         return "\n".join(lines)
 
     # ------------------------------------------------------------------------------------- Less of this
@@ -1787,6 +1791,7 @@ HELD = {
     "calls": "the day's call was used",
     "habit": "you hadn't answered the last few of these",
     "window": "it came outside the hours set for these",
+    "workspace": "more pressing things kept winning Brain's attention for hours",
 }
 BUNDLED = {  # the bundle's first line: why they waited
     "budget": "held by the daily limit of {lim}",
@@ -1797,4 +1802,5 @@ BUNDLED = {  # the bundle's first line: why they waited
     "habit": "because you hadn't answered the last few of these",
     "window": "because they came outside the hours set for them",
     "quiet": "because of your quiet week",
+    "workspace": "because more pressing things kept winning Brain's attention for hours",
 }

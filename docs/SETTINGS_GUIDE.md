@@ -698,6 +698,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.beliefs.on` | `true` | Keep where each belief came from (said, saw, inferred, imagined) and how sure it is. ([guide](wiki/user/settings-guide.md#mindbeliefson)) |
 | `mind.budget.on` | `true` | The body budget: a few things about Kurooto's own state it tries to keep level, and its drive. ([guide](wiki/user/settings-guide.md#mindbudgeton)) |
 | `mind.console.on` | `true` | The Brain console: a dashboard page (Alt+O) and the phone's Brain view showing what the Brain decided and why. ([guide](wiki/user/settings-guide.md#mindconsoleon)) |
+| `mind.expect.on` | `true` | Each message Kurooto starts says what it expects (a reply, or done within 2 hours), and what came of it is recorded. ([guide](wiki/user/settings-guide.md#mindexpecton)) |
 | `mind.feelings.empathy` | `true` | Concern for what it looks after (deadlines, projects, its machine): it notices sooner, speaks more gently. ([guide](wiki/user/settings-guide.md#mindfeelingsempathy)) |
 | `mind.feelings.express` | `true` | Brain may say a feeling about something open, through the gate, at most 3 times a week unasked. ([guide](wiki/user/settings-guide.md#mindfeelingsexpress)) |
 | `mind.feelings.mood` | `true` | Its mood shapes it: low, it does less unasked, asks first, says less; high, a little bolder. ([guide](wiki/user/settings-guide.md#mindfeelingsmood)) |
@@ -768,8 +769,14 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.tone.on` | `false` | Tag each message you write with one word (calm, tired…), using the model on this computer only. ([guide](wiki/user/settings-guide.md#mindtoneon)) |
 | `mind.values.on` | `true` | Brain learns which kinds of things help (values), never affecting a choice in the shadow days. ([guide](wiki/user/settings-guide.md#mindvalueson)) |
 | `mind.values.shadow_days` | `21` | Days learned values are only counted, never used for a choice. ([guide](wiki/user/settings-guide.md#mindvaluesshadowdays)) |
+| `mind.why.on` | `true` | "Why this?" under a message Kurooto started says what Brain's gate and door did with it, what it expected, and how many it has sent today. ([guide](wiki/user/settings-guide.md#mindwhyon)) |
+| `mind.workspace.arbiter` | `true` | One door for everything Kurooto says by itself: each message bids, and only winners are sent. ([guide](wiki/user/settings-guide.md#mindworkspacearbiter)) |
+| `mind.workspace.break_after_min` | `25` | Minutes in one window before switching to another counts as a natural break. ([guide](wiki/user/settings-guide.md#mindworkspacebreakaftermin)) |
+| `mind.workspace.breaks` | `true` | A winner that isn't urgent waits for a natural break: a window switch after a long stretch, a phone pickup, a session ending. ([guide](wiki/user/settings-guide.md#mindworkspacebreaks)) |
 | `mind.workspace.capacity` | `3` | How many things can be on Brain's mind at once (1 to 3). ([guide](wiki/user/settings-guide.md#mindworkspacecapacity)) |
 | `mind.workspace.cycle_s` | `30` | The least gap in seconds between two cycles (events poke it sooner). ([guide](wiki/user/settings-guide.md#mindworkspacecycles)) |
+| `mind.workspace.fold_h` | `6` | Hours a message may keep losing at the door before it goes into the evening bundle instead. ([guide](wiki/user/settings-guide.md#mindworkspacefoldh)) |
+| `mind.workspace.max_hold_min` | `90` | The longest a winner waits for a break, in minutes (unless Kurooto is asleep). ([guide](wiki/user/settings-guide.md#mindworkspacemaxholdmin)) |
 | `mind.workspace.on` | `true` | A small "now" stage that parts compete to enter; only what wins may start a message or act on its own. ([guide](wiki/user/settings-guide.md#mindworkspaceon)) |
 
 ### `modules`

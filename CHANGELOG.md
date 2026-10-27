@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.14 (unreleased)
+
+- **One door for what Kurooto says by itself.** With Brain on, check-ins, Calm's small touches, research watch,
+  Dreaming's results, feelings said aloud and add-on ideas now bid at the workspace, and only winners are sent. A
+  winner that isn't urgent waits for a natural break (a window switch after a long stretch, a phone pickup, a session
+  ending, you coming back), at most 90 minutes; losers wait and bid again, and after 6 hours go into the evening bundle,
+  never dropped. Alarms, your reminders, calls, approvals, close deadlines and answers to you go straight through
+  (`mind.workspace.arbiter`, `mind.workspace.breaks`).
+- **"Why this?" says what Brain did.** Every message Kurooto starts records what it expects (a reply, or that you act
+  on it within 2 hours) and what came of it. Why? on Telegram and a new Why this? on the phone app chat's copy say what
+  the gate and the door did, what it expected and how many it has sent today (`mind.expect.on`, `mind.why.on`).
+
 ## 0.8.13 (unreleased)
 
 - **Kurooto says numbers as a person would.** The speech engine read digits literally: "21:31" with a pause in the

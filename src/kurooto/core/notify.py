@@ -14,6 +14,10 @@ A channel that keeps its own copy of a question (the phone app) also registers a
 is dealt with anywhere (answered on Telegram, a button tapped, expired), retract() takes its copy down.
 A channel that can change a message it sent (Telegram) registers an edit handler: Calm folds several notices of one
 kind a day (updates.done) into the first one with edit().
+With Brain on (0.8.14), a message that came by itself also bids at the workspace's door after Brain's gate
+(mind/workspace.py): it goes when it wins, at a natural break, and its decision record says what it expects to come of
+it (mind/records.py). The chat's copy of such a message gets a "Why this?" button too (Calm's Why?, answered with what
+the gate and the door did).
 """
 
 from __future__ import annotations
@@ -25,7 +29,7 @@ from typing import TYPE_CHECKING, Any
 
 from kurooto.core import desktop
 from kurooto.core.config import register_defaults
-from kurooto.mind import gate, records
+from kurooto.mind import gate, records, workspace
 
 if TYPE_CHECKING:
     from kurooto.app import App
@@ -77,6 +81,9 @@ class Message:
     purpose: str | None = (
         None  # what Brain's model of you was used for: level, timing or correct_fact (mind/tom/model.py)
     )
+    # Brain's door (mind/workspace.py, 0.8.14): numbers for this message's bid, {"stake", "urgency", "surprise"} each
+    # 0..1, when a feature knows better than the default its Calm reason gives (a surprise check-in, say)
+    bid: dict | None = None
 
 
 Sender = Callable[[Message], Any]  # returns the channel's message id, or None
@@ -133,6 +140,9 @@ class Notifier:
         verdict, msg, _receipt = self.gate(msg)  # Brain's gate, when it's on (mind/gate.py): only ever quieter
         if verdict != "send":
             return None
+        go, door = workspace.door(self.app, msg)  # (Brain, 0.8.14) it bids at the door; only winners go, at a break
+        if not go:
+            return None
         calm = getattr(self.app, "calm", None)
         if calm is not None and calm.decide(msg) != "send":
             return None
@@ -150,7 +160,9 @@ class Notifier:
         except Exception:
             pass
         if msg.why and msg.why != "asked":  # one it starts by itself: its decision record (Brain, mind/records.py)
-            records.decide(self.app, f"message:{msg.kind}", scored_reason=msg.why, source="rules")
+            expect = records.expectation(self.app, msg)  # 0.8.14: what it expects to come of it (a reply, done in 2 h)
+            did = records.decide(self.app, f"message:{msg.kind}", scored_reason=msg.why, source="rules", expect=expect)
+            records.track(self.app, did, msg, expect, door)
         return self.release(msg)
 
     def gate(self, msg: Message):
@@ -200,7 +212,7 @@ class Notifier:
         elif "chat" in self.channels and msg.kind != "call" and (self.app.app_main() or s.get("notify.app_chat")):
             try:  # without Telegram the chat is your channel: Calm's Why? / Less of this come there too, and files
                 if self.app.app_main() or not msg.file:  # (with Telegram, a file is Telegram's document)
-                    self.channels["chat"](tmsg if self.app.app_main() else msg)
+                    self.channels["chat"](tmsg if self.app.app_main() else records.with_why(self.app, msg))
             except Exception as e:
                 self.app.events.emit("notify_failed", channel="chat", error=str(e)[:200])
         no_other_channel = ref is None and "app" not in self.channels

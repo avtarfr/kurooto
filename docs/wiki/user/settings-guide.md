@@ -42,7 +42,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 49 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
-- [Brain](#brain): 91 settings
+- [Brain](#brain): 98 settings
 - [Voice and voice notes](#voice-and-voice-notes): 53 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
@@ -4908,6 +4908,78 @@ The least gap in seconds between two cycles (events poke it sooner).
 - **Values:** A whole number. **Default:** `30`.
 - **When to change it:** Raise it to save a little work on a slow computer.
 - **Depends on:** `mind.workspace.on`.
+
+### `mind.workspace.arbiter`
+
+One door for everything Kurooto says by itself: each message bids, and only winners are sent.
+
+Check-ins, Calm's small touches, research watch, Dreaming's results, a feeling said aloud and add-on bids all compete at
+the door after Brain's gate. Each gets a bid from its kind, its due time, how long it has waited and how welcome that
+kind has been lately; the top few win. Losers wait and bid again, and one that kept losing for hours goes into the
+evening bundle. Alarms, your own reminders, calls, approvals, close deadlines and answers to you go straight past.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to have messages go as they come (past the gate and Calm, as in 0.8.13). Whatever
+  waited goes at once. `/mind gate` shows what waits.
+- **Depends on:** `mind.workspace.on`.
+
+### `mind.workspace.breaks`
+
+A winner that isn't urgent waits for a natural break: a window switch after a long stretch, a phone pickup, a session
+ending.
+
+Breaks come from the activity sense (a window switch after `mind.workspace.break_after_min` minutes in one window), the
+phone's screen sense (an unlock), a study session or focus time ending, Face presence (you came back) and add-ons. With
+none of those on, there's nothing to wait for and winners go at once.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to have winners go as soon as they win.
+- **Depends on:** `mind.workspace.arbiter`.
+
+### `mind.workspace.max_hold_min`
+
+The longest a winner waits for a break, in minutes (unless Kurooto is asleep).
+
+- **Values:** A whole number. **Default:** `90`.
+- **When to change it:** Lower it if things come too late; raise it for longer stretches undisturbed.
+- **Depends on:** `mind.workspace.breaks`.
+
+### `mind.workspace.break_after_min`
+
+Minutes in one window before switching to another counts as a natural break.
+
+- **Values:** A whole number. **Default:** `25`.
+- **When to change it:** Lower it if your stretches are short; raise it so only long ones count.
+- **Depends on:** `mind.workspace.breaks` and the activity sense (`mind.senses.activity`).
+
+### `mind.workspace.fold_h`
+
+Hours a message may keep losing at the door before it goes into the evening bundle instead.
+
+- **Values:** A whole number. **Default:** `6`.
+- **When to change it:** Lower it to clear the door sooner; nothing is ever dropped, only moved to the bundle.
+- **Depends on:** `mind.workspace.arbiter` and Calm (`notify.calm.on`); with Calm off it simply goes.
+
+### `mind.expect.on`
+
+Each message Kurooto starts says what it expects (a reply, or done within 2 hours), and what came of it is recorded.
+
+A question or check-in expects a reply within 3 hours; a nudge expects to be acted on within 2. Your reply, a tap on one
+of its buttons or the time running out closes it; the scorekeeper writes the outcome. Ids and numbers only, never the
+words.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to stop recording expectations and outcomes.
+
+### `mind.why.on`
+
+"Why this?" under a message Kurooto started says what Brain's gate and door did with it, what it expected, and how many
+it has sent today.
+
+It adds to Calm's Why? on Telegram, and puts a Why this? button on the phone app chat's copy.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep Calm's Why? as it was.
 
 ### `mind.attention.on`
 
