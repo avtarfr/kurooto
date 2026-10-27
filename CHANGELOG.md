@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.8.13 (unreleased)
+## 0.8.13 (2026-10-27)
+
+Voice that knows when it is spoken to and can be cut off, numbers said as words, study packs with what the syllabus cites, and fixes for backups, phone sensors and the phone camera as an eye.
 
 - **Voice: cut in while it speaks.** It used to drop every sound while it spoke (so it wouldn't hear itself), so only
   `/voice stop` could end a long answer. Now it keeps listening: your voice (Voice ID, checked against Kurooto's own
