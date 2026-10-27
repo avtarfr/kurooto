@@ -1,6 +1,8 @@
 """A desktop notification on Windows, macOS or Linux. Best effort: if the OS refuses, nothing breaks.
 Text goes in as program arguments or environment variables, never pasted into script source, so quotes can't
-break out. The Windows script itself goes in as -EncodedCommand (base64 UTF-16), so its own quotes survive too."""
+break out. The Windows script itself goes in as -EncodedCommand (base64 UTF-16), so its own quotes survive too.
+KUROOTO_NO_DESKTOP set (a developer's scratch run, beside a scratch KUROOTO_HOME) shows nothing: such a run once popped
+"removed …" on a real desktop while it tried its own removal code."""
 
 from __future__ import annotations
 
@@ -31,6 +33,8 @@ _MAC = "on run argv\ndisplay notification (item 2 of argv) with title (item 1 of
 
 def notify(title: str, text: str, urgent: bool = False) -> bool:
     title, text = str(title)[:120], str(text)[:500]
+    if os.environ.get("KUROOTO_NO_DESKTOP"):  # a developer's scratch run: nothing pops up on the real desktop
+        return False
     try:
         if sys.platform == "win32":
             script = base64.b64encode(_WIN_TOAST.encode("utf-16-le")).decode()
