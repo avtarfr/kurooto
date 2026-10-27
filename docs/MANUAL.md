@@ -1737,6 +1737,16 @@ to be conscious. Promises it makes ("I'll check back at 6") are written down; a 
 the computer is down the call line lists what has no guarantee. *Undo:* `mind.budget.on`, `mind.values.on`, `mind.feelings.on`,
 `mind.feelings.express`, `mind.promises.on`, `mind.heartbeat.on` off.
 
+**The Brain console (0.8.10).** Dashboard → **console** (Alt+O): everything Brain keeps, read-only and live. *Now* (the spotlight,
+the latest decisions, the busiest parts, today's limits, senses as counts); *Timeline* (the log by part and day, Older pages back);
+*Decisions* (open one: why, what it weighed, what came of it, and the evidence: what it has learned about that kind of action,
+the log just before and after, the journal lines citing it, earlier decisions of the same kind); *Parts* (each part's switches
+and settings beside what it is doing; the on/off ones are switches); *Beliefs*, *Experiments*, *Skills*, *Plans*, *Model of
+you*, *Memory* (what it forgot as counts, stops, limits, promises, the journal's and story's headings); one search over all of
+it. Nothing named for money or health is shown. On the Android app (with Show on the phone on) the Views get the same console as
+**Brain**, sent sealed only while you watch it. *Undo:* `mind.console.on` off (the page says it's off and the phone gets an "off"
+copy in place of the last one); `calls.views_brain` off for the phone only.
+
 **Commands:** `/mind` (is it running, how long is the log, does it check out, the last anchor); `/mind verify` (checks
 every record); `/mind learning`; `/mood` (how it reads you and what it expects); `/budget`; `/promises`; `/autonomy`; `/mindjournal`; `/story`; `/capabilities`; `/indicators`; `/thinking`; `/beliefs`; `/lab`; `/improve`; `/learned`.
 
@@ -3590,7 +3600,7 @@ line):
   words; ↑ and ↓ bring back what you typed). The other pages (activity, jobs, schedule, features, phone, research,
   you, settings) are in the same border and open over the whole board: **Alt** and the page's underlined letter
   (**Alt+F** features, **Alt+S** settings, **Alt+A** activity, **Alt+J** jobs, **Alt+C** schedule, **Alt+P** phone,
-  **Alt+R** research, **Alt+Y** you) opens one, and **Esc** goes back. Inside a terminal those keys stay the
+  **Alt+R** research, **Alt+Y** you, **Alt+O** the Brain console) opens one, and **Esc** goes back. Inside a terminal those keys stay the
   terminal's (Alt+F is a word forward in a shell). **Alt+1**, **Alt+2**… switch the terminal tabs; **Alt+/** (or
   `/`) finds a note.
 

@@ -28,7 +28,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Your AI](#your-ai): 31 settings
 - [Messages and where they reach you](#messages-and-where-they-reach-you): 30 settings
 - [When it may interrupt you](#when-it-may-interrupt-you): 13 settings
-- [Phone calls and the call line](#phone-calls-and-the-call-line): 33 settings
+- [Phone calls and the call line](#phone-calls-and-the-call-line): 34 settings
 - [Morning alarm](#morning-alarm): 11 settings
 - [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 34 settings
 - [Check-ins, journal and the week](#check-ins-journal-and-the-week): 18 settings
@@ -42,7 +42,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 49 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
-- [Brain](#brain): 88 settings
+- [Brain](#brain): 89 settings
 - [Voice and voice notes](#voice-and-voice-notes): 22 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
@@ -1197,6 +1197,18 @@ When the morning line comes if no wake-up alarm is set.
 - **When to change it:** Set it to when you're usually up. With the alarm set, it comes with the alarm.
 - **Costs and what leaves this computer:** Sealed for each Android phone; your call line holds ciphertext only.
 - **Depends on:** `lidsafe.today`.
+
+### `calls.views_brain`
+
+Show the Brain console in the phone app's Views (the Brain choice), sealed for your phone like Systems and the Notes
+map.
+
+- **Values:** `true` (the phone gets the Brain's copy, but only while you're looking at it), `false` (the Brain choice
+  says it's off). **Default:** on.
+- **When to change it:** Turn it off if you'd rather the Brain's decisions and plans never travel to your phone.
+- **Costs and what leaves this computer:** A sealed copy of what the Brain logged (decisions, plans, beliefs: never
+  health or money) passes through your call line while you watch it.
+- **Depends on:** Phone views (`calls.views`) and Brain on, with the Brain console (`mind.console.on`).
 
 ## Morning alarm
 
@@ -5299,6 +5311,17 @@ Read the study tracker's time per day, for your real pace in week plans.
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off to leave this source out.
 - **Depends on:** `mind.backfill.on`.
+
+### `mind.console.on`
+
+The Brain console: a dashboard page (Alt+O) and the phone's Brain view that show what the Brain decided and why, its
+timeline, plans, beliefs and switches.
+
+- **Values:** `true` (the page and the view read what the Brain keeps), `false` (both say the console is off; the Brain
+  itself runs as before). **Default:** on.
+- **When to change it:** Turn it off if you don't want its reasoning on screen. It only reads; nothing the Brain does
+  depends on it.
+- **Depends on:** Brain on.
 
 ## Voice and voice notes
 

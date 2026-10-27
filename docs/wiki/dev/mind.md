@@ -1001,3 +1001,56 @@ Only its own body's tone moves the mood; the channels about him never do (I-14).
 the week's sum, not V or Q. (7) Talk costs and the pest model apply to Brain's own kinds; a reminder he set isn't one.
 (8) `mind.feelings.vocal` is off by default (the standing rule for features that change what people had). (9) The Brain
 page (`core/brainview.py`) doesn't list the three new switches yet: its 3D layout counts 31 parts and is being rebuilt.
+
+## 0.8.10: the Brain console (`mind/console.py`, `GET /api/brain/console`)
+
+One read-only view of every store Brain keeps, for the dashboard's **Brain console** page (`home.js:renderConsole`, Alt+O,
+`PKEY.console` "o") and the phone app's Brain view (`calls/views.py` kind `brain`). Its own switch `mind.console.on` (on: a page
+and a view, invisible until opened); it is a part (`PART = "console"`) for `test_mind_invariants`, though it writes nothing.
+
+**Reading.** The mind log is opened `mode=ro` per query (`_q`, the same URI as `MindLog._ro`); score rows through the client
+(`trust`, `values_rows`, `vars_rows`); everything else from each part's own file (`mind-beliefs.json`, `mind-tom.json`,
+`mind-workspace.json`, `mind-improve.json`, `mind-play.json`, `mind-promises.json`, `mind-forget.json`, `mind-gate.json`,
+the lab folders, the skill library, the journal index, the story's week files, `senses.db` `mode=ro`) with `jload`, so a
+missing file is an empty part. Nothing calls a part's function that writes (no `journal.folder`, `story.folder`, `plans.run`
+or `senses.store._db`: each of those makes folders or runs rollouts); plans are `plans.tree.build` (cheap) joined with
+`mind-plan-last.json`'s risks and the last prediction's p50.
+
+**Parts and kinds.** `KIND_PART` (and `PREFIX_PART`: `gate_*`, `promise_*`) maps a log kind to the `core/brainview.py` part that
+wrote it; everything else is `log` ("What it saw": Kurooto's mirrored events). `_kind_filter(part)` is that as SQL.
+`describe(kind, body)` is the one-line wording. `_activity` counts per part over the last `WINDOW` (200,000) records
+(`COUNT`, `SUM(ts >= day ago)`, `MAX(seq)`) and fetches each part's last record. A part's settings are every flattened
+`mind.*` key under its switch's prefix (`mind.lab.on` -> `mind.lab.`), plus `EXTRA` (the log gets `mind.anchor_every`,
+`mind.hardened`, `mind.console.`; budget gets `mind.stimulation.`, `mind.talk.`, `mind.pest.`), minus `EXCLUDE`; each with
+its tooltip from `data/settings-help.json` (a string, or an object's `tip`/`short`/`what`). A list holding paths shows as
+"N folders".
+
+**Views** (`view(app, q)`): `all` (`snapshot`), `timeline` (`part`, `day` YYYY-MM-DD local, `before` seq, `limit` <= 400,
+`q`), `decisions`, `decision` (`id`, matched as `"id":"<id>"` in the canonical body; ids checked against `HEX`), `search`
+(`q`, >= 2 characters: the log's kind and body by `LIKE` with `%`/`_` escaped, then the other stores and the settings in
+Python). A decision's `evidence`: `before`/`after` (log records within `AROUND_S` 600 s, 12 each), `earlier` (6 decisions of
+the same action), `learned` (its class from `risk.classify` unless the record has one, trust p10 and counts for R0-R3, the
+mean Q over `Q:*|<action>`, `negd:<action>`), `journal` (lines of that day's and the next day's journal citing its seq).
+
+**Plain facts.** `clean_body` drops keys matching `records.MONEY_OR_HEALTH` and `at`/`prev`/`hash`, and replaces a string
+matching `PRIVATE` (the skills distiller's and the model of you's deny-lists together, plus money words) with `LEFT_OUT`. A belief,
+model row, skill or milestone whose words match `PRIVATE` is left out and counted (`hidden`, `counts`); a spotlight item that is
+`private` keeps its kind and salience only. Senses: per sensor on/off and today's event count. Journal and story: day/week with
+line counts. Forgetting: the count, and each `forget_event`'s time and `n`.
+
+**The phone's copy.** `snapshot(app, phone=True)`: the timeline's newest `PHONE_ROWS` (240) and `evidence` on the newest
+`PHONE_DECISIONS` (25) decisions, so it opens and searches without the computer; about 100 KB of JSON (16 KB gzipped) and 70 ms for a made-up
+400-record log.
+
+**The page** (`web/static/views/brainconsole.js` + `.css`, and `views/brain.html` for the phone): `BrainConsole.mount(host,
+{api, toggle, mode, data})` returns `{update, stop, set}`. With `api` (the dashboard) it asks `view=all` every 5 s while the page is
+in sight and connected (it stops itself once its root leaves the document), a filtered timeline page and older pages, a decision's
+evidence and searches; without (the phone) it filters and searches its copy. One IIFE (its names don't meet home.js's), Chrome 58
+syntax, no inline styles (the phone page's CSP): bar widths and island colours are set through the DOM after drawing. The
+controls are spans with a role (`button`, `tab`, `switch`) pressed by Enter and Space, and the markup avoids `section`/`button`
+elements, because the dashboard's stylesheets hide every `section` and style every `button` under `#ov-body`. On `brain.html`,
+`KurootoView.take(json)` (`{snap, computer, reach, off, palette}`) sets the palette as CSS variables and feeds it.
+
+Tests: `tests/unit/test_brain_console.py` (a made-up log and stores: decisions and evidence, part and day filters, paging, search,
+nothing named for money or health, part settings, the phone's copy), `tests/unit/test_brain_phone.py` (the sealed copy while
+watched, off copies, the page files), `test_views.py` (Chrome 58 build of `brainconsole.js`), `test_panes.py` (the page key).

@@ -186,3 +186,11 @@ tip = "When the morning line comes if no wake-up alarm is set."
 cost = "Sealed for each Android phone; your call line holds ciphertext only."
 when = "Set it to when you're usually up. With the alarm set, it comes with the alarm."
 needs = "`lidsafe.today`."
+
+[s."calls.views_brain"]
+tip = "Show the Brain console in the phone app's Views (the Brain choice), sealed for your phone like Systems and the Notes map."
+values = "`true` (the phone gets the Brain's copy, but only while you're looking at it), `false` (the Brain choice says it's off)."
+when = "Turn it off if you'd rather the Brain's decisions and plans never travel to your phone."
+cost = "A sealed copy of what the Brain logged (decisions, plans, beliefs: never health or money) passes through your call line while you watch it."
+needs = "Phone views (`calls.views`) and Brain on, with the Brain console (`mind.console.on`)."
+

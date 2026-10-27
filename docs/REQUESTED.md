@@ -41,6 +41,8 @@ Standing plans, never struck through.
 - **The whole Brain visible from the phone app** (planned for 0.8.2, asked 2026-10-26): a Brain view next to Systems and the Notes map in the app's
   Views tab, read-only, live while you watch it: what it's thinking, what it did and why, its beliefs and their sources, experiments, proposals,
   skills, senses (counts only), its model of you, plans, what it forgot, stops and limits, the journal and story headings. Sealed with your phone's key.
+  (0.8.10, the data side: the "brain" copy in `modules/calls/views.py`, sealed for each phone and sent only while watched, `calls.views_brain`; the
+  app's Brain choice in Views comes with the being part)
 - ~~**A guide to every single setting, and a tooltip on every single one**~~ (planned for 0.8.2, asked 2026-10-26): today each setting has a one-line tooltip
   taken from its comment (0.8.0) and the generated settings guide is one table. Add a proper guide as its own page (user wiki, in the app's help and on the site),
   one entry per setting: what it does in plain words, its values and default, when you would change it, what changes when you do, what it costs or sends
@@ -52,9 +54,10 @@ Standing plans, never struck through.
 - ~~**Feed the Brain its whole past**~~ (started in 0.8.1, asked 2026-10-26): the Brain only knows what happened since it was switched on. A one-time, resumable, read-only
   backfill of what's already on this computer (Kurooto's event history, AI request history, deadlines, reminders, check-ins, quizzes, call counts, the journal and
   notes' structure) into a history table of its own, never counted as reward, used for priors (what a normal day is, your pace, past choices); each source its own switch. (0.8.1 built the first source only: Kurooto's event history, used for deadline moves in the read.) (0.8.7: every source with its own switch, `history.db` with a chain per source witnessed in the log, priors for the read, the forecast, week plans' pace and the model of you; the journal, the notes' structure and the chat log are left out, the stage-14 model reads the first two live and chat counts are an engagement signal; see Feeding Brain its past in the user wiki)
-- **A detailed interface for the Brain** (planned for 0.8.2, asked 2026-10-26): beyond the cards, a proper console on the dashboard and the phone:
+- ~~**A detailed interface for the Brain**~~ (planned for 0.8.2, asked 2026-10-26): beyond the cards, a proper console on the dashboard and the phone:
   open any decision to see its reasons and evidence, a timeline you can filter by part and day, search across what it has logged, each part's
-  switches and settings next to what that part is doing, and the same view for its experiments, beliefs, skills and plans.
+  switches and settings next to what that part is doing, and the same view for its experiments, beliefs, skills and plans. (0.8.10: the dashboard's
+  Brain console page, Alt+O, from `mind/console.py` and `GET /api/brain/console`; the same page runs in the phone app's WebView as `views/brain.html`)
 - ~~**Uninstall what a feature brought** (planned for 0.8.2): turning a feature off, or a hardware setting that stops
   using a model, offers to remove what it installed (Ollama models, programs like Node or GBrain) with its size, never
   without a tap and never what was there before Kurooto; an install receipt, `kurooto installed` and `kurooto remove`,

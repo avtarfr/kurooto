@@ -216,6 +216,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `calls.today` | `true` | Your phone app's Today screen and its copy of your alarm, kept up to date from this computer. ([guide](wiki/user/settings-guide.md#callstoday)) |
 | `calls.turn_brain` | `"gemini"` | Who answers turn-by-turn calls on your computer: Gemini with your key, or a local model. ([guide](wiki/user/settings-guide.md#callsturnbrain)) |
 | `calls.views` | `false` | Systems and the Notes map in the phone app: your notes' titles and links, and each feature's health. ([guide](wiki/user/settings-guide.md#callsviews)) |
+| `calls.views_brain` | `true` | Show the Brain console in the phone app's Views (the Brain choice), sealed for your phone like Systems and the Notes map. ([guide](wiki/user/settings-guide.md#callsviewsbrain)) |
 | `calls.views_links` | `20000` | The most links on the phone's Notes map (a book's "Seen in" links go first). ([guide](wiki/user/settings-guide.md#callsviewslinks)) |
 | `calls.views_notes` | `5000` | The most notes on the phone's Notes map (best linked first). ([guide](wiki/user/settings-guide.md#callsviewsnotes)) |
 | `calls.voice` | `""` | Which Gemini Live voice calls speak in; empty is Google's default. ([guide](wiki/user/settings-guide.md#callsvoice)) |
@@ -655,6 +656,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.backfill.study` | `true` | Read the study tracker's time per day, for your real pace in week plans. ([guide](wiki/user/settings-guide.md#mindbackfillstudy)) |
 | `mind.beliefs.on` | `true` | Keep where each belief came from (said, saw, inferred, imagined) and how sure it is. ([guide](wiki/user/settings-guide.md#mindbeliefson)) |
 | `mind.budget.on` | `true` | The body budget: a few things about Kurooto's own state it tries to keep level, and its drive. ([guide](wiki/user/settings-guide.md#mindbudgeton)) |
+| `mind.console.on` | `true` | The Brain console: a dashboard page (Alt+O) and the phone's Brain view that show what the Brain decided and why, its timeline, plans, beliefs and switches. ([guide](wiki/user/settings-guide.md#mindconsoleon)) |
 | `mind.feelings.empathy` | `true` | Concern for what it looks after (deadlines, projects, its machine): it notices sooner, speaks more gently. ([guide](wiki/user/settings-guide.md#mindfeelingsempathy)) |
 | `mind.feelings.express` | `true` | Brain may say a feeling about something open, through the gate, at most 3 times a week unasked. ([guide](wiki/user/settings-guide.md#mindfeelingsexpress)) |
 | `mind.feelings.mood` | `true` | Its mood shapes it: low, it does less unasked, asks first, says less; high, a little bolder. ([guide](wiki/user/settings-guide.md#mindfeelingsmood)) |

@@ -505,3 +505,9 @@ when = "Turn it off to leave this source out."
 tip = "Read the study tracker's time per day, for your real pace in week plans."
 needs = "`mind.backfill.on`."
 when = "Turn it off to leave this source out."
+
+[s."mind.console.on"]
+tip = "The Brain console: a dashboard page (Alt+O) and the phone's Brain view that show what the Brain decided and why, its timeline, plans, beliefs and switches."
+values = "`true` (the page and the view read what the Brain keeps), `false` (both say the console is off; the Brain itself runs as before)."
+when = "Turn it off if you don't want its reasoning on screen. It only reads; nothing the Brain does depends on it."
+needs = "Brain on."

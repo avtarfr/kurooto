@@ -269,6 +269,10 @@ class Api:
             from kurooto.mind import stimulation
 
             return 200, stimulation.body(self.app)
+        if path == "brain/console":  # the Brain console: decisions, timeline, search, parts (mind/console.py)
+            from kurooto.mind import console
+
+            return console.view(self.app, q)
         if path == "brain/claude-accounts":  # your extra Claude accounts (providers/claude_accounts.py)
             return 200, {"accounts": providers.claude_accounts.rows(self.app), "terms": providers.claude_accounts.TERMS}
         if path == "jobs":  # what the AI is working on and what waits (core/jobs.py; `kurooto jobs`)

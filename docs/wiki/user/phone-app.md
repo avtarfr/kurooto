@@ -426,6 +426,13 @@ System WebView (or Chrome) from the Play Store; the drawings need version 58 or 
 
 **iPhone and browsers** don't get them: they're sealed with a key only the Android app has.
 
+**The Brain** (0.8.10, with Brain on and `calls.views_brain`, on by default): the dashboard's Brain console on the phone, read-only:
+what it's thinking, the decisions it made with their reasons and evidence, the timeline by part and day, its beliefs,
+experiments, skills, plans, its model of you, the senses as counts, what it forgot, its stops and limits, and the journal's and
+story's headings, with a search over all of it. Your computer sends it only while you have it open (every few seconds), sealed
+like Systems; the last copy stays for when your computer is asleep. Nothing about money or health is in it. See
+[Brain → The Brain console](mind.md#the-brain-console-dashboard-and-phone).
+
 ## The wake-up alarm on the phone
 
 Android, 0.6.0. Every alarm you set (and the next daily one) is also set on the phone with Android's own alarm clock:

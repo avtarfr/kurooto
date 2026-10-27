@@ -49,7 +49,7 @@ const denseFits = () => WANT() === "dense" && window.innerWidth >= 1280 && windo
 // browsers. The pages (activity … settings) open over the whole board, Alt and the underlined letter opens one, and
 // Esc goes back. Roomy (narrow windows) shows every pane, with the pages in its tabs.
 const PANES = { status: "#pane-status", systems: "#pane-systems", brain: "#pane-brain", notes: "#pane-vault", terminal: "#pane-tabs" };
-const PKEY = { brain: "b", today: "t", activity: "a", jobs: "j", schedule: "c", features: "f", phone: "p", research: "r", about: "y", settings: "s" };
+const PKEY = { brain: "b", console: "o", today: "t", activity: "a", jobs: "j", schedule: "c", features: "f", phone: "p", research: "r", about: "y", settings: "s" };
 let HIDE = new Set(), MAX = null, PAGE = null; // hidden panes, the pane filling the board, the page over the board
 let STUDY = false; // Study mode: the NOTES map and the STUDY pane only (look.study_mode); HIDE and MAX wait untouched
 let HIDDEN_F = new Set(); // features taken off the Features page (look.hidden_features; only ones that are off)
@@ -788,8 +788,8 @@ function renderBoard(m) {
 
 const feed = [];
 const SEEN = new WeakMap(); // when each live event arrived (fresh ones are bright in SYSTEMS)
-const TABS = { brain: "Brain", today: "Today", activity: "Activity", jobs: "AI jobs", schedule: "Schedule", features: "Features", phone: "Phone", research: "Research", about: "About you", settings: "Settings" };
-const DLABEL = { brain: "brain", today: "today", activity: "activity", jobs: "jobs", schedule: "schedule", features: "features", phone: "phone", research: "research", about: "you", settings: "settings" };
+const TABS = { brain: "Brain", console: "Brain console", today: "Today", activity: "Activity", jobs: "AI jobs", schedule: "Schedule", features: "Features", phone: "Phone", research: "Research", about: "About you", settings: "Settings" };
+const DLABEL = { brain: "brain", console: "console", today: "today", activity: "activity", jobs: "jobs", schedule: "schedule", features: "features", phone: "phone", research: "research", about: "you", settings: "settings" };
 let tab = "activity"; // roomy: the tab below the panes
 let dtab = "kurooto"; // dense: the terminal pane shows "kurooto" (the chat) or a terminal; the pages open over the board
 const current = () => (DENSE ? PAGE || dtab : tab);
@@ -799,7 +799,7 @@ function showTab(name) {
   renderNav();
   try { localStorage.setItem("kurooto.dash.tab", name); } catch { /* fine */ }
   // the settings-like tabs get room (the canvases above shrink and redraw by themselves)
-  $(".grid").classList.toggle("tall", ["features", "phone", "research", "about", "settings", "terminals"].includes(name));
+  $(".grid").classList.toggle("tall", ["features", "phone", "research", "about", "settings", "terminals", "console"].includes(name));
   renderTab();
 }
 function renderNav() {
@@ -859,6 +859,7 @@ function renderPage(name, body) {
   else if (name === "settings") renderSettings(body);
   else if (name === "terminals") renderTerminals(body);
   else if (name === "brain") renderBrain(body);
+  else if (name === "console") renderConsole(body);
 }
 // Brain (Alt+B): the whole Brain as a 3D model in its dashboard pane (Alt+B to fill the board).
 // (brain3d.js, three.js; core/brainview.py gives the islands and their switches).
@@ -884,6 +885,25 @@ async function mountBrainPane() {
     B3 = window.brain3dMount(host, data, { monitor: BRAIN_MON, toggle: async (key, on) => { const r = await api("settings", { key, value: on }); return !!(r && r.ok); } });
     updateBrainMeta(data);
   } catch (e) { host.innerHTML = '<p class="d">The Brain could not load.</p>'; console.error(e); }
+}
+// Brain console (Alt+O, 0.8.10): everything Brain keeps, read-only: decisions with their reasons and evidence, the
+// timeline by part and day, search, each part's switches and settings beside what it's doing, experiments, beliefs,
+// skills, plans, the model of you, memory (views/brainconsole.js, the phone app's Brain view too; mind/console.py).
+let CONSOLE = null, CONSOLE_LOADING = null;
+const loadCss = (href) => { if (document.querySelector(`link[href="${href}"]`)) return; const l = document.createElement("link"); l.rel = "stylesheet"; l.href = href; document.head.appendChild(l); };
+async function renderConsole(body) {
+  if (CONSOLE && body.contains(CONSOLE.host) && CONSOLE.host.isConnected) return; // open already: it keeps itself live
+  if (CONSOLE) { CONSOLE.view.stop(); CONSOLE = null; }
+  loadCss("/static/views/brainconsole.css?v=1");
+  try {
+    if (!window.BrainConsole) await (CONSOLE_LOADING = CONSOLE_LOADING || loadScript("/static/views/brainconsole.js?v=1"));
+  } catch { CONSOLE_LOADING = null; body.innerHTML = '<p class="d">The Brain console could not load.</p>'; return; }
+  const host = document.createElement("div"); host.className = "bc-host";
+  body.replaceChildren(host);
+  CONSOLE = { host, view: window.BrainConsole.mount(host, {
+    api: (query) => api(`brain/console?${query}`),
+    toggle: async (key, on) => { const r = await api("settings", { key, value: on }); return !!(r && r.ok); },
+  }) };
 }
 // The being (look.board "being", 0.8.9): Kurooto as one body on the live stream, filling the board (being.js). Drag
 // turns it, a click looks into an organ, a part of it shows its Brain parts, features and settings; pages open over it.

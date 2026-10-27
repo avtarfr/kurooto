@@ -46,6 +46,7 @@ from kurooto.mind import (
     tone,
     workspace,
 )
+from kurooto.mind import console as _console  # noqa: F401 (its setting, mind.console.on, the Brain console)
 from kurooto.mind import log as mlog
 from kurooto.mind import plans as mind_plans
 from kurooto.mind import play as mind_play
