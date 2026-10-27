@@ -113,8 +113,10 @@ quality: {blur, light, yaw, pitch, roll}, ...progress}` to the page's `cid` only
 frame; numbers rounded).
 
 `judge()` order (first failure is the reason): covered (10 dark frames) · no face (≥ 0.9) · two faces (> 1 at ≥ 0.6) ·
-too far (< `min_face_px`) · too close (> 0.7 of the frame, or touching an edge) · tilted (|roll| > 25°) · the step's
-rule · blur (< `BLUR_MIN` 60) · dark (< 50; < 30 in the light step) · bright (> 210, or > 8 % blown) · the light step's
+too far (< `min_face_px`) · too close (> 0.7 of the frame) · out of view (`edge()`: the box touching an edge, named
+as on the mirrored page; in the near step only the landmarks plus 8 % of the box must be inside) · tilted (|roll| >
+25°) · the step's rule (near: height ≥ `near_target()` = min(1.25 × front median, front + 60 % of the way to 0.7 of
+the frame), with how far you are in the nudge) · blur (< `BLUR_MIN` 60) · dark (< 50; < 30 in the light step) · bright (> 210, or > 8 % blown) · the light step's
 difference (≥ 25 from the front step's median) · spacing (0.5 s, silent) · repeat (cosine > 0.97 and moved < 3 px) ·
 not you (≥ 5 samples and cosine to their centroid < 0.25).
 

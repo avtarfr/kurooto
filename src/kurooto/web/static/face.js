@@ -10,7 +10,7 @@
   const day = (t) => (t ? new Date(t * 1000).toLocaleDateString([], { day: "numeric", month: "short" }) : "never");
   const NUDGE = { // a rejection, said aloud at most every 4 s when "Say the steps aloud" is on
     "Too dark": "A bit more light, please.", "Too bright": "A little less light behind you.", "Blurry": "Hold still.",
-    "Too far": "Come a little closer.", "Too close": "Move back a little.", "Turn a bit more": "Turn a little more.",
+    "Too far": "Come a little closer.", "Too close": "Move back a little.", "Partly out of view": "Keep your face in the middle of the picture.", "Turn a bit more": "Turn a little more.",
     "Tilt your chin": "A little more.", "Keep your head level": "Keep your head level.", "No face found": "Look at the camera.",
   };
   const CSS = `.fc{max-width:1000px}.fc .row{display:flex;gap:16px;flex-wrap:wrap}.fc .prev{flex:1 1 320px;min-width:260px}

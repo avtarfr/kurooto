@@ -4,6 +4,11 @@
 
 - **Voice ID: Set up from its own page.** With Voice ID on but its files not downloaded yet, the Your voice page
   said to go to the dashboard; it now has a **Set up now** button that downloads them there and shows the progress.
+- **Face presence: the near step can be finished.** Sitting close to a laptop's camera, leaning in pushed your chin
+  out of the picture before the step counted you as near, so it kept saying "closer" and "partly out of view" in
+  turn. The step now asks for 1.25 times your front-facing size, or less when the picture has no room for that, and
+  shows how far you are; only your eyes, nose and mouth need to stay in view. "Partly out of view" now says which
+  edge and which way to move.
 
 ## 0.8.10 (2026-10-27)
 

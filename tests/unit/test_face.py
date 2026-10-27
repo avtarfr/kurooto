@@ -205,7 +205,8 @@ def test_pose_from_the_landmarks_with_and_without_the_mirror():
         (frame([face(), face(x=20, score=0.7)], [BASE, BASE]), en.R_TWO),
         (frame([face(h=50)]), en.R_FAR),
         (frame([face(h=400, x=100, y=20)]), en.R_CLOSE),
-        (frame([face(x=0)]), en.R_CLOSE),
+        (frame([face(x=0)]), "Partly out of view at the right: move to your left a little."),
+        (frame([face(y=340)]), "Partly out of view at the bottom: move up a little, or tilt the screen forward."),
         (frame([face(roll=30)]), en.R_TILT),
         (frame([face(yaw=0.3)]), "Look straight at the camera."),
         (frame([face()], [BASE], [{**GOOD, "blur": 20}]), en.R_BLUR),
@@ -217,6 +218,46 @@ def test_pose_from_the_landmarks_with_and_without_the_mirror():
 def test_every_check_gives_its_reason(fr, reason):
     v = judge(Enrolment(60), fr, 1.0)
     assert not v.ok and v.reason == reason
+
+
+def at_near_step(base_h):
+    """A plan at its near step, its front steps' faces base_h tall."""
+    p = Enrolment(60)
+    t = 0.0
+    poses = {"front": {"h": base_h, "y": 60.0}, "left": {"yaw": -0.3}, "right": {"yaw": 0.3}, "up": {"pitch": 0.38},
+             "down": {"pitch": 0.62}}  # fmt: skip
+    while p.current().key != "near":
+        key = p.current().key
+        t += 1.0
+        assert judge(p, frame([face(dx=(t % 7) * 5.0, **poses[key])], [you()]), t).ok, key
+    return p, t
+
+
+def test_the_near_step_can_be_reached_sitting_close():
+    """Reported: leaning in kept saying "closer", then "partly out of view": the chin left the frame at the bottom
+    before the face was 1.35 times its front height. Now the target leaves room, and only the eyes, nose and mouth must
+    stay in view."""
+    p, t = at_near_step(250.0)  # sitting close: over half the frame's height already
+    want = en.near_target(250.0, 480)
+    assert 250.0 < want < 0.7 * 480
+    v = judge(p, frame([face(h=280.0, y=150.0)], [you()]), t + 1)
+    assert not v.ok and v.reason.startswith("Lean in a little closer (") and "% of the way" in v.reason
+    # near enough, its chin past the bottom edge, the eyes, nose and mouth well inside: a sample
+    v = judge(p, frame([face(h=want + 2, y=480 - want + 30)], [you()]), t + 2)
+    assert v.ok, v.reason
+
+
+def test_the_near_step_still_needs_the_eyes_and_mouth_in_view():
+    p, t = at_near_step(200.0)
+    v = judge(p, frame([face(h=260.0, y=330.0)], [you()]), t + 1)  # the mouth at the bottom edge
+    assert not v.ok and v.reason.startswith("Partly out of view at the bottom")
+
+
+def test_the_edge_is_named_as_the_page_shows_it():
+    f = face(x=0)
+    assert en.edge(f, 640, 480) == "right"  # your right: the camera's left edge
+    v = Enrolment(60, mirror=False).judge([f], (640, 480), 110.0, lambda f: Stats(**GOOD), lambda f: BASE, 1.0)
+    assert v.reason == "Partly out of view at the left: move to your left a little."
 
 
 def test_covered_after_ten_dark_frames():
@@ -248,7 +289,7 @@ def test_the_steps_own_rules_and_the_light_step():
     p.at = 3
     assert judge(p, frame([face(pitch=0.47)]), 1).reason == "Tilt your chin up a little more."
     p.at = 5
-    assert judge(p, frame([face(h=150)]), 1).reason == "Lean in a little closer."
+    assert judge(p, frame([face(h=150)]), 1).reason == "Lean in a little closer (29% of the way)."
     p.at = 6
     assert judge(p, frame([face(h=75)]), 1).reason == en.R_FAR  # under min_face_px + 20
     p.at = 8

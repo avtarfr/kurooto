@@ -11,7 +11,8 @@ checked (judge(): the first failing check is the reason shown); accepted samples
     no face     no face found with a score >= 0.9                                No face found: look at the camera.
     two faces   more than one face with a score >= 0.6                           Two faces: only you should be ...
     too far     the face is shorter than face.recognise.min_face_px              Too far: come a little closer.
-    too close   taller than 0.7 of the frame, or touching its edge               Too close, or partly out of view.
+    too close   taller than 0.7 of the frame                                     Too close: move back a little.
+    out of view touching the frame's edge (near step: eyes, nose, mouth only)       Partly out of view at the bottom.
     tilted      the eyes' line more than 25 degrees off level                    Keep your head level.
     step pose   the step's own rule                                              the step's nudge
     blur        variance of the Laplacian on the aligned crop < BLUR_MIN         Blurry: hold still for a moment.
@@ -63,7 +64,15 @@ R_COVERED = "The camera sees nothing: is it covered, or the lid closed?"
 R_NO_FACE = "No face found: look at the camera."
 R_TWO = "Two faces: only you should be in view while enrolling."
 R_FAR = "Too far: come a little closer."
-R_CLOSE = "Too close, or partly out of view."
+R_CLOSE = "Too close: move back a little."
+R_EDGE = "Partly out of view at the {side}: {fix}"
+EDGE_FIX = {
+    "top": "move down a little, or tilt the screen back.",
+    "bottom": "move up a little, or tilt the screen forward.",
+    "left": "move to your right a little.",
+    "right": "move to your left a little.",
+}
+NEAR_RATIO = 1.25  # the near step: this much taller than the front steps' face, or as near as the frame allows
 R_TILT = "Keep your head level."
 R_BLUR = "Blurry: hold still for a moment."
 R_DARK = "Too dark: more light on your face."
@@ -117,9 +126,28 @@ class Verdict:
     quiet: bool = False  # a frame skipped for spacing: nothing new to show
 
 
-def edge(face: Face, w: int, h: int) -> bool:
+def edge(face: Face, w: int, h: int, near: bool = False) -> str:
+    """The side of the frame the face touches ("" when it's in view). Near the camera (the near step) only the eyes,
+    nose and mouth must stay clear of the edge: leaning in on a laptop's camera, the forehead or chin leaves the frame
+    long before they do (the box touched the bottom edge while the step still asked to come closer)."""
     x, y, bw, bh = face.box
-    return x <= 1 or y <= 1 or x + bw >= w - 1 or y + bh >= h - 1
+    if near and face.landmarks:
+        m = 0.08 * bh
+        xs, ys = [q[0] for q in face.landmarks], [q[1] for q in face.landmarks]
+        lo_x, hi_x, lo_y, hi_y = min(xs) - m, max(xs) + m, min(ys) - m, max(ys) + m
+    else:
+        lo_x, hi_x, lo_y, hi_y = x - 1, x + bw + 1, y - 1, y + bh + 1
+    # named as on the page's mirrored picture (your own right and left): the camera's left edge is on your right
+    for side, out in (("top", lo_y <= 0), ("bottom", hi_y >= h), ("right", lo_x <= 0), ("left", hi_x >= w)):
+        if out:
+            return side
+    return ""
+
+
+def near_target(base: float, frame_h: float) -> float:
+    """The near step's face height: NEAR_RATIO times the front steps', but never more than 60 % of the way to the
+    too-close limit, so it can always be reached in the frame (sitting close already, 1.35 times could not)."""
+    return min(NEAR_RATIO * base, base + 0.6 * (0.7 * frame_h - base))
 
 
 class Enrolment:
@@ -215,7 +243,7 @@ class Enrolment:
         return "There's no such action."
 
     # --------------------------------------------------------------------------------------------- judging
-    def _step_rule(self, key: str, p: Pose, face: Face) -> str:
+    def _step_rule(self, key: str, p: Pose, face: Face, frame_h: float = 480.0) -> str:
         b = self.baseline
         if key == "front":
             return "" if abs(p.yaw) < 0.12 and abs(p.roll) < 12 else "Look straight at the camera."
@@ -236,7 +264,13 @@ class Enrolment:
             return "" if p.pitch > base + 0.06 else "Tilt your chin down a little more."
         if key == "near":
             hb = b.get("height")
-            return "" if hb and face.height >= 1.35 * hb else "Lean in a little closer."
+            if not hb:
+                return "Look straight at the camera first."
+            want = near_target(hb, frame_h)
+            if face.height >= want:
+                return ""
+            way = max(0, min(99, round(100 * (face.height - hb) / max(1.0, want - hb))))
+            return f"Lean in a little closer ({way}% of the way)."
         if key == "far":
             hb = b.get("height")
             if face.height < self.min_face_px + 20:
@@ -271,12 +305,17 @@ class Enrolment:
         f = sure[0]
         if f.height < self.min_face_px:
             return Verdict(False, R_FAR, key, f)
-        if f.height > 0.7 * h or edge(f, w, h):
+        if f.height > 0.7 * h:
             return Verdict(False, R_CLOSE, key, f)
+        side = edge(f, w, h, near=key == "near")
+        if side:
+            # the camera's own picture (not mirrored) shows your right on its left
+            shown = side if self.mirror else {"right": "left", "left": "right"}.get(side, side)
+            return Verdict(False, R_EDGE.format(side=shown, fix=EDGE_FIX[side]), key, f)
         p = pose(f, self.mirror)
         if abs(p.roll) > TILT_MAX:
             return Verdict(False, R_TILT, key, f, p)
-        nudge = self._step_rule(key, p, f)
+        nudge = self._step_rule(key, p, f, h)
         if nudge:
             return Verdict(False, nudge, key, f, p)
         st = measure(f)

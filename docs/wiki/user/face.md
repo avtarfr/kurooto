@@ -82,7 +82,9 @@ nudge. **Pause** and **Discard** do what they say; Discard drops every sample at
 |---|---|
 | No face found: look at the camera. | face the camera |
 | Two faces: only you should be in view while enrolling. | ask the other person to step out of view |
-| Too far: come a little closer. / Too close, or partly out of view. | adjust your distance |
+| Too far: come a little closer. / Too close: move back a little. | adjust your distance |
+| Partly out of view at the bottom (top, left, right): … | it says which way to move; tilting the screen helps at the top and bottom |
+| Lean in a little closer (60% of the way). | the near step: lean in until it's done; only your eyes, nose and mouth need to stay in the picture, your chin or forehead may leave it |
 | Keep your head level. | straighten your head |
 | (the step's own nudge, e.g. "Turn a bit more to your left.") | follow it |
 | Blurry: hold still for a moment. | hold still |
