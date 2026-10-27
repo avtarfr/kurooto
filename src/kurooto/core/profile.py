@@ -56,8 +56,9 @@ KDF = {"n": 2**17, "r": 8, "p": 1}  # scrypt: about 0.3 s and 128 MB, once per u
 MIN_PASSPHRASE = 10
 DEK = "profile.key"  # this computer's copy of the data key (keychain); never in the profile itself
 TOKEN = "profile.token"  # noqa: S105 (the secret's name): a token for the profile's own repository
-NEVER = {"web.token", DEK, "ledger.key", "biometric.voice.key", "face.key"}  # this computer's own keys (the memory
-# ledger's, and the biometric templates' keys: Voice ID's and Face presence's, core/biometric.py): never saved or restored
+# this computer's own keys (the memory ledger's, and the biometric templates' keys: Voice ID's and Face presence's,
+# core/biometric.py): never saved or restored
+NEVER = {"web.token", DEK, "ledger.key", "biometric.voice.key", "face.key"}
 PARTS = ("settings", "secrets", "state")
 KEEP = (  # (folder, pattern inside it): Kurooto's own state worth keeping on a new computer; nothing else goes
     ("state", "deadlines.json"),

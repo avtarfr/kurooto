@@ -93,8 +93,8 @@ GUARDED: dict[str, Guard] = {
         ("typed", "confirm", "button"),
         "/forget 7d and /forget all (after Forget everything), /memory forget, /gists forget, Undo and Drop buttons, "
         "Keep A / Keep B under the morning message's \"Worth a look\", Delete Brain's data after Brain is turned off, "
-        "Forget my voice (/voice id forget, the Your voice page), /face forget, Forget on the Face page, Delete my face "
-        "data; the AI never deletes (a note it changes keeps its earlier version)",
+        "Forget my voice (/voice id forget, the Your voice page), /face forget, Forget on the Face page, "
+        "Delete my face data; the AI never deletes (a note it changes keeps its earlier version)",
     ),
     "camera.open": Guard(
         "open the camera for face enrolment or a face test",

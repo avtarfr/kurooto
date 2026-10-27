@@ -220,7 +220,11 @@ def test_an_organ_pages_list_has_every_part_with_its_live_state():
     js = static("being.js").decode()
     d = js[js.index("async function describe()") :]
     d = d[: d.index("\n  }\n")]
-    for org, table, kind in (("mind", "REGIONS", "region"), ("heart", "HEART_PARTS", "heart"), ("senses", "SENSES", "sense")):
+    for org, table, kind in (
+        ("mind", "REGIONS", "region"),
+        ("heart", "HEART_PARTS", "heart"),
+        ("senses", "SENSES", "sense"),
+    ):
         assert f'if (o === "{org}") parts = Object.entries({table}).map(([k, r]) => ({{ kind: "{kind}", key: k,' in d
         assert f'live: partLive("{kind}", k)' in d
     assert 'if (o === "memory") parts = memory.hoods' in d

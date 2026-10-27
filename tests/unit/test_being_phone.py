@@ -212,7 +212,7 @@ def test_the_organ_pages_call_only_what_the_page_offers_and_have_a_switch():
     assert called and called <= offered, called - offered
     assert 'js("KurootoBeing.only(" + JSONObject.quote(o) + ")");' in pane  # switched, never loaded again
     assert 'u.getQueryParameter("rev")' in pane and "rev=${encodeURIComponent(rev)}" in js  # the list changed: read it
-    assert 'only: PV.only || undefined, still: PV.still' in js  # the page mounts as an organ page
+    assert "only: PV.only || undefined, still: PV.still" in js  # the page mounts as an organ page
     # the switch (off: the whole being as before), and its guide entry
     prefs = (src / "Prefs.java").read_text(encoding="utf-8")
     assert 'getBoolean("viewsOrgans", true)' in prefs
@@ -220,7 +220,9 @@ def test_the_organ_pages_call_only_what_the_page_offers_and_have_a_switch():
     assert "if (remember { Prefs.viewsOrgans(a) }) OrganViews(a, ui, room) else WholeViews(a, ui, room)" in tab
     settings = (src / "SettingsPane.kt").read_text(encoding="utf-8")
     assert 'help = "app.viewsOrgans"' in settings
-    guide = (Path(kurooto.__file__).parents[2] / "tools" / "settings_guide" / "26-phone-app.toml").read_text(encoding="utf-8")
+    guide = (Path(kurooto.__file__).parents[2] / "tools" / "settings_guide" / "26-phone-app.toml").read_text(
+        encoding="utf-8"
+    )
     assert '[s."app.viewsOrgans"]' in guide and '[s."app.viewOrgan"]' in guide
     organs = (src / "OrganViews.kt").read_text(encoding="utf-8")
     for page in ("brain", "heart", "senses", "memory"):
