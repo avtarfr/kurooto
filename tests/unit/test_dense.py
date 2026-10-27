@@ -243,6 +243,43 @@ def test_the_page_has_both_layouts_and_keeps_the_tabs(env):
     )
 
 
+def test_roomy_places_every_pane_by_name_so_none_collapses(env):
+    """0.8.16: under 1280 px (half a 1920 screen) roomy's old three-column grid pushed NOTES and the tabs to extra rows
+    and left STATUS, SYSTEMS and BRAIN no height. Every pane now has a named area, the areas have as many rows as the
+    grid has, and the being board shows the being in roomy too, where SYSTEMS and BRAIN were."""
+    import re
+    from importlib import resources
+
+    static = resources.files("kurooto.web") / "static"
+    css = (static / "home.css").read_text(encoding="utf-8")
+    js = (static / "home.js").read_text(encoding="utf-8")
+    roomy = css.split("roomy's board (0.8.16)")[1]
+    for pane, area in (("status", "status"), ("systems", "systems"), ("brain", "brain"), ("vault", "notes"),
+                       ("tabs", "tabs"), ("being", "being"), ("study", "study")):  # fmt: skip
+        assert f"body.home:not(.dense) #pane-{pane} {{ grid-area: {area}; }}" in roomy, pane
+
+    def rule(sel, text):
+        return text.split(sel + " {", 1)[1].split("}", 1)[0]
+
+    for sel, names in (("body.home:not(.dense) .grid", {"status", "notes", "systems", "brain", "tabs"}),
+                       ("body.home.being-board:not(.dense) .grid", {"being", "notes", "status", "tabs"})):  # fmt: skip
+        for text in (roomy, roomy.split("@media (max-width: 900px)")[1]):  # wide and phone-narrow
+            r = rule(sel, text)
+            rows = re.findall(r'"([^"]+)"', r.split("grid-template-areas:")[1].split(";")[0])
+            assert {n for row in rows for n in row.split()} == names, (sel, rows)
+            if "grid-template-rows:" in r:  # no pane spills into an implicit row
+                tracks = re.sub(r"\([^)]*\)", "x", r.split("grid-template-rows:")[1].split(";")[0]).split()
+                assert len(tracks) == len(rows), (sel, tracks, rows)
+    hid = "body.home.being-board:not(.dense) #pane-systems, body.home.being-board:not(.dense) #pane-brain"
+    assert hid + " { display: none; }" in roomy
+    assert "body.home.being-board:not(.dense) #pane-being { display: block;" in roomy
+    # the being board is no longer dense-only, and roomy mounts it
+    assert 'const beingBoard = () => BOARD === "being" && !STUDY && !(DENSE && MAX);' in js
+    roomy_js = js.split("if (!DENSE) { // roomy:")[1].split("talkShow(); return;")[0]
+    for part in ("mountBeing()", "stopBeing()", 'classList.toggle("being-board", being)'):
+        assert part in roomy_js, part
+
+
 # ================================================================================================= kurooto top
 def board_data(tmp_path):
     from kurooto import top

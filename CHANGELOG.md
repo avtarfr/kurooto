@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.16 (unreleased)
+
+- **The dashboard works in a narrow window.** Under 1280 px wide (a window tiled to half a 1920 screen) the dashboard
+  uses the roomy layout, and since BRAIN joined the board its grid pushed NOTES and the pages into extra rows: on a long
+  page such as Features, STATUS, SYSTEMS and BRAIN got no height and NOTES sat alone in a narrow strip. Roomy now places
+  each pane by name: STATUS down the left, NOTES wide, SYSTEMS and BRAIN under it, the pages below. With the being as
+  the board it shows there too, in place of SYSTEMS and BRAIN, beside NOTES and STATUS. A narrow BRAIN pane keeps its
+  region panel as a drawer, a window too short for the panes scrolls, and under 900 px they stack. The dense board
+  (1280 px and wider) is unchanged.
+
 ## 0.8.15 (unreleased)
 
 - **The phone app's Memory page is as sharp as the dashboard's.** It drew at 1.5 pixels per point and stretched that

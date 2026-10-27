@@ -67,6 +67,14 @@ gets it (it's a setting). *Undo:* switch back the same way.
 
 Both have the same pages, the same Alt keys, the same search and the same way of hiding features.
 
+**Narrow windows** (a window tiled to half the screen, say 940 px of a 1920 px screen) get roomy. It shows every pane:
+**STATUS** down the left, **NOTES** wide beside it, **SYSTEMS** and **BRAIN** under NOTES, and the pages as tabs across
+the bottom. With the being as your board (`look.board` = `being`), the being takes the place of SYSTEMS and BRAIN (it
+draws both), with NOTES and STATUS beside it. A BRAIN pane under 600 px wide keeps its region panel as a drawer (the ‹
+at its right edge). If the window is too short for the panes, the page scrolls instead of squeezing them; under 900 px
+wide they stack in one column. (Before 0.8.16 the roomy board left STATUS, SYSTEMS and BRAIN no height, and NOTES a
+narrow strip, on long pages such as Features.)
+
 **Setting:** `look.layout` (`dense` or `roomy`), Dashboard → Settings → Look. The change shows at once.
 
 ## The board (dense layout)

@@ -58,13 +58,15 @@ const cleanHide = (v) => { const s = new Set((Array.isArray(v) ? v : []).filter(
 const hideList = () => Object.keys(PANES).filter((p) => HIDE.has(p));
 const shownPanes = () => (STUDY ? new Set(["notes"]) : beingBoard() ? new Set() : new Set(Object.keys(PANES).filter((p) => (MAX ? p === MAX : !HIDE.has(p)))));
 // on screen (not hidden, filled over or under a page); in Study mode only the notes map
-const paneShown = (p) => (STUDY ? p === "notes" && !(DENSE && PAGE) : !DENSE || (!PAGE && shownPanes().has(p)));
+const paneShown = (p) => (STUDY ? p === "notes" && !(DENSE && PAGE)
+  : !DENSE ? !(beingBoard() && (p === "systems" || p === "brain")) : !PAGE && shownPanes().has(p));
 // the grid for the panes that show: NOTES, SYSTEMS, BRAIN on top; STATUS (split in two) and TERMINAL below
 let BOARD = "three", BRAIN_MON = "shown"; // look.board, look.brain_monitor (0.8.6)
 const BOARDS = ["being", "three", "classic"], boardOf = (v) => (BOARDS.includes(v) ? v : "being");
 try { BOARD = boardOf(localStorage.getItem("kurooto.dash.board")); } catch { /* fine */ }
-// the being (0.8.9) fills the board on its own; a pane filled from the panes menu, Study mode and roomy still show panes
-const beingBoard = () => DENSE && BOARD === "being" && !STUDY && !MAX;
+// the being (0.8.9) fills the dense board on its own; a pane filled from the panes menu and Study mode still show panes.
+// Roomy (windows under 1280 px, 0.8.16) shows it in place of SYSTEMS and BRAIN, which it draws, beside NOTES and STATUS.
+const beingBoard = () => BOARD === "being" && !STUDY && !(DENSE && MAX);
 // the board before 0.8.3: STATUS down the left; SYSTEMS, NOTES (and BRAIN) on top and TERMINAL below, on the right
 function classicGrid(vis) {
   const st = vis.has("status"), top = ["systems", "notes", "brain"].filter((p) => vis.has(p)), rows = [];
@@ -114,7 +116,13 @@ function applyPanes() {
   }
   $("#pane-study").classList.remove("tr");
   $("#pane-page").classList.toggle("hidden", !(DENSE && PAGE)); grid.classList.toggle("paged", DENSE && !!PAGE);
-  if (!DENSE) { grid.style.gridTemplateAreas = grid.style.gridTemplateColumns = grid.style.gridTemplateRows = ""; closeMenu(); document.body.classList.remove("being-board"); stopBeing(); talkShow(); return; }
+  if (!DENSE) { // roomy: home.css places the panes by name; the being board puts the being where SYSTEMS and BRAIN were
+    grid.style.gridTemplateAreas = grid.style.gridTemplateColumns = grid.style.gridTemplateRows = ""; closeMenu();
+    const being = beingBoard(); document.body.classList.toggle("being-board", being);
+    if (being) mountBeing(); else stopBeing();
+    if (paneShown("brain") && !B3) mountBrainPane();
+    talkShow(); return;
+  }
   const being = beingBoard(); document.body.classList.toggle("being-board", being); $("#pane-being").classList.remove("tr");
   const g = STUDY ? { areas: '"notes study"', cols: "minmax(0, 1fr) minmax(400px, 31%)", rows: "minmax(0, 1fr)" }
     : being ? { areas: '"being"', cols: "minmax(0, 1fr)", rows: "minmax(0, 1fr)" } : paneGrid(vis);

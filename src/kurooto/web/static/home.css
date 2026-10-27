@@ -94,7 +94,7 @@ body.home { color-scheme: dark;
 .form input:not([type=checkbox]) { width: 55%; margin: 0; padding: 4px 6px; font: 12px var(--mono); }
 .form textarea { width: 55%; margin: 0; padding: 4px 6px; font: 12px/1.4 var(--mono); color: var(--fg); background: var(--bg); border: 1px solid var(--line); resize: vertical; }
 .ok2 { color: var(--ok); } .bad2 { color: var(--bad); }
-@media (max-width: 900px) { body.home { overflow: auto; height: auto; } .grid { grid-template-columns: 1fr; grid-template-rows: 300px 420px 420px 360px; } }
+@media (max-width: 900px) { body.home { overflow: auto; height: auto; } } /* roomy's grid: "roomy's board" at the end */
 @media (prefers-reduced-motion: reduce) { .pane canvas { animation: none; } }
 .sf { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .sf label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--dim); }
@@ -117,8 +117,6 @@ body.home { color-scheme: dark;
 .rs-feeds { margin: 0; padding-left: 18px; font-size: 12px; }
 .rs-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; }
 .rs-row input[type=number] { width: 4em; }
-.grid.tall { grid-template-rows: 1fr minmax(260px, 52vh); }
-@media (max-width: 900px) { .grid.tall { grid-template-rows: 300px 420px 420px 70vh; } }
 .rs .rs-row input:not([type=checkbox]) { display: inline-block; width: auto; margin-top: 0; }
 .rs .rs-row #rs-repo { flex: 1; }
 .rs button { padding: 4px 12px; font: 12px var(--mono); }
@@ -385,9 +383,6 @@ body.dense.study #pane-study { grid-area: study; }
 body.study .mx, body.study #panes-btn { display: none; }
 body.study #study-btn { color: var(--accent-text); }
 .bar .right .study-tg { display: inline-block; padding: 2px 8px; font: 12px var(--mono); }
-body.study:not(.dense) .grid { grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr); grid-template-rows: minmax(0, 1fr); }
-body.study:not(.dense) #pane-status, body.study:not(.dense) #pane-systems, body.study:not(.dense) #pane-tabs { display: none; }
-@media (max-width: 900px) { body.study .grid, body.study .grid.tall { grid-template-columns: 1fr; grid-template-rows: 60vh auto; } }
 /* in and out: the panes that come slide up a little and fade in (none with reduced motion) */
 @keyframes sm-in { from { opacity: 0; transform: translateY(8px) scale(0.995); } }
 .grid.swap > .pane:not(.gone):not(.hidden) { animation: sm-in 320ms cubic-bezier(0.23, 1, 0.32, 1) both; }
@@ -473,3 +468,47 @@ body.dense.being-board #pane-being { display: block; grid-area: being; padding: 
 .talk.fold .talk-in button { transform: rotate(180deg); }
 .panes-menu .boards { display: flex; gap: 4px; flex-wrap: wrap; }
 .panes-menu .boards button.on, .panes-menu button[data-max].on { outline: 1px solid var(--accent-text); }
+
+/* ------------------------------------------------------------------------------------------------ roomy's board (0.8.16)
+   Roomy (look.layout = roomy, and any window under 1280 px wide, such as half a 1920 screen) places each pane by name.
+   The grid before it had three columns and two rows for STATUS, SYSTEMS and NOTES over the tabs; when 0.8.3 added BRAIN,
+   NOTES fell to the second row and the tabs to a third sized to their page, which left the first row (STATUS, SYSTEMS,
+   BRAIN) no height at all on a long page such as Features. Now: STATUS down the left, NOTES wide, SYSTEMS and BRAIN
+   under it, the tabs across the bottom. The being board puts the being where SYSTEMS and BRAIN were (it draws both).
+   The rows keep a floor, and the page scrolls when the window is too short for them. */
+body.home:not(.dense) { overflow-y: auto; }
+body.home:not(.dense) .grid { grid-template-columns: minmax(240px, 0.7fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(200px, 1.15fr) minmax(200px, 1fr) 260px; grid-template-areas: "status notes notes" "status systems brain" "tabs tabs tabs";
+  min-height: 700px; }
+body.home:not(.dense) .grid.tall { grid-template-rows: minmax(200px, 1.15fr) minmax(200px, 1fr) minmax(260px, 52vh); min-height: calc(440px + 52vh); }
+body.home:not(.dense) #pane-status { grid-area: status; } body.home:not(.dense) #pane-systems { grid-area: systems; }
+body.home:not(.dense) #pane-brain { grid-area: brain; } body.home:not(.dense) #pane-vault { grid-area: notes; }
+body.home:not(.dense) #pane-tabs { grid-area: tabs; } body.home:not(.dense) #pane-being { grid-area: being; }
+body.home:not(.dense) #pane-study { grid-area: study; }
+body.home.being-board:not(.dense) .grid { grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr); grid-template-areas: "being notes" "being status" "tabs tabs"; }
+body.home.being-board:not(.dense) #pane-systems, body.home.being-board:not(.dense) #pane-brain { display: none; }
+body.home.being-board:not(.dense) #pane-being { display: block; padding: 0; overflow: hidden; background: #000; }
+/* BRAIN narrower than 600 px keeps its region panel as a drawer (the ‹ tab, or pointing at the edge), as its
+   look.brain_monitor "drawer" does: pinned, the 290 px panel would leave the brain itself a sliver */
+body.home:not(.dense) #pane-brain { container-type: inline-size; }
+@container (max-width: 600px) {
+  #pane-brain .b3.pin #b3-side { transform: translateX(100%); }
+  #pane-brain .b3.pin.side-open #b3-side, #pane-brain .b3.pin #b3-side:hover { transform: translateX(0); }
+  #pane-brain .b3.pin #b3-tab { display: flex; }
+  #pane-brain .b3.pin.side-open #b3-tab { display: none; }
+}
+/* Study mode: the NOTES map large beside the STUDY pane */
+body.home.study:not(.dense) .grid, body.home.study:not(.dense) .grid.tall { grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
+  grid-template-rows: minmax(0, 1fr); grid-template-areas: "notes study"; min-height: 0; }
+body.home.study:not(.dense) :is(#pane-status, #pane-systems, #pane-brain, #pane-being, #pane-tabs) { display: none; }
+/* a phone or a very narrow window: one column, the page scrolls */
+@media (max-width: 900px) {
+  body.home:not(.dense) .grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: 300px 420px 360px 420px 360px;
+    grid-template-areas: "status" "notes" "systems" "brain" "tabs"; min-height: 0; }
+  body.home:not(.dense) .grid.tall { grid-template-rows: 300px 420px 360px 420px 70vh; }
+  body.home.being-board:not(.dense) .grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: 60vh 420px 300px 360px;
+    grid-template-areas: "being" "notes" "status" "tabs"; }
+  body.home.being-board:not(.dense) .grid.tall { grid-template-rows: 60vh 420px 300px 70vh; }
+  body.home.study:not(.dense) .grid, body.home.study:not(.dense) .grid.tall { grid-template-columns: minmax(0, 1fr); grid-template-rows: 60vh auto;
+    grid-template-areas: "notes" "study"; }
+}
