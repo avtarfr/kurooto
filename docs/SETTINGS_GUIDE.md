@@ -617,6 +617,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | Setting | Default | What it does |
 |---|---|---|
 | `look.being_hints` | `true` | The being's hints: what to click and what each part is (H on the board toggles them). ([guide](wiki/user/settings-guide.md#lookbeinghints)) |
+| `look.being_resting_sparks` | `true` | The being's resting sparks: a low trickle in the brain from what Kurooto does all the time. ([guide](wiki/user/settings-guide.md#lookbeingrestingsparks)) |
 | `look.being_theme` | `"void"` | The being's colours: white light on black, or the page's palette. ([guide](wiki/user/settings-guide.md#lookbeingtheme)) |
 | `look.board` | `"being"` | The board: Kurooto as one living body (being), three panes on top (three), or STATUS on the left (classic). ([guide](wiki/user/settings-guide.md#lookboard)) |
 | `look.brain_monitor` | `"shown"` | BRAIN's part monitor: shown beside the model, or in a drawer behind a tab. ([guide](wiki/user/settings-guide.md#lookbrainmonitor)) |

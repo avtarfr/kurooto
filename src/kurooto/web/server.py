@@ -53,6 +53,7 @@ register_defaults(
         "brain_monitor": "shown",  # BRAIN's part monitor: shown beside the model, or a drawer behind a tab
         "being_theme": "void",  # the being's colours: void (white on black) or theme (the page's palette)
         "being_hints": True,  # the being's hints: what to click, what each part is (H on the board toggles it)
+        "being_resting_sparks": True,  # the being's resting sparks: a trickle from what it does all the time
         "talk_box": True,  # the small box over the board to talk to Kurooto in plain English (Alt+K)
     },
 )

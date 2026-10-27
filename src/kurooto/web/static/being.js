@@ -2,6 +2,12 @@
    live stream: sparks fire in the region of the brain that does that kind of work, blood carries work from the heart to the
    organ (and back when it reports), nerves carry what is heard and said, the notes are its memory, each feature is a point
    of light on the organ that does its work. Nothing moves for show.
+   At rest (0.8.11, look.being_resting_sparks) the brain keeps a low trickle of sparks, each from something it really
+   does all the time: every reading of its body (the vitals on the live stream, every 2 s, more the busier the
+   processor) in the insula, its own processes' processor use in the thalamus, a scheduler timer that fired in its
+   feature's region, notes that changed in the hippocampus, sound heard in the auditory cortex.
+   The vessels and nerves are joined to the organs and stay joined as they turn; the nerves leave the brainstem as the
+   spinal cord and split at a plexus behind the heart, fibre bundles with nerve cells along them.
 
    beingMount(host, {api, token, theme}) -> {update(body), event(ev), graph(g), voice(m), stop()}
    Needs vendor/three (three.js r128 and its bloom passes) and body/anatomy.bin, body/cerebrum.vol (tools/gen_body_meshes.py).
@@ -77,7 +83,9 @@ const SENSES = {
   heat: { name: "Its own body", sub: "this computer: processor, memory, graphics, heat", parts: ["intero"], feats: ["night_performance", "space"], sections: ["power"], panel: "pc" },
 };
 const MEMORY_FEATS = ["books", "classroom_notes", "drive_upload", "integrate", "sorter", "handwritten", "handwritten_links", "hw_pull", "quiz", "quiz_links", "notes_sync", "google_drive", "google_classroom", "coursepack", "coursepages", "revision", "latex_tracker", "photodates", "zotero"];
-const HOOD_COLS = [0xe8c27a, 0x8fc1e8, 0xb7a6f0, 0x8fdcb0, 0xe89a9a, 0xe0a8d8, 0xc8e08f, 0xa8d8e8, 0xe8b8a0, 0xb0c0f0];
+// a hue for each neighbourhood of notes: clear colours, not pastels (0.8.11: they read as grey from afar), spaced round
+// the wheel so neighbours differ; on a light page they're made darker (hoodCols), on a theme leaned to its accent
+const HOOD_COLS = [0xf5b041, 0x4fb3f0, 0x9d7cf4, 0x3fd69a, 0xf2685c, 0xe36cc9, 0xa9d94b, 0x38c9d9, 0xf58c3a, 0x6f8ff5, 0xf27ea0, 0x34b89f];
 
 function homeOf(id) {
   for (const [k, r] of Object.entries(REGIONS)) if (r.feats.includes(id)) return ["mind", k];
@@ -104,11 +112,16 @@ window.beingMount = async function (host, opts) {
   const PAL = THEME === "theme" ? opts.pal : null;
   const P = THEME === "void"
     ? { bg: "#000000", ink: "#f2f2ef", mute: "#7a7a76", a: 0xffffff, flesh: 0xe9e4de, vein: 0xcfb2ad, nerve: 0xb8ab8c, back: 0x9aa3c4,
-        // faint, organic tints: never saturated, the being stays a pale thing in the dark
+        // faint, organic tints: never saturated, the being stays a pale thing in the dark (the heart's muscle a little
+        // fainter since 0.8.11); what flows is tinted: the blood arterial red, the fluid round the brain a pale clear aqua
         cortex: 0xe3c1b8, sulci: 0xb498b9, cereb: 0xdfbcae, stem: 0xe2cfbb, thal: 0xdcb49c, hippo: 0xc7a9c9, caudate: 0xd9c19a,
-        callosum: 0xeee5d4, muscle: 0xc77d72, fat: 0xe2c793, artery: 0xd58378, iris: [.62, .5, .34], coch: 0xe2bdb6,
-        coil: 0xd2a17c, canal: 0xe6dac4, tip: 0xe0d29a, fog: 0xbdb2ee }
-    : { bg: PAL.bg, ink: PAL.fg, mute: PAL.dim || PAL.mute || "#8d9a84", a: new THREE.Color(PAL.fg).getHex(), flesh: new THREE.Color(PAL.fg).getHex(), vein: new THREE.Color(PAL.rose || PAL.bad || "#d0706a").getHex(), nerve: new THREE.Color(PAL.accent || "#9ccf5e").getHex() };
+        callosum: 0xeee5d4, muscle: 0xc88a80, fat: 0xe2c793, artery: 0xd58378, iris: [.62, .5, .34], coch: 0xe2bdb6,
+        coil: 0xd2a17c, canal: 0xe6dac4, tip: 0xe0d29a, fog: 0xb0d9e6, blood: 0xe0483a }
+    : { bg: PAL.bg, ink: PAL.fg, mute: PAL.dim || PAL.mute || "#8d9a84", a: new THREE.Color(PAL.fg).getHex(), flesh: new THREE.Color(PAL.fg).getHex(), vein: new THREE.Color(PAL.rose || PAL.bad || "#d0706a").getHex(), nerve: new THREE.Color(PAL.accent || "#9ccf5e").getHex(),
+        blood: new THREE.Color(PAL.bad || PAL.rose || "#d0706a").getHex(), muscle: new THREE.Color(PAL.fg).lerp(new THREE.Color(PAL.bg), .15).getHex() };
+  // a light page: light added to it (additive blending) would vanish, so what glows is laid over it instead
+  const LIGHT = new THREE.Color(P.bg).getHSL({}).l > .5, BL = LIGHT ? THREE.NormalBlending : THREE.AdditiveBlending;
+  const hoodCols = HOOD_COLS.map((h) => { const c = new THREE.Color(h); if (PAL && PAL.accent) c.lerp(new THREE.Color(PAL.accent), .15); if (LIGHT) c.offsetHSL(0, .05, -.2); return c; });
 
   /* --- the page: the 3D canvas, a 2D layer for labels and the voice, a panel for what you click --- */
   host.innerHTML = "";
@@ -159,6 +172,7 @@ window.beingMount = async function (host, opts) {
   const composer = new THREE.EffectComposer(R);
   composer.addPass(new THREE.RenderPass(scene, cam));
   const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), .7, .5, .5); composer.addPass(bloom);
+  bloom.enabled = !LIGHT; // on a light page the page itself would bloom, and wash the being out to white
   const size = () => {
     const r = host.getBoundingClientRect(); W = Math.max(2, r.width | 0); H = Math.max(2, r.height | 0);
     R.setPixelRatio(DPR); R.setSize(W, H, false); composer.setSize(W, H); bloom.setSize(W / 2, H / 2);
@@ -283,20 +297,22 @@ window.beingMount = async function (host, opts) {
     });
     const cap = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2.0), capM); cap.rotation.x = -Math.PI / 2; B.add(cap);
     const lid = new THREE.Group(); B.add(lid); const tr = tracts(1500); tr.position.copy(OFF); tr.material.clippingPlanes = [above]; lid.add(tr);
-    const fogs = [];
+    const fogs = [], FOG = new THREE.Color(P.fog ?? P.a); // its tint (until 0.8.11 each frame set it grey)
     for (let i = 0; i < 4; i++) {
       const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { t: { value: 0 }, s: { value: i }, c: { value: new THREE.Color(P.fog ?? P.a) }, k: { value: 0 } },
         vertexShader: `varying vec3 w;varying vec3 n;varying vec3 v;void main(){w=position;vec4 m=modelViewMatrix*vec4(position,1.);n=normalize(normalMatrix*normal);v=-m.xyz;gl_Position=projectionMatrix*m;}`,
         fragmentShader: `uniform float t,s,k;uniform vec3 c;varying vec3 w;varying vec3 n;varying vec3 v;${NOISE}void main(){float f=pow(1.-abs(dot(normalize(n),normalize(v))),1.4);float d=fbm(w*3.+vec3(0.,t*.05,t*.03)+s*7.);gl_FragColor=vec4(c,smoothstep(.45,.85,d)*(.035+.045*f)*(1.+.8*k));}` });
       const fm = new THREE.Mesh(G.grey, m); fm.position.copy(OFF); fm.scale.setScalar(1.06 + i * .07); B.add(fm); fogs.push(m);
     }
-    // sparks: a real event lights its process's region, in its colour
+    // sparks: a real event lights its process's region, in its colour. They run on fibres inside the brain, so until
+    // 0.8.11 the solid cortex hid every one (depth test) and the few seen in X-ray were added onto pale tissue, white:
+    // now they're drawn through the cortex, laid over it in their own colour, the ones behind the middle fainter
     const NF = 220, fp = new Float32Array(NF * 3), fa = new Float32Array(NF), fc = new Float32Array(NF * 3), fg = new THREE.BufferGeometry();
     fg.setAttribute("position", new THREE.BufferAttribute(fp, 3)); fg.setAttribute("a", new THREE.BufferAttribute(fa, 1)); fg.setAttribute("col", new THREE.BufferAttribute(fc, 3));
-    const fire = new THREE.Points(fg, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { map: { value: dot() } },
-      vertexShader: `attribute float a;attribute vec3 col;varying float va;varying vec3 vc;void main(){va=a;vc=col;vec4 m=modelViewMatrix*vec4(position,1.);gl_PointSize=(2.+11.*a)*(6./-m.z)*${DPR.toFixed(2)};gl_Position=projectionMatrix*m;}`,
-      fragmentShader: `uniform sampler2D map;varying float va;varying vec3 vc;void main(){gl_FragColor=vec4(vc,1.)*texture2D(map,gl_PointCoord)*va;}` }));
-    fire.position.copy(OFF); B.add(fire);
+    const fire = new THREE.Points(fg, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, depthTest: false, blending: THREE.NormalBlending, uniforms: { map: { value: dot() }, cz: { value: 0 } },
+      vertexShader: `uniform float cz;attribute float a;attribute vec3 col;varying float va;varying vec3 vc;varying float fd;void main(){va=a;vc=col;vec4 m=modelViewMatrix*vec4(position,1.);fd=1.-.6*smoothstep(-.25,.5,cz-m.z);gl_PointSize=(2.5+12.*a)*(6./-m.z)*${DPR.toFixed(2)};gl_Position=projectionMatrix*m;}`,
+      fragmentShader: `uniform sampler2D map;varying float va;varying vec3 vc;varying float fd;void main(){float t=texture2D(map,gl_PointCoord).r;if(t<.01)discard;vec3 c=mix(vec3(dot(vc,vec3(.3,.59,.11))),vc,1.7);gl_FragColor=vec4(clamp(c,0.,1.)*(.7+.35*t),t*va*fd);}` }));
+    fire.position.copy(OFF); fire.renderOrder = 3; B.add(fire);
     const near = {};
     for (const k in PROC) { const a = PROC[k].at; near[k] = FIB.map((f) => [f, Math.min(...f.filter((_, j) => j % 6 === 0).map((p) => Math.hypot(p[0] - a[0], p[1] - a[1], p[2] - a[2])))]).sort((x, y) => x[1] - y[1]).slice(0, 60).map((x) => x[0]); }
     mind.sparks = []; mind.fire = (k, t, n) => { for (let i = 0; i < n; i++) { const f = near[k][(rnd() * near[k].length) | 0]; mind.sparks.push({ f, t0: t + rnd() * .25, dur: .5 + rnd() * .6, c: new THREE.Color(PROC[k].c) }); } };
@@ -304,7 +320,8 @@ window.beingMount = async function (host, opts) {
       let n = 0;
       for (let i = mind.sparks.length - 1; i >= 0; i--) { const s = mind.sparks[i], u = (t - s.t0) / s.dur; if (u > 1) { mind.sparks.splice(i, 1); continue; } if (u < 0 || n >= NF) continue; fp.set(s.f[Math.min(s.f.length - 1, (u * s.f.length) | 0)], n * 3); fc[n * 3] = s.c.r; fc[n * 3 + 1] = s.c.g; fc[n * 3 + 2] = s.c.b; fa[n] = Math.sin(Math.PI * u); n++; }
       for (let i = n; i < NF; i++) fa[i] = 0; fg.attributes.position.needsUpdate = fg.attributes.a.needsUpdate = fg.attributes.col.needsUpdate = true;
-      const k = Math.min(1, mind.sparks.length / 70); for (const f of fogs) { f.uniforms.t.value = t; f.uniforms.k.value = k; f.uniforms.c.value.setScalar((1 - .75 * cortex.material.uniforms.gh.value) * (1 - .55 * (OPEN.mind || 0))); } cortex.material.uniforms.t.value = t;
+      fire.material.uniforms.cz.value = M.getWorldPosition(V(0, 0, 0)).applyMatrix4(cam.matrixWorldInverse).z; // the brain's middle, seen from here
+      const k = Math.min(1, mind.sparks.length / 70); for (const f of fogs) { f.uniforms.t.value = t; f.uniforms.k.value = k; f.uniforms.c.value.copy(FOG).multiplyScalar((1 - .75 * cortex.material.uniforms.gh.value) * (1 - .55 * (OPEN.mind || 0))); } cortex.material.uniforms.t.value = t;
       mind.cutK += ((FOCUS === "mind" && mind.mode === "cut" ? 1 : 0) - mind.cutK) * .1; const om = mind.cutK, cy = om > .03 ? .22 - om * .12 : 9; cap.visible = om > .03; capM.uniforms.y.value = cy; cap.position.y = cy + OFF.y; lid.position.y = om * .55;
       B.updateMatrixWorld(true); const wp = V(0, cy + OFF.y, 0).applyMatrix4(B.matrixWorld), wn = V(0, 1, 0).transformDirection(B.matrixWorld);
       below.setFromNormalAndCoplanarPoint(wn.clone().negate(), wp);
@@ -341,35 +358,82 @@ window.beingMount = async function (host, opts) {
 
   /* ===================== vessels, nerves, blood ===================== */
   const FLOW = [], LINKS = []; // LINKS: the vessels, nerves and blood between the organs (hidden on an organ page)
-  function vessel(name, from, to, nStr, bend, width) {
-    const a = from.clone(), mid = a.clone().lerp(to, .5).add(V(gauss() * bend, gauss() * bend * .6 + .2, gauss() * bend * .4));
-    const cu = new THREE.CatmullRomCurve3([a, a.clone().lerp(mid, .45).add(V(0, 0, .2)), mid, mid.clone().lerp(to, .6).add(V(0, 0, -.1)), to]); const len = cu.getLength(); PATHS[name] = { cu, len };
+  // What a vessel or nerve is joined to: a point on an organ (in its own frame), followed as the organ turns by itself
+  // or is dragged. Each tube is built once; every frame only its two ends' offsets (d) change and its shader bends the
+  // last stretch to them (bendAt does the same for what travels on it), so nothing comes apart and no geometry is remade.
+  const ENDS = [];
+  function end(obj, p, local) { obj.updateWorldMatrix(true, false); const l = local ? p.clone() : obj.worldToLocal(p.clone()), e = { obj, l, w: l.clone().applyMatrix4(obj.matrixWorld), d: V(0, 0, 0) }; ENDS.push(e); return e; }
+  ticks.push(() => { for (const e of ENDS) { e.obj.updateWorldMatrix(true, false); e.d.copy(e.l).applyMatrix4(e.obj.matrixWorld).sub(e.w); } });
+  // s: how far along the tube; each end's offset fades out over rc from that end (by length, so tubes that share a
+  // stretch, the nerves' trunk, bend the same)
+  const BEND = `uniform vec3 d0,d1;uniform float len,rc;vec3 bend(vec3 p,float s){return p+d0*(1.-smoothstep(0.,rc,s))+d1*(1.-smoothstep(0.,rc,len-s));}`;
+  const joined = (cu, a, b) => { const len = cu.getLength(); cu.userData = { a, b, len, rc: Math.min(1.4, len * .5) }; return len; };
+  const fall = (x, rc) => { const v = Math.min(1, Math.max(0, x / rc)); return 1 - v * v * (3 - 2 * v); };
+  const bendAt = (cu, u, p) => { const j = cu.userData; if (!j || !j.a) return p; const s = u * j.len; return p.addScaledVector(j.a.d, fall(s, j.rc)).addScaledVector(j.b.d, fall(j.len - s, j.rc)); };
+  function vessel(name, ea, eb, nStr, bend, width) {
+    const a = ea.w.clone(), to = eb.w.clone(), mid = a.clone().lerp(to, .5).add(V(gauss() * bend, gauss() * bend * .6 + .2, gauss() * bend * .4));
+    const cu = new THREE.CatmullRomCurve3([a, a.clone().lerp(mid, .45).add(V(0, 0, .2)), mid, mid.clone().lerp(to, .6).add(V(0, 0, -.1)), to]); const len = joined(cu, ea, eb); PATHS[name] = { cu, len };
     const mats = [];
     for (let s = 0; s < nStr; s++) {
       const off = V(gauss(), gauss(), gauss()).multiplyScalar(width); const pts = cu.getPoints(100).map((p, i) => p.clone().add(off.clone().multiplyScalar(Math.sin(i / 100 * Math.PI))));
       const geo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 100, s === 0 ? .012 : .005, 6, false), u = new Float32Array(geo.attributes.position.count); for (let i = 0; i < u.length; i++) u[i] = Math.floor(i / 7) / 100; geo.setAttribute("u", new THREE.BufferAttribute(u, 1));
-      const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { ph: { value: 0 }, len: { value: len }, bpm: { value: 60 }, fade: { value: 1 }, c: { value: new THREE.Color(P.vein) } },
-        vertexShader: `attribute float u;varying float vu;void main(){vu=u;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+      // the blood is tinted (0.8.11): arterial red in the main vessel, a little paler in the small ones
+      const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: BL, uniforms: { ph: { value: 0 }, len: { value: len }, bpm: { value: 60 }, fade: { value: 1 }, c: { value: new THREE.Color(P.blood ?? P.vein).lerp(new THREE.Color(P.vein), s === 0 ? 0 : .35) }, d0: { value: ea.d }, d1: { value: eb.d }, rc: { value: cu.userData.rc } },
+        vertexShader: `attribute float u;varying float vu;${BEND}void main(){vu=u;gl_Position=projectionMatrix*modelViewMatrix*vec4(bend(position,u*len),1.);}`,
         fragmentShader: `uniform float ph,len,bpm,fade;uniform vec3 c;varying float vu;void main(){float u=fract(ph-vu*len/${SPEED.toFixed(1)}*bpm/60.);float p=exp(-pow((u-.18)/.05,2.))+.5*exp(-pow((u-.05)/.035,2.));gl_FragColor=vec4(c,(.13+p*.75)*fade);}` });
       LINKS.push(add(new THREE.Mesh(geo, m))); mats.push(m);
     }
     ticks.push(() => { const f = 1 - .88 * Math.max(0, ...Object.values(OPEN)); for (const m of mats) { m.uniforms.ph.value = phase; m.uniforms.bpm.value = BPM; m.uniforms.fade.value = f; } }); // faded while you look into an organ
     return cu;
   }
-  const NERVES = {};
-  function nerve(name, from, to) {
-    const mid = from.clone().lerp(to, .5).add(V(gauss() * .3, .5 + gauss() * .2, gauss() * .2)), cu = new THREE.CatmullRomCurve3([from, mid, to]);
-    const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(cu.getPoints(90)), new THREE.LineDashedMaterial({ color: P.nerve, dashSize: .035, gapSize: .03, transparent: true, opacity: .3 })); l.computeLineDistances(); LINKS.push(add(l)); NERVES[name] = cu;
-    ticks.push(() => { l.material.opacity = .3 * (1 - .9 * Math.max(0, ...Object.values(OPEN))); });
+  // The nerves (0.8.11): the spinal cord leaves the brainstem's lower end, runs down behind the heart to a plexus and
+  // splits into three nerves, to the heart, the senses and memory, each a bundle of fibres (myelin, with the gaps
+  // between its sheaths) with nerve cells along it. A signal on a nerve (FLOW on NERVES) lights its own fibres and
+  // cells in the event's colour as it passes; nothing else moves on them.
+  const NERVES = {}, NS = 200;
+  const NSIG = `uniform vec3 c;uniform float fade;uniform vec4 sg[4];uniform vec3 sc[4];
+  vec3 lit(vec3 col,float s,out float g){g=0.;for(int i=0;i<4;i++){float k=sg[i].y*exp(-pow((s-sg[i].x)/.16,2.));col=mix(col,clamp(mix(vec3(dot(sc[i],vec3(.3,.59,.11))),sc[i],1.6)*1.2,0.,1.),min(1.,k));g+=k;}return col;}`;
+  function nerve(name, ea, eb, via) { // via: from the organ to the brainstem, the plexus second to last
+    const pts = [ea.w.clone(), ...via, eb.w.clone()], cu = new THREE.CatmullRomCurve3(pts, false, "centripetal"), len = joined(cu, ea, eb); NERVES[name] = cu;
+    const C = cu.getSpacedPoints(NS), up = V(0, 0, 1), fr = C.map((p, i) => { const T = cu.getTangentAt(i / NS), N = T.clone().cross(up).normalize(), Bn = T.clone().cross(N); return [N, Bn]; });
+    let ip = 0, bd = 9; C.forEach((p, i) => { const d = p.distanceTo(via[via.length - 2]); if (d < bd) { bd = d; ip = i; } }); // the plexus
+    const pos = [], sa = [], idx = [];
+    for (let f = 0; f < 7; f++) {
+      const ph0 = rnd() * 6.283, rf = .55 + .45 * rnd(), fp = C.map((p, i) => { const s = i / NS * len, r = (.018 + .03 * Math.exp(-s / .2)) * (i > ip ? .65 : 1) * rf, a = ph0 + s * 3; return p.clone().addScaledVector(fr[i][0], Math.cos(a) * r).addScaledVector(fr[i][1], Math.sin(a) * r); });
+      const g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(fp), NS, f === 0 ? .0045 : .003, 4, false), gp = g.attributes.position.array, base = pos.length / 3;
+      for (let i = 0; i < gp.length; i++) pos.push(gp[i]); for (let v = 0; v < gp.length / 3; v++) sa.push(Math.floor(v / 5) / NS * len); for (const x of g.index.array) idx.push(base + x); g.dispose();
+    }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute("s", new THREE.Float32BufferAttribute(sa, 1)); geo.setIndex(idx);
+    const U = { c: { value: new THREE.Color(P.nerve) }, fade: { value: 1 }, len: { value: len }, rc: { value: cu.userData.rc }, d0: { value: ea.d }, d1: { value: eb.d }, map: { value: dot() },
+      sg: { value: [0, 1, 2, 3].map(() => new THREE.Vector4()) }, sc: { value: [0, 1, 2, 3].map(() => V(0, 0, 0)) } };
+    const fib = new THREE.Mesh(geo, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: BL, uniforms: U,
+      vertexShader: `attribute float s;varying float vs;${BEND}void main(){vs=s;gl_Position=projectionMatrix*modelViewMatrix*vec4(bend(position,s),1.);}`,
+      fragmentShader: `${NSIG}varying float vs;void main(){float nd=smoothstep(0.,.07,abs(fract(vs*16.)-.5)),g;vec3 col=lit(c*(.6+.4*nd),vs,g);gl_FragColor=vec4(col,min(1.,.2*(.6+.4*nd)+g*.7)*fade);}` }));
+    // the cells: at the organ's end, along the nerve, a ganglion at the plexus, and the nuclei by the brainstem
+    const cs = [], ca = [], cz = [], put = (i, r) => { const p = C[i].clone().add(V(gauss(), gauss(), gauss()).multiplyScalar(r)); cs.push(p.x, p.y, p.z); ca.push(i / NS * len); cz.push(rnd()); };
+    for (let k = 0; k < 3; k++) put(2 + ((rnd() * 10) | 0), .02);
+    for (let k = 0; k < 4; k++) put(Math.round(ip * (.2 + .6 * (k + rnd()) / 4)), .012);
+    for (let k = 0; k < 4; k++) put(Math.max(0, Math.min(NS, ip + ((gauss() * 4) | 0))), .022);
+    for (let k = 0; k < 2; k++) put(NS - 2 - ((rnd() * 6) | 0), .01);
+    const sg = new THREE.BufferGeometry(); sg.setAttribute("position", new THREE.Float32BufferAttribute(cs, 3)); sg.setAttribute("s", new THREE.Float32BufferAttribute(ca, 1)); sg.setAttribute("z", new THREE.Float32BufferAttribute(cz, 1));
+    fib.add(new THREE.Points(sg, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: BL, uniforms: U,
+      vertexShader: `attribute float s;attribute float z;varying float vs;${BEND}void main(){vs=s;vec4 m=modelViewMatrix*vec4(bend(position,s),1.);gl_PointSize=(2.2+2.*z)*(6./-m.z)*${DPR.toFixed(2)};gl_Position=projectionMatrix*m;}`,
+      fragmentShader: `uniform sampler2D map;${NSIG}varying float vs;void main(){float t=texture2D(map,gl_PointCoord).r,g;if(t<.02)discard;vec3 col=lit(mix(c,vec3(1.),.15),vs,g);gl_FragColor=vec4(col,t*min(1.,.5+g)*fade);}` })));
+    LINKS.push(add(fib)); // (the cells are its child: hidden with it on an organ page)
+    ticks.push((t) => {
+      U.fade.value = 1 - .9 * Math.max(0, ...Object.values(OPEN)); let n = 0;
+      for (const [fc, t0, dur, col, rev] of FLOW) { if (fc !== cu || n >= 4) continue; const u = (t - t0) / dur; if (u < 0 || u > 1) continue; U.sg.value[n].set((rev ? 1 - u : u) * len, Math.sin(Math.PI * u) * .9 + .1, 0, 0); U.sc.value[n].set(col.r, col.g, col.b); n++; }
+      for (; n < 4; n++) U.sg.value[n].y = 0;
+    });
   }
   const CN = 300, cp = new Float32Array(CN * 3), cc = new Float32Array(CN * 3), ca = new Float32Array(CN), cellG = new THREE.BufferGeometry();
   cellG.setAttribute("position", new THREE.BufferAttribute(cp, 3)); cellG.setAttribute("col", new THREE.BufferAttribute(cc, 3)); cellG.setAttribute("a", new THREE.BufferAttribute(ca, 1));
-  LINKS.push(add(new THREE.Points(cellG, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { map: { value: dot() } },
+  LINKS.push(add(new THREE.Points(cellG, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: BL, uniforms: { map: { value: dot() } },
     vertexShader: `attribute float a;attribute vec3 col;varying float va;varying vec3 vc;void main(){va=a;vc=col;vec4 m=modelViewMatrix*vec4(position,1.);gl_PointSize=(3.+9.*a)*(6./-m.z)*${DPR.toFixed(2)};gl_Position=projectionMatrix*m;}`,
     fragmentShader: `uniform sampler2D map;varying float va;varying vec3 vc;void main(){gl_FragColor=vec4(vc,1.)*texture2D(map,gl_PointCoord)*va;}` }))));
   ticks.push((t) => {
     let n = 0;
-    for (let i = FLOW.length - 1; i >= 0; i--) { const [cu, t0, dur, col, rev] = FLOW[i], u = (t - t0) / dur; if (u > 1) { FLOW.splice(i, 1); continue; } if (u < 0 || n >= CN) continue; const p = cu.getPoint(rev ? 1 - u : u); cp.set([p.x, p.y, p.z], n * 3); cc.set([col.r, col.g, col.b], n * 3); ca[n] = Math.sin(Math.PI * u) * .9 + .1; n++; }
+    for (let i = FLOW.length - 1; i >= 0; i--) { const [cu, t0, dur, col, rev] = FLOW[i], u = (t - t0) / dur; if (u > 1) { FLOW.splice(i, 1); continue; } if (u < 0 || n >= CN) continue; const uu = rev ? 1 - u : u, p = bendAt(cu, uu, cu.getPointAt(uu)); cp.set([p.x, p.y, p.z], n * 3); cc.set([col.r, col.g, col.b], n * 3); ca[n] = Math.sin(Math.PI * u) * .9 + .1; n++; }
     for (let i = n; i < CN; i++) ca[i] = 0; cellG.attributes.position.needsUpdate = cellG.attributes.col.needsUpdate = cellG.attributes.a.needsUpdate = true;
   });
 
@@ -459,7 +523,7 @@ window.beingMount = async function (host, opts) {
     for (let i = 0; i < N; i++) {
       const k = hi.get(nodes[i]._hood); hood[i] = k; const old = POS.get(nodes[i].id);
       if (old) p.set(old, i * 3); else { fresh++; const q = ctr[k].clone().add(V(gauss(), gauss(), gauss()).multiplyScalar(.045 * Math.cbrt(counts.get(nodes[i]._hood)))); p.set([q.x, q.y, q.z], i * 3); }
-      const c = new THREE.Color(HOOD_COLS[k % HOOD_COLS.length]); col.set([c.r, c.g, c.b], i * 3); a[i] = .55 + rnd() * .35; // as bright as the first being
+      const c = hoodCols[k % hoodCols.length]; col.set([c.r, c.g, c.b], i * 3); a[i] = .55 + rnd() * .35; // as bright as the first being
     }
     // every link, as the NOTES map has them: one through a "Seen in" or a reading list (via) drawn a little fainter
     const L = [], LW = [];
@@ -472,7 +536,8 @@ window.beingMount = async function (host, opts) {
     const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(p, 3)); geo.setAttribute("a", new THREE.BufferAttribute(a, 1)); geo.setAttribute("col", new THREE.BufferAttribute(col, 3));
     const pts = new THREE.Points(geo, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, uniforms: { map: { value: dot() } },
       vertexShader: `attribute float a;attribute vec3 col;varying float va;varying vec3 vc;void main(){va=a;vc=col;vec4 m=modelViewMatrix*vec4(position,1.);gl_PointSize=((1.1+2.6*max(0.,min(a,1.)-.5))*(4./-m.z)+1.)*${DPR.toFixed(2)};gl_Position=projectionMatrix*m;}`,
-      fragmentShader: `uniform sampler2D map;varying float va;varying vec3 vc;void main(){float t=texture2D(map,gl_PointCoord).r;if(t<.02)discard;gl_FragColor=vec4(vc*(.22+.48*min(2.5,va)),t*min(1.,va*1.2));}` }));
+      // dimmed by alpha, not by darkening: a darkened hue reads as grey (0.8.11)
+      fragmentShader: `uniform sampler2D map;varying float va;varying vec3 vc;void main(){float t=texture2D(map,gl_PointCoord).r;if(t<.02)discard;gl_FragColor=vec4(vc*(.68+.22*min(2.5,va)),t*min(1.,.25+va*1.1));}` }));
     pts.userData.notes = true; memory.g.add(pts);
     if (!memory.ring) memory.ring = new THREE.Mesh(new THREE.RingGeometry(.8, 1, 32), new THREE.MeshBasicMaterial({ color: P.ink, transparent: true, opacity: .8, depthTest: false }));
     memory.ring.visible = false; memory.g.add(memory.ring);
@@ -578,11 +643,17 @@ window.beingMount = async function (host, opts) {
   });
 
   /* --- the links between the organs --- */
-  vessel("mind", HEART_C, BRAIN_C.clone().add(V(0, -.85, .1)), 5, .25, .04); vessel("senses", HEART_C, SENSE_C.clone().add(V(.15, .35, 0)), 5, .4, .05);
-  for (const [nm, k, dy] of [["s_hear", "hearing", 0], ["s_touch", "touch", .05], ["s_bal", "balance", 0], ["s_heat", "heat", -.36]]) vessel(nm, HEART_C, SENSE_C.clone().add(V(...SPOS[k])).add(V(0, dy, 0)), 2, .3, .02);
-  vessel("memory", HEART_C, MEM_C.clone().add(V(-.5, -.08, 0)), 5, .4, .05);
-  const bstem = BRAIN_C.clone().add(V(0, -.6, 0));
-  nerve("senses", SENSE_C.clone().add(V(.2, .6, 0)), bstem); nerve("memory", MEM_C.clone().add(V(-.42, .25, 0)), bstem); nerve("heart", HEART_C.clone().add(V(0, .35, 0)), bstem);
+  // each vessel and nerve is joined to its organ (end): the brain's arteries at the front of the pons, on the axis it
+  // turns about (where the real basilar artery runs), the spinal cord at the brainstem's lower end (brain-local: OFF in)
+  const HEART_E = end(heart.g, HEART_C.clone());
+  vessel("mind", HEART_E, end(mind.b, V(0, -.23, .01), true), 5, .25, .04); vessel("senses", HEART_E, end(senses.g, SENSE_C.clone().add(V(.15, .35, 0))), 5, .4, .05);
+  for (const [nm, k, dy] of [["s_hear", "hearing", 0], ["s_touch", "touch", .05], ["s_bal", "balance", 0], ["s_heat", "heat", -.36]]) vessel(nm, HEART_E, end(senses.organs[k], V(0, dy, 0), true), 2, .3, .02);
+  vessel("memory", HEART_E, end(memory.g, V(-.45, -.15, 0), true), 5, .4, .05); // into the notes, near the axis they turn on
+  { const stem = end(mind.b, V(0, -1.05, -.31), true), PLEX = V(0, .0, -.5), cord = (x) => [PLEX.clone().add(x), V(0, .1, -.44).add(x.clone().multiplyScalar(.6))];
+    const sx = V(-.02, 0, 0), mx = V(.02, 0, 0), hx = V(0, 0, .02), sE = SENSE_C.clone().add(V(.2, .6, 0)), mE = MEM_C.clone().add(V(-.22, .25, 0));
+    nerve("senses", end(senses.g, sE), stem, [sE.clone().add(V(.3, -.28, -.1)), V(-1.45, -.12, -.62), ...cord(sx)]);
+    nerve("memory", end(memory.g, mE), stem, [mE.clone().add(V(-.3, -.28, -.1)), V(1.4, -.15, -.64), ...cord(mx)]);
+    nerve("heart", end(heart.g, HEART_C.clone().add(V(.06, .28, -.12))), stem, [HEART_C.clone().add(V(.04, .5, -.4)), ...cord(hx)]); }
 
   /* ===================== the camera: you turn it ===================== */
   const view = { th: 0, ph: 1.42, d: 10.4, tx: 0, ty: .2, tz: 0 }, goal = { ...view }, HOME = { ...view };
@@ -820,13 +891,32 @@ window.beingMount = async function (host, opts) {
     const x0 = UI ? UI.x0 : 40, x1 = W - (UI ? UI.x0 : opts.talkWidth || 190); /* phone: edge to edge */ c.font = "600 10px Inter,sans-serif"; c.fillStyle = P.mute; c.fillText(lab, x0, y - h / 2 - 8); c.font = "400 10px Inter,sans-serif"; c.fillText(sub, x0 + 74, y - h / 2 - 8);
     c.globalAlpha = .15; c.fillStyle = P.ink; c.fillRect(x0, y, x1 - x0, 1); c.globalAlpha = 1; if (!L) return;
     const S = L.s, N = S.length, prog = Math.min(1, (NOW - L.t) / Math.max(1.2, N / 50)), shown = Math.floor(N * prog), dx = (x1 - x0) / Math.max(N, 120);
-    for (let i = 0; i < shown; i++) { const v = S[i] * h / 2; c.globalAlpha = .3 + .7 * Math.max(0, 1 - (shown - i) / N * 1.4); c.fillRect(x0 + i * dx, y - v, Math.max(1, dx * .6), Math.max(1, v * 2)); } c.globalAlpha = 1;
+    const dim = L.heard ? .45 : 1; // heard, not to Kurooto: fainter
+    for (let i = 0; i < shown; i++) { const v = S[i] * h / 2; c.globalAlpha = dim * (.3 + .7 * Math.max(0, 1 - (shown - i) / N * 1.4)); c.fillRect(x0 + i * dx, y - v, Math.max(1, dx * .6), Math.max(1, v * 2)); } c.globalAlpha = 1;
   }
 
   /* ===================== the live stream ===================== */
   let BODY = null, built = false;
+  // Resting activity (look.being_resting_sparks, 0.8.11): a low trickle of sparks from what Kurooto does all the time,
+  // never made up: each reading of its body (the live stream's vitals, every 2 s) is a spark in the insula, and one more
+  // for each quarter of the processor in use; its own processes' processor use keeps the thalamus going in proportion; a
+  // scheduler timer that fired lights the region of its feature; notes that changed the hippocampus; sound heard the
+  // auditory cortex. Off with Remove animations or the system's reduced motion.
+  const REST = { on: false, own: 0, acc: 0, heard: 0, when: new Map() };
+  const setRest = (v) => { REST.on = v !== false && !STILL && !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches); };
+  setRest(opts.restSparks);
+  const procOfFeature = (id) => { const [org, part] = homeOf(id || ""); if (org === "mind") return procOf(part) || "think"; if (org === "memory") return "memory"; if (org === "senses") return { hearing: "hear", sight: "see", heat: "feel" }[part] || "touch"; return "plan"; };
+  function resting(m) {
+    if (!REST.on) return;
+    mind.fire("feel", NOW, 1 + Math.round(4 * Math.min(1, (m.sys && +m.sys.cpu) || 0)));
+    const cores = (m.sys && m.sys.cores && m.sys.cores.length) || 1; // procs' cpu is a share of the whole machine
+    if (m.procs) REST.own = m.procs.filter((p) => p.own).reduce((a, p) => a + (+p.cpu || 0), 0) * cores;
+    const now = Date.now() / 1000;
+    for (const s of m.schedule || []) { const k = s.key || s.what, was = REST.when.get(k); if (was != null && s.when > was && was <= now + 2) mind.fire(procOfFeature(s.module), NOW, 3); REST.when.set(k, s.when); }
+  }
+  ticks.push((t, dt) => { if (!REST.on) return; REST.acc += dt * Math.min(3, REST.own * 3); while (REST.acc >= 1) { REST.acc--; mind.fire("attend", t, 1); } }); // a whole core busy: 3 a second
   function update(m) {
-    BODY = m; SYS = m.sys || SYS; CELLS = m.cells || CELLS; placeFeatures(CELLS);
+    BODY = m; SYS = m.sys || SYS; CELLS = m.cells || CELLS; placeFeatures(CELLS); resting(m);
     if (PANEL === "pc" && PANEL_SENSE === "heat") { const live = panel.querySelector(".pc"); if (live) live.outerHTML = pcHTML(); }
   }
   function event(e) {
@@ -847,12 +937,14 @@ window.beingMount = async function (host, opts) {
     const id = EV_FEATURE[e.kind], o = id && ORG[id];
     if (o) { o.flash = t; const w = o.g.getWorldPosition(V(0, 0, 0)), mid = HEART_C.clone().lerp(w, .5).add(V(gauss() * .3, .3, .2)), cv = new THREE.CatmullRomCurve3([HEART_C.clone(), mid, w]); FLOW.push([cv, t, .9, new THREE.Color(o.col), 0]); if (RETURNS.has(e.kind)) FLOW.push([cv, t + 1.1, .9, new THREE.Color(o.col).lerp(new THREE.Color(P.back ?? P.a), .5).multiplyScalar(.55), 1]); }
   }
-  function graph(g) { memory.build(g); }
+  function graph(g) { if (memory.nodes.length && REST.on) mind.fire("memory", NOW, 3); memory.build(g); } // a note changed
   async function voice(m) {
     if (m.kind === "voice_text") { const s = await shape(m.text || ""); LANES[m.who === "you" ? "you" : "me"] = { text: m.text, s, t: NOW }; if (m.who === "you") senses.hit.hearing = NOW; else { mind.fire("speak", NOW, 8); } }
     if (m.kind === "voice_speak" && m.samples) LANES.me = { text: "", s: m.samples, t: NOW };
+    // speech heard that wasn't a turn (chatter, or not to it): only its loudness, never words; drawn dimmer
+    if (m.kind === "voice_heard" && Array.isArray(m.samples) && m.samples.length) { LANES.you = { text: "", s: m.samples.slice(0, 120).map((x) => Math.max(0, Math.min(1, +x || 0))), t: NOW, heard: true }; senses.hit.hearing = NOW; }
     if (m.kind === "voice_state") muteState();
-    if (m.kind === "voice_level" && m.levels) senses.level = Math.max(senses.level || 0, ...m.levels.map(Number).filter(isFinite));
+    if (m.kind === "voice_level" && m.levels) { senses.level = Math.max(senses.level || 0, ...m.levels.map(Number).filter(isFinite)); if (REST.on && senses.level > .15 && NOW - REST.heard > .4) { REST.heard = NOW; mind.fire("hear", NOW, 1); } }
   }
   function face(m) { // Face presence (t:"face"): where the owner's face is in the camera's frame, nothing else
     if (m && m.owner && Number.isFinite(+m.x) && Number.isFinite(+m.y)) { GAZE.x = Math.max(-1, Math.min(1, +m.x)); GAZE.y = Math.max(-1, Math.min(1, +m.y)); GAZE.at = performance.now(); }
@@ -1077,13 +1169,13 @@ window.beingMount = async function (host, opts) {
     if (FOCUS && (OPEN[FOCUS] || 0) > .3) for (const id in ORG) { const o = ORG[id]; if (o.org !== FOCUS || (o.part !== PICKED && FOCUS !== "memory")) continue; const [x, y, z] = proj(o.g.getWorldPosition(V(0, 0, 0))); if (z > 1) continue; c.save(); c.globalAlpha = OPEN[FOCUS] * (o.on ? .85 : .4); c.font = UI ? UI.small : "400 9px Inter,sans-serif"; c.lineJoin = "round"; c.lineWidth = 3.5; c.strokeStyle = P.bg; c.strokeText(o.title, x + 8, y + 3); c.fillStyle = o.on ? P.ink : P.mute; c.fillText(o.title, x + 8, y + 3); c.restore(); }
     if (OM) { /* an organ page: no voice lanes */ } else if (UI) UI.lanes(c, lane, LANES, W, H); // phone: lower and thinner, no talk box
     else {
-    lane(c, H - 100, 34, LANES.you, "YOU", LANES.you ? (LANES.you.typed ? "typed to Kurooto" : "heard, and said to Kurooto") : "say its name, or type in the talk box");
+    lane(c, H - 100, 34, LANES.you, "YOU", LANES.you ? (LANES.you.typed ? "typed to Kurooto" : LANES.you.heard ? "heard, not to Kurooto" : "heard, and said to Kurooto") : "say its name, or type in the talk box");
     lane(c, H - 48, 44, LANES.me, "KUROOTO", LANES.me ? (LANES.me.typed ? "answered" : "speaking") : "");
     }
   }
   frame();
   return {
-    update, event, graph, voice, body, typed, setHints, face,
+    update, event, graph, voice, body, typed, setHints, face, setRest,
     // phone: the back button goes up one level (as Esc), and how deep you are (0: the whole being)
     escape() { if (OM) { if (!SUB) return false; back(); return true; } if (SUB) back(); else if (FOCUS || panel.style.display === "block") { closePanel(); focusOn(null); } else return false; return true; },
     depth() { if (OM) return SUB ? 1 : 0; return SUB ? 2 : FOCUS || panel.style.display === "block" ? 1 : 0; },

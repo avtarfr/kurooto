@@ -2,6 +2,13 @@
 
 ## 0.8.11 (unreleased)
 
+- **The being: sparks you can see, nerves, joined vessels, colour.** The brain showed no sparks at all: they run
+  inside it and the solid cortex hid every one; they now show through it in their own colours, and at rest a low
+  trickle comes from what Kurooto really does (its body's readings, its own processor use, timers firing, notes
+  changing, sound heard; `look.being_resting_sparks`). The vessels and nerves stay joined to the brain and the other
+  organs as they turn; the nerves leave the brainstem as a spinal cord and split into fibre bundles with nerve cells,
+  lit in a signal's colour. The blood is tinted red, the fluid round the brain pale aqua, the notes each in a clear
+  colour, the heart a little fainter, and speech heard that wasn't to Kurooto shows faintly in the YOU lane.
 - **Voice ID: Set up from its own page.** With Voice ID on but its files not downloaded yet, the Your voice page
   said to go to the dashboard; it now has a **Set up now** button that downloads them there and shows the progress.
 - **Face presence: the near step can be finished.** Sitting close to a laptop's camera, leaning in pushed your chin

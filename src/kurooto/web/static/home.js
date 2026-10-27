@@ -223,6 +223,7 @@ function loadLook() {
     if (b !== BOARD) setBoard(b, false);
     BEING_THEME = look.values.being_theme === "theme" ? "theme" : "void";
     BEING_HINTS = look.values.being_hints !== false; if (BEING) BEING.setHints(BEING_HINTS);
+    BEING_REST = look.values.being_resting_sparks !== false; if (BEING) BEING.setRest(BEING_REST);
     if ((look.values.talk_box !== false) !== TALK.on) { TALK.on = look.values.talk_box !== false; talkShow(); }
     if (m !== BRAIN_MON) { BRAIN_MON = m; if (B3 && B3.setMonitor) B3.setMonitor(m); }
     const v = cleanHide(look.values.panes);
@@ -913,7 +914,7 @@ async function renderConsole(body) {
 }
 // The being (look.board "being", 0.8.9): Kurooto as one body on the live stream, filling the board (being.js). Drag
 // turns it, a click looks into an organ, a part of it shows its Brain parts, features and settings; pages open over it.
-let BEING = null, BEING_LOADING = false, BEING_THEME = "void", BEING_HINTS = true, GRAPH = null;
+let BEING = null, BEING_LOADING = false, BEING_THEME = "void", BEING_HINTS = true, BEING_REST = true, GRAPH = null;
 function setBoard(b, save = true) {
   BOARD = boardOf(b); MAX = null;
   try { localStorage.setItem("kurooto.dash.board", BOARD); } catch { /* fine */ }
@@ -932,7 +933,7 @@ async function mountBeing() {
     if (!window.beingMount) await loadScript("/static/being.js?v=1");
     if (!beingBoard()) return; // the board changed while it loaded
     const hoodOf = (id) => { const n = mind.nodes && mind.nodes.get(id), k = n && n.neighborhood, h = k && mind.hoods && mind.hoods.get(k); return k ? { key: k, label: h ? h.label : k } : null; };
-    const b = await window.beingMount(host, { api, hoodOf, pal: PAL, theme: BEING_THEME, hints: BEING_HINTS, talkWidth: TALK.on ? 400 : 190, talkRoom: TALK.on ? 230 : 150 });
+    const b = await window.beingMount(host, { api, hoodOf, pal: PAL, theme: BEING_THEME, hints: BEING_HINTS, restSparks: BEING_REST, talkWidth: TALK.on ? 400 : 190, talkRoom: TALK.on ? 230 : 150 });
     if (!beingBoard()) { b.stop(); return; }
     BEING = b;
     if (last) BEING.update(last);
@@ -1995,6 +1996,7 @@ function settingChanged(key, value) {
   if (key === "look.being_theme") { BEING_THEME = value === "theme" ? "theme" : "void"; stopBeing(); applyPanes(); }
   if (key === "look.talk_box") { TALK.on = value !== false; talkShow(); }
   if (key === "look.being_hints") { BEING_HINTS = value !== false; if (BEING) BEING.setHints(BEING_HINTS); }
+  if (key === "look.being_resting_sparks") { BEING_REST = value !== false; if (BEING) BEING.setRest(BEING_REST); }
   if (key === "look.brain_monitor") { BRAIN_MON = value === "drawer" ? "drawer" : "shown"; if (B3 && B3.setMonitor) B3.setMonitor(BRAIN_MON); }
   if (key === "look.hidden_features") HIDDEN_F = new Set(Array.isArray(value) ? value : []);
   if (key === "look.study_mode") setStudy(!!value, false);

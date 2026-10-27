@@ -47,7 +47,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
-- [Dashboard and terminal](#dashboard-and-terminal): 22 settings
+- [Dashboard and terminal](#dashboard-and-terminal): 23 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 26 settings
 - [Face presence](#face-presence): 29 settings
@@ -6201,6 +6201,20 @@ The being's hints: what to click and what each part is (H on the board toggles t
 
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn them off once you know your way around.
+- **Depends on:** `look.board` = `being`.
+
+### `look.being_resting_sparks`
+
+The being's resting sparks: a low trickle in the brain from what Kurooto does all the time.
+
+Each reading of its body (every 2 seconds) is a spark in the insula, one more for each quarter of the processor in use;
+its own processor use keeps the thalamus going in proportion; a timer of the scheduler that fires lights its feature's
+region; changed notes light the hippocampus, sound heard the auditory cortex. Events (AI requests, messages, syncs)
+spark either way.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you'd rather the brain sparked only for events. Remove animations and the
+  system's reduced motion turn it off too.
 - **Depends on:** `look.board` = `being`.
 
 ### `look.talk_box`

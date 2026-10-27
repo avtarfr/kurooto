@@ -232,3 +232,48 @@ def test_an_organ_pages_list_has_every_part_with_its_live_state():
     # its switches go the dashboard's own ways (api settings, modules), so the phone's sealed requests carry them
     assert 'await api("settings", { key, value })' in js
     assert 'await api(on ? "modules/enable" : "modules/disable", on ? { ids: [id] } : { id })' in js
+
+
+def test_0811_sparks_show_and_the_resting_ones_have_a_switch():
+    import kurooto.web.server  # noqa: F401 (registers the look defaults)
+    from kurooto.core.config import _DEFAULTS
+
+    js = static("being.js").decode()
+    # the sparks run inside the brain: drawn through the solid cortex, in their own colour (not added onto it)
+    fire = js[js.index("const fire = new THREE.Points(") :]
+    fire = fire[: fire.index("\n")]
+    assert "depthTest: false" in fire and "THREE.NormalBlending" in fire
+    # resting sparks: on by default, look.being_resting_sparks; off with Remove animations or reduced motion
+    assert _DEFAULTS["look"]["being_resting_sparks"] is True
+    assert "setRest(opts.restSparks);" in js and "!STILL && !(window.matchMedia" in js and "setRest," in js
+    rest = js[js.index("function resting(m)") :]
+    rest = rest[: rest.index("\n  }\n")]
+    assert "if (!REST.on) return;" in rest and 'mind.fire("feel"' in rest and "m.procs" in rest and "m.schedule" in rest
+    home = static("home.js").decode()
+    assert 'key === "look.being_resting_sparks"' in home and "restSparks: BEING_REST" in home
+    phone = static("being-phone.js").decode()
+    assert "restSparks: look.rest !== false" in phone and "PV.being.setRest(b.look.rest)" in phone
+
+
+def test_0811_vessels_and_nerves_stay_joined_without_new_geometry():
+    js = static("being.js").decode()
+    # every vessel and nerve ends on an organ's own point (end), followed each frame by an offset the shaders bend to
+    links = js[js.index("/* --- the links between the organs --- */") :]
+    links = links[: links.index("/* ===================== the camera")]
+    assert "BRAIN_C.clone()" not in links and "bstem" not in links  # no fixed world point at the brain any more
+    assert links.count("end(mind.b,") == 2 and "end(heart.g," in links and "end(memory.g," in links
+    assert "end(senses.organs[k]" in links
+    assert "vec4(bend(position," in js and js.count("${BEND}") >= 3  # vessels, fibres, cells
+    flow = js[js.index("for (let i = FLOW.length - 1;") :]
+    assert "bendAt(cu, uu, cu.getPointAt(uu))" in flow[:400]  # what travels on them follows the same bend
+    # the per-frame work is the ends' offsets only: each tube is built once, outside any tick
+    ends = js[js.index("ticks.push(() => { for (const e of ENDS)") :]
+    assert "Geometry" not in ends[: ends.index("\n")]
+    assert "e.d.copy(e.l).applyMatrix4(e.obj.matrixWorld).sub(e.w)" in ends
+
+
+def test_0811_a_heard_stretch_draws_dimmer_in_the_you_lane():
+    js = static("being.js").decode()
+    assert 'm.kind === "voice_heard"' in js and "heard: true" in js
+    assert '"heard, not to Kurooto"' in js and "L.heard ? .45 : 1" in js
+    assert '"heard, not to Kurooto"' in static("being-phone.js").decode()

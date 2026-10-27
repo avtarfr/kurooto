@@ -57,7 +57,7 @@ def test_the_being_block_has_what_being_js_reads_in_the_dashboards_shapes(v):  #
         "sensor": "phone:motion",
         "value": 3.5,
     }
-    assert b["look"] == {"theme": "void", "hints": True}
+    assert b["look"] == {"theme": "void", "hints": True, "rest": True}
     secs = b["settings"]["sections"]
     assert secs and all("tips" not in s and {"section", "title", "values"} <= set(s) for s in secs)
     comps = [c for i in b["brain"]["islands"] for c in i["comps"]]
