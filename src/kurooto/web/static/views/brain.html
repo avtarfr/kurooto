@@ -1,0 +1,20 @@
+<!doctype html>
+<!-- The phone app's Brain (0.8.10): the dashboard's Brain console (brainconsole.js, from the brain-console part) in the
+     Android app's WebView (ViewsPane), read-only, with this phone's sealed copy of it handed in by brain-phone.js's
+     KurootoBrain.take. It loads nothing from anywhere (connect-src 'none'): the app serves these files itself. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Kurooto</title>
+<link rel="stylesheet" href="phone.css">
+</head>
+<body class="phone" data-design="new">
+<div id="brain"></div>
+<p id="empty" class="empty hidden"></p>
+<script src="common.js"></script>
+<script src="brainconsole.js"></script>
+<script src="brain-phone.js"></script>
+</body>
+</html>

@@ -88,6 +88,10 @@ function homeOf(id) {
 window.beingMount = async function (host, opts) {
   opts = opts || {};
   const api = opts.api;
+  // phone: the Android app's Views → Being (0.8.10) passes opts.mode "phone"; static/being-phone.js then owns the touch,
+  // the panel as a bottom sheet and the words drawn over the canvas. Every hook is marked "phone:"; with PH null (the
+  // dashboard) each one does exactly what it did before.
+  const PH = opts.mode === "phone" && window.beingPhone ? window.beingPhone : null, UI = PH ? PH.ui : null;
   const THEME = opts.theme === "theme" && opts.pal ? "theme" : "void";
   const PAL = THEME === "theme" ? opts.pal : null;
   const P = THEME === "void"
@@ -115,6 +119,7 @@ window.beingMount = async function (host, opts) {
   .being .hints{right:118px!important}.being .bmode{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:4;display:none;border:1px solid ${P.mute}88;border-radius:99px;overflow:hidden;background:${P.bg}cc}
   .being .bmode button{background:transparent;color:${P.mute};border:0;padding:5px 14px;font:500 11px Inter,sans-serif;cursor:pointer}.being .bmode button.on{background:${P.ink};color:${P.bg}}.being .mute{position:absolute;right:14px;top:14px;z-index:4;background:${P.bg};color:${P.ink};border:1px solid ${P.mute}88;border-radius:99px;padding:5px 14px;cursor:pointer;font:500 11px Inter,sans-serif}
   .being .mute.on{background:${P.ink};color:${P.bg}}`;
+  if (PH) css.textContent += PH.css(P); // phone: the bottom sheet, bigger buttons
   host.appendChild(css);
   const gl = document.createElement("canvas"), ov = document.createElement("canvas");
   ov.className = "ov";
@@ -134,7 +139,7 @@ window.beingMount = async function (host, opts) {
   modeB.onclick = (e) => { const b = e.target.closest("[data-mode]"); if (b) setMode(b.dataset.mode); };
   function setMode(m) { mind.mode = m; for (const b of modeB.querySelectorAll("button")) b.classList.toggle("on", b.dataset.mode === m); }
   setHints(HINTS);
-  let W = 2, H = 2, DPR = Math.min(window.devicePixelRatio || 1, 1.5);
+  let W = 2, H = 2, DPR = Math.min(window.devicePixelRatio || 1, PH ? PH.dpr : 1.5); // phone: its own cap
   const R = new THREE.WebGLRenderer({ canvas: gl, antialias: true });
   R.setClearColor(new THREE.Color(P.bg), 1); R.toneMapping = THREE.ACESFilmicToneMapping; R.localClippingEnabled = true;
   const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 1, .05, 80);
@@ -145,7 +150,7 @@ window.beingMount = async function (host, opts) {
     const r = host.getBoundingClientRect(); W = Math.max(2, r.width | 0); H = Math.max(2, r.height | 0);
     R.setPixelRatio(DPR); R.setSize(W, H, false); composer.setSize(W, H); bloom.setSize(W / 2, H / 2);
     gl.style.width = W + "px"; gl.style.height = H + "px"; ov.width = W * DPR; ov.height = H * DPR; ov.style.width = W + "px"; ov.style.height = H + "px";
-    cam.aspect = W / H; cam.updateProjectionMatrix();
+    cam.aspect = W / H; if (PH) cam.fov = PH.fov(W / H); cam.updateProjectionMatrix(); // phone: the dashboard's width of view
   };
   const ro = new ResizeObserver(size); ro.observe(host); size();
 
@@ -584,8 +589,10 @@ window.beingMount = async function (host, opts) {
   const spinning = { obj: null, vx: 0, vy: 0 };
   let drag = null;
   gl.addEventListener("contextmenu", (e) => e.preventDefault());
-  gl.addEventListener("pointerdown", (e) => { gl.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, b: e.button, moved: false, on: pickAt(e, true) }; });
-  gl.addEventListener("pointermove", (e) => {
+  // phone: one finger turns an organ (the view where there's none), pinch zooms, two fingers pan, a tap picks
+  if (PH) PH.touch({ gl, goal, spinning, pickAt, click, focus: () => FOCUS, cam, size: () => [W, H], setDrag: (d) => (drag = d), organ: (on) => (on ? (on.organ === "senses" && on.part ? senses.organs[on.part] : ORGAN_OBJ[on.organ]) : null) });
+  if (!PH) gl.addEventListener("pointerdown", (e) => { gl.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, b: e.button, moved: false, on: pickAt(e, true) }; });
+  if (!PH) gl.addEventListener("pointermove", (e) => {
     if (drag) {
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
       if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 4) drag.moved = true; if (!drag.moved) return;
@@ -596,8 +603,8 @@ window.beingMount = async function (host, opts) {
     }
     hover(e);
   });
-  gl.addEventListener("pointerup", (e) => { const d = drag; drag = null; if (d && !d.moved) click(e); });
-  gl.addEventListener("wheel", (e) => { e.preventDefault(); goal.d = Math.max(1.2, Math.min(22, goal.d * (1 + e.deltaY * .0011))); }, { passive: false });
+  if (!PH) gl.addEventListener("pointerup", (e) => { const d = drag; drag = null; if (d && !d.moved) click(e); });
+  if (!PH) gl.addEventListener("wheel", (e) => { e.preventDefault(); goal.d = Math.max(1.2, Math.min(22, goal.d * (1 + e.deltaY * .0011))); }, { passive: false });
   const typing = () => ["INPUT", "TEXTAREA", "SELECT"].includes((document.activeElement || {}).tagName);
   const onKey = (e) => {
     if (e.key === "Escape") { if (SUB) back(); else if (FOCUS || panel.style.display === "block") { closePanel(); focusOn(null); } }
@@ -659,8 +666,8 @@ window.beingMount = async function (host, opts) {
   const getSettings = async () => { if (!SETTINGS || performance.now() - SET_AT > 8000) { SETTINGS = await api("settings"); SET_AT = performance.now(); } return SETTINGS; };
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   function say2(text) { let el = panel.querySelector(".said"); if (!el) { el = document.createElement("div"); el.className = "s said"; panel.appendChild(el); } el.textContent = text; }
-  function closePanel() { PICKED = null; panel.style.display = "none"; panel.innerHTML = ""; PANEL = null; }
-  function openPanel(html, kind) { panel.innerHTML = `<button class="x" title="close (Esc)">×</button>${html}`; panel.style.display = "block"; PANEL = kind; panel.querySelector(".x").onclick = closePanel; }
+  function closePanel() { PICKED = null; panel.style.display = "none"; panel.innerHTML = ""; PANEL = null; if (PH) PH.sheet(panel, false); }
+  function openPanel(html, kind) { panel.innerHTML = `<button class="x" title="close (Esc)">×</button>${html}`; panel.style.display = "block"; PANEL = kind; panel.querySelector(".x").onclick = closePanel; if (PH) PH.sheet(panel, true, closePanel, kind); } // phone: a bottom sheet
   async function settingsHTML(sections) {
     if (!sections.length) return "";
     const S = await getSettings().catch(() => null); if (!S) return "";
@@ -768,7 +775,7 @@ window.beingMount = async function (host, opts) {
   }
   async function showNote(n) {
     if (!n) return; const i = memory.nodes.indexOf(n);
-    if (i >= 0) subFocus({ kind: "note", key: i, org: "memory", d: .35, pos: () => V(memory.p[i * 3], memory.p[i * 3 + 1], memory.p[i * 3 + 2]).applyMatrix4(memory.g.matrixWorld), from: () => wpos(memory.g) }); openPanel(`<h2>${esc(n.title || n.id)}</h2><div class="s">${esc(n.id)}</div><pre>loading…</pre><button class="b" data-open="${esc(n.id)}">open it</button>`, "note");
+    if (i >= 0) subFocus({ kind: "note", key: i, org: "memory", d: .35, pos: () => V(memory.p[i * 3], memory.p[i * 3 + 1], memory.p[i * 3 + 2]).applyMatrix4(memory.g.matrixWorld), from: () => wpos(memory.g) }); openPanel(`<h2>${esc(n.title || n.id)}</h2><div class="s">${esc(n.id)}</div><pre>loading…</pre>${PH ? "" : `<button class="b" data-open="${esc(n.id)}">open it</button>`}`, "note"); // phone: nothing to open it in
     try { const r = await api(`note?id=${encodeURIComponent(n.id)}`); const pre = panel.querySelector("pre"); if (pre) pre.textContent = r.text || ""; } catch { const pre = panel.querySelector("pre"); if (pre) pre.textContent = "(couldn't read it)"; }
   }
 
@@ -781,7 +788,7 @@ window.beingMount = async function (host, opts) {
   async function shape(text) { try { const r = await api("voice/shape", { text }); if (r && r.samples) return r.samples; } catch { /* the estimate below */ }
     const out = []; for (const ch of text.toLowerCase()) { const v = "aeiou".includes(ch) ? .85 : "lmnryw".includes(ch) ? .5 : "szfhxc".includes(ch) ? .25 : "pbtdkgq".includes(ch) ? .9 : ch === " " ? .03 : /[.,!?;:]/.test(ch) ? 0 : .3; const n = /[.!?]/.test(ch) ? 12 : 3; for (let i = 0; i < n; i++) out.push(v * (.6 + .4 * Math.sin(Math.PI * (i + .5) / n))); } return out; }
   function lane(c, y, h, L, lab, sub) {
-    const x0 = 40, x1 = W - (opts.talkWidth || 190); c.font = "600 10px Inter,sans-serif"; c.fillStyle = P.mute; c.fillText(lab, x0, y - h / 2 - 8); c.font = "400 10px Inter,sans-serif"; c.fillText(sub, x0 + 74, y - h / 2 - 8);
+    const x0 = UI ? UI.x0 : 40, x1 = W - (UI ? UI.x0 : opts.talkWidth || 190); // phone: edge to edge c.font = "600 10px Inter,sans-serif"; c.fillStyle = P.mute; c.fillText(lab, x0, y - h / 2 - 8); c.font = "400 10px Inter,sans-serif"; c.fillText(sub, x0 + 74, y - h / 2 - 8);
     c.globalAlpha = .15; c.fillStyle = P.ink; c.fillRect(x0, y, x1 - x0, 1); c.globalAlpha = 1; if (!L) return;
     const S = L.s, N = S.length, prog = Math.min(1, (NOW - L.t) / Math.max(1.2, N / 50)), shown = Math.floor(N * prog), dx = (x1 - x0) / Math.max(N, 120);
     for (let i = 0; i < shown; i++) { const v = S[i] * h / 2; c.globalAlpha = .3 + .7 * Math.max(0, 1 - (shown - i) / N * 1.4); c.fillRect(x0 + i * dx, y - v, Math.max(1, dx * .6), Math.max(1, v * 2)); } c.globalAlpha = 1;
@@ -823,9 +830,10 @@ window.beingMount = async function (host, opts) {
   /* ===================== the loop ===================== */
   const c2 = ov.getContext("2d"); let last = performance.now(), dead = false, t0 = performance.now();
   const proj = (v) => { const p = v.clone().project(cam); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * H, p.z]; };
-  function tag(v, dx, dy, title, sub, alpha) {
+  function tag(v, dx, dy, title, sub, alpha, mine) {
     if (!HINTS) sub = "";
-    const [x, y, z] = proj(v); if (z > 1) return; const lx = x + dx, ly = y + dy; c2.save(); c2.globalAlpha = alpha ?? 1; c2.strokeStyle = P.mute; c2.beginPath(); c2.moveTo(x, y); c2.lineTo(x + dx * .35, ly); c2.lineTo(lx, ly); c2.stroke(); c2.fillStyle = P.ink; c2.beginPath(); c2.arc(x, y, 2, 0, 6.3); c2.fill();
+    const [x, y, z] = proj(v); if (z > 1) return;
+    if (UI) return UI.tag(c2, x, y, dx, dy, title, sub, alpha ?? 1, mine, W, H, P); // phone: shorter leads, larger words const lx = x + dx, ly = y + dy; c2.save(); c2.globalAlpha = alpha ?? 1; c2.strokeStyle = P.mute; c2.beginPath(); c2.moveTo(x, y); c2.lineTo(x + dx * .35, ly); c2.lineTo(lx, ly); c2.stroke(); c2.fillStyle = P.ink; c2.beginPath(); c2.arc(x, y, 2, 0, 6.3); c2.fill();
     c2.textAlign = dx < 0 ? "right" : "left"; c2.lineJoin = "round"; c2.lineWidth = 4; c2.strokeStyle = P.bg; const tx = lx + (dx < 0 ? -6 : 6);
     c2.font = "600 10px Inter,sans-serif"; c2.strokeText(title.toUpperCase(), tx, ly - 4); c2.fillText(title.toUpperCase(), tx, ly - 4);
     if (sub) { c2.font = "400 10.5px Inter,sans-serif"; c2.fillStyle = P.mute; c2.strokeText(sub, tx, ly + 11); c2.fillText(sub, tx, ly + 11); } c2.restore();
@@ -848,9 +856,12 @@ window.beingMount = async function (host, opts) {
     bloom.strength = .7 - .45 * (OPEN.memory || 0) - .25 * (OPEN.mind || 0); // thousands of notes would bloom into one white cloud
     composer.render();
     const c = c2; c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, W, H);
+    if (UI) UI.header(c, { W, H, BPM, n: recent.length, HINTS, PROC, P, focus: FOCUS }); // phone: its own header and key
+    else {
     c.font = "300 11px Inter,sans-serif"; c.fillStyle = P.mute; c.fillText("KUROOTO", 40, 34); c.font = "300 19px Inter,sans-serif"; c.fillStyle = P.ink; c.fillText("the being", 40, 58);
     c.font = "400 10px ui-monospace,monospace"; c.fillStyle = P.mute; c.fillText(`${Math.round(BPM)} / min · ${recent.length} events in 10 min${HINTS ? " · drag an organ to turn it, wheel to zoom, right-drag to pan, click a part to look at it, Esc goes back, H hides these" : ""}`, 40, 76);
     let ly = 104; c.font = "400 10px Inter,sans-serif"; if (HINTS) for (const k of Object.keys(PROC)) { c.fillStyle = "#" + new THREE.Color(PROC[k].c).getHexString(); c.beginPath(); c.arc(46, ly - 3, 3, 0, 6.3); c.fill(); c.fillStyle = P.mute; c.fillText(PROC[k].name, 56, ly); ly += 14; }
+    }
     c.font = "400 10px Inter,sans-serif";
     if (!FOCUS) {
       tag(BRAIN_C.clone().add(V(.9, .8, 0)), 150, -20, "Mind", "click to look inside · sparks are its work");
@@ -858,10 +869,10 @@ window.beingMount = async function (host, opts) {
       tag(SENSE_C.clone().add(V(.1, 1.45, 0)), 60, -40, "Senses", "sight, hearing, touch, balance, its own body");
       tag(MEM_C.clone().add(V(-.12, .4, 0)), -40, -50, "Memory", `${memory.nodes.length} notes · they light up as they link`);
     }
-    if (FOCUS === "mind") for (const [k, r] of Object.entries(REGIONS)) { const v = V(...r.at).add(OFF).applyMatrix4(mind.b.matrixWorld); const [x] = proj(v); tag(v, x > W / 2 ? 110 : -110, -16, r.name, r.sub, OPEN.mind * (PICKED && PICKED !== k ? .35 : 1)); }
-    if (FOCUS === "heart") for (const [k, r] of Object.entries(HEART_PARTS)) { const v = V(...r.at).applyMatrix4(heart.g.matrixWorld); const [x] = proj(v); tag(v, x > W / 2 ? 110 : -110, -16, r.name, r.sub, OPEN.heart * (PICKED && PICKED !== k ? .35 : 1)); }
-    if (FOCUS === "senses") for (const [k, o] of Object.entries(senses.organs)) { const v = o.getWorldPosition(V(0, 0, 0)); const [x, y] = proj(v); tag(v, x > W / 2 ? 130 : -130, y > H / 2 ? 40 : -40, SENSES[k].name, SENSES[k].sub, OPEN.senses * (PICKED && PICKED !== k ? .35 : 1)); }
-    if (FOCUS === "memory") for (const h of memory.hoods.filter((x) => x.n >= 5).slice(0, 10)) { const v = V(...h.at).applyMatrix4(memory.g.matrixWorld); const [x] = proj(v); tag(v, x > W / 2 ? 90 : -90, -16, h.name, `${h.n} notes · most linked: ${String(h.hub).slice(0, 28)}`, OPEN.memory * (SUB && SUB.kind === "hood" && SUB.key !== h.key ? .25 : 1)); }
+    if (FOCUS === "mind") for (const [k, r] of Object.entries(REGIONS)) { const v = V(...r.at).add(OFF).applyMatrix4(mind.b.matrixWorld); const [x] = proj(v); tag(v, x > W / 2 ? 110 : -110, -16, r.name, r.sub, OPEN.mind * (PICKED && PICKED !== k ? .35 : 1), PICKED === k); }
+    if (FOCUS === "heart") for (const [k, r] of Object.entries(HEART_PARTS)) { const v = V(...r.at).applyMatrix4(heart.g.matrixWorld); const [x] = proj(v); tag(v, x > W / 2 ? 110 : -110, -16, r.name, r.sub, OPEN.heart * (PICKED && PICKED !== k ? .35 : 1), PICKED === k); }
+    if (FOCUS === "senses") for (const [k, o] of Object.entries(senses.organs)) { const v = o.getWorldPosition(V(0, 0, 0)); const [x, y] = proj(v); tag(v, x > W / 2 ? 130 : -130, y > H / 2 ? 40 : -40, SENSES[k].name, SENSES[k].sub, OPEN.senses * (PICKED && PICKED !== k ? .35 : 1), PICKED === k); }
+    if (FOCUS === "memory") for (const h of memory.hoods.filter((x) => x.n >= 5).slice(0, 10)) { const v = V(...h.at).applyMatrix4(memory.g.matrixWorld); const [x] = proj(v); tag(v, x > W / 2 ? 90 : -90, -16, h.name, `${h.n} notes · most linked: ${String(h.hub).slice(0, 28)}`, OPEN.memory * (SUB && SUB.kind === "hood" && SUB.key !== h.key ? .25 : 1), !!(SUB && SUB.kind === "hood" && SUB.key === h.key)); }
     if (SUB) {
       const q = SUB.pos(), [sx, sy, sz] = proj(q);
       if (sz < 1) {
@@ -871,13 +882,19 @@ window.beingMount = async function (host, opts) {
         c.globalAlpha *= .35; c.lineWidth = 5; c.beginPath(); c.arc(sx, sy, R + 3, 0, 6.2832); c.stroke(); c.restore();
       }
     }
-    if (FOCUS && (OPEN[FOCUS] || 0) > .3) for (const id in ORG) { const o = ORG[id]; if (o.org !== FOCUS || (o.part !== PICKED && FOCUS !== "memory")) continue; const [x, y, z] = proj(o.g.getWorldPosition(V(0, 0, 0))); if (z > 1) continue; c.save(); c.globalAlpha = OPEN[FOCUS] * (o.on ? .85 : .4); c.font = "400 9px Inter,sans-serif"; c.lineJoin = "round"; c.lineWidth = 3.5; c.strokeStyle = P.bg; c.strokeText(o.title, x + 8, y + 3); c.fillStyle = o.on ? P.ink : P.mute; c.fillText(o.title, x + 8, y + 3); c.restore(); }
+    if (FOCUS && (OPEN[FOCUS] || 0) > .3) for (const id in ORG) { const o = ORG[id]; if (o.org !== FOCUS || (o.part !== PICKED && FOCUS !== "memory")) continue; const [x, y, z] = proj(o.g.getWorldPosition(V(0, 0, 0))); if (z > 1) continue; c.save(); c.globalAlpha = OPEN[FOCUS] * (o.on ? .85 : .4); c.font = UI ? UI.small : "400 9px Inter,sans-serif"; c.lineJoin = "round"; c.lineWidth = 3.5; c.strokeStyle = P.bg; c.strokeText(o.title, x + 8, y + 3); c.fillStyle = o.on ? P.ink : P.mute; c.fillText(o.title, x + 8, y + 3); c.restore(); }
+    if (UI) UI.lanes(c, lane, LANES, W, H); // phone: lower and thinner, no talk box
+    else {
     lane(c, H - 100, 34, LANES.you, "YOU", LANES.you ? (LANES.you.typed ? "typed to Kurooto" : "heard, and said to Kurooto") : "say its name, or type in the talk box");
     lane(c, H - 48, 44, LANES.me, "KUROOTO", LANES.me ? (LANES.me.typed ? "answered" : "speaking") : "");
+    }
   }
   frame();
   return {
     update, event, graph, voice, body, typed, setHints,
+    // phone: the back button goes up one level (as Esc), and how deep you are (0: the whole being)
+    escape() { if (SUB) back(); else if (FOCUS || panel.style.display === "block") { closePanel(); focusOn(null); } else return false; return true; },
+    depth() { return SUB ? 2 : FOCUS || panel.style.display === "block" ? 1 : 0; },
     stop() { dead = true; if (LAYOUT) LAYOUT.terminate(); ro.disconnect(); removeEventListener("keydown", onKey); R.dispose(); host.innerHTML = ""; host.classList.remove("being"); },
   };
 };

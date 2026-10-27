@@ -1,0 +1,6 @@
+/* The phone app's Being page (views/being.html, 0.8.10): the being fills it; a quiet line while it loads or can't. */
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; overscroll-behavior: none; }
+#being { position: fixed; inset: 0; }
+.msg { position: fixed; left: 24px; right: 24px; top: 42%; text-align: center; color: #b8b8b2; font: 15px/1.5 Roboto, system-ui, sans-serif; pointer-events: none; }
+.msg .small { color: #7a7a76; font-size: 13px; margin-top: 6px; }
+.hidden { display: none; }

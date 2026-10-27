@@ -20,7 +20,7 @@ import java.io.FileOutputStream;
 final class Views {
     private Views() { }
 
-    static String file(String kind) { return "view-" + ("notes".equals(kind) ? "notes" : "systems") + ".json"; }
+    static String file(String kind) { return "view-" + ("notes".equals(kind) || "brain".equals(kind) ? kind : "systems") + ".json"; } // brain: the Brain console (0.8.10)
 
     static synchronized JSONObject load(Context c, String kind) {
         try {
@@ -103,5 +103,6 @@ final class Views {
     static void forget(Context c) {
         c.deleteFile(file("systems"));
         c.deleteFile(file("notes"));
+        c.deleteFile(file("brain"));
     }
 }

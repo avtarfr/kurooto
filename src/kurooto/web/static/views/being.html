@@ -1,0 +1,29 @@
+<!doctype html>
+<!-- The phone app's Being (0.8.10): the dashboard's own static/being.js with its three.js, bloom passes and anatomy, in
+     the Android app's WebView (ViewsPane), set for touch by being-phone.js. The app serves every file here from inside
+     itself, at the paths the dashboard uses (/static/...), and answers /ask and /state itself; nothing else is reachable
+     (connect-src 'self' is the app). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; worker-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Kurooto</title>
+<link rel="stylesheet" href="being.css">
+</head>
+<body class="phone" data-design="new">
+<div id="being"></div>
+<div id="msg" class="msg hidden" role="status" aria-live="polite"></div>
+<script src="/static/vendor/three/three.min.js"></script>
+<script src="/static/vendor/three/CopyShader.js"></script>
+<script src="/static/vendor/three/LuminosityHighPassShader.js"></script>
+<script src="/static/vendor/three/EffectComposer.js"></script>
+<script src="/static/vendor/three/RenderPass.js"></script>
+<script src="/static/vendor/three/ShaderPass.js"></script>
+<script src="/static/vendor/three/UnrealBloomPass.js"></script>
+<script src="common.js"></script>
+<script src="notesmap.js"></script>
+<script src="/static/being-phone.js"></script>
+<script src="/static/being.js"></script>
+</body>
+</html>

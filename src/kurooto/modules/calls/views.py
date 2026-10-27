@@ -23,6 +23,15 @@ SYSTEMS_S until WATCH_S pass without a word. With this computer asleep, the phon
 
 Off (calls.views = false, the dashboard's Phone card): one "view-put {off}" and the call line drops its copies. The
 iPhone (web) app gets nothing: it has no key of its own.
+
+The being (0.8.10, calls.views_being, on while calls.views is): the dashboard's board (web/static/being.js) runs on the
+phone too, from the Notes map's copy (the graph, with its "Seen in" links) and a "being" block in each Systems copy
+(being_snapshot): every feature's cell on or off, the AI requests running and answered lately (their titles), what's
+scheduled next (its labels) and the calls booked, the call line's link, this computer's readings (the coil's bars),
+Voice's state, the last events (their kinds and times only: they fire the sparks), the board's look, and, when they
+changed or a phone starts watching (else at most every SETTINGS_S), the settings its panels show (their values,
+without the tooltips) and the Brain's parts with their switches. Never what a note says: a preview is asked for when
+you tap a note (chat.py "note.get", answered sealed for that phone).
 """
 
 from __future__ import annotations
@@ -57,6 +66,9 @@ KEYS_S = 60  # the phones' keys are asked for again after this long
 PART = 96 * 1024  # bytes of a sealed copy per "view-put" (the call line's VIEW_PART)
 VIEW_MAX = 2 * 1024 * 1024  # the most a sealed copy may be (24 parts: the call line's VIEW_PARTS)
 HEALTH_ROWS = 8
+# the being (0.8.10): how much of each list goes, how far back events go, how often unchanged settings go again
+BEING_JOBS, BEING_SCHED, BEING_EVENTS, BEING_EVENT_S = 10, 12, 40, 600
+SETTINGS_S = 60
 
 
 def _clip(s, n: int) -> str:
@@ -135,6 +147,9 @@ class PhoneViews:
         self.looping = False  # Systems copies are being sent (on the connector's loop)
         self.keys_at, self.keys = 0.0, {}
         self.dirty = False
+        self.watchers: set[str] = set()  # the phones watching in this stretch (a new one gets the being's settings)
+        self.being_sent = ("", 0.0)  # the being's settings and Brain parts last sent: their digest, when
+        self._api = None  # the dashboard's own handlers (web/api.py), for the settings the being's panels show
 
     def on(self) -> bool:
         return self.calls.setting("views") is True
@@ -221,6 +236,166 @@ class PhoneViews:
             "link": {"connected": bool(link.get("connected"))} if link else None,
             "today": {"items": items[:16]},
             "health": rows,
+            **({"being": self.being_snapshot(b)} if self.calls.setting("views_being") is not False else {}),
+        }
+
+    # ------------------------------------------------------------------------------------------ the being
+    def being_snapshot(self, board: dict | None = None) -> dict:
+        """What the being on the phone (Views → Being, 0.8.10) draws beyond Systems, in the dashboard's own shapes
+        (web/live.py snapshot: cells, jobs, schedule, link, calls, sys; GET /api/voice, /api/settings, /api/brain3d)
+        so being.js reads them as it does there. No note text, no tooltips."""
+        from kurooto.web.live import cells_of
+
+        app = self.app
+        if self.vitals is None:
+            from kurooto.web.live import Vitals
+
+            self.vitals = Vitals(app)
+        b = board if board is not None else self.vitals.board()
+        jobs = app.jobs.recent(BEING_JOBS)
+        seen = {j.id for j in jobs}
+        jobs = [j for j in app.jobs.active() if j.id not in seen] + jobs
+        busy = any(j.status in ("queued", "running") for j in jobs)
+        nowts = time.time()
+        sched = [j for j in app.scheduler.jobs() if j.next_run >= nowts - 60]
+        sched.sort(key=lambda j: j.next_run)
+        link = b.get("link")
+        out = {
+            "cells": [
+                {
+                    "id": c["id"],
+                    "title": _clip(c["title"], 60),
+                    "on": bool(c["on"]),
+                    "act": round(float(c["act"]), 3),
+                    "events": int(c["events"]),
+                }  # fmt: skip
+                for c in cells_of(app, b["features"], busy)
+            ],
+            "jobs": [{"status": j.status, "title": _clip(j.title, 60)} for j in jobs[:BEING_JOBS]],
+            "schedule": [{"when": int(j.next_run), "what": _clip(j.label, 60)} for j in sched[:BEING_SCHED]],
+            "calls": [{"when": int(c["when"]), "what": _clip(c.get("what"), 60)} for c in b.get("calls") or []],
+            "link": {"connected": bool(link.get("connected")), "beat": link.get("beat")} if link else {"off": True},
+            "sys": self._being_sys(),
+            "events": self._being_events(nowts),
+            "voice": self._being_voice(),
+            "look": {
+                "theme": str(app.settings.get("look.being_theme") or "void"),
+                "hints": app.settings.get("look.being_hints") is not False,
+            },
+        }
+        out.update(self._being_settings())
+        return out
+
+    def _being_sys(self) -> dict:
+        """This computer's readings for the coil (being.js pcHTML) and the heat it feels: the dashboard's, cut down."""
+        try:
+            s = self.vitals.machine()
+        except Exception:
+            return {}
+        g = s.get("gpu") or None
+        temps = {}
+        for k, v in list((s.get("temps") or {}).items())[:4]:
+            vals = [float(x) for x in (v if isinstance(v, list) else [v]) if isinstance(x, (int, float))]
+            if vals:
+                temps[_clip(k, 16)] = round(max(vals), 1)
+        bat = s.get("battery")
+        return {
+            "cpu": round(float(s.get("cpu") or 0), 3),
+            "cores": [round(float(c or 0), 3) for c in (s.get("cores") or [])[:16]],
+            "mem": round(float(s.get("mem") or 0), 3),
+            "mem_used": int(s.get("mem_used") or 0),
+            "mem_total": int(s.get("mem_total") or 0),
+            "swap": round(float(s.get("swap") or 0), 3),
+            "gpu": {k: g.get(k) for k in ("asleep", "util", "temp", "mem_used", "mem_total") if k in g}
+            if isinstance(g, dict)
+            else None,
+            "disks": [
+                {
+                    "mount": _clip(d.get("mount"), 24),
+                    "pct": round(float(d.get("pct") or 0), 3),
+                    "free": int(d.get("free") or 0),
+                }
+                for d in (s.get("disks") or [])[:3]
+                if isinstance(d, dict)
+            ],
+            "battery": {"percent": bat.get("percent"), "ac": bool(bat.get("ac"))} if isinstance(bat, dict) else None,
+            "temps": temps,
+            "cpu_name": _clip(s.get("cpu_name"), 60),
+            "load": [round(float(x), 2) for x in (s.get("load") or [])[:3]],
+        }
+
+    def _being_events(self, nowts: float) -> list[dict]:
+        """The last events, kind and time only (a phone's sense reading keeps its number): the sparks."""
+        out = []
+        for e in self.app.events.tail(BEING_EVENTS):
+            try:
+                ts = time.mktime(time.strptime(str(e.get("ts", ""))[:19], "%Y-%m-%dT%H:%M:%S"))
+            except ValueError:
+                continue
+            if nowts - ts > BEING_EVENT_S:
+                continue
+            row = {"kind": _clip(e.get("kind"), 40), "ts": int(ts)}
+            if e.get("kind") == "senses_phone" and isinstance(e.get("value"), (int, float)):
+                row.update(sensor=_clip(e.get("sensor"), 30), value=e["value"])
+            out.append(row)
+        return out
+
+    def _being_voice(self) -> dict | None:
+        """Voice's state for the ear and the mute button (GET /api/voice, cut down); None without Voice."""
+        v = self.app.modules.get("voice")
+        if v is None:
+            return None
+        try:
+            st = v.status()
+        except Exception:
+            return None
+        sp = st.get("speak") or {}
+        return {
+            "on": bool(st.get("on")),
+            "state": _clip(st.get("state"), 30),
+            "listening": bool(st.get("listening")),
+            "why": _clip(st.get("why"), 80),
+            "portal": bool(st.get("portal")),
+            "muted": bool(st.get("muted")),
+            "line": _clip(st.get("line"), 160),
+            "speak": {"engine": _clip(sp.get("engine"), 30), "voice": _clip(sp.get("voice"), 30)},
+        }
+
+    def _being_settings(self) -> dict:
+        """The settings the being's panels show (GET /api/settings without the tooltips) and the Brain's parts with
+        their switches (GET /api/brain3d, cut to what being.js reads), when they changed, a phone started watching or
+        SETTINGS_S passed; else only their digest (the phone keeps the last ones)."""
+        from kurooto.core import brainview
+
+        if self._api is None:
+            from kurooto.web.api import Api
+
+            self._api = Api(self.app)
+        try:
+            secs = [{k: v for k, v in s.items() if k != "tips"} for s in self._api._settings().get("sections") or []]
+        except Exception:
+            secs = []
+        try:
+            b = brainview.view(self.app)
+            brain = {
+                "on": bool(b.get("on")),
+                "islands": [
+                    {"id": i.get("id"), "comps": [[c[0], c[1], c[2], c[3], [], c[5], ""] for c in i.get("comps") or []]}
+                    for i in b.get("islands") or []
+                ],
+            }
+        except Exception:
+            brain = None
+        body = json.dumps([secs, brain], sort_keys=True, default=str)
+        digest = hashlib.sha256(body.encode()).hexdigest()[:16]
+        was, at = self.being_sent
+        if digest == was and time.time() - at < SETTINGS_S:
+            return {"settings_digest": digest}
+        self.being_sent = (digest, time.time())
+        return {
+            "settings_digest": digest,
+            "settings": {"sections": json.loads(json.dumps(secs, default=str))},
+            "brain": brain,
         }
 
     # ---------------------------------------------------------------------------------------- handing over
@@ -339,6 +514,12 @@ class PhoneViews:
         if not self.on() or c.loop is None or c.ws is None:
             return False
         started = time.time() >= self.until
+        if started:
+            self.watchers = set()
+        dev = str((m or {}).get("device") or "")
+        if dev not in self.watchers:  # a phone that starts watching gets the being's settings in its first copy
+            self.watchers.add(dev)
+            self.being_sent = ("", 0.0)
         self.until = time.time() + WATCH_S
         if not self.looping:
             self.looping = True
