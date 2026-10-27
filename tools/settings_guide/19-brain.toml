@@ -532,6 +532,10 @@ values = "`true` (the page and the view read what the Brain keeps), `false` (bot
 when = "Turn it off if you don't want its reasoning on screen. It only reads; nothing the Brain does depends on it."
 needs = "Brain on."
 
+[s."mind.dream.on"]
+tip = "Brain goes over the day at night and brings cards, how-to-help lines and a voice line to the morning message."
+when = "Turn it off to stop all of its dreaming at once; each piece also has its own switch."
+
 [s."mind.dream.cards"]
 tip = "Each night, 1 to 3 quiz cards for concepts you studied that day that are on your frontier, kept by a tap."
 what = "Concepts you changed notes on, answered quiz cards about or logged study time for, that Brain's model of what you know puts on your frontier (not mastered, prerequisites solid). The model on this computer writes each card from your note; without one it's a plain \"what is ...?\" card. They wait in the morning message with Keep and Drop; a kept card goes into Quiz, first due about a day after it was written. /mind shows your recall on them next to your own cards."

@@ -1111,7 +1111,8 @@ best grade among the concept notes `knowledge.mentions` finds in the text. Grade
 `NEAR` 0.5 (links to or from a frontier concept), `STARTED` 0.4, `SOLID` 0.1, `UNKNOWN` 0.0. The notes and grades are cached
 per app for `CACHE_S` (600 s), so an add-on may call it every few seconds. 0 with `mind.tom.on` off; never raises.
 
-**Dreaming** (`mind/dream.py`). `nightly(app)` runs at `WHEN` (`daily 00:15,...,06:15`, `modules/mind.py` job `mind:dream`,
+**Dreaming** (`mind/dream.py`, `PART = "dream"`: `mind.dream.on`, then `cards`, `lessons`, `voice`; `frontier.py` is
+part of `tom`). `nightly(app)` runs at `WHEN` (`daily 00:15,...,06:15`, `modules/mind.py` job `mind:dream`,
 on a thread) for `the_day()` (now minus 12 h). Once a night each: `propose_lessons` and `make_cards`. The cards wait for
 `_gate()`: B's `mind.sleep.state(app) != "awake"` and B's `mind.senses.intero.ok(app, "gpu")`, both read through guarded
 imports (missing means yes); from `LAST_HOUR` (06:00) they're written with `use_model=False`.

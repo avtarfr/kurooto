@@ -1,6 +1,6 @@
 """Brain dreaming about the day (0.8.14): at night, while it sleeps, it goes over what the day held and brings a few
-things to the morning message (modules/dreaming.py) for you to keep or drop. Each part has its own switch, all with
-Brain:
+things to the morning message (modules/dreaming.py) for you to keep or drop. mind.dream.on turns all of it off, and
+each part has its own switch, all with Brain:
 
     cards    (mind.dream.cards, on) 1 to 3 concepts you studied or wrote about that day (concept notes you changed,
              quiz cards you answered, study time on their subject) that its model of what you know (mind/tom) puts on
@@ -50,6 +50,7 @@ register_defaults(
     "mind",
     {
         "dream": {
+            "on": True,  # Brain goes over the day at night, for the morning message (each piece has its switch too)
             "cards": True,  # nightly quiz cards for what you studied that's on your frontier, kept by a tap
             "cards_max": 3,  # at most this many a night (1 to 3)
             "lessons": True,  # nightly how-to-help-me lines from the day's outcomes, written only when you tap Keep
@@ -58,6 +59,7 @@ register_defaults(
     },
 )
 
+PART = "dream"  # its switch: mind.dream.on (and one for each piece)
 FILE = "mind-dream.json"
 WHEN = "daily 00:15,01:15,02:15,03:15,04:15,05:15,06:15"  # after the journal (23:40) and the story (23:50)
 LAST_HOUR = 6  # the last try of the night: the cards are written without the model if it couldn't run before
@@ -114,15 +116,15 @@ VOICE_PATTERNS = (  # (flag, value, words): what a told-off turn had in common
 
 # ----------------------------------------------------------------------------------------------------- switches
 def cards_on(app: App) -> bool:
-    return mind.on(app) and bool(app.settings.get("mind.dream.cards"))
+    return mind.part_on(app, PART) and bool(app.settings.get("mind.dream.cards"))
 
 
 def lessons_on(app: App) -> bool:
-    return mind.on(app) and bool(app.settings.get("mind.dream.lessons"))
+    return mind.part_on(app, PART) and bool(app.settings.get("mind.dream.lessons"))
 
 
 def voice_on(app: App) -> bool:
-    return mind.on(app) and bool(app.settings.get("mind.dream.voice"))
+    return mind.part_on(app, PART) and bool(app.settings.get("mind.dream.voice"))
 
 
 def cards_max(app: App) -> int:

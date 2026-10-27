@@ -349,3 +349,14 @@ def test_late_wake_needs_the_phone_up_and_no_sign_with_kurooto(app, monkeypatch)
     assert forecast.surprise(app, dt.datetime.combine(now().date(), dt.time(8, 30))) is None  # not 2 h yet
     monkeypatch.setattr(forecast, "_phone_up", lambda a, since: False)
     assert forecast.surprise(app, t) is None  # no sign he's up: no surprise
+
+
+def test_one_switch_turns_all_of_its_dreaming_off(app):
+    st = dream._load(app)
+    les = {"ref": "q1", "h": "h1", "line": "Fewer nudges", "why": "2", "day": now().date().isoformat(), "shown": 0}
+    st["lessons"].append(les)
+    dream._save(app, st)
+    assert dream.section(app, send=False)[0]
+    app.settings.set("mind.dream.on", False)
+    assert dream.section(app, send=False)[0] == "" and not dream.cards_on(app) and not dream.voice_on(app)
+    assert dream.nightly(app) == {}

@@ -442,6 +442,7 @@
 "mind.dream.cards": "Each night, 1 to 3 quiz cards for concepts you studied that day that are on your frontier, kept by a tap.",
 "mind.dream.cards_max": "The most dream cards a night (1 to 3).",
 "mind.dream.lessons": "Each night, 1 to 3 lines for your how-to-help-me note from the day's outcomes, written only when you tap Keep.",
+"mind.dream.on": "Brain goes over the day at night and brings cards, how-to-help lines and a voice line to the morning message.",
 "mind.dream.voice": "One morning line on what the nightly voice learning saw: turns it learned from and any misfire pattern.",
 "mind.feelings": "Brain's feelings about specific things, its mood, and whether it may say them.",
 "mind.feelings.empathy": "Concern for what it looks after (deadlines, projects, its machine): it notices sooner, speaks more gently.",

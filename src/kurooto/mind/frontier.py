@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from kurooto.app import App
     from kurooto.core.conceptgraph import Note
 
+PART = "tom"  # a reading of the model of what he knows: off with it (mind.tom.on)
 CACHE_S = 600  # the notes and the masteries change slowly; an add-on may ask many times a minute
 TEXT_MAX = 20000
 FRONTIER, NEAR, STARTED, SOLID, UNKNOWN = 1.0, 0.5, 0.4, 0.1, 0.0

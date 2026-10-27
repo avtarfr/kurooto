@@ -42,7 +42,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 49 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
-- [Brain](#brain): 100 settings
+- [Brain](#brain): 101 settings
 - [Voice and voice notes](#voice-and-voice-notes): 53 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
@@ -5354,6 +5354,13 @@ The Brain console: a dashboard page (Alt+O) and the phone's Brain view showing w
 - **When to change it:** Turn it off if you don't want its reasoning on screen. It only reads; nothing the Brain does
   depends on it.
 - **Depends on:** Brain on.
+
+### `mind.dream.on`
+
+Brain goes over the day at night and brings cards, how-to-help lines and a voice line to the morning message.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to stop all of its dreaming at once; each piece also has its own switch.
 
 ### `mind.dream.cards`
 

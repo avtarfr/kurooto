@@ -468,6 +468,7 @@ its promises) have no guarantee until it's back. Switches: `mind.promises.on`, `
 
 While it sleeps, Brain goes over the day, and what it brings waits in the morning message (Dreaming) for you to keep or
 drop. Nothing is added or written until you tap; a line shown on two mornings without a tap is let go.
+`mind.dream.on` turns all of it off; each piece has its own switch too.
 
 - **Cards for what you studied** (`mind.dream.cards`, on). Of the concepts you changed notes on, answered quiz cards
   about or logged study time for that day, 1 to 3 that its model of what you know puts on your frontier (not mastered

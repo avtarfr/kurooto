@@ -702,6 +702,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.dream.cards` | `true` | Each night, 1 to 3 quiz cards for concepts you studied that day that are on your frontier, kept by a tap. ([guide](wiki/user/settings-guide.md#minddreamcards)) |
 | `mind.dream.cards_max` | `3` | The most dream cards a night (1 to 3). ([guide](wiki/user/settings-guide.md#minddreamcardsmax)) |
 | `mind.dream.lessons` | `true` | Each night, 1 to 3 lines for your how-to-help-me note from the day's outcomes, written only when you tap Keep. ([guide](wiki/user/settings-guide.md#minddreamlessons)) |
+| `mind.dream.on` | `true` | Brain goes over the day at night and brings cards, how-to-help lines and a voice line to the morning message. ([guide](wiki/user/settings-guide.md#minddreamon)) |
 | `mind.dream.voice` | `true` | One morning line on what the nightly voice learning saw: turns it learned from and any misfire pattern. ([guide](wiki/user/settings-guide.md#minddreamvoice)) |
 | `mind.feelings.empathy` | `true` | Concern for what it looks after (deadlines, projects, its machine): it notices sooner, speaks more gently. ([guide](wiki/user/settings-guide.md#mindfeelingsempathy)) |
 | `mind.feelings.express` | `true` | Brain may say a feeling about something open, through the gate, at most 3 times a week unasked. ([guide](wiki/user/settings-guide.md#mindfeelingsexpress)) |
