@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.8.16 (unreleased)
+## 0.8.16 (2026-10-28)
+
+The Brain becomes core: one door for what Kurooto says by itself, sleep on your schedule, dreaming, one being across the dashboard, phone and voice; plus the new call screen in the call, faster and steadier voice, the dashboard's Chat page and narrow windows.
 
 - **Voice no longer crashes Kurooto.** Turning listening off, muting, or a microphone that came and went could close
   the microphone's sound stream while the listening thread was still reading it, and the whole of Kurooto died (a
