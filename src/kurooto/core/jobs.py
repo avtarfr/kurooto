@@ -41,6 +41,7 @@ import sqlite3
 import threading
 import time
 import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -97,6 +98,7 @@ GEMINI_KEY = "gemini.api_key"  # also what calls and voice notes use
 MAX_STEPS = 200  # tool uses kept per running request (its tool log)
 DENIED_HELP = Agy.denied_help  # what an AI that was refused says (providers/agy.py); a brain's own is `denied_help`
 SHORT = {"agy": "agy", "gemini": "your Gemini key", "claude": "Claude Code"}
+_TURN = threading.local()  # (0.8.16) turn_options(): what the next request this thread queues gets
 NAMES = {**SHORT, "gemini": "Gemini", "ollama": "Ollama", "custom": "your AI service", "freellmapi": "your AI service"}
 GAVE_UP = "It waited for the internet connection"  # the start of the message when a request waited too long
 RECEIPT_MAX = 160  # the run receipt is one line, at most this long (who decided and answered, with models)
@@ -263,6 +265,9 @@ class Jobs:
         self._stops: dict[str, threading.Event] = {}  # job -> set when it's cancelled or ended by the watchdog
         self._following: set[str] = set()  # jobs whose follow-up (then_action) is running in this process now
         self._lanes: dict[str, tuple[str, threading.Thread]] = {}  # lane -> (job, the thread running it)
+        # (0.8.16) job -> its hooks from turn_options: on_text(key, text so far) as the answer is written, on_start(
+        # brain id) as each AI starts on it. Memory only; dropped when the job ends
+        self.hooks: dict[str, dict] = {}
 
     # ------------------------------------------------------------------------------------- the queue
     def submit(
@@ -297,8 +302,19 @@ class Jobs:
         scratch: the id of the scratch folder it works in (core/scratch.py): it may write there and nowhere else.
         audience: "guest" (Voice ID: someone else's voice, core/guest.py): a sealed run with none of your data, no
         tools, no MCP, an empty working folder and a guest context; "" is you."""
+        opts = getattr(_TURN, "opts", None)
+        if opts is not None and "jid" not in opts:  # (turn_options) the first request queued on this thread only
+            brain = opts.get("brain") or brain
+            text_only = text_only or bool(opts.get("text_only"))
+            if effort == "auto" and opts.get("effort") in ("low", "medium", "high"):
+                effort = opts["effort"]
         forced, prompt_clean = effort_mod.strip_forced(prompt)
         jid = "j" + uuid.uuid4().hex[:8]
+        if opts is not None and "jid" not in opts:
+            opts["jid"] = jid
+            hooks = {k: opts[k] for k in ("on_text", "on_start") if callable(opts.get(k))}
+            if hooks:
+                self.hooks[jid] = hooks
         lane = lane if lane in LANES else ("bg" if background else "you")
         if why and why != "asked":  # work Kurooto starts by itself: its decision record first (Brain, mind/records.py)
             records.decide(self.app, f"job:{why}"[:80], scored_reason=why, source="rules", risk_class="")
@@ -613,6 +629,33 @@ class Jobs:
 
         return decide
 
+    @contextmanager
+    def turn_options(self, **opts):
+        """(0.8.16, Voice) Within this, the first request queued on this thread (app.handle -> Chat.ask -> submit)
+        gets: brain (run on that AI), text_only, effort (instead of "auto"; a typed prefix still wins), and the hooks
+        on_text(key, text so far) (its answer as it's written, from a brain that can stream: providers/base.py) and
+        on_start(brain id). Yields the dict, whose "jid" is set once it's queued. Nothing else changes."""
+        old = getattr(_TURN, "opts", None)
+        _TURN.opts = opts
+        try:
+            yield opts
+        finally:
+            _TURN.opts = old
+
+    def _hook(self, jid: str, name: str, *args) -> None:
+        fn = (self.hooks.get(jid) or {}).get(name)
+        if fn is not None:
+            try:
+                fn(*args)
+            except Exception:  # a listener's mistake never costs the request
+                pass
+
+    def _streamer(self, jid: str, attempt: str):
+        """task.on_text for one try at one AI: the key carries the try, so a stand-in's answer is a new message."""
+        if "on_text" not in (self.hooks.get(jid) or {}):
+            return None
+        return lambda key, text: self._hook(jid, "on_text", (attempt, key), text)
+
     def _run_safe(self, jid: str) -> None:
         """Run a job; a mistake anywhere ends it as failed (and tells you) instead of leaving it "running"."""
         try:
@@ -625,6 +668,7 @@ class Jobs:
             self.steps.pop(jid, None)
             self.recalled.pop(jid, None)
             self.decided.pop(jid, None)
+            self.hooks.pop(jid, None)
             self.poke()
 
     def _run(self, jid: str) -> None:
@@ -766,6 +810,8 @@ class Jobs:
             # which AI is at work, and until when (the watchdog's limit: its time plus the brain's grace and ours)
             limit = task.timeout_s + getattr(brain, "grace_s", 0) + GRACE_S
             self._mark(jid, brain=brain.id, deadline=time.time() + limit)
+            self._hook(jid, "on_start", brain.id)
+            task.on_text = self._streamer(jid, f"{i}:{brain.id}")
             try:
                 result = brain.run(task)
                 if result.verdict == Verdict.DENIED and brain.id not in retried and not stop.is_set():
@@ -785,7 +831,9 @@ class Jobs:
                         )
                         + "Finish now with Kurooto's tools and what you know, then answer."
                     )
-                    result = brain.run(replace(task, prompt=task.prompt + note))
+                    result = brain.run(
+                        replace(task, prompt=task.prompt + note, on_text=self._streamer(jid, f"{i}:{brain.id}:again"))
+                    )
             finally:
                 self._mark(jid, proc=None, deadline=None)
             if stop.is_set():

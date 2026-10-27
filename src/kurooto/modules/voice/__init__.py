@@ -43,7 +43,12 @@ the stretch or within FACE_AFTER_S of its end (core/nearby.py keeps the times an
 one facing it nearby"): a roommate on a phone call across the room isn't answered. While Voice listens it holds the
 camera (Face.hold_watch, core=True), never past Face presence's own pauses; when the camera can't see,
 voice.listen.need_face_fallback says what happens: "voice" (the voice rules alone) or "none" (nothing answered by voice
-until it can). Told-off phrases are always heard; typed /voice commands never go through here."""
+until it can). Told-off phrases are always heard; typed /voice commands never go through here.
+
+Speed (0.8.16, fast.py): each turn is timed (voice.listen.timing: a voice_timing event, medians in /voice); a soft
+sound says it heard you while the AI thinks (voice.speak.ack); the answer is spoken a sentence at a time as the AI
+writes it, when it can stream (voice.speak.stream); plain chat may go to a quicker AI (voice.listen.fast_brain); the
+engines are warmed when listening starts (voice.listen.warm_up, voice.listen.warm_brain)."""
 
 from __future__ import annotations
 
@@ -52,6 +57,7 @@ import queue
 import threading
 import time
 import urllib.parse
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -60,6 +66,7 @@ from kurooto.core import nearby
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Module
+from kurooto.modules.voice import fast
 from kurooto.modules.voice import shape as shape_mod
 from kurooto.modules.voice.barge import Barge
 from kurooto.modules.voice.gate import (
@@ -98,6 +105,8 @@ register_defaults(
             "max_chars": 800,  # a longer answer is read this far, then "the rest is on screen"
             "numbers_as_words": True,  # say times, dates, money, versions and units as a person would (only aloud)
             "join_sentences": True,  # short sentences spoken together (up to ~200 characters), not each on its own
+            "ack": "tone",  # while the AI thinks, a soft sound says it heard you: tone, word ("Hmm.") or off
+            "stream": True,  # speak the answer a sentence at a time as the AI writes it (when the AI can stream)
         },
         "listen": {
             "on": False,  # listen through the microphone, all on this computer; only turns said to Kurooto leave
@@ -127,6 +136,10 @@ register_defaults(
             "face_near": 0.5,  # close: a face at least this share of your usual desk face height (0.5: twice as far)
             "face_yaw_deg": 35,  # facing: turned at most this many degrees away from the camera
             "need_face_fallback": "voice",  # the camera can't see (paused, covered, busy): voice (its rules) or none
+            "timing": True,  # time each turn from your last word to its first sound (numbers only; medians in /voice)
+            "fast_brain": "same",  # plain chat by voice: same (your AI), local (this computer's model) or fastest
+            "warm_up": True,  # when listening starts, warm the transcriber and the voice so the first turn is quick
+            "warm_brain": True,  # and the AI's program (Claude Code's files; with fast_brain local, the local model)
         },
         "speaker_id": {
             "on": False,  # Voice ID: only your voice can make Kurooto act; others can only chat (enrol first)
@@ -175,6 +188,9 @@ FACE_SLOW_S = 2.0  # no frame in the stretch at all (3 s apart on battery): wait
 NO_FACE = "no one facing it nearby"
 BLIND = "the camera can't see: not answering by voice"
 FACE_FREE = ("the wake word",)  # rules a face isn't needed for (told off never opens anything, so it needs none)
+WARM = ("warm",)  # (warm_up) the hearing thread's own item: warm the transcriber there, never beside a turn
+WARM_BRAIN_S = 600  # (warm_brain) at most this often
+FAST_BRAINS = ("same", "local", "fastest")
 
 
 class Speaker:
@@ -190,6 +206,8 @@ class Speaker:
         self._cancel = threading.Event()  # stop()/mute: ends the sentence loop and is the stop an output is handed
         self._outputs: list[list] = []  # [fn, failed already], newest first (add_output)
         self._out_lock = threading.Lock()  # registration only; never held while sound plays
+        self.turn: dict | None = None  # (timing) the turn the next say() answers (Voice._portal_speak)
+        self._turn: dict | None = None  # the turn being spoken now: its first sound made and playing are stamped
 
     def add_output(self, fn: Output) -> Callable[[], None]:
         entry = [fn, False]
@@ -234,6 +252,7 @@ class Speaker:
         with self.lock:
             self.busy = True
             self._cancel.clear()
+            self._turn, self.turn = self.turn, None
             pool = ThreadPoolExecutor(1, thread_name_prefix="voice-tts")
             base = getattr(tts, "rate", None)
             if rate and base is not None:  # one utterance only: put back below, under the same lock
@@ -242,6 +261,7 @@ class Speaker:
                 fut = pool.submit(tts.synth, out[0])
                 for i in range(len(out)):
                     pcm, sr = fut.result()
+                    fast.stamp(self._turn, "audio")
                     if i + 1 < len(out):
                         fut = pool.submit(tts.synth, out[i + 1])
                         pcm += pause_after(tts, out[i], sr)
@@ -255,8 +275,25 @@ class Speaker:
                 pool.shutdown(wait=False, cancel_futures=True)
                 if rate and base is not None:
                     tts.rate = base
+                self._turn = None
                 self.busy = False
                 self.until = time.monotonic() + 0.4
+
+    def ack(self, pcm: bytes, sr: int, turn: dict | None = None) -> bool:
+        """(voice.speak.ack) A short sound through the same outputs, only when nothing else is being said; the
+        microphone is held while it plays, as for speech. False when the speaker was busy."""
+        if not self.lock.acquire(blocking=False):
+            return False
+        try:
+            self.busy = True
+            self._cancel.clear()
+            fast.stamp(turn, "ack")
+            self._play(pcm, sr)
+            return True
+        finally:
+            self.busy = False
+            self.until = time.monotonic() + 0.4
+            self.lock.release()
 
     def _play(self, pcm: bytes, sr: int) -> None:
         """One sentence: the newest output that takes it, else this computer's speakers. Runs inside _speak (busy),
@@ -267,6 +304,7 @@ class Speaker:
             self.v.barge.played(pcm, sr)
         except Exception:
             pass
+        fast.stamp(self._turn, "play")  # (timing) handed to an output, or to this computer's player, now
         for entry in outs:
             if self._cancel.is_set():
                 return
@@ -342,6 +380,7 @@ class Voice(Module):
         self.blocked_why = "off"
         self._tts = None
         self._tts_key: tuple = ()
+        self._tts_lock = threading.Lock()
         self._stt = None
         self._stt_key: tuple = ()
         self._jobs: dict[str, threading.Event] = {}
@@ -359,6 +398,14 @@ class Voice(Module):
         self._face_hold_at = 0.0  # (need_face) when the camera hold was last renewed; 0: not held
         self._face_sleep = time.sleep  # (need_face) waiting for a frame; tests replace it
         self.face_counts = {"no_face": 0, "blind": 0}  # (need_face) turns it turned down since start: counts only
+        self._turn_t: dict | None = None  # (0.8.16, fast.py) the turn being heard and answered now: its times
+        self.timings: deque = deque(maxlen=fast.KEEP)  # (timing) the last turns' times, numbers only
+        self.fastpick = fast.FastPick()  # (fast_brain fastest) which AI answered plain chat quickest lately
+        self._stream: fast.Stream | None = None  # (stream) the answer being spoken as it's written
+        self._ack_sounds: dict = {}  # (ack) the tone, and the word as the voice says it, made once
+        self._ack_sleep = time.sleep  # tests replace it
+        self._warmed: set = set()  # (warm_up) the engines warmed since they were loaded
+        self._brain_warm_at = 0.0
 
     # ------------------------------------------------------------------------------------------- the parts
     def wants(self) -> list[str]:
@@ -480,6 +527,10 @@ class Voice(Module):
         if self.parts.missing([f"pkg:{engine}", f"model:{engine}"]):
             return None, f"{engine.capitalize()} isn't set up yet (Features → Voice → Set up)"
         key = (engine, self.setting("speak.voice") or "", float(self.setting("speak.rate") or 1.0))
+        with self._tts_lock:  # (warm_up) loaded once even when the warm-up and a turn ask at the same moment
+            return self._load_tts(engine, key)
+
+    def _load_tts(self, engine: str, key: tuple):
         if self._tts is None or self._tts_key != key:
             self.parts.importable()
             from kurooto.modules.voice import audio
@@ -599,6 +650,12 @@ class Voice(Module):
             },
             "learned": {**self.learner.status(), "on": bool(s("listen.learn_nightly")), "misfires_now": self.misfires},
             "barge_in": {"on": bool(s("listen.barge_in")), "since_start": self.barge.count},
+            "speed": {  # (0.8.16) the medians of the last turns' times, ms from your last word; the switches
+                **self.speed(),
+                "ack": s("speak.ack"),
+                "stream": bool(s("speak.stream")),
+                "fast_brain": s("listen.fast_brain"),
+            },
             "need_face": {  # (0.8.13) words and counts only
                 "on": bool(s("listen.need_face")),
                 "state": face_state,
@@ -738,6 +795,7 @@ class Voice(Module):
         the gate off; with both off, only turns the gate calls addressed are checked."""
         if self.blocked() or not self.app.is_on(self.id):
             return None
+        turn = {"end": h.ended_at if h.ended_at is not None else time.monotonic()}  # (timing) from your last word
         self.portal.close_s = float(self.setting("listen.close_s") or 8)
         self.portal.state("hearing")
         vid = self.voiceid
@@ -769,6 +827,7 @@ class Voice(Module):
                 heard = ""
         if h.speech and not h.text and audio is not None:
             h.text = self._write_out(audio)
+        fast.stamp(turn, "text")
         g = self.gate()
         ctx = self.portal.context()
         if on and self.setting("listen.conversation_mode"):  # (voice id) people talking: only its name opens it
@@ -780,7 +839,7 @@ class Voice(Module):
         if d.why == TOLD_OFF:
             self._told_off(h, audio)
             return None
-        d = self.face_check(h, d)
+        d = self._timed_face_check(h, d, turn)
         self.heard[d.klass] = self.heard.get(d.klass, 0) + 1
         if not d.addressed:
             self._heard_wave(audio)
@@ -809,7 +868,7 @@ class Voice(Module):
         if who is not None:  # checked after the decision: the row gets the verdict all the same
             row["speaker"], row["score"] = who.decision, who.score
         face = vid.take_face() if on else None
-        reply = self.portal.take(h, d, text=said, who=who)
+        reply = self._take(h, d, said, who, turn)
         if self.portal.open:
             self._pending = {"row": row, "session": self.portal.session, "who": who.decision if who else "",
                              "face": face}  # fmt: skip
@@ -987,7 +1046,9 @@ class Voice(Module):
         seconds = len(pcm) / 32000
         speech_s = sum(1 for f in flags if f) * 512 / 16000 if flags else seconds
         h = Heard(speech=True, seconds=seconds, speech_s=speech_s, ended_at=ended_at)
+        turn = {"end": ended_at if ended_at is not None else time.monotonic()}
         h.text = self._write_out(pcm)
+        fast.stamp(turn, "text")
         g = self.gate()
         self._pending = None  # the interrupted turn: how it went isn't known, nothing learned from it
         outcome = "listen"
@@ -1007,7 +1068,7 @@ class Voice(Module):
                     who = Verdict(OWNER, barge_mod.OWN_WHY, how.get("score"), speech_s)
                 else:  # never learned from: its own voice may be in it
                     who = vid.check(pcm, speech_s, adapt=False)
-            d = self.face_check(h, Decision(ADDRESSED, 0.9, "barged in")) if said and asks(said) else None
+            d = self._timed_face_check(h, Decision(ADDRESSED, 0.9, "barged in"), turn) if said and asks(said) else None
             if d is not None and not d.addressed:  # (need_face) nobody in front of it: chatter, the talk closes
                 outcome = "no face"
                 self.heard[CHATTER] = self.heard.get(CHATTER, 0) + 1
@@ -1019,7 +1080,7 @@ class Voice(Module):
                 if who is not None:
                     self.publish("voice_state", state="addressed", portal=True, listening=True, why="barged in",
                                  who=who.word)  # fmt: skip
-                reply = self.portal.take(h, Decision(ADDRESSED, 0.9, "barged in"), text=said, who=who)
+                reply = self._take(h, Decision(ADDRESSED, 0.9, "barged in"), said, who, turn)
             else:
                 h.text = ""  # not sent: dropped here
                 self.portal.listen_on("barged in", who.decision if who is not None else "")
@@ -1039,7 +1100,12 @@ class Voice(Module):
 
     def ask_brain(self, text: str, who=None) -> str:
         """An addressed turn to your AI, like a chat message (spoken style); its answer as text. who: Voice ID's
-        verdict, which travels with the message (Incoming.speaker); not the owner's goes to core/guest.py."""
+        verdict, which travels with the message (Incoming.speaker); not the owner's goes to core/guest.py.
+
+        0.8.16 (fast.py): a soft sound says it heard you while the AI thinks (voice.speak.ack); your own turns are
+        spoken as the AI writes them when it can stream (voice.speak.stream) and plain chat may go to a quicker AI
+        (voice.listen.fast_brain), both through the queue's turn_options (core/jobs.py); the turn's times are kept."""
+        turn = self._turn_t if self._turn_t is not None else {"end": time.monotonic()}
         replies: list[str] = []
         msg = Incoming(
             text=text,
@@ -1049,8 +1115,10 @@ class Voice(Module):
             speaker=who.decision if who is not None else "",
             speaker_by="voice" if who is not None else "",
         )
-        self.app.handle(msg)
+        self._ack(turn)
         if who is not None and who.decision != "owner":  # (voice id) a guest's turn: kept in memory for this talk only
+            self.app.handle(msg)
+            fast.stamp(turn, "sent")
             gid = getattr(msg, "job", None)
             try:
                 answer = self._wait_job(msg) if gid else "\n".join(replies)
@@ -1060,13 +1128,35 @@ class Voice(Module):
                         self.app.jobs.forget_guest(gid)
                     except Exception as e:
                         self.app.events.emit("voice_failed", part="guest words", error=f"{type(e).__name__}"[:100])
+            fast.stamp(turn, "first_text")
+            fast.stamp(turn, "answer")
             if answer:
                 self.voiceid.heard_guest(text, answer)
             return answer
+        stream, opts = self._turn_opts(text, turn)
+        options = getattr(self.app.jobs, "turn_options", None)
+        if options is not None and opts:
+            with options(**opts) as got:
+                self.app.handle(msg)
+        else:
+            self.app.handle(msg)
+            got = {}
+        fast.stamp(turn, "sent")
         jid = getattr(msg, "job", None)
+        if stream is not None and (not jid or got.get("jid") != jid):  # answered here, or not the request it waits on
+            stream.cancel()
+            stream = None
+        self._stream = stream
         if not jid:
+            fast.stamp(turn, "first_text")
+            fast.stamp(turn, "answer")
             return "\n".join(replies)
-        answer = self._wait_job(msg)
+        answer = self._wait_job(msg) if stream is None else self._wait_job(msg, stream)
+        if stream is not None and stream.cut and not answer:  # cut off mid-answer: what it said is the answer shown
+            answer = "".join(stream.raw).strip()
+        turn["streamed"] = 1 if stream is not None and stream.raw else 0
+        fast.stamp(turn, "first_text")
+        fast.stamp(turn, "answer")
         chat = self.app.modules.get("chat")
         if chat is not None and answer and chat.owns(jid):  # the conversation goes on, as a typed one does
             try:
@@ -1075,7 +1165,200 @@ class Voice(Module):
                 pass
         return answer
 
-    def _wait_job(self, msg: Incoming) -> str:
+    def _turn_opts(self, text: str, turn: dict) -> tuple[fast.Stream | None, dict]:
+        """(0.8.16) What your own turn's request gets (core/jobs.py turn_options): the stream that speaks its answer
+        as it's written (voice.speak.stream), the AI for plain chat (voice.listen.fast_brain), and the time the AI
+        starts on it."""
+        opts: dict = {"on_start": lambda brain: fast.stamp(turn, "start")}
+        stream = None
+        if self.setting("speak.stream") and self._speaks() and not self.portal_cut():
+            stream = fast.Stream(self.speaker, turn, wait_s=JOB_WAIT_S)
+            opts["on_text"] = stream.feed
+        pick = self._fast_choice(text)
+        if pick is not None:
+            turn["fast"], turn["pick"] = 1, pick[0]
+            opts.update(pick[1])
+        return stream, opts
+
+    def _fast_choice(self, text: str) -> tuple[str, dict] | None:
+        """(voice.listen.fast_brain) (key, request options) for plain chat that needs nothing of yours and no tools
+        (fast.chat_only), or None: your AI as before."""
+        how = str(self.setting("listen.fast_brain") or "same").strip().lower()
+        if how not in FAST_BRAINS or how == "same" or not fast.chat_only(self.app, text):
+            return None
+        if how == "local":
+            from kurooto import providers
+
+            try:
+                local = providers.local(self.app)
+            except Exception:
+                local = None
+            return (local.id, {"brain": local.id, "text_only": True, "effort": "low"}) if local is not None else None
+        try:
+            return self.fastpick.pick(self.app)
+        except Exception:
+            return None
+
+    def _speaks(self) -> bool:
+        """Will its answers be spoken (the switches only: nothing is loaded)?"""
+        return bool(self.setting("speak.on")) and (self.setting("speak.engine") or "kokoro") in ("kokoro", "piper")
+
+    # ------------------------------------------------------------------------------------- 0.8.16: speed
+    def _timed_face_check(self, h: Heard, d: Decision, turn: dict) -> Decision:
+        """face_check, with how long it took (it waits for a frame only when none that counts was seen yet)."""
+        t0 = time.monotonic()
+        out = self.face_check(h, d)
+        if d.addressed:
+            turn["face_ms"] = round((time.monotonic() - t0) * 1000)
+        fast.stamp(turn, "gate")
+        return out
+
+    def _take(self, h: Heard, d: Decision, said: str, who, turn: dict) -> str | None:
+        """portal.take for a turn it answers, its times kept while it's heard, sent and spoken."""
+        self._turn_t = turn
+        try:
+            return self.portal.take(h, d, text=said, who=who)
+        finally:
+            self._turn_t = None
+            st, self._stream = self._stream, None
+            if st is not None:  # never finished (the portal spoke something else): nothing more of it is said
+                st.cancel()
+            self._timed(turn)
+
+    def _timed(self, turn: dict) -> None:
+        """(voice.listen.timing) A turn that went to the AI: its times, as numbers only, into the event log and the
+        medians; and how quickly a quicker AI answered (fast_brain fastest)."""
+        if "sent" not in turn:
+            return
+        if turn.get("pick") and "first_text" in turn:
+            self.fastpick.note(turn["pick"], turn["first_text"] - turn["sent"])
+        if not self.setting("listen.timing"):
+            return
+        row = fast.numbers(turn)
+        self.timings.append(row)
+        self.app.events.emit("voice_timing", **row)
+
+    def speed(self) -> dict:
+        """The medians of the last turns' times (ms from your last word), and how many turns."""
+        return {"on": bool(self.setting("listen.timing")), **fast.medians(self.timings)}
+
+    def _ack(self, turn: dict) -> None:
+        """(voice.speak.ack) The moment a turn goes to the AI: a soft sound after ACK_WAIT_S, unless the answer is
+        already arriving by then or something is being said. Only for a turn heard through the microphone."""
+        how = str(self.setting("speak.ack") or "off").strip().lower()
+        if how not in ("tone", "word") or not self._speaks() or self.portal_cut():
+            return
+        if self.listener is None or not self.listener.running():
+            return
+        threading.Thread(target=self._ack_play, args=(how, turn), name="voice-ack", daemon=True).start()
+
+    def _ack_play(self, how: str, turn: dict) -> None:
+        try:
+            self._ack_sleep(fast.ACK_WAIT_S)
+            if "first_text" in turn or "answer" in turn or self.speaker.holding() or self.portal_cut():
+                return
+            got = self._ack_sound(how)
+            if got is not None:
+                self.speaker.ack(*got, turn)
+        except Exception as e:
+            self.app.events.emit("voice_failed", part="acknowledgement", error=f"{type(e).__name__}"[:100])
+
+    def _ack_sound(self, how: str) -> tuple[bytes, int] | None:
+        """The tone (made here), or the word as this voice says it (made once per voice and speed, kept in memory);
+        the tone when the voice can't."""
+        if how == "word":
+            tts, _why = self.tts()
+            if tts is not None:
+                key = ("word", *self._tts_key)
+                if key not in self._ack_sounds:
+                    try:
+                        self._ack_sounds[key] = tts.synth(fast.ACK_WORD)
+                    except Exception:
+                        self._ack_sounds[key] = None
+                if self._ack_sounds[key] is not None:
+                    return self._ack_sounds[key]
+        if "tone" not in self._ack_sounds:
+            self._ack_sounds["tone"] = (fast.tone(fast.ACK_RATE), fast.ACK_RATE)
+        return self._ack_sounds["tone"]
+
+    def _warm(self) -> None:
+        """(warm_up, warm_brain) When listening starts: the transcriber warmed on the hearing thread (half a second of
+        silence written out), the voice on a thread of its own (a word made, never played), and the AI's program."""
+        if self.setting("listen.warm_up"):
+            try:
+                self._work.put_nowait(WARM)
+            except queue.Full:
+                pass
+            if self._speaks():
+                threading.Thread(target=self._warm_voice, name="voice-warm", daemon=True).start()
+        if self.setting("listen.warm_brain") and time.monotonic() - self._brain_warm_at > WARM_BRAIN_S:
+            self._brain_warm_at = time.monotonic()
+            threading.Thread(target=self._warm_brain, name="voice-warm-brain", daemon=True).start()
+
+    def _warm_stt(self) -> None:
+        try:
+            stt = self.stt()
+            key = ("stt", *self._stt_key)
+            if key in self._warmed:
+                return
+            t0 = time.monotonic()
+            stt.text(bytes(16000))
+            self._warmed.add(key)
+            self.app.events.emit("voice_warm", part="transcriber", ms=round((time.monotonic() - t0) * 1000))
+        except Exception as e:
+            self.app.events.emit("voice_failed", part="warming", error=f"{type(e).__name__}"[:100])
+
+    def _warm_voice(self) -> None:
+        t0 = time.monotonic()
+        tts, _why = self.tts()
+        if tts is None:
+            return
+        key = ("tts", *self._tts_key)
+        if key in self._warmed or not self.speaker.lock.acquire(timeout=5):
+            return
+        try:
+            tts.synth("Okay.")
+            if str(self.setting("speak.ack") or "") == "word":
+                self._ack_sound("word")
+            self._warmed.add(key)
+            self.app.events.emit("voice_warm", part="voice", ms=round((time.monotonic() - t0) * 1000))
+        except Exception as e:
+            self.app.events.emit("voice_failed", part="warming", error=f"{type(e).__name__}"[:100])
+        finally:
+            self.speaker.lock.release()
+
+    def _warm_brain(self) -> None:
+        """With fast_brain local, the model on this computer answers a word (it loads now, not on your first turn);
+        with Claude Code as your AI, its program is run once for its version (its files are read from disk now, not
+        on your first turn). Nothing leaves the computer."""
+        from kurooto import providers
+
+        t0 = time.monotonic()
+        try:
+            if str(self.setting("listen.fast_brain") or "") == "local":
+                local = providers.local(self.app)
+                if local is not None:
+                    local.complete("Say OK.", effort="low", timeout=60)
+                    part = "local model"
+                else:
+                    return
+            else:
+                main = providers.build(self.app, str(self.app.settings.get("brain.main") or ""))
+                from kurooto.providers.claude import ClaudeCode
+
+                if not isinstance(main, ClaudeCode) or not main.exe:
+                    return
+                from kurooto.core import proc
+
+                base = list(main.exe) if isinstance(main.exe, list) else [main.exe]
+                proc.run([*base, "--version"], timeout=30, env=main.env())
+                part = "brain"
+        except Exception as e:
+            self.app.events.emit("voice_failed", part="warming", error=f"{type(e).__name__}"[:100])
+            return
+        self.app.events.emit("voice_warm", part=part, ms=round((time.monotonic() - t0) * 1000))
+
+    def _wait_job(self, msg: Incoming, stream: fast.Stream | None = None) -> str:
         jid = msg.job
         done = self._jobs.setdefault(jid, threading.Event())
         try:
@@ -1083,6 +1366,8 @@ class Voice(Module):
             while time.monotonic() < end:
                 j = self.app.jobs.get(jid)
                 if j is None or j.status in ("ok", "failed") or self.portal_cut():
+                    break
+                if stream is not None and stream.cut:  # (stream) stopped or cut in on while it was still being written
                     break
                 done.wait(0.5)
             j = self.app.jobs.get(jid)
@@ -1093,9 +1378,18 @@ class Voice(Module):
         return (j.result or "").strip()
 
     def _portal_speak(self, text: str) -> None:
-        """The portal's reply, aloud: not when muted or turned off meanwhile (the text is on the dashboard)."""
-        if not self.portal_cut():
-            self.speaker.say(text, wait=True)
+        """The portal's reply, aloud: not when muted or turned off meanwhile (the text is on the dashboard). An answer
+        that was being spoken as it was written (voice.speak.stream) is finished: only what wasn't said yet."""
+        st, self._stream = self._stream, None
+        if self.portal_cut():
+            if st is not None:
+                st.cancel()
+            return
+        if st is not None:
+            st.finish(text)
+            return
+        self.speaker.turn = self._turn_t
+        self.speaker.say(text, wait=True)
 
     def portal_cut(self) -> bool:
         return not self.app.is_on(self.id) or self.muted()
@@ -1192,6 +1486,7 @@ class Voice(Module):
         self.speaker.stop()
         self._stop_listening("turned off")
         self._tts = self._stt = None
+        self._warmed.clear()  # (warm_up) loaded afresh next time: warmed afresh
         if self.voiceid.session is not None:  # (voice id) an enrolment ends with Voice
             self.voiceid.session.command("stop")
         self.voiceid.drop_model()
@@ -1264,6 +1559,7 @@ class Voice(Module):
         )
         self.listener.start()
         self.portal.state("addressed" if self.portal.open else "listening")
+        self._warm()
 
     def _stop_listening(self, why: str) -> None:
         self._face_release()
@@ -1296,7 +1592,11 @@ class Voice(Module):
 
     def _work_loop(self) -> None:
         while True:
-            self._work_one(*self._work.get())
+            item = self._work.get()
+            if item is WARM:  # (warm_up) here, so it never runs beside a turn's writing out
+                self._warm_stt()
+                continue
+            self._work_one(*item)
 
     def _work_one(
         self,
@@ -1537,6 +1837,7 @@ class Voice(Module):
             + f"\nHeard since start: {h[ADDRESSED]} to me, {h[CHATTER]} chatter, {h[NOISE]} noise (words of the last "
             "two are never kept)."
             + (f"\nLearned: {self.learned_line()}." if self.learned_line() else "")
+            + (f"\n{fast.line(self.speed())}" if self.setting("listen.timing") and self.timings else "")
             + "\n/voice mute, /voice unmute, /voice stop, /voice say <text>; /voice id (Voice ID), /voice enrol"
         )  # fmt: skip
 

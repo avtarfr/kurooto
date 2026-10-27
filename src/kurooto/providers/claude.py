@@ -222,6 +222,147 @@ def mcp_servers(app: App | None, task: Task) -> dict:
     return servers
 
 
+class Lines:
+    """(voice.speak.stream) Claude Code's stream-json, a line at a time, as on_text(key, text so far): the text deltas
+    of each message (--include-partial-messages), else each whole assistant message. `key` is the message's id, so the
+    words it wrote before a tool call are a message of their own and the answer the last one. A subagent's messages
+    (parent_tool_use_id) are left out. A line that isn't JSON, or a mistake in on_text, never stops the run."""
+
+    def __init__(self, on_text):
+        self.on_text = on_text
+        self.key: str | None = None
+        self.text = ""
+        self.n = 0
+        self.deltas: set[str] = set()  # messages whose text came in deltas: their whole message adds nothing
+
+    def _new(self, key: str) -> None:
+        self.key, self.text, self.n = key or f"m{self.n}", "", self.n + 1
+
+    def _tell(self) -> None:
+        try:
+            self.on_text(self.key, self.text)
+        except Exception:
+            pass
+
+    def line(self, line: str) -> None:
+        try:
+            d = json.loads(line)
+        except ValueError:
+            return
+        if not isinstance(d, dict) or d.get("parent_tool_use_id"):
+            return
+        kind = d.get("type")
+        if kind == "stream_event":
+            ev = d.get("event") if isinstance(d.get("event"), dict) else {}
+            if ev.get("type") == "message_start":
+                self._new(str((ev.get("message") or {}).get("id") or ""))
+            elif ev.get("type") == "content_block_delta":
+                delta = ev.get("delta") if isinstance(ev.get("delta"), dict) else {}
+                if delta.get("type") == "text_delta" and delta.get("text"):
+                    if self.key is None:
+                        self._new("")
+                    self.deltas.add(self.key)
+                    self.text += str(delta["text"])
+                    self._tell()
+        elif kind == "assistant":
+            msg = d.get("message") if isinstance(d.get("message"), dict) else {}
+            key = str(msg.get("id") or "")
+            if key and key in self.deltas:
+                return
+            text = "".join(
+                str(b.get("text") or "")
+                for b in msg.get("content") or []
+                if isinstance(b, dict) and b.get("type") == "text"
+            )
+            if not text:
+                return
+            if not key or key != self.key:
+                self._new(key)
+                self.text = text
+            elif text.startswith(self.text):  # the whole message so far
+                self.text = text
+            else:  # one block of it
+                self.text += "\n" + text
+            self._tell()
+
+
+def stream_run(
+    args: list[str],
+    *,
+    input: str,
+    timeout: float,
+    cwd: Path | None = None,
+    env: dict | None = None,
+    on_start=None,
+    on_line=None,
+) -> proc.Result:
+    """proc.run, with stdout read a line at a time as it comes (on_line(line)) instead of all at the end. The same
+    process handling: its own session, ended with Kurooto (core/children.py), the whole tree killed at the timeout."""
+    import subprocess
+    import threading
+
+    args = proc.resolve_cmd_shim(args[0]) + list(args[1:])
+    p = subprocess.Popen(
+        args,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        cwd=cwd,
+        env=env,
+        creationflags=subprocess.CREATE_NO_WINDOW if proc.WINDOWS else 0,
+        start_new_session=not proc.WINDOWS,
+    )
+    if not proc.WINDOWS:
+        from kurooto.core import children
+
+        children.session(p.pid)
+    if on_start is not None:
+        try:
+            on_start(p.pid)
+        except Exception:
+            pass
+    err: list[bytes] = []
+    reader = threading.Thread(target=lambda: err.append(p.stderr.read() or b""), name="claude-err", daemon=True)
+    reader.start()
+
+    def feed() -> None:
+        try:
+            p.stdin.write(input.encode("utf-8"))
+            p.stdin.close()
+        except OSError:
+            pass
+
+    threading.Thread(target=feed, name="claude-in", daemon=True).start()
+    late = threading.Event()
+
+    def kill() -> None:
+        late.set()
+        proc.kill_tree(p.pid)
+
+    timer = threading.Timer(timeout, kill)
+    timer.daemon = True
+    timer.start()
+    out: list[str] = []
+    try:
+        for raw in p.stdout:
+            line = raw.decode("utf-8", "replace")
+            out.append(line)
+            if on_line is not None:
+                try:
+                    on_line(line)
+                except Exception:
+                    pass
+    finally:
+        timer.cancel()
+    try:
+        p.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        proc.kill_tree(p.pid)
+    reader.join(timeout=10)
+    code = None if late.is_set() else p.returncode
+    return proc.Result(code, "".join(out), b"".join(err).decode("utf-8", "replace"))
+
+
 class ClaudeCode(Brain):
     id = "claude"
     label = "Claude Code"  # the brain's name everywhere; "Advanced" is only the setup page's grouping (web/api.py)
@@ -272,11 +413,13 @@ class ClaudeCode(Brain):
     def args(self, task: Task, tmp: Path) -> list[str]:
         """The command for one run: its permissions, tools and prompt are files in `tmp`, gone after the run."""
         base = list(self.exe) if isinstance(self.exe, list) else [self.exe]
+        stream = task.on_text is not None  # (voice.speak.stream) the answer as it's written, line by line
         args = [
             *base,
             "-p",
             "--output-format",
-            "json",
+            "stream-json" if stream else "json",
+            *(["--verbose", "--include-partial-messages"] if stream else []),  # stream-json needs --verbose with -p
             "--no-session-persistence",
             "--setting-sources",
             "",  # none of your own Claude Code settings, hooks or project files: what Kurooto gives is all there is
@@ -315,14 +458,25 @@ class ClaudeCode(Brain):
             args = self.args(task, Path(tmp))
             egress.handed("Claude Code", "AI requests")  # what it sends to Anthropic, it sends itself
             t0 = time.monotonic()
-            r = proc.run(
-                args,
-                input=task.prompt,
-                timeout=task.timeout_s + self.grace_s,
-                cwd=task.cwd,
-                env=self.env(),
-                on_start=task.on_process,
-            )
+            if task.on_text is not None:
+                r = stream_run(
+                    args,
+                    input=task.prompt,
+                    timeout=task.timeout_s + self.grace_s,
+                    cwd=task.cwd,
+                    env=self.env(),
+                    on_start=task.on_process,
+                    on_line=Lines(task.on_text).line,
+                )
+            else:
+                r = proc.run(
+                    args,
+                    input=task.prompt,
+                    timeout=task.timeout_s + self.grace_s,
+                    cwd=task.cwd,
+                    env=self.env(),
+                    on_start=task.on_process,
+                )
             secs = time.monotonic() - t0
         result = self.verdict(r, secs, minutes)
         result.model = result.model or self.models.get(task.effort) or ""  # what it said it used, else what was asked

@@ -112,6 +112,15 @@ The user's view (choosing an AI, limits, fallbacks): [../user/ai-brains.md](../u
   read `kurooto://self`.
 - Default models: `MODELS = {"low": "haiku", "medium": "sonnet", "high": "sonnet"}`, overridable through
   `brain.models.claude`.
+- Streaming (0.8.16, `voice.speak.stream`): with `task.on_text` set, `args()` asks for `--output-format stream-json
+  --verbose --include-partial-messages` and `run()` uses `stream_run()` (proc.run's process handling: own session,
+  `children.session`, `kill_tree` at the timeout from a `threading.Timer`; stdout read a line at a time, stderr on a
+  thread). `Lines` turns the lines into `on_text(message id, text so far)`: `content_block_delta` text deltas, else a
+  whole `assistant` message (block by block or whole); `parent_tool_use_id` (a subagent) is skipped; non-JSON lines
+  are ignored. The last line is the same `result` object as `--output-format json`, so `verdict()` is unchanged.
+  Without `on_text` the command line and `proc.run` are exactly as before. A kept-warm process (`--input-format
+  stream-json`) isn't used: permissions, MCP servers and the appended context are fixed when the process starts, and
+  each request has its own.
 
 ### Extra Claude accounts (`providers/claude_accounts.py`, 0.7.0)
 
@@ -167,6 +176,10 @@ CLI's code, not guessed.
 - A non-loopback service's single request is capped at `REQUEST_S[effort]` (180/300/600 s) so a dead connection fails
   early; a local one gets the request's whole time (`OpenAICompat.local`).
 - `reasoning_effort` is sent only for presets with `reasoning: True` (Gemini).
+- Streaming (0.8.16): `chat(..., on_text=)` and `run()` without tools pass `on_text` down to `_request`, which then
+  sends `"stream": true` and reads server-sent events in `_post_stream()` (`data: {...}` lines, `choices[0].delta.
+  content`, `[DONE]`), calling `on_text(model, text so far)` and returning a dict shaped like a non-streamed answer.
+  The tool loop never streams. Errors are the same exceptions as `_post`, so the verdicts don't change.
 - 429 responses carry `usage["limit"] = core.quota.hints(...)`, which teaches the quota its numbers.
 - `task.images`: the user message's content becomes `with_pictures()` (the text part, then one `image_url` part per
   picture of a `PICTURE_TYPES` kind under `PICTURE_MAX`, 15 MB); none: the plain string, as before.

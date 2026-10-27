@@ -137,14 +137,50 @@ class OpenAICompat(Brain):
         with egress.urlopen(req, "AI requests", timeout=timeout, own=True) as r:  # the service you set up
             return json.loads(r.read())
 
+    def _post_stream(self, path: str, body: dict, timeout: float, tell) -> dict:
+        """(voice.speak.stream) A streamed answer (server-sent events): tell(text so far) as each piece comes, and the
+        whole of it at the end shaped like an answer that wasn't streamed."""
+        req = urllib.request.Request(  # noqa: S310 (an http(s) address the user configured)
+            f"{self.base_url}{path}",
+            data=json.dumps(body).encode(),
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"},
+        )
+        text, model, usage = "", "", {}
+        with egress.urlopen(req, "AI requests", timeout=timeout, own=True) as r:
+            for raw in r:
+                line = raw.decode("utf-8", "replace").strip()
+                if not line.startswith("data:"):
+                    continue
+                data = line[5:].strip()
+                if data == "[DONE]":
+                    break
+                try:
+                    d = json.loads(data)
+                except ValueError:
+                    continue
+                if not isinstance(d, dict):
+                    continue
+                model = str(d.get("model") or model)
+                usage = d.get("usage") if isinstance(d.get("usage"), dict) else usage
+                for c in d.get("choices") or []:
+                    piece = ((c or {}).get("delta") or {}).get("content") if isinstance(c, dict) else None
+                    if piece:
+                        text += str(piece)
+                        try:
+                            tell(text)
+                        except Exception:
+                            pass
+        return {"choices": [{"message": {"content": text}}], "model": model, "usage": usage}
+
     def list_models(self, timeout: float = 20) -> list[str]:
         req = urllib.request.Request(f"{self.base_url}/models", headers={"Authorization": f"Bearer {self.api_key}"})  # noqa: S310
         with egress.urlopen(req, "AI requests", timeout=timeout, own=True) as r:
             data = json.loads(r.read())
         return sorted(m.get("id", "").removeprefix("models/") for m in data.get("data", []) if m.get("id"))
 
-    def chat(self, messages: list[dict], effort: str = "medium", timeout: float = 120) -> Result:
-        res, msg, usage = self._turn(messages, effort, timeout)
+    def chat(self, messages: list[dict], effort: str = "medium", timeout: float = 120, on_text=None) -> Result:
+        """on_text(key, text so far) (voice.speak.stream): the answer streamed as it's written; key is the model."""
+        res, msg, usage = self._turn(messages, effort, timeout, on_text=on_text)
         if res is not None:
             res.model = res.model or self.models.get(effort) or self.models.get("medium") or ""
             return res
@@ -153,15 +189,23 @@ class OpenAICompat(Brain):
         out.model = msg.get("_model") or self.models.get(effort) or self.models.get("medium") or ""
         return out
 
-    def _turn(self, messages: list[dict], effort: str, timeout: float, tools: list | None = None, choice: str = ""):
+    def _turn(
+        self,
+        messages: list[dict],
+        effort: str,
+        timeout: float,
+        tools: list | None = None,
+        choice: str = "",
+        on_text=None,
+    ):
         """One request, counted against its model's free limit. Returns (Result on failure, else None; the reply
         message; usage)."""
         model = self.models.get(effort) or self.models.get("medium")
-        res, msg, usage = self._request(messages, effort, timeout, tools, choice)
+        res, msg, usage = self._request(messages, effort, timeout, tools, choice, on_text=on_text)
         self.metered(model, res)
         if res is not None and res.verdict == Verdict.RATE_LIMITED and self.alternatives:
             for alt in [m for m in self.alternatives if m != model]:  # this model's day is used up: try its family
-                res2, msg2, usage2 = self._request(messages, effort, timeout, tools, choice, alt)
+                res2, msg2, usage2 = self._request(messages, effort, timeout, tools, choice, alt, on_text=on_text)
                 self.metered(alt, res2)
                 if res2 is None:
                     note = f"(Answered with {alt}: {model}'s free limit for today was used up.)"
@@ -171,10 +215,20 @@ class OpenAICompat(Brain):
         return res, msg, usage
 
     def _request(
-        self, messages: list[dict], effort: str, timeout: float, tools: list | None, choice: str, model: str = ""
+        self,
+        messages: list[dict],
+        effort: str,
+        timeout: float,
+        tools: list | None,
+        choice: str,
+        model: str = "",
+        on_text=None,
     ):
         model = model or self.models.get(effort) or self.models.get("medium")
         body: dict = {"model": model, "messages": messages}
+        stream = on_text is not None and not tools  # (voice.speak.stream) only a plain answer is streamed
+        if stream:
+            body["stream"] = True
         if tools:
             body["tools"] = tools
             if choice:
@@ -185,7 +239,10 @@ class OpenAICompat(Brain):
         if not self.local():  # a dead connection fails in minutes, not after the whole request's time
             timeout = min(timeout, REQUEST_S.get(effort, REQUEST_S["medium"]))
         try:
-            data = self._post("/chat/completions", body, timeout)
+            if stream:
+                data = self._post_stream("/chat/completions", body, timeout, lambda t: on_text(model, t))
+            else:
+                data = self._post("/chat/completions", body, timeout)
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", "replace")
             detail = body[:500]
@@ -224,7 +281,7 @@ class OpenAICompat(Brain):
             {"role": "user", "content": with_pictures(task.prompt, task.images)}
         ]
         if not task.tools or not task.run_tool:
-            return self.chat(msgs, task.effort, task.timeout_s)
+            return self.chat(msgs, task.effort, task.timeout_s, on_text=task.on_text)
         decl = [declaration(t) for t in task.tools]
         t0 = time.monotonic()
         usage: dict = {}

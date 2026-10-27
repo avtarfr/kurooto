@@ -45,6 +45,10 @@ class Task:
     # agent programs open them where the prompt says they are (Photo to dates: modules/photodates.py)
     scratch: Path | None = None  # a change request's scratch folder (core/scratch.py): the one place it may write
     reads: list = field(default_factory=list)  # what it may read besides the usual folders (the original, read-only)
+    # (0.8.16, voice.speak.stream) on_text(key, text so far): the answer's text as it arrives, for a brain that can
+    # stream (Claude Code's stream-json, an API without tools); `key` changes with each new message of the run, so a
+    # message written before a tool call is told apart from the answer. Brains that can't stream never call it.
+    on_text: Callable | None = None
 
 
 @dataclass

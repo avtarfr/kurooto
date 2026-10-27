@@ -43,7 +43,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
 - [Brain](#brain): 119 settings
-- [Voice and voice notes](#voice-and-voice-notes): 59 settings
+- [Voice and voice notes](#voice-and-voice-notes): 65 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
@@ -6232,6 +6232,87 @@ last answer to you. A voice clearly someone else's, or two voices, are never car
 - **Values:** `true` (default), `false` (only short replies carry, as before 0.8.13). **Default:** on.
 - **When to change it:** Turn it off in a shared room where someone with a voice like yours might carry on your
   conversation.
+
+### `voice.speak.ack`
+
+While your AI thinks, a short soft sound says Kurooto heard you.
+
+The moment a turn you said goes to your AI, a soft sound plays through the same speakers or output as its voice (a phone
+an add-on plays it on, say), so the silence while the AI works doesn't feel like it didn't hear. It's skipped when the
+answer is already on its way (a plain-English request done at once) or something is being said. `tone` is a short, quiet
+rising note made on this computer; `word` is "Hmm." in Kurooto's own voice, made once and kept in memory. Only for turns
+heard through the microphone; never for typed messages.
+
+- **Values:** `tone` (default), `word` or `off`. **Default:** `tone`.
+- **When to change it:** Pick `word` if a voice sounds friendlier to you than a note; `off` if you'd rather have
+  silence.
+- **Depends on:** `voice.speak.on` and `voice.listen.on`.
+
+### `voice.speak.stream`
+
+Speak the answer a sentence at a time while your AI is still writing it.
+
+When your AI can stream its answer (Claude Code, a Gemini key or Ollama answering without tools), each finished sentence
+is spoken as soon as it arrives, instead of after the whole answer is in; the rest follows as it's written. Words the AI
+writes before it uses a tool ("Let me check your notes.") are spoken too. An AI that can't stream (agy) is spoken when
+it's done, as before. /voice stop, mute and talking over it stop it at once.
+
+- **Values:** `true` (default) or `false` (the whole answer first, as before 0.8.16). **Default:** on.
+- **When to change it:** Turn it off if you'd rather hear only the finished answer.
+- **Depends on:** `voice.speak.on`.
+
+### `voice.listen.timing`
+
+Time each spoken turn from your last word to Kurooto's first sound, as numbers only.
+
+Each turn that goes to your AI is timed from the end of your speech: written out, decided (the face check included),
+sent, the AI starting, its first words, the whole answer, the acknowledgement, the first sound made and the first sound
+playing (on an add-on's output: when it's handed the sound). One voice_timing event a turn (milliseconds, never words),
+and the medians of the last 20 turns in /voice and on GET /api/voice ("speed"). Kept in memory.
+
+- **Values:** `true` (default) or `false`. **Default:** on.
+- **When to change it:** Leave it on; turn it off only if you don't want the events in the log.
+- **Depends on:** `voice.listen.on`.
+
+### `voice.listen.fast_brain`
+
+Which AI answers plain chat said aloud: your AI as usual, the model on this computer, or the quickest.
+
+Only turns that need nothing of yours and no tools are moved: small talk and general questions with none of "my",
+"notes", "remind", "today", "search" and the like, that no plain-English request of Kurooto's would take. Those are
+asked as text only at low effort. `same`: your AI with its tools, as always. `local`: the Ollama model on this computer
+(nothing leaves it). `fastest`: the quickest set up here by its first words in your recent voice turns (each is tried
+once first: your AI when it's a service, a Gemini key, the model on this computer, then your AI with no tools). Anything
+else, and every turn when unsure, goes to your AI as before.
+
+- **Values:** `same` (default), `local` or `fastest`. **Default:** `same`.
+- **When to change it:** Pick `local` or `fastest` if chatting by voice feels slow and you don't mind a smaller model
+  for small talk.
+- **Depends on:** `voice.listen.on`; `local` needs Local AI models (Ollama) set up.
+
+### `voice.listen.warm_up`
+
+When listening starts, warm the transcriber and the voice, so your first turn isn't the slow one.
+
+Half a second of silence is written out (on the hearing thread, never beside a turn) and one word is made by the voice
+and never played, once each time they're loaded. Nothing is recorded or sent.
+
+- **Values:** `true` (default) or `false`. **Default:** on.
+- **When to change it:** Turn it off on a computer short of memory if you rarely talk to it.
+- **Depends on:** `voice.listen.on`.
+
+### `voice.listen.warm_brain`
+
+When listening starts, get your AI's program ready on this computer.
+
+With Claude Code as your AI, its program is run once for its version (at most every 10 minutes), so its files are read
+from the disk then and not on your first turn; nothing is sent. With voice.listen.fast_brain `local`, the model on this
+computer answers one word so it's loaded. A running Claude Code isn't kept between turns: each request gets its own
+permissions and context, which a kept process couldn't change.
+
+- **Values:** `true` (default) or `false`. **Default:** on.
+- **When to change it:** Turn it off if you don't want the extra start of the AI's program.
+- **Depends on:** `voice.listen.on`.
 
 ## Privacy and what it keeps
 

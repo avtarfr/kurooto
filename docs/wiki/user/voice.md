@@ -10,6 +10,7 @@ it on, and listening has its own switch on top of that (0.8.8).
 - [Listening](#listening)
 - [How it tells you're talking to it](#how-it-tells-youre-talking-to-it)
 - [The conversation (the "portal")](#the-conversation-the-portal)
+- [How fast it answers](#how-fast-it-answers)
 - [When it doesn't listen](#when-it-doesnt-listen)
 - [Commands](#commands)
 - [Privacy](#privacy)
@@ -213,6 +214,36 @@ Speech that wasn't for Kurooto (people talking to each other, noise) moves the w
 reaches the page, never its words. `voice.listen.levels` off stops both. On the being board the YOU lane is live while
 it listens: the microphone's loudness scrolls through it as you speak (`look.being_live_waveform`).
 
+## How fast it answers
+
+From your last word to its first sound, a spoken turn goes through: writing out what you said (about half a second
+with the base model), the gate and, when they're on, Voice ID and the face check, your AI (the longest part: an agent
+program like Claude Code takes a few seconds to start and answer), making the first piece of speech, and playing it
+(on another device, add its own delay). 0.8.16 makes that shorter, and the wait easier:
+
+- **It tells you it heard** (`voice.speak.ack`, on: `tone`). The moment your turn goes to your AI, a short soft note
+  plays, so the pause doesn't feel like it missed you. `word` says "Hmm." in its own voice instead; `off` is silence.
+  It isn't played when the answer is already on its way.
+- **It starts speaking before the answer is finished** (`voice.speak.stream`, on). With Claude Code, a Gemini key or
+  Ollama answering without tools, each sentence is spoken as soon as your AI has written it, and the first one alone,
+  so the first sound is made quickly. Anything it writes before using a tool ("Let me check your notes.") is said too.
+  agy can't stream: its answer is spoken when it's done, as before. `/voice stop`, mute and talking over it stop it.
+- **Plain chat can go to a quicker AI** (`voice.listen.fast_brain`, `same` by default). Small talk and general
+  questions that need nothing of yours ("why is the sky blue") can go to the model on this computer (`local`) or to
+  whichever AI answered quickest lately (`fastest`), as text only. Anything that mentions your things, the time, the
+  web or an action, and anything it's unsure about, goes to your AI as always. It stays `same` unless you change it:
+  a smaller model answers small talk less well.
+- **It's ready when you start** (`voice.listen.warm_up`, `voice.listen.warm_brain`, both on). When listening starts,
+  the transcriber and the voice are warmed (nothing is recorded or played), and Claude Code's program is run once so
+  your first turn isn't the slow one.
+- **It measures** (`voice.listen.timing`, on). `/voice` (or `kurooto voice`) ends with a line like "Speed (median of
+  12 turns, from your last word): words 0.7 s, decided 1.2 s, sent 1.3 s, first words from the AI 4.1 s, first sound
+  made 4.6 s, playing 4.7 s." Numbers only, never words, for the last 20 turns.
+
+If it still feels slow, the speed line says where the time goes: a big gap between "sent" and "first words from the AI"
+is your AI; between "first words" and "first sound made", making the speech (Piper, `voice.speak.engine`, is quicker to make
+than Kokoro); between "first sound made" and "playing", the speakers or the other device.
+
 ## When it doesn't listen
 
 - **Muted:** `/voice mute`, `kurooto voice mute`, or the dashboard's mute. It stays muted (across restarts) until
@@ -275,7 +306,10 @@ can't be done by voice: type it or use the dashboard."
   out) and is never written to disk. The words of noise and chatter are dropped as soon as the gate decides: never
   stored, logged or sent. It counts how many stretches were noise, chatter or for it, in memory only.
 - **What leaves:** only the turns the gate decided were said to Kurooto, as text, to the AI you picked, like a chat
-  message (and kept in the chat history like a typed one). While the conversation is closed, nothing leaves.
+  message (and kept in the chat history like a typed one). While the conversation is closed, nothing leaves. With
+  `voice.listen.fast_brain` `fastest` (not the default), a plain-chat turn may go to another AI you've set up (a
+  Gemini key, say) instead of your main one, with what a chat request carries; `local` keeps it on this computer.
+  The turn times (`voice.listen.timing`) are numbers only and stay here.
 - **Downloads:** setting it up fetches packages from PyPI and models from GitHub and Hugging Face; nothing of yours is
   sent.
 
@@ -295,6 +329,8 @@ downloaded to your computer as separate programs, not part of Kurooto.
 | `voice.speak.what` | `voice` | `voice` (answers to what you said aloud), `all` (every AI answer) or `off` |
 | `voice.speak.join_sentences` | on | speak short sentences together, not each on its own |
 | `voice.speak.numbers_as_words` | on | say times, dates, money, versions and units in words (only aloud) |
+| `voice.speak.ack` | `tone` | while your AI thinks, a soft sound says it heard you: `tone`, `word` or `off` |
+| `voice.speak.stream` | on | speak the answer a sentence at a time as your AI writes it (when it can stream) |
 | `voice.listen.on` | off | listen through the microphone |
 | `voice.listen.wake_word` | (none) | the path of your own openWakeWord `.onnx`; empty: its name wakes it |
 | `voice.listen.name_variants` | (none) | more spellings of its name to accept; the common mishearings are built in |
@@ -310,6 +346,10 @@ downloaded to your computer as separate programs, not part of Kurooto.
 | `voice.listen.face_near` | 0.5 | close: at least this share of your usual face height at the desk |
 | `voice.listen.face_yaw_deg` | 35 | facing: turned at most this many degrees away |
 | `voice.listen.need_face_fallback` | `voice` | the camera can't see: `voice` (the voice rules) or `none` (nothing by voice) |
+| `voice.listen.timing` | on | time each turn from your last word to its first sound (numbers only, in `/voice`) |
+| `voice.listen.fast_brain` | `same` | plain chat by voice: `same` (your AI), `local` (this computer's model) or `fastest` |
+| `voice.listen.warm_up` | on | warm the transcriber and the voice when listening starts |
+| `voice.listen.warm_brain` | on | get Claude Code's program (or, with `fast_brain` `local`, the local model) ready too |
 | `voice.listen.night` | on | keep listening during the night hours |
 | `voice.listen.calls` | off | keep listening during calls |
 | `voice.listen.stt_model` | `base` | `tiny`, `base` or `small` |

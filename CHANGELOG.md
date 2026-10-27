@@ -3,6 +3,7 @@
 ## 0.8.16 (unreleased)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 - **Voice no longer crashes Kurooto.** Turning listening off, muting, or a microphone that came and went could close
   the microphone's sound stream while the listening thread was still reading it, and the whole of Kurooto died (a
   segmentation fault in the sound library, seen several times a day with PipeWire). Each sound stream is now opened,
@@ -26,6 +27,21 @@
   computer's, so a chat read on the dashboard's Chat page (or another phone) stayed unread on the phone. It now takes
   the computer's read marks: its badge and notification for that chat clear too, never marking anything newer as read.
 >>>>>>> f/v0816-call
+=======
+- **Voice answers sooner, and tells you it heard.** A spoken turn used to wait for your AI's whole answer before the
+  first word was made; now, when your AI can stream (Claude Code, a Gemini key, Ollama without tools), each sentence is
+  spoken as soon as it's written, the first one alone so its sound is made quickly (`voice.speak.stream`). The moment a
+  turn goes to your AI a short soft note plays, unless the answer is already coming (`voice.speak.ack`: `tone`, `word`
+  for "Hmm." in its own voice, or `off`). When listening starts, the transcriber, the voice and Claude Code's program
+  are warmed so the first turn isn't the slow one (`voice.listen.warm_up`, `voice.listen.warm_brain`).
+- **Voice measures itself.** Each turn is timed from your last word: written out, decided (the face check included),
+  sent, your AI starting, its first words, the first sound made and playing. `/voice` shows the medians of the last
+  20 turns; a `voice_timing` event holds each turn's numbers, never words (`voice.listen.timing`).
+- **A quicker AI for plain chat by voice, if you want one.** `voice.listen.fast_brain` `local` sends small talk and
+  general questions that need nothing of yours to the model on this computer, `fastest` to whichever AI answered
+  quickest lately; anything that mentions your things, the time, the web or an action still goes to your AI. `same`
+  (the default) changes nothing.
+>>>>>>> f/v0816-fast
 
 ## 0.8.15 (unreleased)
 

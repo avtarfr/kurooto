@@ -48,6 +48,20 @@ class FakeOpenAI:
                 if mode == "500":
                     return self._send(500, {"error": {"message": "boom"}})
                 text = "" if mode == "empty" else fake.answer
+                if body.get("stream"):  # server-sent events, a word at a time, then [DONE]
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/event-stream")
+                    self.end_headers()
+                    words = text.split(" ")
+                    for i, w in enumerate(words):
+                        piece = w if i == 0 else f" {w}"
+                        chunk = {"model": body.get("model"), "choices": [{"delta": {"content": piece}}]}
+                        self.wfile.write(f"data: {json.dumps(chunk)}\n\n".encode())
+                        self.wfile.flush()
+                    self.wfile.write(b"data: [DONE]\n\n")
+                    self.wfile.flush()
+                    self.close_connection = True
+                    return None
                 self._send(
                     200,
                     {"choices": [{"message": {"role": "assistant", "content": text}}], "usage": {"total_tokens": 9}},
