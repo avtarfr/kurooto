@@ -100,7 +100,7 @@ def test_the_dashboard_mounts_it_and_has_the_talk_box():
     home = static("home.js").decode()
     html = static("home.html").decode()
     assert 'id="pane-being"' in html and 'id="talk"' in html and 'id="talk-input"' in html
-    assert 'const beingBoard = () => DENSE && BOARD === "being" && !STUDY && !MAX;' in home
+    assert 'const beingBoard = () => BOARD === "being" && !STUDY && !(DENSE && MAX);' in home
     passes = ("CopyShader", "LuminosityHighPassShader", "EffectComposer", "RenderPass", "ShaderPass", "UnrealBloomPass")
     assert all(f'"{f}"' in home and static(f"vendor/three/{f}.js") for f in passes)
     assert all(f"BEING.{f}(m)" in home for f in ("update", "event", "graph", "voice"))
