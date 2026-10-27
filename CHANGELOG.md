@@ -12,6 +12,10 @@
 - **The phone app's Memory page shows your notes properly.** It framed a fixed ring of feature lights, so the notes
   sat small in the middle and a feature's name ran off the edge; it now frames the notes as they lie, between the
   app's bars, a little larger, with the lights on a ring just round them.
+- **Your phone's senses stopped for 12 hours after any short sleep of your computer.** When a batch of readings had
+  to wait on the call line, the phone sent nothing more for 12 hours by the clock, so ten minutes with the laptop
+  shut lost Brain its phone senses till the next day (and readings past the phone's 300 were dropped). The phone
+  now holds back only while that one batch still waits on the line, and sends the rest once your computer takes it.
 
 ## 0.8.12 (2026-10-27)
 

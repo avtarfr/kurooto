@@ -225,6 +225,25 @@ def test_phone_aggregates_arrive_through_the_sealed_chat(app):
     assert app.modules["calls"].chat.take(body)[0] == 409  # a reading is spent once
 
 
+def test_phone_senses_hold_back_only_while_their_batch_waits_on_the_line():
+    """0.8.13: after one batch waited on the call line (the computer off for ten minutes), the phone sent nothing for 12
+    hours by the clock. Now it holds back only while that batch is still in the line's outbox for it (GET /outbox)."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    pkg = root / "android/src/io/github/avtarfr/kurooto"
+    senses = (pkg / "Senses.java").read_text()
+    send = senses[senses.index("static synchronized void send(") :]
+    assert "3_600_000" not in send and 'putLong("queuedAt"' not in send  # no hold by the clock
+    assert "SensesRules.maySend(" in send and "Chat.lineWaiting(" in send and '"onLine", id' in send
+    chat = (pkg / "Chat.java").read_text()
+    assert '"/outbox"' in chat[chat.index("lineWaiting(") :]
+    worker = (root / "src/kurooto/data/worker/src/worker.js").read_text()
+    assert "p === '/outbox'" in worker  # the line answers it with this phone's waiting oids
+    outbox_for = worker[worker.index("async outboxFor(") :]
+    assert "waiting.push({ oid: x.oid" in outbox_for[:800]
+
+
 # ---------------------------------------------------------------------------------------------- the audit lint
 def test_no_audit_lint():
     for s in (

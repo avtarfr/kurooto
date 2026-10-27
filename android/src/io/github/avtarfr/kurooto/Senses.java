@@ -288,22 +288,29 @@ public class Senses extends BroadcastReceiver {
     }
 
     /** Send what's held, 40 bins at a time; kept for next time if the line can't be reached. When your computer is off the
-     *  line keeps one sealed batch for it, and nothing more is sent for 12 hours (what waits stays here, up to HOLD_MAX),
-     *  so the senses never crowd the line's room for chat and answers. Call off the main thread. */
+     *  line keeps one sealed batch for it, and nothing more is sent while that batch still waits there (what comes
+     *  meanwhile stays here, up to HOLD_MAX), so the senses never crowd the line's room for chat and answers; once your
+     *  computer has taken it, the next reading sends again (SensesRules.maySend). Call off the main thread. */
     static synchronized void send(Context c) {
         List<String> held = held(c);
         if (held.isEmpty()) return;
-        long now = System.currentTimeMillis();
-        if (now - sp(c).getLong("queuedAt", 0) < 12 * 3_600_000L) return;
+        SharedPreferences s = sp(c);
+        if (s.contains("queuedAt")) s.edit().remove("queuedAt").apply(); // before 0.8.13: a 12-hour hold by the clock
+        String onLine = s.getString("onLine", "");
+        if (!onLine.isEmpty()) {
+            if (!SensesRules.maySend(onLine, Chat.lineWaiting(c))) return;
+            s.edit().remove("onLine").apply();
+        }
         try {
             while (!held.isEmpty()) {
                 int n = Math.min(40, held.size());
                 JSONArray bins = new JSONArray();
                 for (String b : held.subList(0, n)) bins.put(new JSONObject(b));
-                int r = Chat.sendSenses(c, bins);
+                String id = Chat.newId();
+                int r = Chat.sendSenses(c, id, bins);
                 if (r == 0) break;
                 held = new ArrayList<>(held.subList(n, held.size()));
-                if (r == 2) { sp(c).edit().putLong("queuedAt", now).apply(); break; }
+                if (r == 2) { s.edit().putString("onLine", id).apply(); break; }
             }
         } catch (Exception ignored) { }
         saveHeld(c, held);

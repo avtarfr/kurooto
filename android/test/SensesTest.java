@@ -37,6 +37,12 @@ public class SensesTest {
         check(held.size() == 1 && held.get(0).contains("\"total\":20"), "the same bin is replaced by the later reading");
         for (int i = 0; i < 10; i++) held = SensesRules.keep(held, SensesRules.bin("light", i * 300_000L + 1_000_000L, new String[]{"band"}, new Object[]{"dim"}), 5);
         check(held.size() == 5, "past the limit the oldest go");
+        // 0.8.13: a batch kept on the line holds the phone back only while it still waits there, never by the clock
+        check(SensesRules.maySend("", null) && SensesRules.maySend(null, null), "nothing on the line: send");
+        check(!SensesRules.maySend("a1", java.util.Arrays.asList("x9", "a1")), "the batch still waits on the line: hold");
+        check(SensesRules.maySend("a1", java.util.Arrays.asList("x9")), "your computer took the batch: send again at once");
+        check(SensesRules.maySend("a1", new ArrayList<>()), "the line holds nothing from this phone: send");
+        check(!SensesRules.maySend("a1", null), "the line can't be asked: hold, ask again next time");
         if (failed > 0) { System.out.println(failed + " failed"); System.exit(1); }
         System.out.println("SensesTest ok");
     }

@@ -397,7 +397,10 @@ order holds. Limits: `OUTBOX_MAX` 100 things (distinct `oid`), `OUTBOX_BYTES` 20
 file, `parts × 512 KB`, at part 0); over them, 507 with `note`. Only paired devices can queue; a ticket's upload while
 offline still gets 503. When the computer finishes an item (`outbox` op with `done`), the Worker drops it, records
 `{oid, kind, ok, note, t}` in `odone` (100, one day) and tells an Android sender by ntfy (below). Web devices aren't
-pushed for this (an iPhone must show something for every push); they poll `/outbox` or `/chat`.
+pushed for this (an iPhone must show something for every push); they poll `/outbox` or `/chat`. The Android senses
+(`Senses.send`, 0.8.13) poll `/outbox` too: after a batch is queued they send nothing more until its `oid` is gone
+from `waiting` (`SensesRules.maySend`), so at most one senses batch is ever on the line; before 0.8.13 a 12-hour
+clock held them back instead.
 
 **Sealing.** Android: the fields are k1-sealed with the ntfy key (as answers are), so ntfy can't read them; the Worker
 holds that key (`NTFY_KEY`) and stores the sealed form. Web: plain JSON over HTTPS with the device key. Either way

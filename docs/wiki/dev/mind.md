@@ -760,15 +760,17 @@ is the price of the probe; `probe_words` is at least 3. (6) The demonstration so
 Code: `mind/senses/` (`store.py`, `intero.py`, `activity.py`, `phone.py`); `modules/mind.py` jobs `intero` (1m), `activity` (1m), `activity_poll` (5m),
 `senses_roll` (04:30) and `/senses`; `modules/calls/chat.py` `take` passes `{"senses": ...}` to `phone.ingest`; the gate's `AUDIT` lint; `measure.health` reads
 `intero.last_fine`; stage 12's demos read the store. Android: `Senses.java` (alarm, readings, held bins, sealed send via `Chat.sendSenses`),
-`SensesRules.java` (the pure rules), `SensesTest.java`, a Senses group in Settings (`SettingsPane.kt`, 0.8.10; the Phone tab before), `Places.entered` -> `Senses.place`. Tests: `test_mind_senses.py` (15),
+`SensesRules.java` (the pure rules), `SensesTest.java`, a Senses group in Settings (`SettingsPane.kt`, 0.8.10; the Phone tab before), `Places.entered` -> `Senses.place`. Tests: `test_mind_senses.py` (16),
 `SensesTest`. Switches: `mind.senses.intero` (on), `mind.senses.activity` (off), `mind.senses.phone.<sensor>` (11, each off).
 
 `store`: `<state>/mind-senses/senses.db`, `events` (7 days) and `days` (totals); `rollup` folds old events into totals; `forget` per sensor. `intero.sample` reads psutil and
 nvidia-smi, the job queue (`jobs.active`), the quota report and the call connector; the model is a running mean change per (action, body variable) and `learn`
 refuses any other target (`BODY_VARS`). `activity` salts with `<state>/mind-senses/salt` (0600). `phone.clean` allows, per sensor, only the named fields; numbers
 must be numbers, words from a list, a label of at most 30 plain characters, a Wi-Fi id a 8 to 16 hex code. On the phone, a reading is a 5-minute bin kept in
-`SharedPreferences` (at most 300), sent 40 at a time; when the line says the computer is off (`queued`), nothing more is sent for 12 hours so the senses can't fill
-the line's outbox (100 things shared with chat and answers).
+`SharedPreferences` (at most 300), sent 40 at a time; when the line says the computer is off (`queued`), the batch's id is kept (`onLine`) and nothing more is
+sent while the line's `GET /outbox` still lists it for this phone (`Chat.lineWaiting`, `SensesRules.maySend`; unreachable line: hold), so the senses can't fill
+the line's outbox (100 things shared with chat and answers). Before 0.8.13 this was a 12-hour hold by the clock (`queuedAt`, dropped on first send): a
+ten-minute sleep stopped the senses for 12 hours and cost the bins past 300.
 
 **Deviations.** (1) The phone samples every 15 minutes, not continuously in 5-minute bins: bins are 5 minutes wide, readings come 15 minutes apart (battery). (2) Unlock
 counting needs the app's process alive. (3) The 30-second interoception cycle is a minute (the scheduler's step). (4) Zotero opens are not collected. (5) The

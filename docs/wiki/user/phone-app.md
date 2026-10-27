@@ -706,6 +706,9 @@ sent them, each once.
   can for your computer." Wait till the computer is back, or use Telegram.
 - Sharing a file with the computer off needs this version of the app (it shares with the phone's own key; older ones
   asked the computer first).
+- **Senses** (Settings → Senses): one batch of readings waits on the call line; the rest stay on the phone (about
+  eight hours' worth at most) and go as soon as your computer has taken that batch. Before 0.8.13 the phone sent
+  nothing more for 12 hours after any batch waited, so even a ten-minute sleep stopped them till the next day.
 
 ## Managing paired phones
 

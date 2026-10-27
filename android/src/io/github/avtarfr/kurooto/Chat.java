@@ -516,12 +516,30 @@ final class Chat {
     }
 
     /** The phone's senses, sealed like a chat message (Senses): 0 failed, 1 taken by your computer, 2 kept on the line. */
-    static int sendSenses(Context c, JSONArray bins) {
+    static int sendSenses(Context c, String id, JSONArray bins) {
         try {
-            Sent s = post(c, newId(), new JSONObject().put("senses", new JSONObject().put("bins", bins)));
+            Sent s = post(c, id, new JSONObject().put("senses", new JSONObject().put("bins", bins)));
             return s.queued ? 2 : s.ok ? 1 : 0;
         } catch (Exception e) {
             return 0;
+        }
+    }
+
+    /** The ids of what this phone sent that the call line still holds for your computer, or null if the line can't be
+     *  reached (Senses asks whether its last batch went through). Call off the main thread. */
+    static java.util.List<String> lineWaiting(Context c) {
+        if (demo != null) return new java.util.ArrayList<>();
+        Net.Reply r = Net.request("GET", Prefs.url(c) + "/outbox", null, null, Prefs.device(c), 20000);
+        if (!r.ok()) return null;
+        try {
+            JSONObject j = new JSONObject(r.body);
+            if (!j.optString("computer").isEmpty()) computer = j.optString("computer");
+            JSONArray w = j.optJSONArray("waiting");
+            java.util.List<String> out = new java.util.ArrayList<>();
+            for (int i = 0; w != null && i < w.length(); i++) out.add(w.getJSONObject(i).optString("oid"));
+            return out;
+        } catch (Exception e) {
+            return null;
         }
     }
 
