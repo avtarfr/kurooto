@@ -34,7 +34,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Check-ins, journal and the week](#check-ins-journal-and-the-week): 18 settings
 - [Classes and timetable](#classes-and-timetable): 15 settings
 - [Calendar](#calendar): 11 settings
-- [Quiz and exams](#quiz-and-exams): 32 settings
+- [Quiz and exams](#quiz-and-exams): 33 settings
 - [Books, study time and handwritten notes](#books-study-time-and-handwritten-notes): 41 settings
 - [Notes, files and sync](#notes-files-and-sync): 28 settings
 - [Notes brain (GBrain)](#notes-brain-gbrain): 18 settings
@@ -2275,6 +2275,20 @@ Your own rules for the other AI, added to the end of every study pack's prompt.
   time.
 - **Costs and what leaves this computer:** Nothing leaves: it goes into the zip you send yourself.
 - **Depends on:** `studypack.instructions`.
+
+### `studypack.cited_pages`
+
+Pages of the readings your class cites ("B&D S2.3") a study pack takes whole, past the usual 250; `0`: off.
+
+The readings your class material cites (a syllabus's "B&D S2.3", "Salby Chapter 2") go into a study pack whole, before
+any other book pages and past the usual 250, up to this many pages for all the books.
+
+- **Values:** A number of pages for all the books together; `0`: off (cited pages share the usual 250 and come only with
+  a topic, as before 0.8.13). **Default:** `400`.
+- **When to change it:** Lower it if the other AI can't hold that much; raise it for a long syllabus. INDEX.md lists
+  each citation and the pages it became.
+- **Costs and what leaves this computer:** Nothing leaves: the pages go into the zip you send yourself.
+- **Depends on:** Skills (`/studypack`), and Books having read the books.
 
 ## Books, study time and handwritten notes
 

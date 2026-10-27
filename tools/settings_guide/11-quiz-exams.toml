@@ -173,3 +173,11 @@ values = "Lines of text, one rule each."
 when = "Add standing instructions (\"use my notation\", \"LaTeX for maths\") you'd otherwise type each time."
 cost = "Nothing leaves: it goes into the zip you send yourself."
 needs = "`studypack.instructions`."
+
+[s."studypack.cited_pages"]
+tip = "Pages of the readings your class cites (\"B&D S2.3\") a study pack takes whole, past the usual 250; `0`: off."
+what = "The readings your class material cites (a syllabus's \"B&D S2.3\", \"Salby Chapter 2\") go into a study pack whole, before any other book pages and past the usual 250, up to this many pages for all the books."
+values = "A number of pages for all the books together; `0`: off (cited pages share the usual 250 and come only with a topic, as before 0.8.13)."
+when = "Lower it if the other AI can't hold that much; raise it for a long syllabus. INDEX.md lists each citation and the pages it became."
+cost = "Nothing leaves: the pages go into the zip you send yourself."
+needs = "Skills (`/studypack`), and Books having read the books."

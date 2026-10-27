@@ -196,7 +196,7 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | `/notes pdf` sends a `.tex`, not a PDF | No LaTeX engine: tap **Install Tectonic** (with Skills on), or install TeX Live, MiKTeX or MacTeX. "Some maths didn't compile" means a macro of your own: define it in your copy of the template (`/notes pdf template`). |
 | A book stays "not started" or "waiting for a reader" | Reading happens at night on the charger (`/books read now`, or `/books read force` on battery). Scanned pages need Tesseract (`/books setup`) or a vision model; encrypted PDFs need Poppler. `/books` says which. |
 | A book sent on Telegram wasn't added | Telegram lets bots fetch files up to 20 MB: drop bigger books into the folder (`/books folder <subject>`). The caption must say `book for <subject>`. |
-| A study pack is missing files | It was over 50 MB without Drive upload. `INDEX.md` in the zip lists what was left out; turn on Drive upload. |
+| A study pack is missing files | The reply says why: over 50 MB, or a file over 40 MB, without Drive upload; or a book's pages on the topic past what the other AI can hold. `INDEX.md` in the zip lists what was left out; turn on Drive upload, or answer **Send it all as a Drive link**. |
 | A Drive link from a study pack stopped working | Temporary uploads are deleted after `drive_upload.temp_days` (7). Download what you want to keep, or move it out of the Kurooto folder in Drive before then. |
 | Study time counts while I'm away (Wayland) | Add the idle hook (`kurooto idle away` / `back`; see [Books and study](books-and-study.md)). `kurooto doctor` shows what it uses now. |
 | Study time stopped counting | A `kurooto idle away` without its `back`: run `kurooto idle back`. |

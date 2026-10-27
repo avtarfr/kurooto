@@ -780,7 +780,12 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 - **skills** (`modules/skills.py`): runs `SKILL.md` files (shipped `data/skills`, add-ons, prompts with `skill: true`,
   the user's own) as AI jobs; routines (`/every`), drafts (`/newskill`), LaTeX revision packs (Tectonic `--untrusted`,
   else `latexmk` or `pdflatex` with `-no-shell-escape`: the AI wrote the LaTeX), study packs, `send_file(s)` (over
-  50 MB goes to Drive upload).
+  50 MB goes to Drive upload). A study pack (`_send_study_pack`) builds with `limit=None` when Drive upload is ready
+  with `big_files`, or for `to="drive"` (the `study_pack` tool's `to`, whose result gives the zip's path in the cache's
+  `study-packs/`, which `_sendable()` allows); `left_out_line()` counts `left_out` by reason (`studypack.OVER_ZIP`,
+  `OVER_FILE`, else a book's page cap). Drive ready but `big_files` off and something left out for size: an
+  `app.ask` question (hook `skills.pack_drive`, registered in `__init__`) whose yes rebuilds with `limit=None` and sends
+  with `to="drive"` (0.8.13).
 - **books** and **integrate**: see [concept-graph.md](concept-graph.md). Since 0.5.19 `integrate` also reads the
   Classroom files `classroom_notes` files (`ClassroomNotes._to_graph` → `Integrate.take_classroom`) and, with
   `"handwritten"` in `integrate.sources`, linked handwritten notes (`Linker.to_graph` → `Integrate.take_handwritten`),

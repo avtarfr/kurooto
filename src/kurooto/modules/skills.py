@@ -540,6 +540,35 @@ def compile_tex(app: App, tex: Path, timeout: int = 900) -> tuple[bool, str]:
     return False, _tex_errors(res)
 
 
+# ------------------------------------------------------------------------------------------- study packs
+PACK_DRIVE_HOOK = "skills.pack_drive"  # "Send it all as a Drive link?" after a pack left files out for size
+PACK_DRIVE_YES = "Send it all as a Drive link"
+PACK_DRIVE_OK = re.compile(r"^(send|yes|yep|yeah|y|ok|okay|sure|do it|go ahead)\b")
+
+
+def left_out_line(left_out: list[tuple[str, str]]) -> str:
+    """What a study pack left out, counted by the real reason (core/studypack.py build's left_out)."""
+    from kurooto.core import studypack
+
+    def n_of(n: int, one: str, many: str) -> str:
+        return f"{n} {one if n == 1 else many}"
+
+    zip_n = sum(why == studypack.OVER_ZIP for _, why in left_out)
+    file_n = sum(why == studypack.OVER_FILE for _, why in left_out)
+    pages_n = len(left_out) - zip_n - file_n  # a book's pages on the topic past what the other AI can hold
+    parts = []
+    if zip_n:
+        parts.append(f"{n_of(zip_n, 'file', 'files')} didn't fit in Telegram's 50 MB")
+    if file_n:
+        parts.append(f"{n_of(file_n, 'file is', 'files are')} over 40 MB on {'its' if file_n == 1 else 'their'} own")
+    if pages_n:
+        parts.append(
+            f"{n_of(pages_n, 'book', 'books')} had more pages on the topic than the pack keeps "
+            f"({studypack.MAX_PACK_BOOK_PAGES}, what the other AI can hold at once)"
+        )
+    return f" Left out: {'; '.join(parts)}. INDEX.md lists them." if parts else ""
+
+
 # ------------------------------------------------------------------------------------------- module
 class Skills(Module):
     id = "skills"
@@ -562,6 +591,7 @@ class Skills(Module):
         app.jobs.then_actions["skills.done"] = self._done
         app.jobs.then_actions["skills.drafted"] = self._drafted
         app.jobs.then_actions["skills.latex"] = self._latex
+        app.ask.hooks[PACK_DRIVE_HOOK] = self._pack_drive_answer
 
     # ----------------------------------------------------------------------------------- lifecycle
     def start(self):
@@ -1145,40 +1175,84 @@ class Skills(Module):
             name = ""
         return self._send_study_pack(sid, name, aim, msg.message_id)
 
-    def _send_study_pack(self, subject: str, name: str, aim: str, reply_to=None, topics=None) -> str:
+    def _send_study_pack(
+        self, subject: str, name: str, aim: str, reply_to=None, topics=None, to: str = "", where: bool = False
+    ) -> str:
+        """Build a study pack and send it. to="drive": nothing left out for size, sent as a Drive link. where: say
+        where the zip is (for the AI's tool, so it can send it again)."""
         from kurooto.core import studypack
 
         drive = self.app.modules.get("drive_upload")
-        big = drive is not None and self.app.is_on("drive_upload") and drive.setting("big_files")
+        on = drive is not None and self.app.is_on("drive_upload")
+        ready = on and drive.ready()[0]
+        big = ready and drive.setting("big_files")
+        if to == "drive" and not ready:
+            return (
+                "Drive upload isn't set up: on this computer, dashboard → Features → Drive upload → Set up. "
+                "Without it the pack can only come on Telegram, up to 50 MB."
+            )
         try:  # with Drive upload on nothing is left out: a pack over Telegram's 50 MB comes as a Drive link
-            zip_path, info = studypack.build(self.app, subject, name, aim, limit=None if big else -1, topics=topics)
+            zip_path, info = studypack.build(
+                self.app, subject, name, aim, limit=None if big or to == "drive" else -1, topics=topics
+            )
         except ValueError as e:
             return str(e)
         title = name or subject.replace("-", " ").title()
         ok, said = send_file(
-            self.app, zip_path, f"Study pack: {title}. Upload it to your AI and paste the prompt below."
+            self.app, zip_path, f"Study pack: {title}. Upload it to your AI and paste the prompt below.", to=to
         )
         if (
             ok and "telegram" in self.app.notifier.channels
         ):  # the prompt on its own, ready to copy (it's in the zip too)
             self.app.notify(
-                studypack.prompt_text(title, aim, info["topics"], self.app),
+                studypack.prompt_text(title, aim, info["topics"], self.app, cited=info.get("cited", False)),
                 kind="result",
                 title=f"Prompt for the {title} pack",
                 why="asked",
             )
-        left = (
-            f" {len(info['left_out'])} file(s) didn't fit in Telegram's 50 MB; INDEX.md lists them (Drive upload "
-            "sends bigger packs as a link)."
-            if info["left_out"]
-            else ""
-        )
+        left = left_out_line(info["left_out"])
+        if left and any(why in (studypack.OVER_ZIP, studypack.OVER_FILE) for _, why in info["left_out"]):
+            if ready and not big and ok:  # set up, but big_files is off: offer this pack as a link, once
+                self.app.ask.ask(
+                    f"{title}'s study pack left files out for size. Send it all as a Drive link?",
+                    choices=[PACK_DRIVE_YES, "No"],
+                    hook=PACK_DRIVE_HOOK,
+                    hook_payload={"subject": subject, "name": name, "aim": aim, "topics": info["topics"]},
+                    source=self.id,
+                    title="Study pack",
+                    why="asked",
+                    about=title,
+                )
+                left += " I've asked whether to send it all as a Drive link."
+            elif not ready and drive is not None:
+                left += (
+                    " With Drive upload set up (dashboard → Features → Drive upload), the whole pack comes as a "
+                    "Drive link."
+                )
+        at = f" The zip: {zip_path} (send_file sends it again; to=drive for a Drive link)." if where and ok else ""
         if info["topics"]:
+            what = "the sections the class cites, and pages on it" if info.get("cited") else "only their pages on it"
             return (
-                f"On {', '.join(info['topics'])}: {info['class']} class files first, then {info['books']} book "
-                f"extracts (only their pages on it), and {info['notes']} notes, in one zip.{left} {said}"
+                f"On {studypack.shown_topics(info['topics'])}: {info['class']} class files first, then "
+                f"{info['books']} book extracts ({what}), and {info['notes']} notes, in one zip.{left} {said}{at}"
             )
-        return f"{info['notes']} notes and {info['files']} course files in one zip.{left} {said}"
+        return f"{info['notes']} notes and {info['files']} course files in one zip.{left} {said}{at}"
+
+    def _pack_drive_answer(self, q: dict, answer: str) -> str | None:
+        """The answer to "Send it all as a Drive link?": the same pack again, nothing left out for size, to Drive."""
+        if not PACK_DRIVE_OK.match(str(answer or "").strip().lower()):
+            return None
+        p = q.get("hook_payload") or {}
+        if not p.get("subject"):
+            return None
+        topics = p.get("topics")
+        return self._send_study_pack(
+            str(p["subject"]),
+            str(p.get("name") or ""),
+            str(p.get("aim") or ""),
+            topics=list(topics) if isinstance(topics, list) else None,
+            to="drive",
+        )
 
     def _pack(self, msg: Incoming, arg: str) -> str:
         if not arg.strip():
@@ -1377,7 +1451,9 @@ class Skills(Module):
             Tool(
                 "study_pack",
                 "Send them a zip with one subject's notes and course files and a prompt they can give another AI "
-                "(Claude, ChatGPT) to write deeper notes. Use it for 'send me everything for my X quiz'.",
+                "(Claude, ChatGPT) to write deeper notes. Use it for 'send me everything for my X quiz'. On Telegram "
+                "it keeps under 50 MB and leaves the rest out; to=drive leaves nothing out for size and sends it as a "
+                "Google Drive link (use it for 'send it as a Drive link'). The result says where the zip is.",
                 self._tool_study_pack,
                 {
                     "subject": arg("the subject, e.g. deep learning or its short name"),
@@ -1386,6 +1462,7 @@ class Skills(Module):
                         "optional: the syllabus to narrow it to, comma-separated, e.g. thermodynamics, lapse rate; "
                         "class material is put first and books give only their pages on it"
                     ),
+                    "to": arg("telegram (the default) or drive: the whole pack as a Google Drive link"),
                 },
                 ("subject",),
                 offline="queue",
@@ -1424,8 +1501,9 @@ class Skills(Module):
         subj = self.app.modules.get("subjects")
         sid = subj.resolve(text) if subj is not None and self.app.is_on("subjects") else None
         topics = [x.strip() for x in str(a.get("topics") or "").split(",") if x.strip()] or None
+        to = "drive" if str(a.get("to") or "").strip().lower() == "drive" else ""
         return self._send_study_pack(
-            sid or text, subj.name_of(sid) if sid else "", str(a.get("aim") or ""), topics=topics
+            sid or text, subj.name_of(sid) if sid else "", str(a.get("aim") or ""), topics=topics, to=to, where=True
         )
 
 
