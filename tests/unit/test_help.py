@@ -177,8 +177,9 @@ def test_the_phone_apps_chat_gets_the_index_with_its_wiki_links(env):
     app.handle(Incoming("/help", via="app", respond=lambda t, buttons=None: got.append(t)))
     assert got and got == app.help_parts() and commands.wiki() in got[-1]
     assert all(commands.wiki(g.page) in "\n".join(got) for g in commands.GROUPS if f"/help {g.key}" in "\n".join(got))
-    chat = (ROOT / "android" / "src" / "io" / "github" / "avtarfr" / "kurooto" / "ChatActivity.kt").read_text()
-    assert "LinkAnnotation.Url" in chat  # 0.7.6: the Compose chat makes web addresses tappable
+    # 0.7.6: the Compose chat makes web addresses tappable (0.8.10: the thread is ChatThread.kt, ChatActivity forwards)
+    chat = (ROOT / "android" / "src" / "io" / "github" / "avtarfr" / "kurooto" / "ChatThread.kt").read_text()
+    assert "LinkAnnotation.Url" in chat
 
 
 def test_help_settings_links_the_settings_guide(app):
