@@ -212,7 +212,10 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   `node --check` on every file.
 - Dashboard tabs (`TABS` in `home.js`): today, chat, activity, jobs, schedule, features, phone, research, about,
   settings, and terminals. Alt+letter shortcuts in `PKEY` (Alt+T Today, Alt+H Chat, Alt+S Settings). Layouts `dense`
-  and `roomy` (`look.layout`).
+  and `roomy` (`look.layout`). Dense sets the grid's areas inline (`paneGrid` in `home.js`); roomy (0.8.16) places every
+  pane by a named area in CSS ("roomy's board" at the end of `home.css`, a one-column stack under 900 px), so a new pane
+  needs an area there or it spills into an implicit row. `beingBoard()` holds in roomy too: `body.being-board` there
+  hides SYSTEMS and BRAIN and `paneShown` says so, so neither draws behind the being.
 - Ctrl+K (0.5.8): markup `#cmdk*` in `home.html`, logic in `home.js` (`VERBS`: ask, journal, note, remind, due, alarm,
   find, open, study; `cmdOpen`, `cmdGo`, ...). Every verb except `find`/`open`/`study` calls `POST /api/act`, the same
   path as the Today page (`study` calls `setStudy`). Note: `core/palette.py` is the colour palette and

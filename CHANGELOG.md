@@ -5,6 +5,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 - **Voice no longer crashes Kurooto.** Turning listening off, muting, or a microphone that came and went could close
   the microphone's sound stream while the listening thread was still reading it, and the whole of Kurooto died (a
   segmentation fault in the sound library, seen several times a day with PipeWire). Each sound stream is now opened,
@@ -60,6 +61,15 @@
   stay whole (`mind.register.templates`). The nightly voice learning now waits for the machine like Brain's own heavy
   work.
 >>>>>>> f/v0816-brain
+=======
+- **The dashboard works in a narrow window.** Under 1280 px wide (a window tiled to half a 1920 screen) the dashboard
+  uses the roomy layout, and since BRAIN joined the board its grid pushed NOTES and the pages into extra rows: on a long
+  page such as Features, STATUS, SYSTEMS and BRAIN got no height and NOTES sat alone in a narrow strip. Roomy now places
+  each pane by name: STATUS down the left, NOTES wide, SYSTEMS and BRAIN under it, the pages below. With the being as
+  the board it shows there too, in place of SYSTEMS and BRAIN, beside NOTES and STATUS. A narrow BRAIN pane keeps its
+  region panel as a drawer, a window too short for the panes scrolls, and under 900 px they stack. The dense board
+  (1280 px and wider) is unchanged.
+>>>>>>> f/v0816-dash
 
 ## 0.8.15 (unreleased)
 
