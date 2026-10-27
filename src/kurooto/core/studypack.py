@@ -550,6 +550,8 @@ def _cites_of(toks: list[re.Match], abbr: str, names: frozenset, legend: dict) -
         else:  # a bare number after a book's name: 3.5 a section, 3 a chapter
             num = t["bare"]
             kind, label, code = ("section" if "." in num else "chapter"), "", num
+        if num.split(".")[0] in ("0", "00"):  # no chapter 0 or section 0.x: a number from a table of marks
+            continue
         if kind == "chapter":
             if not num.isdigit():
                 continue
@@ -613,8 +615,8 @@ def citations(texts: list[str]) -> list[Cite]:
         for c in cs:
             out.setdefault((c.abbr, c.names, c.kind, c.num, c.label), c)
 
-    cols: list[tuple[int, str]] = []
     for text in texts:
+        cols: list[tuple[int, str]] = []  # a table's columns end with its document (an exam's numbers aren't cells)
         rest = []
         for line in text.split("\n"):
             heads = [(m.start(), m[0]) for m in head.finditer(line)]
@@ -623,8 +625,8 @@ def citations(texts: list[str]) -> list[Cite]:
                 continue
             row = _table_row(line, cols, tok) if cols else []
             if row:
-                for abbr, toks in row:
-                    add(_cites_of(toks, abbr, abbrs.get(abbr, frozenset()), legend))
+                for abbr, toks in row:  # in a table only coded cells count: a bare "0.5" is a number, not a reading
+                    add(_cites_of([t for t in toks if not t["bare"]], abbr, abbrs.get(abbr, frozenset()), legend))
                 continue
             rest.append(line)
         joined = " ".join(" ".join(rest).split())

@@ -354,3 +354,16 @@ def test_another_subjects_note_on_the_same_words_stays_out(env, monkeypatch):
     found = studypack.brain_notes(app, ["autocorrelation"], "time-series-analysis")
     assert [p.name for p in found] == ["ar-models.md"]
     assert len(studypack.brain_notes(app, ["autocorrelation"])) == 3  # without a subject, as before
+
+
+def test_numbers_in_other_class_files_are_not_readings():
+    """A table's columns end with the syllabus: an exam's marks table after it ("0.5 1.0 1.5", "B&D 2.0") gives no
+    readings, and no chapter 0 or section 0.x ever counts."""
+    exam = """Midsem marks
+ Question                                                            B&D         S&S           BJR&L
+ Q1                                                                  0.5         1.0           2.0
+ Q2                                                                  1.5         0             0.3
+"""
+    got = studypack.citations([SYLLABUS, exam])
+    assert got and not any(c.num.split(".")[0] in ("0", "00") for c in got)
+    assert {(c.abbr, c.num) for c in got} == {(c.abbr, c.num) for c in studypack.citations([SYLLABUS])}
