@@ -398,3 +398,51 @@ def test_a_voice_note_on_a_used_up_limit_says_it_plainly(tmp_path, monkeypatch):
         app.close()
         server.shutdown()
         server.server_close()
+
+
+def claude_signed_in(home, account, org="org-1", t=None):
+    f = home / ".claude.json"
+    f.write_text(json.dumps({"oauthAccount": {"accountUuid": account, "organizationUuid": org}}), encoding="utf-8")
+    if t is not None:
+        os.utime(f, (t, t))  # a new mtime, so the cached fingerprint is read again
+    return f
+
+
+def test_a_claude_limit_belongs_to_the_account_that_hit_it(env, tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
+    q = env.q
+    claude_signed_in(home, "personal", t=1000)
+    q.record("claude", "rate_limited", "5-hour limit reached ∙ resets 3pm", hint={"reset_at": T + 3 * 3600})
+    assert q.used_up("claude") == T + 3 * 3600
+    stored = json.loads((env.app.paths.state / "quota.json").read_text(encoding="utf-8"))
+    assert "personal" not in json.dumps(stored)  # only a fingerprint is kept
+    claude_signed_in(home, "personal", t=2000)  # the same account, its record touched: still used up
+    assert q.used_up("claude") == T + 3 * 3600
+    claude_signed_in(home, "work", org="org-2", t=3000)  # switched to another account: Claude is back at once
+    assert q.used_up("claude") is None
+    assert q.status("claude")["used"] == 0
+
+
+def test_an_extra_claude_accounts_limit_follows_its_own_sign_in(env, monkeypatch):
+    from kurooto.providers import claude_accounts
+
+    q = env.q
+    f = claude_accounts.ensure_folder(env.app, "work")
+    claude_signed_in(f, "a", t=1000)
+    q.record("claude:work", "rate_limited", "", hint={"reset_at": T + 3600})
+    assert q.used_up("claude:work") == T + 3600
+    assert q.used_up("claude") is None  # your usual sign-in's limit is its own
+    claude_signed_in(f, "b", t=2000)
+    assert q.used_up("claude:work") is None
+
+
+def test_no_account_record_keeps_the_limit(env, tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path / "nobody"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "nobody"))
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
+    env.q.record("claude", "rate_limited", "", hint={"reset_at": T + 3600})
+    assert env.q.used_up("claude") == T + 3600  # can't tell who's signed in: it stays used up until the reset

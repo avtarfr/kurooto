@@ -4,6 +4,8 @@ programs only; the real one is never run, and nothing is written outside the san
 
 from __future__ import annotations
 
+import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -293,3 +295,36 @@ def test_kurooto_ai_lists_adds_renames_and_removes(app, monkeypatch, capsys):
     assert main(["ai", "remove-claude", "lab"]) == 1 and ca.folder(app, "lab").is_dir()  # no yes, no removal
     assert main(["ai", "remove-claude", "Lab two", "--yes"]) == 0 and not ca.folder(app, "lab").exists()
     assert main(["ai", "remove-claude", "lab", "--yes"]) == 1
+
+
+def signed_in(folder: Path, account: str, t: float) -> None:
+    f = folder / ".claude.json"
+    f.write_text(json.dumps({"oauthAccount": {"accountUuid": account, "organizationUuid": "o"}}), encoding="utf-8")
+    os.utime(f, (t, t))
+
+
+def test_switching_the_usual_sign_in_ends_its_limit_at_once(app, tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.delenv(ca.ENV, raising=False)
+    signed_in(home, "personal", 1000)
+    limited = providers.Result(providers.Verdict.RATE_LIMITED, retry_after_s=5 * 3600)
+    fallback.cool(app, "claude", limited)
+    assert fallback.cooling(app, "claude")
+    assert "personal" not in (app.paths.state / "brain-limits.json").read_text(encoding="utf-8")
+    signed_in(home, "personal", 2000)  # the same account: still waiting for its reset
+    assert fallback.cooling(app, "claude")
+    signed_in(home, "work", 3000)  # another account signed in: tried straight away
+    assert fallback.cooling(app, "claude") is None
+    assert "claude" not in fallback.status(app)
+
+
+def test_an_extra_account_switching_inside_its_folder_too(app):
+    f = ca.ensure_folder(app, "work")
+    signed_in(f, "a", 1000)
+    fallback.cool(app, "claude:work", providers.Result(providers.Verdict.RATE_LIMITED, retry_after_s=3600))
+    assert fallback.cooling(app, "claude:work")
+    signed_in(f, "b", 2000)
+    assert fallback.cooling(app, "claude:work") is None

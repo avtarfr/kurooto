@@ -133,6 +133,11 @@ CLI's code, not guessed.
   `cooling`), the quota pool (`pool_id` gives `claude:<key>`; `quota.label` names it), `Brain.worked_file`
   (`claude-<key>-worked.json`: no `:` in file names), the reading budget (`readbudget.kind` treats any Claude id as a
   plan), the receipt (`brain.label`).
+- A limit is also tied to the account signed in (0.8.10): `claude_accounts.signed_in_as(app, bid)` reads only
+  `oauthAccount`'s account and organisation ids from that sign-in's `.claude.json` (`~/.claude.json`, or
+  `$CLAUDE_CONFIG_DIR/.claude.json`, or the extra account's folder), keeps a 16-character SHA-256 of them (cached by
+  mtime), and `fallback.cool` / `Quota._hit` store it as `who`. `fallback.cooling` and `Quota._entry` end the limit
+  when a different fingerprint is signed in; no record (None) keeps it until the reset.
 - `fallback.auto(app)`: `AUTO` with the extra accounts after `claude`; when `brain.main` is a Claude id, the other
   Claude ids go first. `order()` and `selfdoc` use it.
 - Sign-in: `Prereqs.open_signin("claude", env=...)` starts the usual sign-in window with the variable set (Linux:

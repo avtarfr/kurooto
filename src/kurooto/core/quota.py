@@ -225,10 +225,22 @@ class Quota:
             if jobs is not None:
                 jobs.resume()
 
+    def _who(self, pool: str) -> str | None:
+        """Who a limit belongs to, where that can change under the same name: the Claude account signed in (a
+        fingerprint), since switching accounts gives a fresh limit. None for every other limit."""
+        from kurooto.providers import claude_accounts
+
+        return claude_accounts.signed_in_as(self.app, pool) if claude_accounts.is_claude(pool) else None
+
     def _entry(self, data: dict, pool: str, t: float) -> dict:
-        """This limit's record for the current day (a new day, or the limit coming back, starts the count again)."""
+        """This limit's record for the current day (a new day, the limit coming back, or another account signed in
+        starts the count again)."""
         p = data.setdefault("pools", {}).setdefault(pool, {"count": 0, "since": day_start(pool, t)})
         start = day_start(pool, t)
+        if p.get("until") and p.get("who") and self._who(pool) not in (None, p["who"]):
+            p.update(count=0, since=t)  # another account: its own limit, not the one that ran out
+            for k in ("until", "until_src", "who", "reserved"):
+                p.pop(k, None)
         if p.get("until") and t >= p["until"]:
             start = max(start, p["until"])
             p.pop("until", None)
@@ -240,6 +252,9 @@ class Quota:
 
     def _hit(self, pool: str, p: dict, t: float, h: dict) -> dict | None:
         p["hit"] = t
+        who = self._who(pool)
+        if who:
+            p["who"] = who  # the account that ran out (a fingerprint)
         if h.get("model"):
             p["model"] = h["model"]
         day = daily(h)
@@ -273,8 +288,8 @@ class Quota:
                     p.pop(k, None)
                 else:
                     p[k] = v
-        p.pop("until", None)
-        p.pop("until_src", None)
+        for k in ("until", "until_src", "who"):
+            p.pop(k, None)
         return True
 
     def _used(self, pool: str, p: dict) -> tuple[int, str]:

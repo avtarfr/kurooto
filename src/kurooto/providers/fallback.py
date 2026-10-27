@@ -16,9 +16,10 @@ Settings (brain.*):
 
 The limited AI is then skipped until its limit resets: the time it said ("resets 3pm", Google's retry hint; a minute for
 a per-minute limit), else a back-off (30 min, doubling each time it's still limited, at most 5 hours), so later
-requests go straight to the other one. An answer from it clears that early. Only when every AI is waiting is the
-limited one tried anyway.
-State: <state>/brain-limits.json ({brain: {until, src, hits, at}}); events brain_limited, brain_back.
+requests go straight to the other one. An answer from it clears that early, and so does signing in to another Claude
+account (for a Claude limit). Only when every AI is waiting is the limited one tried anyway.
+State: <state>/brain-limits.json ({brain: {until, src, hits, at, who}}; who: the Claude account's fingerprint); events
+brain_limited, brain_back.
 """
 
 from __future__ import annotations
@@ -150,6 +151,13 @@ def reset_of(result: Result, now: float) -> float | None:
     return None
 
 
+def _who(app: App, bid: str) -> str | None:
+    """The Claude account signed in for this AI (a fingerprint; providers/claude_accounts.py), None for any other."""
+    from kurooto.providers import claude_accounts
+
+    return claude_accounts.signed_in_as(app, bid) if claude_accounts.is_claude(bid) else None
+
+
 def cool(app: App, bid: str, result: Result, now: float | None = None) -> float:
     """An AI hit its limit: it's skipped until the reset it named, else for a back-off that doubles while it stays
     limited. Returns the time it's skipped until."""
@@ -167,16 +175,23 @@ def cool(app: App, bid: str, result: Result, now: float | None = None) -> float:
         else:
             until, src = now + min(BACKOFF_S * 2 ** (hits - 1), MAX_BACKOFF_S), "backoff"
         d[bid] = {"until": until, "src": src, "hits": hits, "at": now}
+        who = _who(app, bid)
+        if who:
+            d[bid]["who"] = who  # the Claude account that ran out: another one signed in isn't limited
         jsave(_file(app), d)
     app.events.emit("brain_limited", brain=bid, until=round(until), src=src)
     return until
 
 
 def cooling(app: App, bid: str, now: float | None = None) -> float | None:
-    """Until when this AI is skipped for a limit, or None."""
+    """Until when this AI is skipped for a limit, or None. A Claude limit ends at once when another account is signed
+    in (`claude` /login, or switching accounts) than the one that ran out."""
     now = time.time() if now is None else now
     rec = _load(app).get(bid)
     until = float(rec.get("until") or 0) if isinstance(rec, dict) else 0
+    if until > now and rec.get("who") and _who(app, bid) not in (None, rec["who"]):
+        clear(app, bid)
+        return None
     return until if until > now else None
 
 
@@ -197,7 +212,7 @@ def status(app: App, now: float | None = None) -> dict[str, dict]:
     return {
         k: {"until": v.get("until"), "src": v.get("src")}
         for k, v in _load(app).items()
-        if isinstance(v, dict) and float(v.get("until") or 0) > now
+        if isinstance(v, dict) and cooling(app, k, now) is not None
     }
 
 

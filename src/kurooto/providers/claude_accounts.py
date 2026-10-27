@@ -5,9 +5,11 @@ Claude Code keeps a sign-in per config folder: the CLAUDE_CONFIG_DIR environment
 sign-in lives there (`.credentials.json` on Linux and Windows; on macOS a keychain item whose name carries a hash of
 the folder). Your usual sign-in (`claude`, no folder) stays exactly as before. Each extra account gets a folder of
 Kurooto's own, <data>/claude-accounts/<key>/, which you sign in to once; every run of that account is started with
-CLAUDE_CONFIG_DIR pointing there. Kurooto never opens, copies or prints what's in it, never writes into your own
-~/.claude, and leaves the folder out of backups unless backups.secrets is on. Removing an account deletes only that
-folder (after your yes).
+CLAUDE_CONFIG_DIR pointing there. Kurooto never opens, copies or prints the sign-in, never writes into your own
+~/.claude, and leaves the folder out of backups unless backups.secrets is on. It reads one thing, the account's id in
+Claude Code's .claude.json, and keeps only a hash of it: a limit belongs to the account that hit it, so switching
+accounts (`claude` /login, or a swapper) brings Claude back at once (core/quota.py, fallback.py). Removing an account
+deletes only that folder (after your yes).
 
 Settings:
     brain.claude_accounts   {"work": {"name": "Work"}}: the extra accounts, by key; the brain id is "claude:<key>",
@@ -18,6 +20,8 @@ Models: brain.models["claude:work"], else brain.models.claude, else Claude Code'
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import re
 import shutil
@@ -137,6 +141,37 @@ def ensure_folder(app: App, key: str) -> Path:
     except OSError:
         pass
     return f
+
+
+_WHO: dict[str, tuple[float, str | None]] = {}  # .claude.json path -> (its mtime, the fingerprint read)
+
+
+def signed_in_as(app: App | None, bid: str) -> str | None:
+    """A fingerprint of the account signed in for this Claude brain (a hash of its account and organisation ids, never
+    the email or the sign-in), or None when it can't tell. Your usual sign-in's record is ~/.claude.json (or
+    $CLAUDE_CONFIG_DIR/.claude.json); an extra account's is in its own folder."""
+    try:
+        if is_id(bid):
+            f = folder(app, key_of(bid)) / ".claude.json"
+        elif bid == "claude":
+            own = os.environ.get(ENV)
+            f = Path(own) / ".claude.json" if own else Path.home() / ".claude.json"
+        else:
+            return None
+        mtime = f.stat().st_mtime
+    except (OSError, ValueError, AttributeError):
+        return None
+    seen = _WHO.get(str(f))
+    if seen and seen[0] == mtime:
+        return seen[1]
+    try:
+        acct = json.loads(f.read_text(encoding="utf-8")).get("oauthAccount") or {}
+        ids = f"{acct.get('accountUuid') or ''}|{acct.get('organizationUuid') or ''}"
+        who = hashlib.sha256(ids.encode()).hexdigest()[:16] if ids != "|" else None
+    except (OSError, ValueError, AttributeError):
+        who = None
+    _WHO[str(f)] = (mtime, who)
+    return who
 
 
 def env(app: App, key: str) -> dict[str, str]:

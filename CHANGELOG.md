@@ -31,6 +31,8 @@ The phone app, rebuilt around chat (the Rail design), and the remaining requeste
   calls while you're away. No picture is ever kept; your face is an encrypted template, forgotten with one command.
 - The remaining older phone screens (questions, quick note, share, places) are Compose sheets in the same style.
 - For developers: `KUROOTO_NO_DESKTOP=1` keeps a scratch run off the real desktop.
+- Fixed: after one Claude account hit its limit, signing in to another one in Claude Code still got "Claude hit its
+  limit" until the first one's reset. A limit now belongs to the account that hit it (only a hash of its id is kept).
 
 ## 0.8.9 (2026-10-27)
 

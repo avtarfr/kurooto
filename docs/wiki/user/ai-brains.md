@@ -87,7 +87,9 @@ When the fallback answers, the answer says so in one line. Three more rules:
   cap), the request goes to agy, and the other way round; a Gemini key you saved comes after them. The run receipt
   says so: *Claude Code hit its limit; agy answered · 3.8-flash · medium · 40 s*. The AI at its limit is then skipped
   until it resets (the time it said, like "resets 3pm"; otherwise half an hour, then an hour, up to 5 hours), so the
-  next requests go straight to the other one without waiting for a refusal. An AI only stands in once it has answered
+  next requests go straight to the other one without waiting for a refusal. A Claude limit belongs to the account that
+  hit it: sign in to another account in Claude Code (`/login`, or an account switcher) and Kurooto uses it straight
+  away instead of waiting for the first one's reset (0.8.10). An AI only stands in once it has answered
   on this computer (a request, or the setup page's test). That's the automatic order, used when you haven't picked a
   fallback: `brain.fallback` can also be a list (`["agy", "gemini"]`), which then is the order, tried on any failure.
   `brain.fallback_on` sets what moves a request on: `rate_limited` (the default), and also `auth` (signed out) and

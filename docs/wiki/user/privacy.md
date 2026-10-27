@@ -283,10 +283,11 @@ sign-in. Google's answers differ on whether other tools may start agy unattended
 account; for tools like Kurooto, Google recommends a Gemini key.
 
 **Claude Code and OpenAI-compatible services** work under their own terms and your own account. Claude Code gets its
-reach for each request only; nothing is saved in its own settings. An extra Claude account
+reach for each request only; nothing is saved in its own settings. To tell which account hit a limit, Kurooto reads
+the account's id from Claude Code's `.claude.json` and keeps only a hash of it. An extra Claude account
 ([Two Claude accounts](ai-brains.md#two-claude-accounts)) keeps its sign-in in a folder of Kurooto's
-(`claude-accounts/` in the data folder), which Kurooto never reads or copies and leaves out of backups unless
-`backups.secrets` is on; it sends to Anthropic like your usual one.
+(`claude-accounts/` in the data folder), whose sign-in Kurooto never reads or copies; the folder stays out of backups
+unless `backups.secrets` is on, and it sends to Anthropic like your usual one.
 
 ## What stays on your computer, and where
 
