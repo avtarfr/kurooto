@@ -15,11 +15,16 @@ touches the disk.
 
 The dashboard: GET /api/voice (state, engines, switches), POST /api/voice/say {text}, POST /api/voice/mute {on},
 POST /api/voice/shape {text} (shape.py), and the live stream's {"t": "voice"} messages: voice_state, voice_level,
-voice_text, voice_speak (docs/wiki/dev/voice.md).
+voice_text, voice_speak, voice_heard (docs/wiki/dev/voice.md).
 
 Voice ID (0.8.10, voiceid.py; voice.speaker_id.on, off by default): only the owner's voice can make Kurooto act; any
 other voice, or one it isn't sure of, can only chat (core/guest.py). Its own page is /voice-id; /voice id and /voice
-enrol are typed only, never by voice."""
+enrol are typed only, never by voice.
+
+Hooks for add-ons (0.8.12): listen_once(timeout_s) takes the next stretch of speech, any voice, through this listener,
+written out here and handed to the add-on only (never the gate, the portal or the AI); guest_reply(text, name) is one
+chat turn through the guest path (core/guest.py: no tools, none of the owner's data). Switches voice.addons.listen and
+voice.addons.chat."""
 
 from __future__ import annotations
 
@@ -93,6 +98,10 @@ register_defaults(
             "adapt_per_day": 10,  # at most this many learned turns a day
             "spoken_enrol": True,  # during enrolment Kurooto says each step aloud (off: the page shows it only)
         },
+        "addons": {
+            "listen": True,  # an add-on may take one stretch of speech at a time (written out here, never sent)
+            "chat": True,  # an add-on may have Kurooto chat with someone through the guest path (no tools, no data)
+        },
     },
 )
 
@@ -100,6 +109,8 @@ LOOPBACK = ("127.0.0.1", "localhost", "::1")
 MIC_CHECK_S = 30
 JOB_WAIT_S = 600
 RETRY_S = 60  # a microphone that failed is tried again after this long
+ONCE_MAX_S = 60.0  # listen_once waits at most this long for speech to start
+ONCE_WORK_S = 30.0  # and this long more for a stretch it took to be written out
 
 
 class Speaker:
@@ -225,6 +236,8 @@ class Voice(Module):
         self.mic_error = ""
         self._retry_at = 0.0
         self.voiceid = VoiceID(self)  # (voice id) the owner's voice: voiceid.py
+        self._once: dict | None = None  # listen_once's hold: the next stretch goes to it, not to hear()
+        self._once_lock = threading.Lock()  # one holder at a time
 
     # ------------------------------------------------------------------------------------------- the parts
     def wants(self) -> list[str]:
@@ -376,6 +389,14 @@ class Voice(Module):
         live = getattr(self.app, "live", None)
         if live is not None and live.watched():
             self.publish("voice_level", levels=shape_mod.levels(data, 5), rate=shape_mod.RATE)
+
+    def _heard_wave(self, audio: bytes | None) -> None:
+        """A stretch that wasn't a turn (chatter, noise, not to it): its loudness outline only, never words, so the
+        page's waveform moves for speech that wasn't for Kurooto too. Same switch as the live levels."""
+        live = getattr(self.app, "live", None)
+        if not audio or not self.setting("listen.levels") or live is None or not live.watched():
+            return
+        self.publish("voice_heard", samples=shape_mod.envelope(audio), addressed=False)
 
     def status(self) -> dict:
         s = self.setting
@@ -573,6 +594,7 @@ class Voice(Module):
                 elif not g.called(heard):
                     heard = ""  # dropped: someone else, not to it, never written out in full
                 if not h.text and not heard:
+                    self._heard_wave(audio)
                     del audio
                     self.heard[CHATTER] = self.heard.get(CHATTER, 0) + 1
                     from kurooto.modules.voice.gate import Decision
@@ -592,6 +614,7 @@ class Voice(Module):
         d = g.decide(h, ctx)
         self.heard[d.klass] = self.heard.get(d.klass, 0) + 1
         if not d.addressed:
+            self._heard_wave(audio)
             del audio
             h.text = ""  # dropped here: never stored, logged or sent
             was_open = self.portal.open
@@ -837,13 +860,108 @@ class Voice(Module):
 
     def _work_loop(self) -> None:
         while True:
-            pcm, woke, seconds, flags = self._work.get()
-            try:
+            self._work_one(*self._work.get())
+
+    def _work_one(self, pcm: bytes, woke: bool, seconds: float, flags: bytes = b"") -> None:
+        """One stretch from the listener: an add-on's listen_once takes it while it holds, else hear()."""
+        try:
+            slot = self._once
+            if slot is not None and not slot["done"].is_set():
+                self._take_once(slot, pcm, seconds, flags)
+            else:
                 self.hear(Heard(speech=True, wake=woke, seconds=seconds), pcm, flags)
-            except Exception as e:
-                self.app.events.emit("voice_failed", part="hearing", error=f"{type(e).__name__}"[:100])
-            finally:
-                del pcm
+        except Exception as e:
+            self.app.events.emit("voice_failed", part="hearing", error=f"{type(e).__name__}"[:100])
+        finally:
+            del pcm
+
+    # -------------------------------------------------------------------------------------- hooks for add-ons
+    def listen_once(self, timeout_s: float = 8.0) -> tuple[str, list[float] | None, float] | None:
+        """The next stretch of speech, any voice and without its name, for an add-on: (text, the voice's numbers or
+        None, seconds of speech), or None (nothing said within timeout_s, listening blocked or muted, the portal
+        open, another holder, voice.addons.listen off). Written out here; never sent to the gate, the portal or the
+        AI, never kept. Blocks the caller (call it from the add-on's own thread); the stretch is written out on
+        Voice's own hearing thread meanwhile. The voice's numbers come from Voice ID's model when its parts are set
+        up (Voice ID itself may be off)."""
+        if not self.app.is_on(self.id) or not self.setting("addons.listen") or self.blocked():
+            return None
+        if self.listener is None or not self.listener.running() or self.portal.open or self.portal.busy:
+            return None
+        if not self._once_lock.acquire(blocking=False):
+            return None
+        slot: dict = {"done": threading.Event(), "taken": False, "got": None, "since": time.monotonic()}
+        try:
+            self._once = slot
+            end = time.monotonic() + max(0.5, min(float(timeout_s or 8.0), ONCE_MAX_S))
+            while not slot["done"].wait(0.2):
+                if self.blocked() or self.portal_cut():
+                    break
+                if not slot["taken"] and time.monotonic() > end:
+                    break
+                if slot["taken"] and time.monotonic() > end + ONCE_WORK_S:
+                    break
+        finally:
+            slot["done"].set()  # a stretch arriving after this goes to hear() as usual
+            self._once = None
+            self._once_lock.release()
+        return slot["got"]
+
+    def _take_once(self, slot: dict, pcm: bytes, seconds: float, flags: bytes) -> None:
+        """listen_once's stretch, on the hearing thread: written out and, when Voice ID's parts are here, embedded.
+        A stretch with no words (noise) is skipped: it keeps waiting."""
+        slot["taken"] = True
+        try:
+            self._heard_wave(pcm)  # the waveform moves as for any speech
+            text = self._write_out(pcm).strip()
+            if not text:
+                return
+            speech_s = sum(1 for f in flags if f) * 512 / 16000 if flags else float(seconds or 0)
+            emb = None
+            if not self.voiceid.missing_parts():
+                try:
+                    emb = list(self.voiceid.embed(pcm))
+                except Exception:
+                    emb = None
+            if not slot["done"].is_set():
+                slot["got"] = (text, emb, round(speech_s, 2))
+                slot["done"].set()
+        finally:
+            slot["taken"] = slot["got"] is not None
+            del pcm
+
+    def guest_reply(self, text: str, name: str | None = None, history: list | None = None) -> str | None:
+        """One chat turn with someone who isn't the owner, for an add-on: core/guest.py's sealed path (no tools, no
+        MCP, none of the owner's notes, memory or history; refusals for commands, actions and his things; the hourly
+        cap; voice.speaker_id.guest_brain picks who answers). `name`: theirs, as context; `history`: the add-on's own
+        last (said, answer) pairs, at most 4 used (the owner's conversation's turns are never mixed in). Blocks until
+        the answer (call it from the add-on's own thread). None when Voice or voice.addons.chat is off."""
+        if not self.app.is_on(self.id) or not self.setting("addons.chat"):
+            return None
+        text = (text or "").strip()[:1500]
+        if not text:
+            return None
+        from kurooto.core import guest
+
+        replies: list[str] = []
+        msg = Incoming(
+            text=text,
+            via="voice",
+            voice=True,
+            respond=lambda t, buttons=None: replies.append(str(t)),
+            speaker="guest",
+            speaker_by="addon",
+        )
+        guest.handle(self.app, msg, name=name or "", turns=[tuple(x)[:2] for x in (history or [])][-4:])
+        gid = getattr(msg, "job", None)
+        try:
+            answer = self._wait_job(msg) if gid else "\n".join(replies)
+        finally:
+            if gid:  # its words leave the request list once answered (or given up on)
+                try:
+                    self.app.jobs.forget_guest(gid)
+                except Exception as e:
+                    self.app.events.emit("voice_failed", part="guest words", error=f"{type(e).__name__}"[:100])
+        return answer.strip() or None
 
     # ----------------------------------------------------------------------------------------- commands
     def commands(self) -> list[Command]:

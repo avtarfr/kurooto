@@ -523,6 +523,41 @@ def test_a_reply_isnt_spoken_once_muted(voice, monkeypatch):
     assert said == ["one"]
 
 
+def tone(seconds=3.0, loud=8000) -> bytes:
+    """A stand-in stretch of sound (16 kHz, 16-bit mono): louder in the middle."""
+    import array
+    import math
+
+    n = int(16000 * seconds)
+    wave = (int(loud * math.sin(k / 9) * (0.2 + math.sin(math.pi * k / n))) for k in range(n))
+    return array.array("h", wave).tobytes()
+
+
+def test_a_stretch_that_isnt_a_turn_shows_its_outline_and_never_its_words(voice):
+    voice.judge.answers = ['{"class": "chatter", "confidence": 0.9}']
+    voice.hear(Heard(speech=True, text="the pin for the locker is four four seven one"), tone(8.0))
+    voice.hear(Heard(speech=False, text=""), tone(0.3, 300))  # noise
+    waves = [m for m in voice.app.live.sent if m["kind"] == "voice_heard"]
+    assert [sorted(m) for m in waves] == [["addressed", "kind", "samples", "t"]] * 2
+    assert all(m["t"] == "voice" and m["addressed"] is False for m in waves)
+    assert len(waves[0]["samples"]) == 120 and len(waves[1]["samples"]) == 15  # at most 120; one per 20 ms
+    assert all(0.0 <= x <= 1.0 for m in waves for x in m["samples"])
+    assert max(waves[0]["samples"][50:70]) > waves[0]["samples"][0]  # louder in the middle, as it was
+    assert "locker" not in json.dumps(voice.app.live.sent)
+
+
+def test_a_turn_has_no_outline_and_the_levels_switch_and_an_unwatched_page_stop_it(voice):
+    voice.hear(Heard(speech=True, text="Kurooto, what's due this week?"), tone())
+    assert not any(m["kind"] == "voice_heard" for m in voice.app.live.sent)
+    voice.judge.answers = ['{"class": "chatter", "confidence": 0.9}'] * 2
+    voice.app.settings.set("voice.listen.levels", False)
+    voice.hear(Heard(speech=True, text="no I'll get the snacks later"), tone())
+    voice.app.settings.set("voice.listen.levels", True)
+    voice.app.live.watched = lambda: False
+    voice.hear(Heard(speech=True, text="no I'll get the snacks later"), tone())
+    assert not any(m["kind"] == "voice_heard" for m in voice.app.live.sent)
+
+
 # ------------------------------------------------------------------------------------- Voice ID (0.8.10)
 class Stt:
     """The transcriber: says what it's told to, and counts each call (and how much sound it got)."""
@@ -651,6 +686,14 @@ def test_someone_else_not_calling_it_is_never_transcribed(vid):
     assert v.portal.send.got[-1] == ("what's the time?", "guest")
 
 
+def test_someone_else_dropped_by_the_gate_still_shows_its_outline(vid):
+    v = vid.v
+    hear(v, "did you see the match last night, it was something", who_voice=55, seconds=8.0)
+    waves = [m for m in v.app.live.sent if m["kind"] == "voice_heard"]
+    assert len(waves) == 1 and waves[0]["addressed"] is False and 0 < len(waves[0]["samples"]) <= 120
+    assert "match" not in json.dumps(v.app.live.sent)
+
+
 def test_without_the_gate_only_addressed_turns_are_checked(vid):
     v = vid.v
     v.app.settings.set("voice.speaker_id.gate", False)
@@ -750,3 +793,120 @@ def test_a_guest_s_request_is_blanked_once_voice_has_its_answer(vid, monkeypatch
     monkeypatch.setattr(v, "_wait_job", lambda msg: "Sure.")
     v.ask_brain("what's due?", vid.check(sound(1, 7)[0], 3.0))  # the owner's: kept as always
     assert forgot == ["jguest1"]
+
+
+# ------------------------------------------------------------------------------- hooks for add-ons (0.8.12)
+@pytest.fixture
+def once(voice, monkeypatch):
+    """Listening (a fake listener that says it runs), a fake transcriber and a fake voice model."""
+    from types import SimpleNamespace
+
+    from tests.unit.test_voiceid import FakeEmbedder
+
+    voice.listener = SimpleNamespace(running=lambda: True, stop=lambda: None, error="")
+    stt = Stt()
+    monkeypatch.setattr(voice, "stt", lambda: stt)
+    voice.voiceid.embed_fn = FakeEmbedder()
+    voice.stt_fake = stt
+    return voice
+
+
+def held_listen(v, timeout=5.0):
+    """listen_once on a thread of its own, as an add-on calls it; returns (thread, result list) once it holds."""
+    import threading
+    import time
+
+    out = []
+    th = threading.Thread(target=lambda: out.append(v.listen_once(timeout)), daemon=True)
+    th.start()
+    end = time.monotonic() + 5
+    while v._once is None and time.monotonic() < end:
+        time.sleep(0.01)
+    assert v._once is not None
+    return th, out
+
+
+def test_listen_once_takes_the_next_stretch_and_sends_it_nowhere(once):
+    v = once
+    v.stt_fake.said = "I'm Asha, nice to meet you"
+    th, out = held_listen(v)
+    pcm_, flags = sound(7)
+    v._work_one(pcm_, False, 3.0, flags)
+    th.join(5)
+    text, emb, speech_s = out[0]
+    assert text == "I'm Asha, nice to meet you" and len(emb) > 8 and speech_s > 0
+    assert v.brain.got == [] and not v.portal.open and v.heard == {NOISE: 0, CHATTER: 0, ADDRESSED: 0}
+    assert "Asha" not in everything_kept(v) and "Asha" not in json.dumps(v.app.live.sent)
+    assert v._once is None and not v._once_lock.locked()
+    v.judge.answers = ['{"class": "chatter", "confidence": 0.9}']
+    v._work_one(pcm_, False, 3.0, flags)  # released: the next stretch goes through hear() as usual
+    assert v.heard[CHATTER] == 1
+
+
+def test_listen_once_skips_noise_and_gives_up_on_time(once):
+    v = once
+    v.stt_fake.said = ""
+    th, out = held_listen(v, timeout=0.6)
+    pcm_, flags = sound(7)
+    v._work_one(pcm_, False, 3.0, flags)  # no words: skipped, it keeps waiting
+    th.join(5)
+    assert out == [None] and v._once is None
+
+
+def test_listen_once_refuses_when_it_shouldnt_hear(once):
+    v = once
+    v.app.settings.set("voice.addons.listen", False)
+    assert v.listen_once(0.5) is None
+    v.app.settings.set("voice.addons.listen", True)
+    v.mute(True)
+    assert v.listen_once(0.5) is None
+    v.mute(False)
+    v.portal.invite("Hello.", 10)  # the owner's conversation is open: never taken from it
+    assert v.listen_once(0.5) is None
+    v.portal.close("test")
+    v._once_lock.acquire()  # another holder
+    try:
+        assert v.listen_once(0.5) is None
+    finally:
+        v._once_lock.release()
+    v.listener = None
+    assert v.listen_once(0.5) is None
+
+
+def test_mute_ends_a_hold_at_once(once):
+    import time
+
+    v = once
+    th, out = held_listen(v, timeout=30)
+    t0 = time.monotonic()
+    v.mute(True)
+    th.join(5)
+    assert out == [None] and time.monotonic() - t0 < 3
+
+
+def test_guest_reply_goes_the_sealed_guest_way_with_the_name(voice, monkeypatch):
+    from kurooto.core import guest
+
+    v = voice
+    seen = {}
+    monkeypatch.setattr(guest, "sealed_brain", lambda app: True)
+
+    def submit(prompt, **kw):
+        seen.update(kw, prompt=prompt)
+        return "jg1"
+
+    monkeypatch.setattr(v.app.jobs, "submit", submit)
+    forgot = []
+    monkeypatch.setattr(v.app.jobs, "forget_guest", lambda jid: forgot.append(jid) or True)
+    monkeypatch.setattr(v, "_wait_job", lambda msg: "  Nice to meet you, Asha!  ")
+    v.voiceid.guest_turns.append(("the owner's guest said", "kept apart"))
+    guest._times.clear()
+    out = v.guest_reply("I study chemistry", name="Asha", history=[("Hi", "Hello! What's your name?")])
+    assert out == "Nice to meet you, Asha!" and forgot == ["jg1"]
+    assert seen["audience"] == "guest" and seen["text_only"] and seen["quiet"]
+    p = seen["prompt"]
+    assert "The visitor's name is Asha." in p and "Visitor: Hi" in p and "The visitor says: I study chemistry" in p
+    assert "kept apart" not in p  # the owner's conversation's turns are never mixed in
+    assert v.guest_reply("/forget all") == guest.COMMAND  # refusals as for any guest
+    v.app.settings.set("voice.addons.chat", False)
+    assert v.guest_reply("hello") is None

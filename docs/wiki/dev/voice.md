@@ -35,6 +35,29 @@ with listening a second switch. User page: [../user/voice.md](../user/voice.md).
 
 Details: [face.md](face.md).
 
+## Hooks for add-ons (0.8.12)
+
+On `Voice` (`app.modules["voice"]`), both blocking: call them from the add-on's own thread, never the event loop.
+
+- `listen_once(timeout_s=8.0) -> (text, embedding or None, speech_s) | None`: holds the listener for the next stretch
+  of speech, any voice, no name needed. `_work_one` (the `voice-hear` thread) hands that stretch to `_take_once`
+  instead of `hear()`: written out (`_write_out`), embedded with Voice ID's model when its parts are set up (Voice ID
+  itself may be off; `voiceid.embed`, a list of floats), its speech seconds from the VAD flags; its outline still
+  moves the waveform (`voice_heard`). It never reaches the gate, the portal, the AI, `heard` counts, the event log or
+  the page's text. A stretch with no words is skipped and it keeps waiting. None when: Voice or
+  `voice.addons.listen` off, `blocked()` (listening off, muted, paused, battery saver, a call, the night, enrolling,
+  not set up), no running listener, the portal open or busy (never taken from your conversation), another holder
+  (`_once_lock`, one at a time), or nothing said within `timeout_s` (at most 60; a stretch already taken gets up to 30
+  s more to be written out). Mute or a block during the wait ends it at once.
+- `guest_reply(text, name=None, history=None) -> str | None`: one chat turn through `core/guest.py:handle` with
+  `speaker="guest"`, `speaker_by="addon"`: refusals for commands, actions and his things, `guest_per_hour`,
+  `owner_only_at_all`, then an `audience="guest"` job (text only, no tools, none of his data; `guest_brain`). `name`
+  goes into the prompt as "The visitor's name is ..." (letters, digits, `' . -` and spaces only, 40 chars); `history`
+  is the add-on's own `(said, answer)` pairs, last 4 used, instead of Voice ID's `guest_turns` (the owner's
+  conversation's guests never mix in). Waits like `ask_brain` (`_wait_job`), then `jobs.forget_guest`. None when Voice
+  or `voice.addons.chat` is off or the text is empty.
+- `say(text, wait=True)` (already there) speaks a scripted line.
+
 ## The flow
 
 ```
@@ -46,7 +69,7 @@ Mic (sounddevice | pw-record | parec), 16 kHz mono, 512-sample frames
   -> worker thread "voice-hear": Voice.hear(Heard(speech, wake, seconds), pcm)
        blocked()? drop.  Whisper.text(pcm) (CPU, int8; the assistant's name as initial_prompt and hotwords) -> del pcm
        Gate.decide(heard, portal.context())
-       not addressed: heard.text = "" (dropped), portal.take() closes an open portal
+       not addressed: heard.text = "" (dropped), its loudness outline -> voice_heard, portal.take() closes an open portal
        addressed: NameMatcher.uncall() (the call isn't sent); portal.take(heard, decision, text) -> ask_brain(text) -> Speaker.say(reply)
 ```
 
@@ -142,6 +165,7 @@ unknown `t`, so a page that doesn't draw Voice is unaffected.
 | `voice_level` | `levels`: 5 numbers 0..1 (two decimals: RMS on a -60..0 dB scale, 20 ms each), `rate`: 50 | every 100 ms while listening and a page is in sight (`voice.listen.levels`) |
 | `voice_text` | `who`: `you` or `kurooto`; `text` | an addressed turn and its reply, `/voice say` and `POST /api/voice/say` |
 | `voice_speak` | `samples` (the sentence's shape, `from_pcm`), `rate`: 50 | as each sentence starts playing |
+| `voice_heard` | `samples`: at most 120 numbers 0..1 (`shape.envelope`: one per 20 ms of the stretch on the `voice_level` scale, fewer and wider buckets for a long one), `addressed`: `false`; nothing else, no words | a stretch that wasn't a turn (chatter, noise, not to it, or someone else dropped by Voice ID's gate), from `Voice._heard_wave` on the `voice-hear` thread, while a page is in sight (`voice.listen.levels`) |
 
 Example: `{"t":"voice","kind":"voice_state","state":"thinking","portal":true,"listening":true,"why":""}`.
 

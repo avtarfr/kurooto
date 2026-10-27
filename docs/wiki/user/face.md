@@ -160,6 +160,11 @@ Once you've enrolled, Kurooto looks for you **only while you're not using the co
 - A dashboard badge "● camera" shows while Kurooto holds the camera, and the card says "Camera: on (looking for you)".
   The camera's own light is the honest signal: look for it.
 
+**Add-ons** may ask Face presence to keep looking while you type, or to tell them who's in view (where each face
+is and whether it's you; never a picture). Then the card and `/face` say "camera on: an add-on is looking" and why.
+A hold lasts at most 10 minutes unless the add-on asks again, and everything in the pause list below still stops it.
+`face.addons.hold` and `face.addons.watch` turn those off.
+
 **You've arrived** when it recognises you in 3 of 4 frames within 6 seconds, after at least 20 minutes with no sign of
 you (`face.greet.after_absent_min`; a locked screen isn't a sign of you). Unsure frames and other people count for
 nothing. A photo propped up in front of the camera doesn't move, so it waits for movement.
@@ -290,6 +295,7 @@ From a terminal: `kurooto face`, `kurooto face pause 1h`, `kurooto face forget [
 | `face.greet.with_others` | `skip` | `skip`, `short` or `full` |
 | `face.away.on`, `hold_desktop`, `hold_calls` | off | noticing you left, and what waits |
 | `face.learn.on`, `every_h`, `max`, `margin` | off, 6, 30, 0.08 | learning over time |
+| `face.addons.watch`, `hold` | on, on | let add-ons see who's in view, and keep the camera looking while you type |
 
 All of them: [the settings guide](../../SETTINGS_GUIDE.md).
 

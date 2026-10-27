@@ -83,6 +83,7 @@ KIND_PART = {
     "forecast": "forecast", "forecast_score": "forecast", "score_forecast": "forecast",
     "mind_feeling": "feelings",
     "budget_tick": "budget", "talk_heard": "budget", "talk_unprompted": "budget", "talk_rejected": "budget",
+    "talk_met": "budget",
     "learning_verdict": "budget", "learning_freeze": "budget",
     "harness_result": "harness",
     "workspace": "workspace", "workspace_cycle": "workspace",

@@ -24,6 +24,12 @@ Away (face.away.on): no sign of you for away.after_min while unlocked and watchi
 it ends with an arrival or with input ("back": somebody is using the computer, though it never greets for that).
 
 Strangers: their numbers are dropped with the frame; only counts since start are kept (you, unsure, not you).
+
+Hooks for add-ons (0.8.12): `held()` true (an add-on asked the camera to keep looking: Face.hold_watch) opens it
+whatever the input says, but only after every pause reason above has passed, so it never overrides a switch, the
+night, a call, a lock or /face pause. `people()` true (an add-on watches who's in view: Face.watch_people): each frame
+looked at also emits "people" with every face's box, place, yaw, identity, score and numbers, handed over in memory
+on this thread and dropped with the frame here.
 """
 
 from __future__ import annotations
@@ -36,7 +42,7 @@ from typing import Any
 
 from kurooto.core.biometric import dot
 from kurooto.modules.face.enrol import BLOWN, BLUR_MIN, BRIGHT, COVERED, COVERED_FRAMES, DARK
-from kurooto.modules.face.vision import SCORE_OTHER, SCORE_WATCH, moved
+from kurooto.modules.face.vision import SCORE_OTHER, SCORE_WATCH, moved, pose
 
 WAKE_S = 10  # after an unlock or a wake the camera may look this long
 INPUT_GRACE_S = 6  # input active again: recognition gets this long before the camera closes
@@ -85,6 +91,8 @@ class Watcher:
     emit: Callable[..., None] = lambda kind, **f: None
     learnable: Callable[[list[float]], bool] = lambda e: False
     clock: Callable[[], float] = time.monotonic
+    held: Callable[[], bool] = lambda: False  # an add-on keeps the camera looking (after every pause reason)
+    people: Callable[[], bool] = lambda: False  # an add-on watches who's in view: "people" each frame
     counts: Counts = field(default_factory=Counts)
 
     def __post_init__(self):
@@ -170,7 +178,7 @@ class Watcher:
         # when it can't (None), only a wake, an unlock or a confirmation keeps it open, never "it was open already"
         keep = self.camera_open and idle is not None
         looking = (idle is not None and idle >= idle_s) or (locked and bool(c.get("when_locked")))
-        want = looking or ((woke or confirming or keep) and grace)
+        want = looking or ((woke or confirming or keep) and grace) or self.held()
         if not want:
             self._close("resting")
             self._set("away" if self.away else "resting", "")
@@ -294,7 +302,12 @@ class Watcher:
         faces = self.detector.detect(frame, SCORE_OTHER)
         best: tuple[float, list[float], Any, dict] | None = None
         n_other = 0
+        seen: list[dict] | None = [] if self.people() else None
+        size = self.frames.size(frame) if seen is not None else (0, 0)
         for f in faces:
+            p = _person(f, size) if seen is not None and f.score >= SCORE_WATCH else None
+            if p is not None:
+                seen.append(p)  # type: ignore[union-attr]
             if f.score < SCORE_WATCH or f.height < min_px:
                 n_other += 1 if f.score >= SCORE_OTHER else 0
                 continue
@@ -307,6 +320,8 @@ class Watcher:
             e = self.embedder.feature(crop)
             del crop
             klass, s = self.classify(e)
+            if p is not None:
+                p.update(who=klass, score=round(float(s), 3), e=list(e))  # a copy for the add-on, in memory only
             if klass == "owner":
                 self.counts.you += 1
                 good = st.blur >= BLUR_MIN and DARK <= st.mean <= BRIGHT and st.bright <= BLOWN
@@ -323,6 +338,9 @@ class Watcher:
                     self.counts.not_you += 1
                 n_other += 1
             del e  # a stranger's or an unsure face's numbers go with the frame
+        if seen is not None:
+            self.emit("people", faces=seen)  # every frame looked at, empty too: nobody in view is news as well
+            del seen
         others = sum(1 for f in faces if f.score >= SCORE_OTHER) >= 2
         if others != self.others or others:  # while it lasts, every frame refreshes it (core/nearby.py's STALE_S)
             self.others = others
@@ -338,7 +356,12 @@ class Watcher:
         if fw and fh:
             x, y, w, h = f.box
             self.emit(
-                "seen", x=round((x + w / 2) / fw * 2 - 1, 3), y=round((y + h / 2) / fh * 2 - 1, 3), w=round(w / fw, 3)
+                "seen",
+                x=round((x + w / 2) / fw * 2 - 1, 3),
+                y=round((y + h / 2) / fh * 2 - 1, 3),
+                w=round(w / fw, 3),
+                h=round(h / fh, 4),
+                px=round(float(h), 1),
             )
         first = self.last_seen_owner is None or now - self.last_seen_owner > WINDOW_S
         before = self.present_at
@@ -380,6 +403,30 @@ class Watcher:
                 if not (dot(a.e, b.e) > STILL_COS and moved(a.face, b.face) < STILL_PX):
                     return False
         return True
+
+
+def _person(f, size: tuple[int, int]) -> dict:
+    """One face for Face.watch_people: its box's height (pixels and share of the frame), centre (-1..1, the camera's
+    own picture, not mirrored), width share, yaw (vision.pose, mirrored: negative = turned to their left) and the
+    detector's score. who/score/e are filled in when the face was big and clear enough to be judged, else None."""
+    fw, fh = size
+    x, y, w, h = f.box
+    try:
+        yaw = round(pose(f).yaw, 3)
+    except Exception:
+        yaw = None
+    return {
+        "h_px": round(float(h), 1),
+        "h": round(h / fh, 4) if fh else None,
+        "w": round(w / fw, 4) if fw else None,
+        "x": round((x + w / 2) / fw * 2 - 1, 3) if fw else None,
+        "y": round((y + h / 2) / fh * 2 - 1, 3) if fh else None,
+        "yaw": yaw,
+        "det": round(float(f.score), 3),
+        "who": None,
+        "score": None,
+        "e": None,
+    }
 
 
 # the pause reasons, in order: the first that applies is the one shown (on the card and in /face)

@@ -9,6 +9,14 @@
   organs as they turn; the nerves leave the brainstem as a spinal cord and split into fibre bundles with nerve cells,
   lit in a signal's colour. The blood is tinted red, the fluid round the brain pale aqua, the notes each in a clear
   colour, the heart a little fainter, and speech heard that wasn't to Kurooto shows faintly in the YOU lane.
+- **Hooks for add-ons in Face presence, Voice and Brain.** An add-on can see who's in view (each face's place, size
+  and whether it's you, in memory only) and keep the camera looking while you type, take one thing said through the
+  microphone (written out here, never sent), have Kurooto chat with someone the guest way (no tools, none of your
+  data), and give Brain a small capped reward for a good conversation. Every pause and mute still applies; switches
+  `face.addons.watch`, `face.addons.hold`, `voice.addons.listen`, `voice.addons.chat`, `mind.talk.met`.
+- **Voice: the waveform shows speech that wasn't for Kurooto too.** People talking to each other and noise now move
+  the dashboard's waveform as well, as their loudness only: no words ever reach the page. `voice.listen.levels`
+  turns it off with the live levels.
 
 ## 0.8.11 (2026-10-27)
 

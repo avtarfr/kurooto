@@ -387,6 +387,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 
 | Setting | Default | What it does |
 |---|---|---|
+| `face.addons.hold` | `true` | Let an add-on keep the camera looking while you type (never past a pause, the night, a call or a switch). ([guide](wiki/user/settings-guide.md#faceaddonshold)) |
+| `face.addons.watch` | `true` | Let an add-on see who's in view: each face's place, size and numbers, in memory only, never a picture. ([guide](wiki/user/settings-guide.md#faceaddonswatch)) |
 | `face.away.after_min` | `5` | No sign of you (your face or the keyboard) this long means you've left, in minutes. ([guide](wiki/user/settings-guide.md#faceawayaftermin)) |
 | `face.away.hold_calls` | `false` | While you're away, calls Kurooto would start by itself wait for you (up to the longest wait below). ([guide](wiki/user/settings-guide.md#faceawayholdcalls)) |
 | `face.away.hold_desktop` | `false` | Hold desktop pop-ups and spoken answers until you're back at the desk. ([guide](wiki/user/settings-guide.md#faceawayholddesktop)) |
@@ -754,6 +756,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.stimulation.on` | `true` | Its senses felt as a body (heat, load, touch), for its feelings and the dashboard. ([guide](wiki/user/settings-guide.md#mindstimulationon)) |
 | `mind.story.on` | `true` | One life story every part of Kurooto reads first: a fixed core, then its recent weeks. ([guide](wiki/user/settings-guide.md#mindstoryon)) |
 | `mind.story.tokens` | `800` | The life story's summary is at most this many tokens (about 4 characters each). ([guide](wiki/user/settings-guide.md#mindstorytokens)) |
+| `mind.talk.met` | `true` | An add-on's chat with someone in the room is a smaller reward for Brain (at most 0.05 a day, 6 meetings). ([guide](wiki/user/settings-guide.md#mindtalkmet)) |
 | `mind.talk.on` | `true` | Being talked to is a small reward for Brain (at most 0.2 a day; nothing for answers to its own pings). ([guide](wiki/user/settings-guide.md#mindtalkon)) |
 | `mind.tom.attention` | `false` | Hold a message (at most 15 minutes) while you're deep in one project. ([guide](wiki/user/settings-guide.md#mindtomattention)) |
 | `mind.tom.false_beliefs` | `true` | When something you were told turns out wrong, tell you once, with the evidence. ([guide](wiki/user/settings-guide.md#mindtomfalsebeliefs)) |
@@ -1160,6 +1163,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 
 | Setting | Default | What it does |
 |---|---|---|
+| `voice.addons.chat` | `true` | Let an add-on have Kurooto chat with someone who isn't you, the guest way: no tools, none of your data. ([guide](wiki/user/settings-guide.md#voiceaddonschat)) |
+| `voice.addons.listen` | `true` | Let an add-on take one stretch of speech at a time through the microphone (written out here, never sent). ([guide](wiki/user/settings-guide.md#voiceaddonslisten)) |
 | `voice.listen.after_speak_s` | `6` | Seconds after it spoke during which a question counts as an answer to it. ([guide](wiki/user/settings-guide.md#voicelistenafterspeaks)) |
 | `voice.listen.calls` | `false` | Keep listening while you're on a phone call (off: listening pauses during calls). ([guide](wiki/user/settings-guide.md#voicelistencalls)) |
 | `voice.listen.close_s` | `8` | Seconds of nothing said to it before the spoken conversation closes. ([guide](wiki/user/settings-guide.md#voicelistencloses)) |

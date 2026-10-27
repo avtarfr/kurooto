@@ -109,6 +109,12 @@ def levels(pcm: bytes, parts: int = 5) -> list[float]:
     return out
 
 
+def envelope(pcm: bytes, most: int = 120) -> list[float]:
+    """A heard stretch as its loudness outline: one number per 20 ms (levels' scale), at most `most` of them."""
+    n = len(pcm) // 2
+    return levels(pcm, min(most, max(1, n // 320))) if n else []
+
+
 def payload(samples: list[float], source: str) -> dict:
     return {"samples": samples, "rate": RATE, "seconds": round(len(samples) / RATE, 2), "source": source}
 

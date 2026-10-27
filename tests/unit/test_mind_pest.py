@@ -93,6 +93,24 @@ def test_talk_facts_carry_no_content(app):
     assert [b for k, b in app.facts if k == "talk_heard"][-1]["flags"]["focus"] is True
 
 
+def test_an_add_ons_meeting_is_a_fact_with_only_a_number_and_the_flags(app):
+    assert pest.met(app, 0.8)
+    pest.met(app, 7)  # clipped
+    pest.met(app, float("nan"))
+    met = [b for k, b in app.facts if k == "talk_met"]
+    assert [b["quality"] for b in met] == [0.8, 1.0, 0.0]
+    assert all(set(b) == {"quality", "flags"} and set(b["flags"]) == {"focus", "asleep", "exam"} for b in met)
+    assert pest.met(app, "not a number") is False  # never raises
+    app.settings.set("mind.talk.met", False)
+    assert pest.met(app, 1.0) is False
+    app.settings.set("mind.talk.met", True)
+    app.settings.set("mind.talk.on", False)
+    assert pest.met(app, 1.0) is False
+    app.settings.set("mind.talk.on", True)
+    app.settings.set("modules.enabled", [])  # Brain off
+    assert pest.met(app, 1.0) is False and len([k for k, _ in app.facts if k == "talk_met"]) == 3
+
+
 def test_every_unprompted_message_is_its_own_ping(app):
     """Through the notifier: anything it sends by itself is a talk_unprompted fact (exempt kinds too), so no message
     of its own can buy an answer's worth; an answer to you isn't."""

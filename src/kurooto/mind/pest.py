@@ -16,7 +16,10 @@ whether he's in focus, asleep or in an exam window, and whether it was a /comman
 own unprompted messages went out: his answers in the next 10 minutes pay nothing) and talk_rejected (a rejection above:
 it costs 3w). The scorekeeper pays them (mind/engine.py); nothing here scores.
 
-Switches: `mind.pest.on` (the model and its gate check) and `mind.talk.on` (the talk reward's facts). Kept in
+An add-on that met someone calls met(app, quality): a talk_met fact with only the quality and the flags (0.8.12).
+
+Switches: `mind.pest.on` (the model and its gate check), `mind.talk.on` (the talk reward's facts) and `mind.talk.met`
+(an add-on's meetings). Kept in
 `<state>/mind-pest.json`: counts and the last hour's pending messages (a reason, a time, button data), never words.
 """
 
@@ -45,6 +48,7 @@ register_defaults(
         },
         "talk": {
             "on": True,  # being talked to is a small reward (at most 0.2 a day; nothing for answers to its own pings)
+            "met": True,  # an add-on's chat with someone in the room is a smaller one (at most 0.05 a day)
         },
     },
 )
@@ -324,3 +328,17 @@ def lines(app: App) -> list[str]:
 
 def forget(app: App) -> None:
     (app.paths.state / FILE).unlink(missing_ok=True)
+
+
+def met(app: App, quality: float) -> bool:
+    """For an add-on: it chatted with someone in the room, and it went this well (0..1: they answered, they stayed).
+    A talk_met fact with only that number and the flags; mind/talk.py pays it from its own small budget (at most 0.05
+    a day, the first 6 meetings). False when Brain, mind.talk.on or mind.talk.met is off. Never raises, never waits."""
+    try:
+        if not talk_on(app) or not app.settings.get("mind.talk.met"):
+            return False
+        q = float(quality)
+        q = max(0.0, min(1.0, q)) if q == q else 0.0
+        return mind.connect(app).report("talk_met", {"quality": round(q, 3), "flags": flags(app)})
+    except Exception:
+        return False

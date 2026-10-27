@@ -83,7 +83,8 @@ States: `off`, `paused(why)`, `resting` (camera closed, input is presence), `wat
 3. Away (`away.on`): no presence for `away.after_min` while unlocked and watching, or locked that long → "left".
 4. `paused()` (the module's `pause_reason()`) or a camera problem: close, state `paused`.
 5. The camera is wanted when idle ≥ `watch.idle_s`, or locked with `watch.when_locked` on, or (woke, confirming a
-   return, or already open while idle can be read) within 6 s of input becoming active. Otherwise it closes (`resting`).
+   return, or already open while idle can be read) within 6 s of input becoming active, or an add-on holds it
+   (`held()`, below; step 4 has already passed). Otherwise it closes (`resting`).
 6. A frame is due at the rate: `watch.fps` (`fps_battery` on battery), 2 fps for 5 s after the first owner frame,
    divided by `slow` (doubled, up to 8, whenever a frame takes more than 150 ms), never below 0.2.
 7. **Arrival:** a return is pending, `recognise.frames` (3) owner frames among the last 4 within 6 s, and not *still*
@@ -102,6 +103,24 @@ another program · no camera · camera blocked by the system · camera covered �
 the camera opens only after an unlock or a wake (or to confirm a return), never "while idle", and "already open"
 doesn't keep it open: it closes when that window ends. Failing closed keeps the camera free (0.8.10 review: before
 the fix it stayed open for good once a wake had opened it).
+
+## Hooks for add-ons (0.8.12)
+
+Face presence doesn't watch all the time: the camera opens only after `watch.idle_s` without input, for 10 s after an
+unlock or a wake, and while it confirms an arrival; while you type it closes after the 6 s grace. An add-on that needs
+the room in view holds it. All on `Face` (`app.modules["face"]`):
+
+| Call | What |
+|---|---|
+| `watch_people(cb) -> unsubscribe()` | `cb(faces)` for every frame the watcher looks at, while `face.addons.watch` is on: a list (empty when nobody's in view) of `{h_px, h, w, x, y, yaw, det, who, score, e}`. `h_px` the box's height in pixels at the capture size, `h`/`w` shares of the frame, `x`/`y` the box's centre in -1..1 (the camera's own picture, not mirrored), `yaw` from `vision.pose` (mirrored: negative = turned to their left), `det` the detector's score. `who` (`owner`, `unsure`, `stranger`), `score` (the template's cosine) and `e` (SFace's 128 floats, a copy) only for faces big and clear enough to judge (score ≥ 0.8, ≥ `recognise.min_face_px`, sharp, lit), else None. Called on the `face-watch` thread between frames: keep it quick; an exception is a `face_failed {part: "an add-on watching"}` event and the next subscriber still runs. Each subscriber gets its own copies |
+| `hold_watch(reason, seconds=600) -> bool` | keeps the camera wanted (`Watcher.held`) for at most `HOLD_MAX_S` = 600 s, renewed by calling again, until `release_watch(reason)`; holds are keyed by `reason` (60 chars). Every pause reason comes first, so a hold never overrides a switch, /face pause, Kurooto paused, battery, a lock, a call, focus, the night, an enrolment or a camera problem. False (nothing held) when `face.addons.hold` is off. `holds()` lists the live ones; `line()` then says "camera on: an add-on is looking (reason)" and `status()["holds"]` has them |
+| `owner_desk_height() -> {px, h, n, from} or None` | your face's usual height at the desk: the median of your sightings (the `seen` emit, at most one per 5 s, last 240, in memory; trusted from 10, `from: "seen"`), else the enrolment's front-step median (`baseline.height` over `face.camera.height`, `from: "enrolment"`), else None. Cleared by forget |
+
+Off (no subscriber, no hold) nothing is built: `people()` is false, so `_look` makes no list. The watcher emits
+`people {faces}` to `Face._on_watch`, which only hands it to subscribers: never an event, never the live stream
+(`test_people_events_never_reach_the_event_log_or_the_pages`). The numbers are the add-on's to look after: Kurooto keeps
+none of them. While a hold keeps the camera open, a video call can't take it on Linux; the hold's 10-minute cap and its
+reason on the card are there for that.
 
 ## Enrolment and the test (`enrol.py`)
 
