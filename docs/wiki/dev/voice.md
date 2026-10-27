@@ -14,7 +14,8 @@ with listening a second switch. User page: [../user/voice.md](../user/voice.md).
 | `modules/voice/gate.py` | `Gate.decide(Heard, Context) -> Decision`: the rules, then the local model, then the learned veto; `PROMPT`; `parse()`; `told_off()`, `features()`, `borderline()` |
 | `modules/voice/learn.py` | (0.8.13) `Learner`: labelled turns (`record()`, flags and numbers only), the nightly fit (`train()`, logistic regression in plain Python), `veto()`, `status()`, `forget()` |
 | `modules/voice/portal.py` | `Portal`: open/closed, `take(heard, decision)`, `tick()` (silence), `close(why)`, `context()` for the gate |
-| `modules/voice/audio.py` | engines, all lazily imported: `Kokoro`, `Piper`, `Player`, `Mic`, `microphone()`, `Silero`, `Energy`, `Whisper`, `Wake`, `Listener` |
+| `modules/voice/audio.py` | engines, all lazily imported: `Kokoro`, `Piper`, `Player`, `Mic`, `microphone()`, `Silero`, `Energy`, `Whisper`, `Wake`, `Listener`; (0.8.16) `backend()`, `pipewire_running()`, the stream-per-thread rules below |
+| `tests/unit/test_voice_audio.py` | (0.8.16) a fake PortAudio that fails on any cross-thread or after-close use: stops racing the reader, reopening after a device loss, playback stopped from another thread, `pw-play`/`pw-record`/`parec` command lines, the recorder restarted |
 | `modules/voice/parts.py` | what to fetch: `PACKAGES` (pip specs into `<app>/voice/py-<X.Y>`), `models()` (URLs and sizes into `<app>/voice/models`), `Parts.install()` |
 | `modules/voice/shape.py` | the waveform outline: `estimate()`, `from_pcm()`, `levels()`, `clean()`, `spoken()`, `sentences()`, `join()` |
 | `modules/voice/numbers.py` | numbers as words for the voice (`voice.speak.numbers_as_words`, 0.8.13): `say(text)` and its parts `words()`, `indian()`, `ordinal()`, `year()`, `number()`; pure Python, no dependency |
@@ -586,14 +587,63 @@ in `VoiceID.guest_turns` (memory) and go into the next turn's prompt; Chat's his
 `core/tap.py`: `voice.enrol` (typed, button); the `vid` button is `data.delete`. `/voice id …` and `/voice enrol`
 refuse `msg.via == "voice"`. The settings API is fine (the dashboard and the phone's sealed settings are authenticated).
 
+## Sound streams and threads (0.8.16)
+
+The crash: 0.8.10 to 0.8.15 died with SIGSEGV in `snd_pcm_poll_descriptors_revents` / `snd_pcm_status` (libasound,
+under libportaudio's blocking read, called from a Python thread through cffi), and once with SIGABRT "corrupted
+double-linked list". `Listener.stop()` ran `Mic.close()` on the caller's thread (the asyncio loop, or enrolment), which
+did `stream.stop(); stream.close()` while the `voice-listen` thread sat in `stream.read()`: PortAudio freed the ALSA
+PCM under the read. Crash addresses like `0x100` and `0x10` are calls through the freed PCM's function table.
+
+The rules now:
+
+- **One owner per stream.** The thread that iterates `Mic.frames()` opens, reads and closes the PortAudio stream (or the
+  recorder child). `Player.play()` opens, writes and closes its own `RawOutputStream`, one per sentence, under
+  `Player._lock`. Nothing else touches them.
+- **Stopping is a flag.** `Mic.close()` and `Player.stop()` set an event; from another thread they only `terminate()` a
+  child process (by its own pid), which is safe because no native code is shared. `Listener.stop()` then joins the
+  reader for up to `JOIN_S` (0.5 s) so the next Listener doesn't open the device while the old one holds it, and
+  `Listener._run` closes the frames generator on its own thread in `finally`.
+- **No blocking PortAudio calls on our threads for input.** The microphone runs in callback mode: PortAudio's thread
+  puts frames on a queue (`QUEUE_FRAMES`, oldest dropped), and the reader takes them with a 0.1 s timeout, so it sees a
+  close at once. Output writes 50 ms pieces (`PLAY_CHUNK_S`) and checks the flag between them; `sd.play()`/`sd.stop()`
+  (one module-wide stream) are no longer used.
+- **Reopen, don't die.** A stream that goes inactive or sends nothing for `STALL_S` (3 s), or a recorder that exits by
+  itself, is closed by its owner and opened again after `REOPEN_S` doubling to `REOPEN_MAX_S`; `Mic.reopened` counts
+  it. The first open failing raises at once (Voice reports it and retries after `RETRY_S`), and `REOPEN_TRIES` (6)
+  tries in a row without sound raise "the microphone stopped sending sound".
+
+`voice.audio.backend` (`auto` | `pipewire` | `portaudio`): `backend(choice, device)` makes it concrete. `auto` is
+`pipewire` when `pipewire_running()` (Linux, `pw-play` and `pw-record` on PATH, the user's `pipewire-0` socket under
+`PIPEWIRE_RUNTIME_DIR`/`XDG_RUNTIME_DIR`, or `PIPEWIRE_REMOTE`) and `voice.listen.device` is empty, since that setting
+holds sounddevice's names; else `portaudio`. Why PipeWire's tools by default: the race was ours, but PortAudio's ALSA
+host API over PipeWire's ALSA plugin is the one place native audio code ran in the daemon, and it's exposed to every
+graph change (EasyEffects, an add-on's pipe-source loading and unloading). With `pw-record`/`pw-play` a driver fault
+kills a child, which is restarted; PipeWire also relinks the recorder to the new default source by itself. The cost is
+one `pw-play` start per sentence (tens of ms). PortAudio's PulseAudio host API wasn't an option: no released
+PortAudio has it (Arch's 19.7.0 is built with ALSA only), so sounddevice can't pick it.
+
+Command lines: `pw-record --raw --format s16 --rate 16000 --channels 1 --latency 32ms [--target <node>] -`;
+`parec --raw --format=s16le --rate=16000 --channels=1 --latency-msec=32 [--device=<node>]` when `pw-record` is
+missing; `pw-play --raw --format s16 --rate <sr> --channels 1 --latency 50ms -` fed in 4 KB pieces so a stop isn't
+stuck behind a whole answer in the pipe. A target is passed only with `pipewire` chosen by name. The `Speaker` makes a
+new `Player` when the setting changes; a new `Mic` takes it when listening next starts.
+
 ## Portability
 
-No Linux-only call without a guard: playback tries sounddevice first everywhere, then `pw-play`/`paplay`/`aplay` only
-on Linux, `afplay` on macOS, `winsound` on Windows; capture is sounddevice (PortAudio is bundled in its Windows and
+No Linux-only call without a guard: with `voice.audio.backend` `auto` (0.8.16) Linux with PipeWire plays through
+`pw-play` and records through `pw-record`; otherwise playback tries sounddevice first everywhere, then
+`pw-play`/`paplay`/`aplay` only on Linux, `afplay` on macOS, `winsound` on Windows; capture is sounddevice (PortAudio is bundled in its Windows and
 macOS wheels; Linux uses the system's libportaudio) or `pw-record`/`parec` on Linux; `microphone()` asks sounddevice,
 then `pactl` on Linux, else "can't tell". Subprocesses it starts are its own children, stopped by their exact pid.
 
 ## Not verified
+
+0.8.16 (sound streams and threads): unit tests with a fake PortAudio and fake child processes only. The crash's cause
+was read from the core dumps' native stacks (no Python frames: the interpreter has no debug symbols) and the code, not
+reproduced. `pw-play`'s arguments were checked against PipeWire 1.6's `pw-cat` (an unlinked silent run parsed them);
+`pw-record --raw ... -` writing raw samples to stdout, its 32 ms latency, and the reopen timings were never run
+against a real microphone, and no speaker was used.
 
 0.8.13 (careful calls, the conversation window, told off, the learner, face assist, the talk carry): unit tests with
 fakes only. Not run with a real room, real Face presence frames feeding Voice ID, or a night's real fit.

@@ -149,6 +149,9 @@ register_defaults(
             "face_assist": True,  # a "not sure" voice counts as you while Face presence sees only your face
             "carry_talk": True,  # a "not sure" voice stays you in a conversation you opened (with carry)
         },
+        "audio": {
+            "backend": "auto",  # how sound is played and recorded: auto, pipewire (pw-play/pw-record) or portaudio
+        },
         "addons": {
             "listen": True,  # an add-on may take one stretch of speech at a time (written out here, never sent)
             "chat": True,  # an add-on may have Kurooto chat with someone through the guest path (no tools, no data)
@@ -276,10 +279,11 @@ class Speaker:
                     self.v.app.events.emit("voice_failed", part="output", error=f"{type(e).__name__}: {e}"[:300])
         if self._cancel.is_set():  # stopped while an output played: not finished here instead
             return
-        if self.player is None:
+        want = str(self.v.setting("audio.backend") or "auto")
+        if self.player is None or getattr(self.player, "choice", want) != want:  # a changed backend: a new Player
             from kurooto.modules.voice.audio import Player
 
-            self.player = Player()
+            self.player = Player(want)
         self.player.play(pcm, sr)
 
     def stop(self) -> None:
@@ -1248,7 +1252,7 @@ class Voice(Module):
             self._worker = threading.Thread(target=self._work_loop, name="voice-hear", daemon=True)
             self._worker.start()
         self.listener = audio.Listener(
-            audio.Mic(str(self.setting("listen.device") or "")),
+            audio.Mic(str(self.setting("listen.device") or ""), str(self.setting("audio.backend") or "auto")),
             vad,
             wake,
             on_speech=self._heard_audio,

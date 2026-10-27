@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.16 (unreleased)
+
+- **Voice no longer crashes Kurooto.** Turning listening off, muting, or a microphone that came and went could close
+  the microphone's sound stream while the listening thread was still reading it, and the whole of Kurooto died (a
+  segmentation fault in the sound library, seen several times a day with PipeWire). Each sound stream is now opened,
+  read and closed by one thread only; stopping just asks it to finish. A microphone that disappears (a PipeWire
+  source removed, PipeWire restarted) is opened again after a pause instead of failing, and only one that stays gone
+  is reported. Speech plays through a stream of its own per sentence, so a stop can't close it under the player.
+- **Sound through PipeWire's own tools.** On Linux with PipeWire, speech now plays through `pw-play` and the microphone
+  is read through `pw-record`, separate programs, so a sound driver problem can't take Kurooto down, and listening
+  follows your system's default microphone. `voice.audio.backend`: `auto` (the default; PortAudio when
+  `voice.listen.device` names a sounddevice microphone, or without PipeWire), `pipewire` or `portaudio` (as before).
+
 ## 0.8.15 (unreleased)
 
 - **The phone app's Memory page is as sharp as the dashboard's.** It drew at 1.5 pixels per point and stretched that

@@ -14,6 +14,8 @@ tip = "What add-ons may do with Voice: hear one stretch of speech, and chat with
 tip = "How Kurooto speaks through this computer's speakers."
 [parent."voice.listen"]
 tip = "Listening through the microphone, all on this computer."
+[parent."voice.audio"]
+tip = "How sound reaches the speakers and comes in from the microphone."
 
 [s."voice.speak.on"]
 tip = "Kurooto speaks through this computer's speakers."
@@ -135,6 +137,18 @@ tip = "Which microphone to use; empty is the system's default."
 values = "A device's name or number as your sound system lists it (the sounddevice library's names)."
 when = "Set it if you have several microphones."
 needs = "`voice.listen.on`."
+
+[s."voice.audio.backend"]
+tip = "How Kurooto plays and records sound: PipeWire's own tools, or the PortAudio library inside Kurooto."
+what = """`pipewire`: speech plays through `pw-play` and the microphone is read through `pw-record`, separate programs, so
+a sound driver problem can't take Kurooto down, and the microphone follows your system's default (a source that comes
+and goes is picked up again). `portaudio`: the sounddevice library inside Kurooto, as before 0.8.16. `auto` picks
+`pipewire` on Linux when PipeWire is running and its tools are installed, unless `voice.listen.device` names a
+microphone (those are sounddevice's names); else `portaudio`. Takes effect for speaking at once, for listening the
+next time it starts (`/voice mute`, then `/voice unmute`)."""
+values = "`auto` (default), `pipewire` or `portaudio`."
+when = "Pick `portaudio` if speech or the microphone misbehaves through PipeWire's tools, or to use a sounddevice microphone by name; `pipewire` to pass a PipeWire node name in `voice.listen.device`."
+needs = "The Voice feature."
 
 [s."voice.listen.levels"]
 tip = "Show the microphone's loudness as a waveform on the dashboard (numbers only)."

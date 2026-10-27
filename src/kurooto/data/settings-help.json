@@ -797,6 +797,8 @@
 "voice.addons": "What add-ons may do with Voice: hear one stretch of speech, and chat with someone the guest way.",
 "voice.addons.chat": "Let an add-on have Kurooto chat with someone who isn't you, the guest way: no tools, none of your data.",
 "voice.addons.listen": "Let an add-on take one stretch of speech at a time through the microphone (written out here, never sent).",
+"voice.audio": "How sound reaches the speakers and comes in from the microphone.",
+"voice.audio.backend": "How Kurooto plays and records sound: PipeWire's own tools, or the PortAudio library inside Kurooto.",
 "voice.listen": "Listening through the microphone, all on this computer.",
 "voice.listen.after_speak_s": "Seconds after it spoke during which a question counts as an answer to it.",
 "voice.listen.barge_in": "Talk over Kurooto while it speaks to stop it: \"stop\", a new question, or anything you want to say.",

@@ -222,6 +222,31 @@ it listens: the microphone's loudness scrolls through it as you speak (`look.bei
   (`availability.night`).
 - **Paused:** while Kurooto is paused, and on battery in saver mode.
 
+## Sound: how it plays and records
+
+On Linux with PipeWire, Kurooto plays its voice through PipeWire's `pw-play` and hears the microphone through
+`pw-record` (0.8.16), separate programs: nothing from the sound system runs inside Kurooto, and the microphone follows
+your system's default (pick it in your sound settings). Elsewhere, or with `voice.audio.backend` = `portaudio`, it uses
+the sounddevice library (PortAudio) inside Kurooto, as before 0.8.16.
+
+- `voice.audio.backend`: `auto` (the default) picks PipeWire's tools when PipeWire is running and they're installed,
+  unless `voice.listen.device` names a microphone (those are sounddevice's names, so sounddevice keeps it); `pipewire`
+  always uses the tools, and then `voice.listen.device` is a PipeWire node name (`wpctl status`, or `pw-cli ls Node`);
+  `portaudio` always uses sounddevice. Speaking changes at once; listening the next time it starts (`/voice mute`, then
+  `/voice unmute`).
+- A microphone that disappears (unplugged, a PipeWire source removed, PipeWire restarted) is opened again after a
+  pause; if it stays gone for about half a minute, `/health` says "the microphone stopped" and it tries again a minute
+  later.
+
+### Troubleshooting
+
+| What you see | What to do |
+|---|---|
+| Kurooto stopped by itself while listening or speaking (0.8.10 to 0.8.15; `coredumpctl list` shows python with SIGSEGV or SIGABRT) | Fixed in 0.8.16: stopping or muting closed the microphone under the thread still reading it. Update. If it ever happens again, `coredumpctl info <pid>` shows where; set `voice.audio.backend` to `pipewire` so no sound code runs inside Kurooto. |
+| No sound, or no listening, after updating to 0.8.16 on Linux | Kurooto now uses `pw-play` and `pw-record`. Check they're installed (the `pipewire` package) and that PipeWire runs (`wpctl status`). Set `voice.audio.backend` to `portaudio` to go back to the old way. |
+| It listens to the wrong microphone | With `pipewire`, it follows your system's default input: change it in your sound settings, or set `voice.listen.device` to the PipeWire node's name. With `portaudio`, `voice.listen.device` takes sounddevice's names or numbers. |
+| "the microphone stopped sending sound" in `/health` | The microphone went away and didn't come back within about half a minute. Plug it back in or pick another; it tries again by itself a minute later. |
+
 ## Commands
 
 | Command | What it does |
@@ -289,6 +314,7 @@ downloaded to your computer as separate programs, not part of Kurooto.
 | `voice.listen.calls` | off | keep listening during calls |
 | `voice.listen.stt_model` | `base` | `tiny`, `base` or `small` |
 | `voice.listen.language` | (worked out) | the language you speak, e.g. `en` or `hi` |
+| `voice.audio.backend` | `auto` | how sound plays and records: `auto`, `pipewire` (`pw-play`/`pw-record`) or `portaudio` (sounddevice) |
 | `voice.addons.listen` | on | let an add-on take one thing said, written out here and never sent (mute still stops it) |
 | `voice.addons.chat` | on | let an add-on have Kurooto chat with someone the guest way: no tools, none of your data |
 

@@ -811,7 +811,7 @@ def test_a_sentence_still_going_at_the_timeout_is_waited_for(vid, monkeypatch):
                 for _ in range(n)]  # fmt: skip
 
     class SlowMic:  # quiet, then 1.6 s of loud "speech" over about 0.6 s, then quiet
-        def __init__(self, device=""):
+        def __init__(self, device="", backend="auto"):
             self.closed = False
 
         def frames(self):
