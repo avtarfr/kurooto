@@ -553,6 +553,12 @@ class Api:
                 if isinstance(b.get(field), list):
                     s.set(key, [str(x).strip() for x in b[field] if str(x).strip()][:20])
             out = {"hardware": self._hardware(), "installing": False}
+            if not b.get("install"):  # models the new setup doesn't use: Remove / Keep (core/uninstall.py)
+                from kurooto.core import uninstall
+
+                said = uninstall.after_hardware(self.app).strip()
+                if said:
+                    out["message"] = said
             if b.get("install"):  # Kurooto installs Ollama, the models and the programs, with progress on the page
                 lm = self.app.modules["local_models"]
                 out.update(self._background(lambda note: lm.setup(note), then_enable="local_models"), installing=True)
@@ -1151,6 +1157,7 @@ class Api:
         "web",
         "date_offers",
         "addons",
+        "uninstall",
     )
     # the core sections' titles where the section's name alone says little
     TITLES = {
@@ -1164,6 +1171,7 @@ class Api:
         "web": "Dashboard",
         "date_offers": "Dates offered (photos, mail, shared calendars)",
         "addons": "Add-ons by link",
+        "uninstall": "What Kurooto installed",
     }
     # Settings the page neither shows nor changes: who may talk to the bot and where it connects (set by pairing), brain
     # addresses and models (POST /api/brain sets those, with its checks), the subject list and timetable (their own
@@ -1210,6 +1218,7 @@ class Api:
             jobs,
             quota,
             sources,
+            uninstall,
         )
         from kurooto.core.palette import settings_choices as look_choices
 
@@ -1394,4 +1403,7 @@ class Api:
             return 400, {"error": f"{key} takes a {type(old).__name__}"}
         self.app.settings.set(key, value)
         self.app.events.emit("setting_changed", key=key)
-        return 200, {"ok": True}
+        from kurooto.core import uninstall  # a setup or helper change that leaves a model unused: Remove / Keep
+
+        said = uninstall.after_setting(self.app, key, value).strip()
+        return 200, {"ok": True, **({"message": said} if said else {})}

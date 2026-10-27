@@ -66,6 +66,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
 - [Troubleshooting](#troubleshooting)
 - [Getting help (diagnostics)](#getting-help-diagnostics)
 - [Lost phone or keys that got out](#lost-phone-or-keys-that-got-out)
+- [What Kurooto installed](#what-kurooto-installed)
 - [Uninstall](#uninstall)
 - [FAQ](#faq)
 
@@ -1322,7 +1323,8 @@ backup in its state folder, `backups/`).
 ### Local AI models
 Small AI models on your computer (through [Ollama](https://ollama.com)), picked for its graphics card, for quick
 decisions and the notes index: private and offline. Not offered on computers without a graphics card or Apple
-Silicon. `/models`.
+Silicon. `/models`. Turning it off asks whether to remove the Ollama and models Kurooto installed for it (Remove /
+Keep, with the size; see [What Kurooto installed](#what-kurooto-installed)).
 
 ### The offline helper
 On a laptop without a graphics card, a small model on the processor (`qwen2.5:1.5b-instruct`, about 1 GB, through
@@ -4381,7 +4383,7 @@ Commands: `kurooto on` / `kurooto off` (completely, until turned on again), `kur
 resume`, `kurooto start` / `kurooto stop` (just for now), `kurooto open`, `kurooto setup [STEP]`, `kurooto doctor`,
 `kurooto top`, `kurooto term`, `kurooto logs [-f]`, `kurooto sync`, `kurooto backup` / `kurooto restore <zip>`, `kurooto profile save|status|restore`,
 `kurooto update`, `kurooto autostart on|off|status`, `kurooto cases`, `kurooto paths`, `kurooto rotate`, `kurooto
-uninstall [--revoke]`. For scripts: `kurooto
+installed`, `kurooto remove <name>`, `kurooto uninstall [--revoke] [--keep-programs]`. For scripts: `kurooto
 notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog`, `watch` (see
 [From a terminal or a script](#from-a-terminal-or-a-script) and [Research](#research)).
 
@@ -4555,9 +4557,38 @@ call or be called.
 
 *Leaves:* the new keys go to your call line on your own Cloudflare account, as on every setup.
 
+## What Kurooto installed
+
+Kurooto keeps a receipt of what it installs on this computer: programs (Ollama, Node.js, Bun and GBrain, kitty and
+fish, Tectonic, Tesseract, ...) with the files and folders each install made, and the Ollama models it downloads.
+Voice's packages and models (in Kurooto's own folder) are listed with them. **Never what was there before:** a program
+already on the computer isn't installed, so it's never on the receipt, nor is a model Ollama already had; of the
+folders an install touches, only what's new is written down (never `~/.local/bin` itself or your programs in it). A
+folder Kurooto made that now holds things of yours stays (Ollama's model store with models you pulled yourself, Bun's
+folder with your own global packages). The receipt is this computer's only (`installed.json` in the program folder):
+not in backups or your profile.
+
+- `kurooto installed` (or `/installed` in the chat): each one with its size, the features it's for and what uses it
+  now, and the programs here that Kurooto didn't install (never removed by it).
+- `kurooto remove <name>` (`ollama`, `gemma4:e4b`, `voice`, ...): says what goes (Ollama's models go with Ollama,
+  GBrain with Bun) and asks first; `--yes` doesn't ask. Something a feature that's on uses can't go until it's off.
+  **Remove…** under `/installed` asks Remove / Keep.
+- **Turning a feature off** (Features → Turn off, `/helper off`) asks whether to remove what Kurooto installed for it
+  that nothing else uses, with the size: **Remove** / **Keep** in Today → Waiting for you, Telegram or the phone app.
+  Changing This computer's setup (`hardware.force_profile`, `hardware.extra_models`) asks the same about models the
+  new setup doesn't use. Nothing goes without that tap; never by the AI, a request or a schedule.
+- `kurooto uninstall` follows the receipt (below).
+
+*Turn it off:* Settings → What Kurooto installed → `uninstall.offer` (no questions; the commands still work) and
+`uninstall.with_programs` (`kurooto uninstall` leaves what it installed). *Undo:* a removed program or model comes
+back when you set its feature up again (it's downloaded again). *Leaves:* nothing; removing runs the program's own
+uninstaller or package manager (winget, Flatpak, Homebrew, Bun) where it came from one.
+
 ## Uninstall
 
-`kurooto uninstall` removes Kurooto: the program, its settings, data and start-at-sign-in. `kurooto uninstall
+`kurooto uninstall` removes Kurooto: the program, its settings, data and start-at-sign-in. First it lists what Kurooto
+installed outside its own folder (its receipt: Ollama's models, Bun and GBrain, ...) and asks once before removing
+that too; `--yes` doesn't ask, `--keep-programs` leaves it (as does `uninstall.with_programs` off). `kurooto uninstall
 --keep-data` keeps your settings and data. On Windows you can also use Settings → Apps → Kurooto. Want to keep a copy
 first? `kurooto backup --to <folder>`.
 
@@ -4581,8 +4612,8 @@ set up again (sign in to Google, paste your bot's token, Phone calls → Set up 
 endpoint works), Telegram the two requests to clear the bot.
 
 **Your notes folder is never deleted.** Things Kurooto installed for you that live in its own folder (Node.js, MinGit,
-Ollama on Linux, Tectonic) go with it; programs installed system-wide (agy, Ollama on Windows/macOS, Telegram Desktop)
-stay, since you may use them. Without `--revoke`, your call line stays on your Cloudflare account until you delete it
+Ollama on Linux, Tectonic) go with it; what it installed elsewhere goes when it's on the receipt and you said yes
+(above); anything that was on the computer before Kurooto stays. Without `--revoke`, your call line stays on your Cloudflare account until you delete it
 there (Workers & Pages → the `kurooto-…` worker → Settings → Delete); paired phones stop working once it's gone. A
 Google client can be deleted in Google Cloud, and the Agent plan calendar in Google Calendar; a notes repository stays
 yours (delete its `kurooto-profile` branch if you used Profile sync). Backup zips stay in the folder you picked, and

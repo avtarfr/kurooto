@@ -105,7 +105,7 @@ def fake_ollama(app, monkeypatch, have=(), room_ok=True):
     monkeypatch.setattr(lm, "serve", lambda: True)
     monkeypatch.setattr(lm, "have", lambda: set(got["have"]))
 
-    def pull(tag, size, progress=print, feature=""):
+    def pull(tag, size, progress=print, feature="", by=""):
         got["pulled"].append(tag)
         got["have"].add(tag)
         return True, ""

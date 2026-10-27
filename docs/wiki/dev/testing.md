@@ -69,6 +69,7 @@ once changed a live install's settings this way. Always:
 
 ```sh
 export KUROOTO_HOME="$(mktemp -d)"        # or a fixed scratch folder you reuse
+export KUROOTO_NO_DESKTOP=1                # 0.8.10: no real desktop pop-ups (one once said "removed …" there)
 uv run kurooto doctor
 uv run kurooto run                         # foreground daemon on the next free port, logs in $KUROOTO_HOME/state/logs
 ```

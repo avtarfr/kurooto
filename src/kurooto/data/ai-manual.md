@@ -218,6 +218,7 @@ Every feature is off until the user turns it on (Features in the dashboard). `ku
 | /memory | what I remember (encrypted): /memory <words> finds, /memory forget 3, /memory export; also "when did I last talk to Prof Ortiz?", "what was I doing last Thursday?" |
 | /run | all: every nightly process that's on, now, in order (books, inbox, concept graph, look-alike notes, garden) with a progress line; /run all status, /run all stop |
 | /helper | the offline helper: on, off, test |
+| /installed | what Kurooto installed on this computer (programs, Ollama models) with sizes and what uses each; Remove… asks first, and only what Kurooto put there goes |
 | /egress | where my requests went in the last 7 days: each host and feature, requests, bytes, any blocked |
 | /health | what isn't working, with Fix buttons (/health now checks online too) |
 | /fixme | what's wrong and what to do, by rules (no AI needed); /fixme <what you see>, /fixme ai explains |
@@ -242,6 +243,7 @@ You never do these by yourself. A tool that would is turned into an Approve / De
 | `addon.install` | add or update an add-on by link (code that runs inside Kurooto), official ones too | typed, button |
 | `proposal.apply` | apply a change the AI proposed to your files (notes, a project, a skill) | typed, button |
 | `data.delete` | delete your data | typed, confirm, button |
+| `install.remove` | remove a program or model Kurooto installed | typed, approval |
 
 Done without a tap (sure, only the user's own data, said in one line with Undo):
 - `notes.sort`: a note in your scratch folder moves to where it belongs (never deleted or overwritten, with Undo)
@@ -249,8 +251,8 @@ Done without a tap (sure, only the user's own data, said in one line with Undo):
 
 ## Settings
 
-686 settings in 85 sections; each one, its default and what it does: docs/SETTINGS_GUIDE.md (on the site: SETTINGS_GUIDE). The ones that differ from their defaults are in reserve/settings.md. Sections:
+688 settings in 86 sections; each one, its default and what it does: docs/SETTINGS_GUIDE.md (on the site: SETTINGS_GUIDE). The ones that differ from their defaults are in reserve/settings.md. Sections:
 
-`addons` (2), `agent_plan` (2), `agents` (3), `alarm` (11), `ask` (2), `autostart` (1), `availability` (10), `awake` (1), `backups` (8), `books` (14), `brain` (13), `calendar` (10), `calls` (29), `capture` (4), `cases` (8), `checkins` (13), `classroom_notes` (6), `commitments` (3), `date_offers` (1), `deadlines` (16), `doubts` (2), `drafts` (3), `dreaming` (18), `drive_upload` (3), `exam_season` (18), `files` (2), `finder` (3), `gbrain` (18), `google` (19), `google_calendar` (1), `handwritten` (12), `hardware` (3), `health` (3), `infer` (11), `integrate` (26), `jobs` (3), `keep` (1), `learning` (7), `lidsafe` (4), `local_helper` (7), `look` (14), `mail_digest` (17), `meetings` (2), `memory` (4), `mind` (88), `modules` (1), `notes` (4), `notes_sync` (8), `notify` (20), `overlay` (2), `persona` (6), `power` (1), `privacy` (6), `profile` (5), `projects` (5), `proposals` (6), `quests` (2), `quiz` (10), `quota` (5), `remember` (1), `reminders` (1), `repair` (1), `reply_drafts` (2), `repo_projects` (5), `research` (20), `research_addon` (7), `retro` (9), `runall` (1), `skills` (2), `sorter` (11), `sources` (7), `space` (7), `startby` (16), `study` (8), `studypack` (2), `subjects` (9), `telegram` (5), `terminal` (7), `turnon` (1), `updates` (6), `voice` (20), `voice_notes` (2), `web` (1), `weekly` (3), `you` (5).
+`addons` (2), `agent_plan` (2), `agents` (3), `alarm` (11), `ask` (2), `autostart` (1), `availability` (10), `awake` (1), `backups` (8), `books` (14), `brain` (13), `calendar` (10), `calls` (29), `capture` (4), `cases` (8), `checkins` (13), `classroom_notes` (6), `commitments` (3), `date_offers` (1), `deadlines` (16), `doubts` (2), `drafts` (3), `dreaming` (18), `drive_upload` (3), `exam_season` (18), `files` (2), `finder` (3), `gbrain` (18), `google` (19), `google_calendar` (1), `handwritten` (12), `hardware` (3), `health` (3), `infer` (11), `integrate` (26), `jobs` (3), `keep` (1), `learning` (7), `lidsafe` (4), `local_helper` (7), `look` (14), `mail_digest` (17), `meetings` (2), `memory` (4), `mind` (88), `modules` (1), `notes` (4), `notes_sync` (8), `notify` (20), `overlay` (2), `persona` (6), `power` (1), `privacy` (6), `profile` (5), `projects` (5), `proposals` (6), `quests` (2), `quiz` (10), `quota` (5), `remember` (1), `reminders` (1), `repair` (1), `reply_drafts` (2), `repo_projects` (5), `research` (20), `research_addon` (7), `retro` (9), `runall` (1), `skills` (2), `sorter` (11), `sources` (7), `space` (7), `startby` (16), `study` (8), `studypack` (2), `subjects` (9), `telegram` (5), `terminal` (7), `turnon` (1), `uninstall` (2), `updates` (6), `voice` (20), `voice_notes` (2), `web` (1), `weekly` (3), `you` (5).
 
-<!-- settings fingerprint: 94e0bb7f9aedeb33 -->
+<!-- settings fingerprint: 5b2346836812fbfb -->

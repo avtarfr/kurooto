@@ -57,6 +57,11 @@ CORE: tuple[tuple[tuple[str, ...], str], ...] = (
         "garden) with a progress line; /run all status, /run all stop",
     ),
     (("helper",), "the offline helper: on, off, test"),
+    (
+        ("installed",),
+        "what Kurooto installed on this computer (programs, Ollama models) with sizes and what uses each; Remove… "
+        "asks first, and only what Kurooto put there goes",
+    ),
     (("egress",), "where my requests went in the last 7 days: each host and feature, requests, bytes, any blocked"),
     (("health",), "what isn't working, with Fix buttons (/health now checks online too)"),
     (("fixme",), "what's wrong and what to do, by rules (no AI needed); /fixme <what you see>, /fixme ai explains"),
@@ -169,7 +174,7 @@ GROUPS: tuple[Group, ...] = (
         "Settings and upkeep",
         "your-computer",
         ("backups", "profile", "space", "local_models", "awake", "terminals", "terminal", "overlay"),
-        ("health", "fixme", "keep", "calm", "why", "helper", "run"),
+        ("health", "fixme", "keep", "calm", "why", "helper", "installed", "run"),
     ),
 )
 MORE = Group("more", "More", "index")  # a feature no group names (an add-on, a new one)

@@ -95,6 +95,14 @@ GUARDED: dict[str, Guard] = {
         "Keep A / Keep B under the morning message's \"Worth a look\", Delete Brain's data after Brain is turned off; "
         "the AI never deletes (a note it changes keeps its earlier version)",
     ),
+    "install.remove": Guard(
+        "remove a program or model Kurooto installed",
+        ("typed", "approval"),
+        "`kurooto remove <thing>` and `kurooto uninstall` (after a yes in the terminal, or --yes), and Remove under "
+        "the question that comes when you turn a feature off, change This computer's setup or tap Remove… under "
+        "/installed (core/uninstall.py); only what's on the install receipt; never by the AI, a request or a "
+        "schedule",
+    ),
 }
 
 
