@@ -1,0 +1,25 @@
+{
+ "doc": {
+  "version": "0.8.10",
+  "notes": "",
+  "created": 1793086735.8251224,
+  "files": {
+   "kurooto-0.8.10.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.8.10/kurooto-0.8.10.tar.gz",
+    "sha256": "9a92e8d1770207f47aee3fee3f2b98b64513c865005a23cf8da81a883b10de42",
+    "size": 11951882
+   }
+  },
+  "android": {
+   "file": "kurooto.apk",
+   "url": "https://avtarfr.github.io/kurooto/releases/0.8.10/kurooto.apk",
+   "sha256": "72e915e2623d87a2054ab1d03e6c50daa0830582ca59e8835da565d0fe05ec2e",
+   "size": 6709028,
+   "versionCode": 80109,
+   "versionName": "0.8.10",
+   "cert_sha256": "bad55b2e9de40d31a40d19767bf6e53ac372fb9e8e67e63d01d21e3d3ef8d325",
+   "source": "92a3d2e04f77861a98fc8e0599c16618ed699de97c8f03cd6e0211d1e4c0ca1e"
+  }
+ },
+ "sig": "pQ6J31PiMCmbUa7CmcSLFV9s4EunGXVIYWTMVruML8312t9irbj7XxpNk0j2o/r9HDm5LpKekbGaPJn13+DOAw=="
+}

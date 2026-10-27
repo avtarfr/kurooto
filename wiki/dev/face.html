@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Face presence (modules/face/, 0.8.10) · Developer wiki · Kurooto</title>
+<meta name="description" content="What Kurooto sends where: every feature is off until you turn it on, and nothing goes to its author.">
+<script>
+  // same theme switch (and stored choice) as avtarfr.github.io
+  try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The palette of avtarfr.github.io, taken deeper: 玄 (kuro) is the dark, nearly black green. */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B0F0A;
+  --bg-alt: #10150E;
+  --surface: #151B12;
+  --surface-raised: #1B2317;
+  --inset-bg: #070A06;
+  --border: #26311F;
+  --border-soft: #1C2518;
+  --border-focus: #7E9A52;
+  --text-bright: #F2EEE8;
+  --text: #DAD3C8;
+  --text-muted: #95A682;
+  --accent: #6B8A42;
+  --accent-text: #A6C07A;
+  --accent-contrast: #0A0E08;
+  --accent-hover: #7E9E52;
+  --accent-light: rgba(107, 138, 66, 0.14);
+  --accent-badge-border: rgba(107, 138, 66, 0.5);
+  --glow: rgba(107, 138, 66, 0.12);
+  --header-bg: rgba(11, 15, 10, 0.82);
+  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F2EC;
+  --bg-alt: #EAE6DD;
+  --surface: #FFFFFF;
+  --surface-raised: #EFEBE3;
+  --inset-bg: #ECE7DE;
+  --border: #D4CCBE;
+  --border-soft: #E2DBCF;
+  --border-focus: #3F5626;
+  --text-bright: #172012;
+  --text: #2F3A26;
+  --text-muted: #52624A;
+  --accent: #3F5626;
+  --accent-text: #3A4F22;
+  --accent-contrast: #F6F3EC;
+  --accent-hover: #4C672E;
+  --accent-light: rgba(63, 86, 38, 0.08);
+  --accent-badge-border: rgba(63, 86, 38, 0.4);
+  --glow: rgba(63, 86, 38, 0.08);
+  --header-bg: rgba(244, 242, 236, 0.85);
+  --shadow-md: 0 10px 30px -14px rgba(23, 32, 18, 0.25);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background-color: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.68;
+  -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip;
+}
+main { flex: 1; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { color: var(--text-bright); }
+h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
+.container { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+.skip-link { position: absolute; left: -999px; }
+.skip-link:focus { left: 1rem; top: 1rem; z-index: 200; background: var(--surface); padding: 0.4rem 0.8rem; border-radius: var(--radius-md); }
+
+.site-header {
+  position: sticky; top: 0; z-index: 100; background: var(--header-bg);
+  backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--border-soft);
+}
+.nav-container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 60px; }
+.brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 1rem; color: var(--text-bright); }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-contrast); font-size: 0.78rem; font-weight: 700;
+}
+.nav-right { display: flex; align-items: center; gap: 0.5rem; }
+.nav-links { display: flex; list-style: none; gap: 0.15rem; }
+.nav-links a { display: block; font-size: 0.86rem; font-weight: 500; color: var(--text-muted); padding: 0.3rem 0.65rem; border-radius: var(--radius-md); }
+.nav-links a:hover { color: var(--text-bright); background: var(--accent-light); }
+.theme-toggle-btn {
+  width: 34px; height: 34px; display: inline-grid; place-items: center; background: var(--surface-raised);
+  border: 1px solid var(--border); color: var(--text-bright); border-radius: var(--radius-md); cursor: pointer;
+}
+.theme-toggle-btn:hover { border-color: var(--border-focus); }
+.theme-toggle-btn svg { width: 16px; height: 16px; }
+[data-theme="light"] .icon-sun, :root:not([data-theme="light"]) .icon-moon { display: none; }
+
+.site-footer { border-top: 1px solid var(--border-soft); padding: 1.8rem 0; color: var(--text-muted); font-size: 0.84rem; }
+.site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; }
+
+
+/* the privacy page: docs/PRIVACY.md, made into HTML when the site is built (tools/release.py) */
+.prose { max-width: 860px; padding-top: 3rem; padding-bottom: 4rem; }
+.prose h1 { font-size: clamp(1.8rem, 1.3rem + 2vw, 2.4rem); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 1rem; }
+.prose h2 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 2.4rem 0 0.7rem; }
+.prose h3 { font-size: 1.05rem; margin: 1.8rem 0 0.5rem; }
+.prose p, .prose ul, .prose ol { margin-bottom: 0.9rem; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose li { margin-bottom: 0.3rem; }
+.prose strong { color: var(--text-bright); font-weight: 600; }
+.prose code { font-family: var(--font-mono); font-size: 0.82em; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 0.05rem 0.3rem; }
+.prose a { text-decoration: underline; text-decoration-color: var(--accent-badge-border); text-underline-offset: 2px; }
+.table-wrap { overflow-x: auto; margin: 0 0 1.2rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.prose table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.prose th, .prose td { text-align: left; vertical-align: top; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border-soft); }
+.prose th { color: var(--text-bright); font-weight: 600; background: var(--surface-raised); }
+.prose tr:last-child td { border-bottom: 0; }
+.prose td:first-child { color: var(--text-bright); font-weight: 500; min-width: 9rem; }
+.updated { color: var(--text-muted); font-size: 0.84rem; }
+.prose pre { margin: 0 0 1.1rem; padding: 0.8rem 1rem; overflow-x: auto; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.prose pre code { background: none; border: 0; padding: 0; font-size: 0.8rem; line-height: 1.55; }
+.prose blockquote { margin: 0 0 1rem; padding: 0.2rem 0 0.2rem 1rem; border-left: 3px solid var(--accent-badge-border); color: var(--text-muted); }
+.prose hr { border: 0; border-top: 1px solid var(--border-soft); margin: 2rem 0; }
+.prose h4 { font-size: 0.95rem; margin: 1.4rem 0 0.4rem; }
+.wiki-nav { font-size: 0.84rem; line-height: 1.9; margin: 0 0 1.8rem; padding: 0.7rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-muted); }
+.wiki-nav a { text-decoration: none; margin-right: 0.55rem; white-space: nowrap; }
+.wiki-nav a:hover { text-decoration: underline; }
+.wiki-nav a[aria-current="page"] { color: var(--text-bright); font-weight: 600; }
+@media (max-width: 560px) { .nav-links { display: none; } .container { padding: 0 1rem; } .prose th, .prose td { padding: 0.5rem; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="container nav-container">
+    <a class="brand" href="../.././"><span class="brand-mark">K</span><span class="brand-name">Kurooto</span></a>
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="../.././#install">Install</a></li>
+        <li><a href="../.././#features">Features</a></li>
+        <li><a href="../../wiki/index.html">Wiki</a></li>
+        <li><a href="../../changelog.html">Changelog</a></li>
+        <li><a href="../../ongoing.html">In progress</a></li>
+        <li><a href="https://github.com/avtarfr/kurooto">GitHub</a></li>
+      </ul>
+      <button class="theme-toggle-btn" type="button" aria-label="Switch light or dark theme" onclick="toggleTheme()">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <article class="container prose">
+<nav class="wiki-nav" aria-label="Developer wiki"><a class="wiki-home" href="../index.html">Wikis</a> · <strong>Developer wiki</strong>: <a href="index.html">Start</a> <a href="agents.html">For AI coding agents</a> <a href="conventions.html">Conventions</a> <a href="architecture.html">Architecture</a> <a href="repo-layout.html">Repository layout</a> <a href="core.html">Core services</a> <a href="brains.html">Brains (AI providers)</a> <a href="self-manual.html">What the AI knows about Kurooto (the self-manual)</a> <a href="mind.html">Brain (the mind), for developers</a> <a href="modules.html">Feature modules</a> <a href="web.html">The web page: setup wizard, dashboard, local API</a> <a href="calls-and-phone.html">Phone calls, the call line and the phone app</a> <a href="concept-graph.html">Concept graph: books into the notes</a> <a href="sorter.html">The notes sorter (developers)</a> <a href="voice.html">Voice (modules/voice/, 0.8.8)</a> <a href="face.html" aria-current="page">Face presence (modules/face/, 0.8.10)</a> <a href="testing.html">Testing</a> <a href="release-and-updates.html">Releases and self-updates</a> <a href="debugging.html">Debugging</a> · <a href="../user/index.html">User wiki</a></nav>
+<h1 id="face-presence-modulesface-0810">Face presence (<code>modules/face/</code>, 0.8.10)</h1>
+<p>Kurooto recognises its owner's face with OpenCV's YuNet (detection) and SFace (recognition), on the CPU, on this computer only, and greets him by voice when he sits down after an absence, then opens Voice's conversation (<code>Portal.invite</code>). Off by default (a module); nothing watches until he enrols on the dashboard's Face page. User page: <a href="../../wiki/user/face.html">../user/face.md</a>. Design: <code>build-specs/0.8.10/face.md</code> (outside the repo).</p>
+<p><strong>The rule above all others: a face match never authorises anything.</strong> It isn't one of <code>core/tap.py:WAYS</code>, never answers an approval, unlocks anything or widens a voice turn. <code>tests/unit/test_face.py:test_a_face_never_authorises_anything</code> checks that <code>core/tap.py</code>, <code>core/ask.py</code> and <code>core/tools.py</code> never read the face module.</p>
+<h2 id="files">Files</h2>
+<div class="table-wrap"><table><thead><tr><th>File</th><th>What's in it</th></tr></thead><tbody><tr><td><code>modules/face/__init__.py</code></td><td><code>Face(Module)</code>: settings (<code>register_defaults("face", ...)</code>), parts, the template cache, <code>pause_checks()</code>/<code>pause_reason()</code>, the watcher's thread (<code>_run</code>, <code>tick</code>, <code>background</code>), <code>_on_watch</code> (events), the greeting (<code>greet</code>), learning, the sessions (<code>enrol_start</code>, <code>train</code>, <code>test_start</code>, ...), <code>forget</code>, <code>turned_off</code>, <code>status()</code>/<code>card()</code>/<code>/face</code>/intents; <code>button()</code> for the core <code>fce</code> prefix</td></tr><tr><td><code>modules/face/parts.py</code></td><td><code>FACE_PACKAGES</code> (<code>vision</code>: opencv-python-headless, numpy; module <code>cv2</code>), <code>face_models()</code> (pinned URLs and sha256), <code>parts(app)</code>: Voice's <code>Parts</code> with <code>root=&lt;app&gt;/voice</code> (one shared <code>py-X.Y</code>) and <code>models_dir=&lt;app&gt;/face/models</code></td></tr><tr><td><code>modules/face/camera.py</code></td><td><code>Camera</code> (open/read/close, per-OS backends), <code>devices()</code>, <code>pick()</code>, <code>holders()</code> (Linux busy), <code>windows_busy()</code>, <code>CameraError(why)</code></td></tr><tr><td><code>modules/face/vision.py</code></td><td><code>Face(box, landmarks, score)</code>, <code>Stats</code>, <code>Pose</code>, the <code>Detector</code>/<code>Embedder</code>/<code>Frames</code> protocols, <code>pose()</code>, <code>moved()</code>, <code>opencv_detector()</code>, <code>opencv_embedder()</code>, <code>opencv_frames()</code> (cv2 imported only inside)</td></tr><tr><td><code>modules/face/enrol.py</code></td><td><code>PLAN</code>, <code>Step</code>, the quality limits, <code>Enrolment</code> (pure: progress, <code>act()</code>, <code>judge()</code>), <code>shape()</code>, <code>Session</code> (camera, preview, timeouts, test marks)</td></tr><tr><td><code>modules/face/model.py</code></td><td><code>Sample</code>, <code>centroids()</code>, <code>score()</code>, <code>folds()</code>, <code>held_out()</code>, <code>train()</code>, <code>Template</code> (payload, <code>classify()</code>, <code>retrain()</code>, <code>learn()</code>, <code>undo_learn()</code>, <code>forget_learned()</code>)</td></tr><tr><td><code>modules/face/watch.py</code></td><td><code>Watcher</code> (pure: injected clock, idle, locked, camera, models, classify, pause reasons, emit), <code>PAUSES</code></td></tr><tr><td><code>modules/face/greet.py</code></td><td><code>compose()</code> (rules, ≤ 220 characters), <code>may_greet()</code></td></tr><tr><td><code>core/biometric.py</code></td><td><code>BioStore(app, feature)</code> (key, seal, unseal, save, load, forget, <code>Locked</code>), <code>calibrate()</code>, <code>load_impostors()</code>, <code>npz_read</code>/<code>npz_write</code> (numpy's format without numpy), <code>BIOMETRIC_SECRETS</code>. Shared with Voice ID</td></tr><tr><td><code>core/nearby.py</code></td><td>"others nearby": <code>set_others(app, source, on)</code>, <code>others(app)</code>; Face sets it, Voice (ID) can read it. The watcher sends <code>others on</code> with every frame while a second face is in view (nearby drops a signal older than <code>STALE_S</code>, 120 s), and the event only when it changes</td></tr><tr><td><code>web/static/face.js</code></td><td>the Face page (<code>FACE.mount</code>, <code>FACE.live</code>), loaded on demand by <code>home.js:renderFace</code></td></tr><tr><td><code>tools/face_impostors.py</code></td><td>the maintainer's impostor-set builder (never at install)</td></tr><tr><td><code>tests/unit/test_face.py</code>, <code>tests/unit/test_biometric.py</code></td><td>everything with fakes</td></tr></tbody></table></div>
+<h2 id="changes-elsewhere">Changes elsewhere</h2>
+<ul><li><code>modules/voice/parts.py</code>: <code>ModelFile.sha256</code> (checked after download; a mismatch deletes the <code>.part</code>), <code>Parts(root, app_dir, packages=None, table=None, models_dir=None, feature="Voice")</code>, <code>Parts.install_from(folder, keys, progress)</code>. Voice's behaviour is unchanged.</li><li><code>modules/voice/__init__.py</code>: <code>Voice.greet(text, listen_s, talk=True) -&gt; (spoken, "talk" | why)</code>; <code>_job_done</code> doesn't read answers aloud while <code>app.away_from_desk()</code> with <code>face.away.hold_desktop</code>.</li><li><code>modules/voice/portal.py</code>: <code>Portal.invite(text, hold_s)</code>.</li><li><code>core/calm.py</code>: reasons <code>face.greet</code> (<code>counted=False</code>, <code>later=False</code>, <code>feature="face"</code>) and <code>face.off</code> (exempt); <code>Calm.speak_ok(why, about)</code>.</li><li><code>core/tap.py</code>: <code>GUARDED["camera.open"]</code> (ways: button), <code>data.delete</code>'s where, <code>BUTTONS["fce"]</code>.</li><li><code>core/egress.py</code>: <code>media.githubusercontent.com</code>. <code>core/notify.py</code>: <code>Notifier._desktop</code> (held while away).</li><li><code>app.py</code>: <code>App.away_from_desk()</code>, the core <code>fce</code> button. <code>core/retention.py</code>: <code>/forget all</code> forgets the face model.</li><li><code>core/profile.py:NEVER</code>, <code>modules/backups.py</code> (<code>SKIP_STATE_DIRS</code> + <code>face</code>, <code>backup_secret_names()</code> leaves out <code>BIOMETRIC_SECRETS</code>), <code>diagnostics.py</code> (<code>KNOWN_SECRETS</code> + <code>face.key</code>; <code>face.json</code> in the bundle: on, enrolled, samples, set up).</li><li><code>web/api.py</code> (<code>face</code> in <code>MODULE_ORDER</code>, <code>GET face</code>, <code>POST face/...</code>, <code>face_frame()</code>), <code>web/server.py</code> (<code>GET /api/face/frame</code>), <code>web/live.py</code> (<code>EVENT_CELL</code> <code>face_</code>; <code>today_items(app)</code> factored out of <code>Vitals._today</code>), <code>web/static/home.js</code> (<code>TABS</code>/<code>DLABEL</code>/<code>PKEY</code> <code>face</code> (Alt+E), <code>renderFace</code>, the live <code>t === "face"</code> branch and the "● camera" badge), <code>web/static/being.js</code> (<code>face_*</code> → <code>see</code> and the <code>face</code> feature, sight's nerve and pupil).</li><li><code>core/commands.py</code> (<code>Group("face", ...)</code>), <code>cli.py</code> (<code>kurooto face ...</code>), <code>modules/catalog.py</code>.</li></ul>
+<h2 id="the-pipeline">The pipeline</h2>
+<pre><code>Camera.read()  (BGR, 640x480 asked; one grab() first; CAP_PROP_BUFFERSIZE 1)
+  Frames.mean(frame) &lt; 8 for 10 frames -&gt; "camera covered"
+  Detector.detect(frame, 0.6)   YuNet on a 320-wide copy; boxes and 5 landmarks scaled back; NMS 0.3
+  for each face, score &gt;= 0.8 (0.9 enrolling) and height &gt;= face.recognise.min_face_px:
+      Embedder.align(frame, face)   FaceRecognizerSF.alignCrop -&gt; 112x112
+      Embedder.stats(crop)          grey: variance of the Laplacian, mean, share &gt;= 250
+          lenient (watching): blur &gt;= BLUR_MIN / 2, 30 &lt;= mean &lt;= 225, else ignored
+      Embedder.feature(crop)        128 floats, L2-normalised, a Python list
+      Template.classify(e)          owner (&gt;= T_hi) | unsure (&gt;= T_lo) | stranger
+  del frame, crops; a stranger's or unsure face's numbers are dropped at once</code></pre>
+<p>Backend and target are set explicitly (<code>DNN_BACKEND_OPENCV</code>, <code>DNN_TARGET_CPU</code>). The watcher uses 1 thread (<code>cv2.setNumThreads(1)</code>), enrolment 4. Measured on the owner's CPU (spec §2, synthetic input): YuNet at 320x240 about 9 ms on 1 thread, SFace about 30 ms per face: under 5 % of a core at 1 frame a second.</p>
+<p>The maths is pure Python on lists (<code>core/biometric.py:dot</code>, <code>mean_unit</code>): numpy isn't in Kurooto's own install, and the sizes (≤ 3 centroids × 5,000 impostors × 128) take well under a second.</p>
+<h2 id="the-watcher-watchpy">The watcher (<code>watch.py</code>)</h2>
+<p>States: <code>off</code>, <code>paused(why)</code>, <code>resting</code> (camera closed, input is presence), <code>watching</code> (camera open), <code>away</code>.</p>
+<p><code>tick()</code> (every 0.25 s from the thread <code>face-watch</code>; <code>Face.background</code> only keeps the thread alive and stops it):</p>
+<ol><li>A clock jump of more than 30 s (a sleep) or an unlock opens a 10 s "woke" window. Locked: idle isn't read.</li><li>Input (idle &lt; 2 s, unlocked) is presence: <code>_input()</code>; a gap since <code>present_at</code> of ≥ <code>greet.after_absent_min</code> starts a *return* (<code>returning = {since, gap}</code>), which waits 30 s for his face. Input ends <code>away</code> ("back").</li><li>Away (<code>away.on</code>): no presence for <code>away.after_min</code> while unlocked and watching, or locked that long → "left".</li><li><code>paused()</code> (the module's <code>pause_reason()</code>) or a camera problem: close, state <code>paused</code>.</li><li>The camera is wanted when idle ≥ <code>watch.idle_s</code>, or locked with <code>watch.when_locked</code> on, or (woke, confirming a return, or already open while idle can be read) within 6 s of input becoming active. Otherwise it closes (<code>resting</code>).</li><li>A frame is due at the rate: <code>watch.fps</code> (<code>fps_battery</code> on battery), 2 fps for 5 s after the first owner frame, divided by <code>slow</code> (doubled, up to 8, whenever a frame takes more than 150 ms), never below 0.2.</li><li><strong>Arrival:</strong> a return is pending, <code>recognise.frames</code> (3) owner frames among the last 4 within 6 s, and not *still* (every pair of those embeddings with cosine &gt; 0.995 and landmarks moved &lt; 0.5 px: a propped-up photo; it waits). Emits <code>arrived {away_min, others}</code>; <code>others</code> = a second face (score ≥ 0.6) in any of those frames.</li></ol>
+<p>Camera problems back off: busy 60 s (Linux <code>/proc/*/fd</code> holders, Windows' CapabilityAccessManager record), no camera 60 s, blocked 300 s, covered 300 s. <code>Camera.open()</code> raises <code>CameraError("busy" | "no camera" | "blocked")</code>.</p>
+<p><strong>Pause reasons, in order</strong> (<code>watch.py:PAUSES</code>, <code>Face.pause_checks()</code> evaluates them lazily in that order): feature off · not enrolled (or "re-enrol needed (the recognition model changed)") · not set up yet · paused by you · Kurooto is paused · on battery (pause mode) · screen locked · you're on a call · focus · night hours · enrolling · camera in use by another program · no camera · camera blocked by the system · camera covered · template locked.</p>
+<p><strong>Decision worth knowing:</strong> when the computer can't say how long it's been idle (<code>IdleProbe.idle_seconds()</code> is None), the camera opens only after an unlock or a wake (or to confirm a return), never "while idle", and "already open" doesn't keep it open: it closes when that window ends. Failing closed keeps the camera free (0.8.10 review: before the fix it stayed open for good once a wake had opened it).</p>
+<h2 id="enrolment-and-the-test-enrolpy">Enrolment and the test (<code>enrol.py</code>)</h2>
+<p><code>POST /api/face/enrol/start {cid, mode: new|add}</code> → <code>Face._start</code>: refused when the feature is off, parts are missing, he's on a call, another session is open, or the camera is busy. The session's thread waits up to 3 s for the watcher to release the camera, then opens it. <code>Session.step()</code> at 5 fps: read, JPEG for the preview (320x240, quality 60, in memory), detect, <code>Enrolment.judge()</code>, push <code>{t: "face", kind: "enrol", session, ok, reason, step, box, landmarks, quality: {blur, light, yaw, pitch, roll}, ...progress}</code> to the page's <code>cid</code> only (box and landmarks as shares of the frame; numbers rounded).</p>
+<p><code>judge()</code> order (first failure is the reason): covered (10 dark frames) · no face (≥ 0.9) · two faces (&gt; 1 at ≥ 0.6) · too far (&lt; <code>min_face_px</code>) · too close (&gt; 0.7 of the frame, or touching an edge) · tilted (|roll| &gt; 25°) · the step's rule · blur (&lt; <code>BLUR_MIN</code> 60) · dark (&lt; 50; &lt; 30 in the light step) · bright (&gt; 210, or &gt; 8 % blown) · the light step's difference (≥ 25 from the front step's median) · spacing (0.5 s, silent) · repeat (cosine &gt; 0.97 and moved &lt; 3 px) · not you (≥ 5 samples and cosine to their centroid &lt; 0.25).</p>
+<p>Pose (<code>vision.py:pose</code>): <code>yaw = (nose_x − eyes_mid_x) / eye_distance</code>, negated for the mirrored preview (his left is negative); <code>roll = atan2(eye_dy, eye_dx)</code>; <code>pitch = (nose_y − eyes_mid_y) / (mouth_mid_y − eyes_mid_y)</code>, judged against his own front-step median (<code>Enrolment.baseline</code>, kept in the template for Add samples).</p>
+<p>Timeouts: no preview fetched for 15 s → paused (camera closed; Resume reopens it); 10 minutes of capturing → paused; 30 minutes without training → ended, samples dropped. <code>train</code> copies the samples into the template, retrains, seals, then <code>Session.end()</code> clears the in-memory list.</p>
+<p>The test (<code>kind: "test"</code>, 60 s): each face's score and class per frame; <code>mark("me" | "other")</code> looks 10 s and keeps only <code>{frames, recognised, decided}</code> or <code>{frames, best, any_accepted}</code> in <code>Template.last_test</code>.</p>
+<h2 id="calibration-modelpy-corebiometricpycalibrate">Calibration (<code>model.py</code>, <code>core/biometric.py:calibrate</code>)</h2>
+<ul><li>Groups: <code>base</code> (front to far), <code>glasses</code>, <code>light</code>; a group under 5 samples merges into base; centroid = normalised mean; <code>score(x) = max_g cos(x, c_g)</code>. Learned samples join their nearest group at weight 0.5.</li><li><code>G</code>: 5-fold held-out scores, stratified by step (<code>folds()</code>: each step's samples go round the folds). Enrolled samples only.</li><li><code>J = score(I)</code> for the impostor matrix <code>I</code> against the full template.</li><li><code>T_far = max(quantile(J, 1 − far), mean(J) + z·std(J))</code>, <code>T_hi = max(0.363, T_far)</code>, <code>T_lo = max(0.20, T_hi − 0.10)</code>. <code>far, z</code> from <code>face.recognise.strictness</code>: loose 1e-2 / 2.33, normal 1e-3 / 3.09, strict 1e-4 / 3.72. <code>face.recognise.threshold &gt; 0</code> overrides <code>T_hi</code> (<code>method: "override"</code>), never below 0.363 (a setting can make it stricter, never looser than the floor); fewer than 20 impostors or none: <code>T_hi = 0.413</code> (<code>method: "floor"</code>).</li><li>TAR = share of <code>G ≥ T_hi</code>, overall and per step. Grade: good (TAR ≥ 0.95, median(G) − T_hi ≥ 0.15, near/far/glasses/ light complete), fair (TAR ≥ 0.80), weak. Advice per step with TAR &lt; 0.7, when median(J) &gt; 0.25, for missing steps, and when calibrated without impostors.</li><li>Why no classifier or fine-tune: one identity, ~50 samples; a classifier would learn the synthetic impostors' domain gap; a fine-tune needs torch and licensable real impostor images. <code>train()</code>'s report holds what a later comparison needs.</li></ul>
+<h3 id="the-impostor-set">The impostor set</h3>
+<p><code>src/kurooto/data/face-impostors.npz</code> (fp16 <code>emb</code> M×128, <code>model_sha256</code>, <code>source</code>), read by <code>Face.impostors()</code> through <code>load_impostors()</code>, which refuses a set made with another SFace file. <strong>Not shipped in 0.8.10</strong>: the candidate source is SFHQ (synthetic faces, MIT repository) but its images were made through StyleGAN2, whose own licence is non-commercial, and the download needs a Kaggle account, so it waits for the owner's OK. <code>tools/face_impostors.py</code> builds it: YuNet ≥ 0.9 with exactly one face per image, align, embed, up to 5,000, and prints the score spread against a random half's centroid. Synthetic faces have no real lookalikes, which is why the LFW floor (0.363) stays a hard lower bound.</p>
+<h2 id="greeting-greetpy-facegreet">Greeting (<code>greet.py</code>, <code>Face.greet</code>)</h2>
+<p><code>may_greet()</code> order: <code>face.greet.on</code> · Voice on, not muted, <code>tts()</code> not None · <code>availability.call_block(now)</code> is <code>(None, None)</code> · not paused · <code>with_others != "skip"</code> when others are in view · <code>gap_min</code> · <code>per_day</code> · <code>Calm.speak_ok("face.greet")</code> last (it records the row). <code>compose()</code> parts from <code>face.greet.say</code>: <code>next</code> (<code>web/live.py:today_items</code>, the first item with state "next"), <code>waiting</code> (<code>ask.pending</code> counts by kind), <code>deadline</code> (<code>deadlines.upcoming(24)</code>'s first not yet past), <code>held</code> (<code>calm.held()</code> count); the last parts drop until it fits 220 characters; "Want to go through them?" only when something waits and the conversation will open. Others in view (<code>with_others</code> short or skip): "Welcome back." only. Then <code>Voice.greet(text, listen_s, talk)</code>: publish <code>voice_text</code>, speak (waiting), and <code>Portal.invite</code> when talk, listening isn't blocked and nobody else is in view.</p>
+<p><code>Calm.speak_ok</code>: on → the stopped list → <code>_wait</code> (exam keep, quiet week, the evening list, Fewer, windows; not the daily budget since <code>counted=False</code>) → a row <code>kind='spoken'</code>, <code>state='spoken'|'skipped'</code>, <code>held=&lt;why&gt;</code>, <code>text=''</code>. Anything going wrong: True. Greeting counts (day, n, last) live in <code>face.json</code>'s <code>greets</code>.</p>
+<p><code>Portal.invite</code> opens the portal with <code>awaiting = False</code> (gate rule 5 would take any speech), sets <code>last = spoke_at = now</code>, <code>last_reply = text</code>, and a per-invite <code>close_s</code> put back when it closes. Rules 7 (open portal, a question or request) and 8 (a yes or no after a question) then apply; anything not addressed closes it.</p>
+<h2 id="learning">Learning</h2>
+<p><code>Watcher</code> keeps a candidate from an arrival's frames when the frame is enrolment-grade (blur ≥ 60, 50 ≤ mean ≤ 210, ≤ 8 % blown), alone in view, and <code>Template.learnable(e, margin)</code> (≥ <code>T_hi + learn.margin</code>, cosine &lt; 0.97 to every stored sample). Input within 60 s of the arrival emits <code>learn</code>; <code>Face.learn</code> checks <code>learn.on</code> and <code>learn.every_h</code>, appends to the FIFO pool (<code>learn.max</code>), retrains (thresholds still from enrolled held-outs) and emits <code>face_learned {count}</code>. Undo the last / Forget what it learned recompute.</p>
+<p>A change of the SFace file (another sha256 than <code>face.json</code>'s <code>model_sha</code>) means "re-enrol needed": embeddings from two models are never mixed.</p>
+<h2 id="privacy">Privacy</h2>
+<div class="table-wrap"><table><thead><tr><th>What</th><th>Where</th><th>Form</th></tr></thead><tbody><tr><td>template</td><td><code>&lt;state&gt;/face/template.bin</code></td><td>AES-GCM-256, nonce + ciphertext, AAD <code>kurooto-face:template:v1</code>; the sealed JSON: version, model_sha256, created, updated, samples (base64 fp16, step, at, q), learned, centroids, thresholds, grade, report, last_test, baseline</td></tr><tr><td>key</td><td>secret <code>face.key</code></td><td>keychain, else <code>config/secrets.json</code> (owner-only)</td></tr><tr><td>status</td><td><code>&lt;state&gt;/face/face.json</code></td><td>counts and dates: enrolled, samples, per_step, learned, grade, tar, created, trained, last_test_at, model, model_sha (12 chars), greets</td></tr><tr><td>frames, crops, previews, strangers</td><td>nowhere</td><td>memory only; previews served with <code>Cache-Control: no-store</code>, <code>X-Content-Type-Options: nosniff</code></td></tr></tbody></table></div>
+<p>Never in a backup (<code>SKIP_STATE_DIRS</code>, <code>backup_secret_names</code>), Profile sync (<code>NEVER</code>) or the diagnostics bundle (only <code>face.json</code>'s counts). <code>known_secret_names()</code> still lists <code>face.key</code> on purpose: moving keys to the file for a start at boot (<code>core/autostart.py</code>) and uninstalling (<code>core/leave.py:forget_keys</code>) must reach it.</p>
+<p>Events (no scores, embeddings or image data; <code>test_events_carry_no_scores_or_pictures</code> checks the keys): <code>face_watch {on, why}</code>, <code>face_arrived {away_min}</code>, <code>face_left {}</code>, <code>face_back {}</code>, <code>face_greeted {parts, talk}</code>, <code>face_greet_skipped {why}</code>, <code>face_enrolled {samples, grade}</code>, <code>face_trained {samples, grade}</code>, <code>face_learned {count}</code>, <code>face_forgotten {}</code>, <code>face_failed {part, error}</code> (the exception type only). <code>core/nearby.py</code> emits <code>nearby_others {on, source}</code>.</p>
+<p>The live stream: <code>{t: "face", kind: "enrol" | "test" | "test_result" | "session"}</code> to the Face page's <code>cid</code> only; <code>{t: "face", kind: "camera", on}</code> to every page (the badge).</p>
+<h2 id="api">API</h2>
+<div class="table-wrap"><table><thead><tr><th>Route</th><th>What</th></tr></thead><tbody><tr><td><code>GET /api/face</code></td><td><code>Face.status()</code>: stage (off, setup, enrol, capturing, testing, manage), line, why, model (report, thresholds, learned, last test), plan, switches; never a template value</td></tr><tr><td><code>GET /api/face/frame?s=</code></td><td>the preview JPEG; 404 without a live session; the dashboard token like every API route</td></tr><tr><td><code>POST /api/face/enrol/start {cid, mode}</code></td><td>guarded <code>camera.open</code> (the page's Start)</td></tr><tr><td><code>POST /api/face/enrol/step {session, action}</code></td><td>skip, back, no_glasses</td></tr><tr><td><code>POST /api/face/enrol/pause {session, on}</code>, <code>enrol/discard</code>, <code>train {session}</code></td><td></td></tr><tr><td><code>POST /api/face/test/start {cid}</code></td><td>guarded <code>camera.open</code> (the page's Test)</td></tr><tr><td><code>POST /api/face/test/mark {session, who}</code>, <code>test/stop</code></td><td></td></tr><tr><td><code>POST /api/face/retrain</code>, <code>strictness {level}</code>, <code>learn/undo</code>, <code>learn/forget</code>, <code>pause {arg}</code></td><td></td></tr><tr><td><code>POST /api/face/undo</code></td><td>back to the template before the last <code>train</code> (Start over, i.e. <code>enrol/start {mode: new}</code> while enrolled, or Add samples); held in memory (<code>Face._previous</code>, a payload) for this run only, dropped by forget; <code>status().can_undo</code>. A Start over never trains over a template whose key can't be read</td></tr><tr><td><code>POST /api/face/forget</code></td><td><code>data.delete</code> (after the page's confirm)</td></tr><tr><td><code>POST /api/face/install-from {folder}</code></td><td>runs in the background; progress at <code>GET /api/progress</code></td></tr></tbody></table></div>
+<h2 id="the-camera-per-os">The camera per OS</h2>
+<p>See <code>camera.py</code>'s docstring: V4L2 with IR names skipped and <code>/proc/*/fd</code> holders on Linux; MSMF then DSHOW, and the CapabilityAccessManager record for "in use", on Windows; AVFoundation on macOS, which shares the camera and can't say it's busy. Open-but-no-frames for 2 s means blocked (a permission) or a metadata node. <code>kurooto face test-camera</code> is the owner's check (3 s, numbers only).</p>
+<h2 id="not-verified">Not verified</h2>
+<ul><li>No real camera, model file or face was used: everything ran with fakes. <code>cv2</code> isn't in the dev environment, so <code>vision.py</code>'s OpenCV classes and <code>camera.py</code>'s <code>open()</code> have never run here.</li><li><code>BLUR_MIN</code> (60), the brightness limits and the pose ranges are first guesses; the first real run should tune them.</li><li>The expected scores (same person about 0.55 to 0.8, others 0 to 0.3, <code>T_hi</code> about 0.40 to 0.48) are from the literature, not measured.</li><li>The Windows busy check and macOS permission behaviour are written from documentation, untested.</li><li>The SFace training-data line in the user page is from the SFace paper as remembered, not re-checked against it.</li></ul>
+<h2 id="the-owners-first-real-run">The owner's first real run</h2>
+<ol><li>A scratch <code>KUROOTO_HOME</code> and a free port: <code>kurooto face test-camera</code>; check the size, fps and the light coming on.</li><li>Features → Face presence → Set up (about 0.18 GB); <code>/egress</code> should show only <code>media.githubusercontent.com</code> and the uv hand-off.</li><li>Enrol; read the report (TAR, <code>T_hi</code>, grade, advice). Tune <code>BLUR_MIN</code> and the brightness limits if good frames are rejected.</li><li>Test as yourself and as someone else (a stranger's photo on a phone); note the scores.</li><li>Lock the screen, step away 20 minutes (or <code>face.greet.after_absent_min</code> 1), come back and unlock: the greeting should come within about 3 s; answer "what's next?" without the name.</li><li>Start a video call right after sitting down: it should get the camera (Linux).</li><li><code>/face forget</code>: <code>&lt;state&gt;/face/</code> is gone and <code>face.key</code> isn't in the keychain.</li></ol>
+
+    <p class="updated">Made from <a href="https://github.com/avtarfr/kurooto/blob/main/docs/wiki/dev/face.md">docs/wiki/dev/face.md</a> when the site is built. Something wrong or missing? <a href="https://github.com/avtarfr/kurooto/issues">Open an issue</a>.</p>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <span>Kurooto · Apache-2.0 · © Sumangalam Avtar Sharma</span>
+    <span><a href="../../wiki/user/index.html">User wiki</a> · <a href="../../wiki/dev/index.html">Developer wiki</a> · <a href="../../changelog.html">Changelog</a> · <a href="../../ongoing.html">In progress &amp; beta</a> · <a href="../../privacy.html">Privacy</a> · <a href="https://github.com/avtarfr/kurooto">Source</a></span>
+  </div>
+</footer>
+
+<script>
+  function toggleTheme() {
+    var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    var next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  }
+</script>
+</body>
+</html>
