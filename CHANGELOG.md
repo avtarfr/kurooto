@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.8.13 (2026-10-27)
+## 0.8.14 (2026-10-27)
 
-Voice that knows when it is spoken to and can be cut off, numbers said as words, study packs with what the syllabus cites, and fixes for backups, phone sensors and the phone camera as an eye.
+Voice answers only someone in front of it: a roommate's phone call no longer wakes it.
 
 - **Voice only answers someone in front of it.** A roommate on a phone call across the room could wake it. With Face
   presence on and enrolled, a turn is now answered only when the camera saw a face close to it (at least half your
@@ -14,6 +14,11 @@ Voice that knows when it is spoken to and can be cut off, numbers said as words,
   (`voice`, default) or nothing by voice (`none`), and `/voice` says which. Only times and counts are kept, in memory.
   The camera's light stays on while it listens, and a video call app can't use the camera then. `voice.listen.need_face`
   (on; does nothing with Face presence off).
+
+## 0.8.13 (2026-10-27)
+
+Voice that knows when it is spoken to and can be cut off, numbers said as words, study packs with what the syllabus cites, and fixes for backups, phone sensors and the phone camera as an eye.
+
 - **Voice: cut in while it speaks.** It used to drop every sound while it spoke (so it wouldn't hear itself), so only
   `/voice stop` could end a long answer. Now it keeps listening: your voice (Voice ID, checked against Kurooto's own
   voice print, made once in memory) or speech clearly louder than its own echo, whose words aren't its own, stops it
