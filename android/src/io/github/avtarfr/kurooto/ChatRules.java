@@ -2,8 +2,10 @@ package io.github.avtarfr.kurooto;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -12,7 +14,7 @@ import java.util.regex.Pattern;
  * The chat's rules that need no Android (0.8.10), so `build.sh --test` checks them on the JVM (test/ChatTest.java):
  * the Markdown the bubbles show (blocks and inline spans), session ids, the sealed file links ("f1": the key only in
  * the #fragment), how long your own message stays editable, the 10 MB limit, a new chat's title from its first words,
- * the date separators and the slash-command list.
+ * the date separators, the slash-command list, and (0.8.16) your computer's read marks.
  */
 final class ChatRules {
     private ChatRules() { }
@@ -23,6 +25,25 @@ final class ChatRules {
     /** Your own message can be edited for this long after it was sent. */
     static final long EDIT_MS = 15 * 60 * 1000L;
     private static final Pattern SESSION = Pattern.compile("[0-9a-f]{16}");
+
+    /**
+     * Read marks from your computer (0.8.16): each session's newest message read there (`computer`, session to message
+     * id: the dashboard's Chat page, another phone, or this one), against this phone's own (`phone`, session to the
+     * local number "ln" read up to). A mark moves on only to a message this phone has, in that session, and only
+     * forward, so reading on either side clears both and nothing read here comes back unread. Returns the sessions
+     * whose mark moves, with the new number.
+     */
+    static Map<String, Long> readMarks(Map<String, Long> phone, Map<String, String> computer, Map<String, Long> lnById,
+                                       Map<String, String> sessionById) {
+        Map<String, Long> out = new HashMap<>();
+        for (Map.Entry<String, String> e : computer.entrySet()) {
+            String sid = e.getKey(), id = e.getValue();
+            if (!isSession(sid) || id == null || id.isEmpty() || !sid.equals(sessionById.get(id))) continue;
+            Long ln = lnById.get(id), had = phone.get(sid);
+            if (ln != null && ln > (had == null ? 0L : had)) out.put(sid, ln);
+        }
+        return out;
+    }
 
     /** A session id the protocol takes: 16 hex characters, or "main". */
     static boolean isSession(String s) {

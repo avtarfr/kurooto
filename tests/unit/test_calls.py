@@ -513,3 +513,21 @@ def test_a_call_can_put_something_in_writing_and_start_a_sync(calls):
 
     tool = next(t for t in sync_tools(calls.app) if t.name == "sync_now")
     assert isinstance(tool.run({}), str)
+
+
+def test_the_app_call_screen_reads_only_elements_the_call_page_has():
+    """The phone app's call screen (0.8.16, android CallScreen.kt) draws the call page's state from its element ids and
+    presses its buttons; every one must be on the page (and on the demo stand-in), or the screen would show nothing."""
+    import re
+
+    app = Path(__file__).parent.parent.parent / "android"
+    screen = (app / "src" / "io" / "github" / "avtarfr" / "kurooto" / "CallScreen.kt").read_text(encoding="utf-8")
+    mirror = screen.split('const val MIRROR = """', 1)[1].split('"""', 1)[0]
+    pressed = re.search(r"PRESSABLE = setOf\(([^)]*)\)", screen).group(1)
+    ids = set(re.findall(r"el\('([a-z]+)'\)", mirror)) | set(re.findall(r'"([a-z]+)"', pressed)) | {"gate"}
+    assert {"call", "status", "log", "mute", "out", "gatebox", "level", "talk"} <= ids
+    page = (WORKER / "public" / "index.html").read_text(encoding="utf-8")
+    demo = (app / "src-demo" / "io" / "github" / "avtarfr" / "kurooto" / "Demo.kt").read_text(encoding="utf-8")
+    for i in sorted(ids):
+        assert f'id="{i}"' in page, f"the call page has no #{i}"
+        assert f'id="{i}"' in demo, f"the demo call page has no #{i}"

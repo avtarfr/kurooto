@@ -163,7 +163,17 @@ themed icons if you use them).
 **A ringing call** shows **Answer**, **Decline** and **Later** (**Snooze** for the wake-up alarm). Since 0.8.7 the ringing
 screen matches the rest of the app: dark, over Kurooto's sky in your colours (the **Vivid colours** switch), a slowly turning badge
 (still with **Remove animations**), who's calling and why, and the three as big rounded buttons in a bar floating at the bottom.
-Answered, the call page fills the screen as before. The **New call screen** switch brings back the old one. On Android 12 and
+**In the call** (0.8.16; before, the call line's own dark green page filled the screen, whichever way the call came):
+the same style. Kurooto's badge in the middle swells with your voice while the mic lets it through, with who's calling,
+why, and how the call is going ("Connecting…", "Connected", "Reconnecting…"); once something is said, the transcript
+shows as bubbles (Kurooto's on the left, yours on the right, notes like "searching notes" in the middle) under a
+floating card with the badge. Above the bar: your microphone's level and **Mic gate** (tap it for its slider: higher
+needs a louder voice, so a noisy room doesn't cut in), **Interrupt** while Kurooto talks on the loudspeaker, and in a
+turn-by-turn call the big **Talk** button. The floating bar at the bottom has **Mute**, **Speaker** (off: the earpiece,
+or your headset) and **Hang up**. A call you place from the app and one you answer from the notification look the
+same. The call page still runs the call underneath, so nothing about how calls work changes; if a call line ever
+sends something that isn't its call page, that page is shown as it is. The **New call screen** switch brings back the
+old screens, ringing and in the call. On Android 12 and
 newer the notification looks like the phone's own incoming calls (a red Decline, a green Answer). What each does is in
 [Calls: Kurooto calling you](calls.md#kurooto-calling-you).
 
@@ -609,8 +619,9 @@ approvals stay under **Waiting for you**, with their answer buttons.
 **The same chat on your computer's dashboard (0.8.14).** The dashboard's **Chat** page (Alt+H) shows these chats
 and messages live, with Kurooto's buttons and what's waiting for you, and has a box to write in the open chat. What you
 write there is handled exactly as if you'd typed it here and shows on your phones as yours; a button or an answer there
-is the same as a tap here, so it settles everywhere. A chat you read here shows as read on the dashboard; the app keeps
-its own unread badges, so reading on the dashboard doesn't clear them. What you send on Telegram or say to Voice isn't
+is the same as a tap here, so it settles everywhere. A chat you read here shows as read on the dashboard, and since
+0.8.16 a chat you read on the dashboard (or on another phone) clears its unread badge and notification here too
+(at once when the app is connected straight to your call line, else the next time it catches up). What you send on Telegram or say to Voice isn't
 kept in this chat, so it isn't on that page either. See [the dashboard's Chat page](dashboard.md#chat-alth).
 
 **What you see under your message:**

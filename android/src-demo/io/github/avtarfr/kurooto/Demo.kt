@@ -11,7 +11,9 @@ import java.util.TimeZone
 /**
  * Made-up data for looking at the screens without pairing (debug and dev builds only; release builds have the empty
  * Demo in src-nodemo): adb shell am start -n io.github.avtarfr.kurooto.dev/io.github.avtarfr.kurooto.MainActivity
- * --ez demo true [--es tab today|alarms|settings|inbox] (BedsideActivity and CallActivity take the same extra, 0.8.7). Nothing here is sent anywhere: in demo, Call, Chat, answers, Done and +1 only say so;
+ * --ez demo true [--es tab today|alarms|settings|inbox] [--es call ring|in] (BedsideActivity and CallActivity take the same
+ * extra, 0.8.7; "call", 0.8.16, opens the call screen with [callPage], as Call on Today does). Nothing here is sent
+ * anywhere: in demo, Chat, answers, Done and +1 only say so;
  * the Views tab shows made-up copies of Systems and the Notes map (view()).
  */
 object Demo {
@@ -179,4 +181,35 @@ object Demo {
         MainActivity.Check("Alarms at the exact time (the wake-up alarm on this phone)", true, appInfo),
         MainActivity.Check("Battery: unrestricted (keeps listening)", false, appInfo),
     )
+
+    /**
+     * The call page's stand-in (CallActivity in demo, 0.8.16): the call page's own elements (the ids in
+     * src/kurooto/data/worker/public/index.html) acting out a short call, so the call screen can be looked at without a
+     * call line: it connects, the level moves, a few lines are said, and Mute, Speaker and the mic gate change what the
+     * page shows as they do in a real call. No microphone, nothing fetched, nothing sent.
+     */
+    @JvmStatic
+    fun callPage(): String = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<style>body{background:#0b0f0a;color:#f2eee8;font:16px sans-serif;margin:16px}.m{margin:4px 0}.me{text-align:right}</style></head><body><main>
+<div><h1 id="who">Kurooto</h1><div id="reason">Evening check-in: how did today go?</div></div>
+<div id="status">Connecting…</div><div id="log"></div>
+<div class="gate" id="gatebox"><div class="bar"><div id="level"></div></div>
+<label>Mic gate <span id="gateval">normal</span> <input id="gate" type="range" min="0.6" max="3" step="0.2" value="1"></label></div>
+<button id="int" hidden>Interrupt</button><p id="mode" hidden></p><div id="heard" hidden></div><button id="talk" hidden>Talk</button>
+<div class="row"><button id="call" class="end">Hang up</button><button id="mute">Mute</button><button id="out">Earpiece</button></div>
+</main><script>
+var el=function(i){return document.getElementById(i);};
+function say(t,c){var d=document.createElement('div');d.className='m '+c;d.textContent=t;el('log').append(d);}
+var lines=[[1800,'Hi! Quick evening check-in: how did today go?','ai'],[4200,'Pretty good. I finished the problem set.','me'],
+[5200,'searching notes: study plan','sys'],[6800,'Nice work. Tomorrow has two hours free after lunch: shall I put topology revision there?','ai'],
+[9200,'Yes, do that.','me'],[10400,'Done. It’s on your calendar for 14:00.','ai']];
+setTimeout(function(){el('status').textContent='Connected';el('status').className='live';el('out').textContent='Speaker';},1200);
+lines.forEach(function(l){setTimeout(function(){say(l[1],l[2]);},l[0]);});
+var muted=false;
+setInterval(function(){var lv=el('level'),x=muted?0:Math.random();lv.style.width=Math.round(x*100)+'%';lv.style.background=x>0.45?'var(--ok)':'var(--dim)';},300);
+el('mute').onclick=function(){muted=!muted;el('mute').textContent=muted?'Unmute':'Mute';};
+el('out').onclick=function(){var sp=el('out').textContent==='Speaker';el('out').textContent=sp?'Earpiece':'Speaker';el('status').textContent=sp?'Speaker':'Earpiece';};
+el('gate').oninput=function(e){var v=Number(e.target.value);el('gateval').textContent=v===1?'normal':v>1?'stricter ×'+v:'looser ×'+v;};
+el('call').onclick=function(){el('status').textContent='Call ended';el('status').className='';el('call').textContent='Call';el('call').className='';};
+</script></body></html>"""
 }

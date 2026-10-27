@@ -22,7 +22,7 @@ default = "on"
 when = "Turn it off to save battery or if motion bothers you (Android's Remove animations stops it too)."
 
 [s."app.newCallScreen"]
-tip = "The new call screen; off, the call screen from before 0.8.7."
+tip = "The new call screen (ringing and, since 0.8.16, the call itself); off, the call screens from before 0.8.7."
 default = "on"
 when = "Turn it off only if the new screen misbehaves on your phone."
 

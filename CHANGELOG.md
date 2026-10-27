@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.16 (unreleased)
+
+- **The phone app's call screen, in the call too.** 0.8.7 redrew only the ringing screen, so every answered call, every
+  call you placed from the app and every call answered from the notification still showed the call line's old dark
+  green page. The call itself now has the app's style (Phone tab → Switches → **New call screen**, on): Kurooto's badge
+  swelling with your voice, who's calling and why, how the call is going, the transcript as bubbles, your mic's level
+  and the mic gate, Interrupt and turn by turn's Talk, and Mute, Speaker and Hang up in a floating bar, in your
+  wallpaper's colours. The call page still runs the call underneath, so calls work as before, with any call line;
+  the switch off brings back the old screens.
+- **Reading a chat on the dashboard clears the phone's badge.** The app kept its own unread counts and ignored your
+  computer's, so a chat read on the dashboard's Chat page (or another phone) stayed unread on the phone. It now takes
+  the computer's read marks: its badge and notification for that chat clear too, never marking anything newer as read.
+
 ## 0.8.15 (unreleased)
 
 - **The phone app's Memory page is as sharp as the dashboard's.** It drew at 1.5 pixels per point and stretched that
