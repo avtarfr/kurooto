@@ -2,6 +2,9 @@
 
 ## 0.8.15 (unreleased)
 
+- **The phone app's Memory page is as sharp as the dashboard's.** It drew at 1.5 pixels per point and stretched that
+  over the phone's denser screen, so notes and their links came out as soft blobs; it now draws at the screen's own
+  density with the dashboard's dot size, so the notes are fine points and threads. The other organ pages are unchanged.
 - **The Chat page on the dashboard.** Kurooto's messages (reminders, check-ins, answers, what add-ons say, questions
   with buttons) were only in the phone app's chat and on Telegram; the dashboard showed the talk box's answers and
   events without text. The new Chat page (Alt+H, Ctrl+K `open chat`) shows the same chats and messages as the phone

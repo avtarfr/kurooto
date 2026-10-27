@@ -421,7 +421,7 @@ the dashboard's words over it. Views opens on the page you looked at last.
 - **Memory fills the screen with your notes** (0.8.13): it frames the notes as they really lie, a few dozen or a few
   thousand, centred between the bars, with its features' lights on a ring just round them and their names on screen.
   Before, it framed a fixed ring of lights, so a small set of notes sat tiny in the middle with a name cut off at the
-  edge.
+  edge. Since 0.8.15 it's drawn at your screen's full sharpness, as fine as the dashboard's.
 - **Brain's status** (0.8.14, with Brain on): under the organ's name, a line says what Brain is like now ("eyes shut:
   focus time · 2 held · uneasy about Sheet 5"), and the drawing shows the same as the dashboard's being: eyes shut, the
   held count by the heart, the glow on what it's uneasy about, its mood in the fluid and the beat. Tap the line's uneasy

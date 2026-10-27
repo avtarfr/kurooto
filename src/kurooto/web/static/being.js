@@ -183,9 +183,12 @@ window.beingMount = async function (host, opts) {
   composer.addPass(new THREE.RenderPass(scene, cam));
   const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), .7, .5, .5); composer.addPass(bloom);
   bloom.enabled = !LIGHT; // on a light page the page itself would bloom, and wash the being out to white
+  // the phone's Memory page draws at the screen's own density (up to 3): its notes are fine points and threads that the
+  // usual 1.5 cap blurred into blobs; the other organs keep the cap (heavier to draw)
+  const FULL = Math.min(window.devicePixelRatio || 1, 3), GLR = () => (OM && ONLY === "memory" ? FULL : DPR);
   const size = () => {
     const r = host.getBoundingClientRect(); W = Math.max(2, r.width | 0); H = Math.max(2, r.height | 0);
-    R.setPixelRatio(DPR); R.setSize(W, H, false); composer.setSize(W, H); bloom.setSize(W / 2, H / 2);
+    R.setPixelRatio(GLR()); R.setSize(W, H, false); composer.setPixelRatio(GLR()); composer.setSize(W, H); bloom.setSize(W / 2, H / 2);
     gl.style.width = W + "px"; gl.style.height = H + "px"; ov.width = W * DPR; ov.height = H * DPR; ov.style.width = W + "px"; ov.style.height = H + "px";
     cam.aspect = W / H; if (PH) cam.fov = PH.fov(W / H); cam.updateProjectionMatrix(); // phone: the dashboard's width of view
   };
@@ -577,7 +580,7 @@ window.beingMount = async function (host, opts) {
     placeLinks();
     const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(p, 3)); geo.setAttribute("a", new THREE.BufferAttribute(a, 1)); geo.setAttribute("col", new THREE.BufferAttribute(col, 3));
     const pts = new THREE.Points(geo, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, uniforms: { map: { value: dot() } },
-      vertexShader: `attribute float a;attribute vec3 col;varying float va;varying vec3 vc;void main(){va=a;vc=col;vec4 m=modelViewMatrix*vec4(position,1.);gl_PointSize=((1.1+2.6*max(0.,min(a,1.)-.5))*(4./-m.z)+1.)*${(DPR * (OM ? 1.3 : 1)).toFixed(2)};gl_Position=projectionMatrix*m;}`, // an organ page: notes you can see on a phone
+      vertexShader: `attribute float a;attribute vec3 col;varying float va;varying vec3 vc;void main(){va=a;vc=col;vec4 m=modelViewMatrix*vec4(position,1.);gl_PointSize=((1.1+2.6*max(0.,min(a,1.)-.5))*(4./-m.z)+1.)*${(OM ? FULL : DPR).toFixed(2)};gl_Position=projectionMatrix*m;}`, // an organ page: the dashboard's size, at full density
       // dimmed by alpha, not by darkening: a darkened hue reads as grey (0.8.11)
       fragmentShader: `uniform sampler2D map;varying float va;varying vec3 vc;void main(){float t=texture2D(map,gl_PointCoord).r;if(t<.02)discard;gl_FragColor=vec4(vc*(.68+.22*min(2.5,va)),t*min(1.,.25+va*1.1));}` }));
     pts.userData.notes = true; memory.g.add(pts);
@@ -1315,7 +1318,8 @@ window.beingMount = async function (host, opts) {
   }
   function only(page) {
     const o = PAGE_ORGAN[page]; if (!o) return false;
-    ONLY = o; PICKED = null; PANEL = null; spinning.obj = null; SAID = "";
+    const was = ONLY; ONLY = o; PICKED = null; PANEL = null; spinning.obj = null; SAID = "";
+    if ((was === "memory") !== (o === "memory")) size(); // the Memory page's own density
     for (const [k, g] of Object.entries(ORGAN_OBJ)) g.visible = k === o;
     for (const l of LINKS) l.visible = false;
     if (o === "mind") setMode("solid");

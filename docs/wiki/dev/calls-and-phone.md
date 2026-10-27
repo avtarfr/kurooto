@@ -780,8 +780,9 @@ Memory's framing (0.8.13, `being.js` `memFit`/`memRing`/`memFrame`, organ pages 
 percentile radius (group units) after each build and when the layout worker finishes; the feature lights on a ring at
 `1.3 r + .12` (their lines from the cloud's edge, re-added if a rebuild took them off); the camera on the centroid at
 the distance that fits the ring in `beingPhone.room(H)` (the share of the height the bars leave, from `inset`) and the
-width, again when that share or the aspect changes and on Back. Notes draw 1.3 times larger there, and the bloom's
-radius is .1.
+width, again when that share or the aspect changes and on Back. The bloom's radius is .1 there, and (0.8.15) the page
+renders at the screen's own density (`FULL`, devicePixelRatio up to 3, through `GLR()` in `size()`, re-run when `only()`
+moves to or from Memory) with the notes at the dashboard's size in CSS pixels; the other organ pages keep the 1.5 cap.
 
 ## The settings guide in the app (0.8.10)
 
