@@ -51,6 +51,7 @@ words, one step at a time, and let them do the clicking in their browser.
 | `kurooto send FILE [--caption T]` | sends them a file on Telegram (up to 50 MB) | yes, a file they asked for |
 | `kurooto note [--title T] TEXT` | saves a quick note in their notes' inbox (or what's piped in) | yes, when they asked |
 | `kurooto top --once` | one screen of the status board (this computer and Kurooto) | yes |
+| `kurooto face` / `kurooto face test-camera` / `kurooto face forget` | Face presence's status / opens the camera for 3 s and prints numbers only / deletes their face model | status yes; **ask first** for test-camera (it turns their camera on) and forget (it can't be undone) |
 | `kurooto cases` / `kurooto cases export` | the Wrong-button test cases and taught phrasings / writes them as a pytest file | yes; the export holds what they typed: ask before sending it anywhere |
 | `kurooto jobs` / `kurooto jobs --cancel ID\|all` | what the AI is working on and what waits / cancels one (a running one's program is stopped) | yes; cancel only what they asked you to |
 | `kurooto logs [-n N] [-f]` | the end of Kurooto's log (`-f` keeps following) | yes |

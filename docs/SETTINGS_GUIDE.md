@@ -383,6 +383,40 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `exam_season.revision_days` | `14` | Days before each exam that the revision plan starts. ([guide](wiki/user/settings-guide.md#examseasonrevisiondays)) |
 | `exam_season.revision_share` | `50` | The share of your free time (in %) revision blocks may take. ([guide](wiki/user/settings-guide.md#examseasonrevisionshare)) |
 
+### `face`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `face.away.after_min` | `5` | No sign of you (your face or the keyboard) this long means you've left, in minutes. ([guide](wiki/user/settings-guide.md#faceawayaftermin)) |
+| `face.away.hold_calls` | `false` | While you're away, calls Kurooto would start by itself wait for you (up to the longest wait below). ([guide](wiki/user/settings-guide.md#faceawayholdcalls)) |
+| `face.away.hold_desktop` | `false` | Hold desktop pop-ups and spoken answers until you're back at the desk. ([guide](wiki/user/settings-guide.md#faceawayholddesktop)) |
+| `face.away.hold_max_min` | `60` | The longest a call waits while you're away, in minutes. ([guide](wiki/user/settings-guide.md#faceawayholdmaxmin)) |
+| `face.away.on` | `false` | Notice when you leave the desk and come back. ([guide](wiki/user/settings-guide.md#faceawayon)) |
+| `face.camera.device` | `""` | The camera to use: empty for the first ordinary one (infrared ones are skipped), or a number or part of its name. ([guide](wiki/user/settings-guide.md#facecameradevice)) |
+| `face.camera.height` | `480` | The picture height asked of the camera. ([guide](wiki/user/settings-guide.md#facecameraheight)) |
+| `face.camera.width` | `640` | The picture width asked of the camera (it may give another). ([guide](wiki/user/settings-guide.md#facecamerawidth)) |
+| `face.greet.after_absent_min` | `20` | Greet you only after you've been away at least this long, in minutes. ([guide](wiki/user/settings-guide.md#facegreetafterabsentmin)) |
+| `face.greet.gap_min` | `60` | The fewest minutes between two greetings. ([guide](wiki/user/settings-guide.md#facegreetgapmin)) |
+| `face.greet.listen_s` | `12` | How long that conversation stays open with nothing said, in seconds. ([guide](wiki/user/settings-guide.md#facegreetlistens)) |
+| `face.greet.on` | `true` | Greet you by voice when you arrive at the desk. ([guide](wiki/user/settings-guide.md#facegreeton)) |
+| `face.greet.per_day` | `3` | A daily cap on greetings. ([guide](wiki/user/settings-guide.md#facegreetperday)) |
+| `face.greet.say` | `["next", "waiting", "deadline"]` | What the greeting tells you: what's next today, what's waiting, deadlines in 24 h, what was held while you were away. ([guide](wiki/user/settings-guide.md#facegreetsay)) |
+| `face.greet.talk` | `true` | After the greeting, listen for a reply without its name being said. ([guide](wiki/user/settings-guide.md#facegreettalk)) |
+| `face.greet.with_others` | `"skip"` | When someone else is in view too: skip the greeting, say just "Welcome back.", or the full greeting. ([guide](wiki/user/settings-guide.md#facegreetwithothers)) |
+| `face.learn.every_h` | `6` | At most one new sample this often, in hours. ([guide](wiki/user/settings-guide.md#facelearneveryh)) |
+| `face.learn.margin` | `0.08` | How far above your threshold a frame's score must be before it may refine your template. ([guide](wiki/user/settings-guide.md#facelearnmargin)) |
+| `face.learn.max` | `30` | At most this many learned samples (the oldest goes first); the enrolled ones are never replaced. ([guide](wiki/user/settings-guide.md#facelearnmax)) |
+| `face.learn.on` | `false` | Slowly refine your face template from times it was very sure it was you (never unsure ones), with Undo. ([guide](wiki/user/settings-guide.md#facelearnon)) |
+| `face.recognise.frames` | `3` | Recognised in this many of the last 4 frames means you're here. ([guide](wiki/user/settings-guide.md#facerecogniseframes)) |
+| `face.recognise.min_face_px` | `60` | Faces smaller than this many pixels are ignored: too far away to judge. ([guide](wiki/user/settings-guide.md#facerecogniseminfacepx)) |
+| `face.recognise.strictness` | `"normal"` | How rarely a stranger may pass: loose (1 in 100 frames), normal (1 in 1,000) or strict (1 in 10,000). ([guide](wiki/user/settings-guide.md#facerecognisestrictness)) |
+| `face.recognise.threshold` | `0.0` | 0 uses the calibrated threshold; a score from 0 to 1 overrides it (never below 0.363). ([guide](wiki/user/settings-guide.md#facerecognisethreshold)) |
+| `face.watch.fps` | `1.0` | How many pictures a second it checks while waiting for you (0.2 to 2). ([guide](wiki/user/settings-guide.md#facewatchfps)) |
+| `face.watch.fps_battery` | `0.33` | Frames a second while the computer is on battery. ([guide](wiki/user/settings-guide.md#facewatchfpsbattery)) |
+| `face.watch.idle_s` | `60` | Seconds with no keyboard or mouse before the camera looks; while you type it doesn't need to. ([guide](wiki/user/settings-guide.md#facewatchidles)) |
+| `face.watch.night` | `false` | Also look during the night hours (Availability's night); off pauses it at night. ([guide](wiki/user/settings-guide.md#facewatchnight)) |
+| `face.watch.when_locked` | `false` | Also look while the screen is locked; off pauses it while locked. ([guide](wiki/user/settings-guide.md#facewatchwhenlocked)) |
+
 ### `files`
 
 | Setting | Default | What it does |
@@ -1130,7 +1164,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.close_s` | `8` | Seconds of nothing said to it before the spoken conversation closes. ([guide](wiki/user/settings-guide.md#voicelistencloses)) |
 | `voice.listen.conversation_follow_s` | `4` | In conversation mode, a reply to what Kurooto just said counts only this soon after it. ([guide](wiki/user/settings-guide.md#voicelistenconversationfollows)) |
 | `voice.listen.conversation_mode` | `true` | While another voice is here, Kurooto stays out of people talking: only its name said to it opens a talk. ([guide](wiki/user/settings-guide.md#voicelistenconversationmode)) |
-| `voice.listen.conversation_s` | `60` | Conversation mode lasts this many seconds after the last other voice. ([guide](wiki/user/settings-guide.md#voicelistenconversations)) |
+| `voice.listen.conversation_s` | `60` | Seconds after the other person last spoke before Kurooto stops staying out of the conversation. ([guide](wiki/user/settings-guide.md#voicelistenconversations)) |
 | `voice.listen.device` | `""` | Which microphone to use; empty is the system's default. ([guide](wiki/user/settings-guide.md#voicelistendevice)) |
 | `voice.listen.language` | `""` | The language you speak, e.g. `en` or `hi`; empty works it out each time. ([guide](wiki/user/settings-guide.md#voicelistenlanguage)) |
 | `voice.listen.levels` | `true` | Show the microphone's loudness as a waveform on the dashboard (numbers only). ([guide](wiki/user/settings-guide.md#voicelistenlevels)) |
@@ -1150,9 +1184,9 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.speak.what` | `"voice"` | What's read aloud: answers to what you said aloud, every AI answer, or nothing. ([guide](wiki/user/settings-guide.md#voicespeakwhat)) |
 | `voice.speaker_id.adapt` | `false` | Improve over time: turns it was very sure were you refine your voice print, slowly and with undo. ([guide](wiki/user/settings-guide.md#voicespeakeridadapt)) |
 | `voice.speaker_id.adapt_max` | `40` | At most this many learned turns are kept in your voice print (the oldest are replaced). ([guide](wiki/user/settings-guide.md#voicespeakeridadaptmax)) |
-| `voice.speaker_id.adapt_per_day` | `10` | At most this many learned turns a day. ([guide](wiki/user/settings-guide.md#voicespeakeridadaptperday)) |
+| `voice.speaker_id.adapt_per_day` | `10` | A daily cap on how many of your turns may be added to your voice print. ([guide](wiki/user/settings-guide.md#voicespeakeridadaptperday)) |
 | `voice.speaker_id.carry` | `true` | A short reply right after a turn it knew was you counts as you (not when the voice is clearly someone else). ([guide](wiki/user/settings-guide.md#voicespeakeridcarry)) |
-| `voice.speaker_id.carry_s` | `15` | How long after your last recognised turn a short reply may carry it. ([guide](wiki/user/settings-guide.md#voicespeakeridcarrys)) |
+| `voice.speaker_id.carry_s` | `15` | The window, in seconds, in which a quick reply after you spoke still counts as you. ([guide](wiki/user/settings-guide.md#voicespeakeridcarrys)) |
 | `voice.speaker_id.gate` | `true` | Check who's speaking before writing words out: other people not calling Kurooto are never transcribed. ([guide](wiki/user/settings-guide.md#voicespeakeridgate)) |
 | `voice.speaker_id.guest_brain` | `"main"` | Who answers other voices: your AI (none of your data, no tools) or the model on this computer. ([guide](wiki/user/settings-guide.md#voicespeakeridguestbrain)) |
 | `voice.speaker_id.guest_per_hour` | `20` | At most this many answers to other voices an hour. ([guide](wiki/user/settings-guide.md#voicespeakeridguestperhour)) |

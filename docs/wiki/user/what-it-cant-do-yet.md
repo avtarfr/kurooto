@@ -74,6 +74,19 @@ If you need calls that really ring, use an Android phone. See [Phone app](phone-
   judged as a whole, usually "not sure"). A close relative may pass at normal strictness. See
   [Voice ID](voice.md#honest-limits).
 
+## Face presence
+
+- **It's not a lock, and can't be one with an ordinary webcam:** a photo or video of you on a phone will usually pass,
+  and so can a lookalike. There's no liveness check (that needs a depth or infrared camera, or asking you to blink or
+  turn your head); an RGB liveness model (MiniFASNet) exists, but its accuracy on ordinary webcams is unproven. A face
+  match therefore never approves or unlocks anything.
+- **Face and voice aren't combined:** Face presence and Voice ID each decide on their own; fusing them is a later step
+  with its own switch.
+- **Infrared (Windows Hello) cameras** aren't used: they're skipped, and a grey picture recognises you poorly.
+- **The made-up impostor faces** that calibrate the threshold aren't shipped yet; until then it uses OpenCV's published
+  threshold plus a margin.
+- Tested with fakes only so far: no real camera or face has been tried yet, and the quality limits are first guesses.
+
 ## The AI
 
 - The free AI options have small daily limits; heavy use runs out, and requests wait or go to your fallback AI.

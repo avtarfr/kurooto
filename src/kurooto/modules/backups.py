@@ -73,8 +73,9 @@ SKIP_STATE = {
 }
 # cases: what you typed, kept on this computer only. mind: Brain's log and scores (0.8.0) stay on this computer; an
 # older copy put back would look like a log cut short (mind/log.py anchors), and its key is only for one run
-SKIP_STATE_DIRS = {"locks", "logs", "cases", "mind", "mind-journal", "mind-story", "voiceid", "guest"}  # voiceid: your
-# voice print (Voice ID) is never backed up, nor its key (known_secret_names); guest: a guest request's empty folder
+SKIP_STATE_DIRS = {"locks", "logs", "cases", "mind", "mind-journal", "mind-story", "voiceid", "guest", "face"}  # voiceid,
+# face: your voice print (Voice ID) and face template (Face presence) are never backed up, nor their keys
+# (known_secret_names); guest: a guest request's empty folder
 SKIP_STATE_FILES = {
     ("telegram", "offset.json"),
     ("telegram", "pairing.json"),
@@ -100,6 +101,15 @@ def known_secret_names(secrets) -> list[str]:
     from kurooto.diagnostics import KNOWN_SECRETS
 
     return sorted((set(secrets.names()) | set(KNOWN_SECRETS)) - set(BIOMETRIC_SECRETS))
+
+
+def backup_secret_names(secrets) -> list[str]:
+    """The secrets a backup may hold (with backups.secrets on): never a biometric template's key (core/biometric.py),
+    so a backup can never open the face template it doesn't hold either. (known_secret_names keeps them: moving keys
+    to the file for a start at boot, and uninstalling, must still reach them.)"""
+    from kurooto.core.biometric import BIOMETRIC_SECRETS
+
+    return [n for n in known_secret_names(secrets) if n not in BIOMETRIC_SECRETS]
 
 
 def sources(
@@ -294,7 +304,7 @@ def make_zip(
                     skipped.append("data/gbrain/ (busy)")
             has_secrets = False
             if secrets is not None:
-                values = {n: v for n in known_secret_names(secrets) if (v := secrets.get(n))}
+                values = {n: v for n in backup_secret_names(secrets) if (v := secrets.get(n))}
                 z.writestr("secrets.json", json.dumps(values, indent=1))
                 has_secrets = bool(values)
             manifest = {

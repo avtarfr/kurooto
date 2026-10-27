@@ -312,6 +312,9 @@ def command(app: App, arg: str) -> tuple[str, list | None]:
         )
         if _voice_print(app):  # (voice id) the voice print goes too
             text = text.replace(" and the logs?", ", the logs and your voice print (Voice ID)?")
+        face = app.modules.get("face")
+        if face is not None and face.store.exists():
+            text = text.replace(" Your notes stay.", " Your face model (Face presence) goes too. Your notes stay.")
         asked = int(time.time())
         if gists.on(app) or gists.load(app):  # one line of what each decided (core/gists.py): keep those?
             text += " The gists (one line of what each call or request decided, /gists) can stay or go too."
@@ -350,6 +353,13 @@ def button(app: App, ref: str, act: str) -> str:
     if _voice_print(app):  # (voice id) /forget all forgets the voice print and its key too
         app.modules["voice"].voiceid.forget()
         out = f"{out[:-1]} and your voice print." if out.startswith("Forgot") else "Forgot your voice print."
+    face = app.modules.get("face")  # your face model too, if you enrolled one (modules/face: the key first)
+    if face is not None and face.store.exists():
+        try:
+            face.forget()
+            out = f"{out[:-1]}, and your face model." if out.startswith("Forgot") else f"{out} Your face model too."
+        except Exception as e:
+            app.events.emit("retention_failed", what="face", error=f"{type(e).__name__}"[:100])
     if act == "gists":
         n = gists.clear(app)
         if n:

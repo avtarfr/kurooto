@@ -1985,6 +1985,109 @@ def voice_run(a) -> int | None:
     return 0
 
 
+def face_parsers(sub) -> None:
+    fa = sub.add_parser(
+        "face", help="Face presence: status; forget [--yes]; pause [1h|off]; install-from FOLDER; test-camera"
+    )
+    fa.add_argument(
+        "what", nargs="*", help="nothing (status), forget, pause [1h|30m|off], install-from FOLDER, test-camera"
+    )
+    fa.add_argument("--yes", action="store_true", help="forget without asking")
+
+
+def face_run(a) -> int | None:
+    """Runs `kurooto face [...]` (modules/face); None for any other command. forget and install-from work with Kurooto
+    stopped too; test-camera opens the camera here for 3 seconds and prints numbers only (no picture, no file)."""
+    if a.cmd != "face":
+        return None
+    what = list(a.what or [])
+    word = what[0].lower() if what else ""
+    if word == "test-camera":
+        return face_test_camera()
+    if word == "forget":
+        print("This deletes your face model: its key, the encrypted template and its status. Nothing else.")
+        if not a.yes:
+            try:
+                yes = input("Forget it? [y/N] ").strip().lower() in ("y", "yes")
+            except EOFError:
+                yes = False
+            if not yes:
+                print("Kept.")
+                return 1
+        r = ask_running("face/forget", {})
+        if r is None:  # not running: forgotten here
+            from kurooto.app import App
+
+            app = App()
+            try:
+                print(app.modules["face"].forget())
+            finally:
+                app.close()
+            return 0
+        print(r.get("message") or "Done.")
+        return 0
+    if word == "install-from":
+        if len(what) < 2:
+            print("Which folder? kurooto face install-from FOLDER", file=sys.stderr)
+            return 2
+        from kurooto.app import App
+
+        app = App()
+        try:
+            ok, msg = app.modules["face"].install_from(" ".join(what[1:]), print)
+        finally:
+            app.close()
+        print(msg)
+        return 0 if ok else 1
+    r = say(("/face " + " ".join(what)).strip())
+    if r is None:
+        return 1
+    print("\n".join(r.get("replies") or []) or "Done.")
+    return 0
+
+
+def face_test_camera() -> int:
+    """Open the camera for 3 s: its size, frames a second, a frame count and the mean light. Never a picture."""
+    import time
+
+    from kurooto.app import App
+    from kurooto.modules.face.camera import CameraError
+
+    app = App()
+    try:
+        f = app.modules["face"]
+        if f.parts.missing(["pkg:vision"]):
+            print("OpenCV isn't installed yet: Features → Face presence → Set up, or kurooto face install-from FOLDER.")
+            return 1
+        f.parts.importable()
+        cam = f.make_camera()
+        try:
+            cam.open()
+        except CameraError as e:
+            more = f" ({e.detail})" if e.detail and e.detail != e.why else ""
+            print(f"The camera didn't open: {e.why}{more}.")
+            return 1
+        n, light, size, t0 = 0, 0.0, (0, 0), time.monotonic()
+        try:
+            while time.monotonic() - t0 < 3:
+                fr = cam.read()
+                if fr is None:
+                    continue
+                n += 1
+                size = (int(fr.shape[1]), int(fr.shape[0]))
+                light += float(fr.mean())
+                del fr
+        finally:
+            cam.close()
+        took = time.monotonic() - t0
+        name = cam.dev.name if cam.dev else "?"
+        print(f"Camera: {name}; {size[0]}x{size[1]}; {n} frames in {took:.1f} s ({n / took:.1f} a second); "
+              f"mean light {light / max(1, n):.0f} of 255. Nothing was saved.")  # fmt: skip
+        return 0 if n else 1
+    finally:
+        app.close()
+
+
 def graph_run(a) -> int | None:
     """Runs `kurooto graph [...]`: /graph, through the running Kurooto; None for any other command."""
     if a.cmd != "graph":
@@ -2398,6 +2501,7 @@ def main(argv: list[str] | None = None) -> int:
     classpack_parsers(sub)
     jobs_parsers(sub)
     voice_parsers(sub)
+    face_parsers(sub)
     addons_parsers(sub)
     ai_parsers(sub)
     project_parsers(sub)
@@ -2413,6 +2517,7 @@ def main(argv: list[str] | None = None) -> int:
     done = jobs_run(a) if done is None else done
     done = graph_run(a) if done is None else done
     done = voice_run(a) if done is None else done
+    done = face_run(a) if done is None else done
     done = addons_run(a) if done is None else done
     done = ai_run(a) if done is None else done
     done = project_run(a) if done is None else done

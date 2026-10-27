@@ -88,6 +88,7 @@ POST (in `Api.post`):
 | phone | `phone/pair`, `phone/revoke`, `phone/test` |
 | terminals | `term/<name>/attach`, `input`, `resize`, `leave`, `restart` (403 when Terminals is off) |
 | voice | `voice/say` (`{text}`), `voice/mute` (`{on}`; none flips), `voice/stop`, `voice/shape` (`{text}` -> `{samples, rate, seconds, source}`, works with Voice off); [voice.md](voice.md) |
+| face | `face/enrol/start` and `face/test/start` (`{cid}`; the guarded `camera.open`), `face/enrol/step`, `enrol/pause`, `enrol/discard`, `train`, `test/mark`, `test/stop`, `retrain`, `strictness`, `learn/undo`, `learn/forget`, `forget`, `pause`, `install-from`; `GET face` (status) and `GET face/frame?s=` (a JPEG made in memory, `no-store`, 404 without a session, in `web/server.py`); [face.md](face.md) |
 | live stream | `stream/seen` (`{cid, visible}`: the dashboard is in sight or not, `Live.seen`; `ok: false` for no such page, 400 for a cid that isn't a number) |
 | other | `research/save`, `research/preview`, `research/run`, `classpack/import`, `mail/confidential/settle`, `books/add` |
 
@@ -130,6 +131,10 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   output are still pushed to hidden pages; a new page counts as in sight; `drop` forgets its `hidden` entry.
 - Voice (0.8.8) pushes `{"t": "voice", "kind": voice_state | voice_level | voice_text | voice_speak, ...}` straight
   to the pages with `Live.push`, never through the event log (words and levels aren't logged); [voice.md](voice.md#events-and-the-live-stream).
+- Face presence (0.8.10) pushes `{"t": "face", kind: enrol | test | test_result | session}` to the Face page's `cid`
+  only (`Live.push(..., only={cid})`), and `{"t": "face", "kind": "camera", "on"}` to every page (the "● camera"
+  badge, `home.js`). `today_items(app, sched)` (module level) is what `Vitals._today` and the greeting both read;
+  [face.md](face.md).
 - What one turn costs (0.6.1, a 2,271-note folder, ~500 processes): `snapshot()` about 30 ms, mostly the process
   list; `Graph.scan()` about 11 ms when nothing changed (it names notes with plain strings: a `Path` per note made it
   145 ms); the loop as a whole about 2.5% of one core with a page in sight (6% before, plus the 0.6.0 settings cost),

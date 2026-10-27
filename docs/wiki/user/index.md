@@ -32,6 +32,8 @@ all of them.
 - [Talking to Kurooto](talking-to-kurooto.md): Telegram, plain English, chat, questions and approvals, pause, focus, voice notes, sending files.
 - [Voice](voice.md): Kurooto speaks with a voice made on your computer and, if you turn listening on, hears you; a
   local model tells noise and people talking from you talking to it, and only that leaves the computer.
+- [Face presence](face.md): Kurooto learns your face on your computer (a guided enrolment, an honest "training", a live
+  test) and greets you by voice when you sit down after a while; strangers do nothing and are never kept; never a lock.
 - [Messages Kurooto sends by itself](messages-it-sends.md): every message it sends unasked and why, the daily limit, going offline, health checks.
 
 **Your day**
@@ -105,6 +107,7 @@ its commands with "X is off: Features → X → Turn on". Some features need ano
 | Morning alarm | a wake-up call that rings on silent | Phone calls | [Phone calls](calls.md) |
 | Reminders with the lid shut | reminders reach your Android phone while the computer sleeps | Phone calls | [Phone calls](calls.md) |
 | Voice notes | voice messages written out and handled | Telegram | [Talking to Kurooto](talking-to-kurooto.md) |
+| Face presence | greets you by voice when you sit down at your desk after a while (your face, on this computer only) | Voice, for the greeting | [Face presence](face.md) |
 | Stay awake on charger | the computer doesn't sleep while plugged in | | [Your computer](your-computer.md) |
 | Calendar | your calendar's events; no calls during them; class calendars others share, by link | | [Classes and timetable](classes-and-timetable.md#calendar), [Google](google.md) |
 | Notes sync | your notes in your private GitHub repository | | [Notes](notes-and-concept-graph.md) |

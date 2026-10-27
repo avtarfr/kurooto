@@ -50,6 +50,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Dashboard and terminal](#dashboard-and-terminal): 22 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 24 settings
+- [Face presence](#face-presence): 29 settings
 
 ## You and how it talks to you
 
@@ -5622,7 +5623,7 @@ A short reply right after a turn it knew was you counts as you (not when the voi
 
 ### `voice.speaker_id.carry_s`
 
-How long after your last recognised turn a short reply may carry it.
+The window, in seconds, in which a quick reply after you spoke still counts as you.
 
 - **Values:** A whole number. **Default:** `15`.
 - **When to change it:** Shorten it in a shared room; lengthen it if your quick follow-ups get refused.
@@ -5643,7 +5644,7 @@ At most this many learned turns are kept in your voice print (the oldest are rep
 
 ### `voice.speaker_id.adapt_per_day`
 
-At most this many learned turns a day.
+A daily cap on how many of your turns may be added to your voice print.
 
 - **Values:** A whole number. **Default:** `10`.
 - **When to change it:** Lower it to make the voice print change more slowly.
@@ -5672,7 +5673,7 @@ While another voice is here, Kurooto stays out of people talking: only its name 
 
 ### `voice.listen.conversation_s`
 
-Conversation mode lasts this many seconds after the last other voice.
+Seconds after the other person last spoke before Kurooto stops staying out of the conversation.
 
 - **Values:** A whole number. **Default:** `60`.
 - **When to change it:** Lengthen it if Kurooto joins in too soon after the other person stops talking.
@@ -6563,3 +6564,224 @@ Share your total screen time a day, never per app.
 - **When to change it:** Switch it on if you'd like it in Brain's picture of your day.
 - **Costs and what leaves this computer:** Only the day's total, sealed, through your call line.
 - **Depends on:** Brain, with `mind.senses.phone`; Usage access in Android's settings.
+
+## Face presence
+
+Kurooto learns your face, on this computer only, and greets you by voice when you sit down at your desk after a while.
+The camera looks at a few frames a second at most, only while you're not typing, and never keeps a picture: your face is
+a small encrypted template, a stranger's face is dropped with the frame, and nothing is sent anywhere. More in [Face
+presence: greet you at your desk](face.md).
+
+For every setting in this group, unless its entry says otherwise:
+
+- **Costs and what leaves this computer:** A little processor time while it watches (about 1-3% of one core), and the
+  camera's light on while it looks.
+- **Depends on:** The Face presence feature, a camera, and Voice speaking for the greeting.
+
+### `face.away.on`
+
+Notice when you leave the desk and come back.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you want calls and pop-ups held while you're away from the computer.
+
+### `face.away.after_min`
+
+No sign of you (your face or the keyboard) this long means you've left, in minutes.
+
+- **Values:** A whole number. **Default:** `5`.
+- **When to change it:** Lengthen it if it decides you've left while you're reading.
+
+### `face.away.hold_calls`
+
+While you're away, calls Kurooto would start by itself wait for you (up to the longest wait below).
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it off if you'd rather a call rings the phone anyway.
+- **Depends on:** Noticing when you leave (face.away.on).
+
+### `face.away.hold_desktop`
+
+Hold desktop pop-ups and spoken answers until you're back at the desk.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it off if others at the computer should still see Kurooto's pop-ups.
+
+### `face.away.hold_max_min`
+
+The longest a call waits while you're away, in minutes.
+
+- **Values:** A whole number. **Default:** `60`.
+- **When to change it:** Shorten it for things that can't wait long.
+
+### `face.camera.device`
+
+The camera to use: empty for the first ordinary one (infrared ones are skipped), or a number or part of its name.
+
+- **Values:** Text. **Default:** empty.
+- **When to change it:** Set it if you have several cameras and it picks the wrong one (`kurooto face test-camera` lists
+  them).
+
+### `face.camera.width`
+
+The picture width asked of the camera (it may give another).
+
+- **Values:** A whole number. **Default:** `640`.
+- **When to change it:** Lower it on a slow computer; recognition needs only a small picture.
+
+### `face.camera.height`
+
+The picture height asked of the camera.
+
+- **Values:** A whole number. **Default:** `480`.
+- **When to change it:** Change it together with the width.
+
+### `face.greet.on`
+
+Greet you by voice when you arrive at the desk.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you only want it to notice you, without speaking.
+- **Depends on:** Voice speaking.
+
+### `face.greet.after_absent_min`
+
+Greet you only after you've been away at least this long, in minutes.
+
+- **Values:** A whole number. **Default:** `20`.
+- **When to change it:** Raise it if it greets you after short breaks.
+
+### `face.greet.gap_min`
+
+The fewest minutes between two greetings.
+
+- **Values:** A whole number. **Default:** `60`.
+- **When to change it:** Raise it if the greetings feel too frequent.
+
+### `face.greet.per_day`
+
+A daily cap on greetings.
+
+- **Values:** A whole number. **Default:** `3`.
+- **When to change it:** Lower it to one for just a morning greeting.
+
+### `face.greet.say`
+
+What the greeting tells you: what's next today, what's waiting, deadlines in 24 h, what was held while you were away.
+
+- **Values:** A list, typed as JSON. **Default:** `["next", "waiting", "deadline"]`.
+- **When to change it:** Trim it to what you want to hear first when you sit down.
+
+### `face.greet.talk`
+
+After the greeting, listen for a reply without its name being said.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you'd rather start every talk by saying its name.
+- **Depends on:** Voice listening.
+
+### `face.greet.listen_s`
+
+How long that conversation stays open with nothing said, in seconds.
+
+- **Values:** A whole number. **Default:** `12`.
+- **When to change it:** Shorten it if it keeps listening longer than you'd like.
+
+### `face.greet.with_others`
+
+When someone else is in view too: skip the greeting, say just "Welcome back.", or the full greeting.
+
+- **Values:** `skip`, `short`, `full`. **Default:** `skip`.
+- **When to change it:** Leave it on skip so your day isn't read out in front of others.
+
+### `face.learn.on`
+
+Slowly refine your face template from times it was very sure it was you (never unsure ones), with Undo.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if your look changes (glasses, a beard, the light at your desk) and you'd rather it
+  keeps up.
+
+### `face.learn.every_h`
+
+At most one new sample this often, in hours.
+
+- **Values:** A whole number. **Default:** `6`.
+- **When to change it:** Raise it to make the template change more slowly.
+
+### `face.learn.margin`
+
+How far above your threshold a frame's score must be before it may refine your template.
+
+- **Values:** A number. **Default:** `0.08`.
+- **When to change it:** Raise it to learn only from the surest frames.
+
+### `face.learn.max`
+
+At most this many learned samples (the oldest goes first); the enrolled ones are never replaced.
+
+- **Values:** A whole number. **Default:** `30`.
+- **When to change it:** Lower it to keep the template closer to your enrolment.
+
+### `face.recognise.frames`
+
+Recognised in this many of the last 4 frames means you're here.
+
+- **Values:** A whole number. **Default:** `3`.
+- **When to change it:** Raise it if it thinks you've arrived when you only passed by.
+
+### `face.recognise.min_face_px`
+
+Faces smaller than this many pixels are ignored: too far away to judge.
+
+- **Values:** A whole number. **Default:** `60`.
+- **When to change it:** Lower it if you sit far from the camera.
+
+### `face.recognise.strictness`
+
+How rarely a stranger may pass: loose (1 in 100 frames), normal (1 in 1,000) or strict (1 in 10,000).
+
+- **Values:** `loose`, `normal`, `strict`. **Default:** `normal`.
+- **When to change it:** Strict if others often sit at your desk; loose if it fails to recognise you in poor light.
+
+### `face.recognise.threshold`
+
+0 uses the calibrated threshold; a score from 0 to 1 overrides it (never below 0.363).
+
+- **Values:** A number. **Default:** `0.0`.
+- **When to change it:** Leave it at 0 unless the live test on the Face page shows it gets it wrong.
+
+### `face.watch.fps`
+
+How many pictures a second it checks while waiting for you (0.2 to 2).
+
+- **Values:** A number. **Default:** `1.0`.
+- **When to change it:** Lower it to save processor time; raise it if it's slow to notice you.
+
+### `face.watch.fps_battery`
+
+Frames a second while the computer is on battery.
+
+- **Values:** A number. **Default:** `0.33`.
+- **When to change it:** Lower it (or to 0) to save battery.
+
+### `face.watch.idle_s`
+
+Seconds with no keyboard or mouse before the camera looks; while you type it doesn't need to.
+
+- **Values:** A whole number. **Default:** `60`.
+- **When to change it:** Raise it to keep the camera off more of the time.
+
+### `face.watch.night`
+
+Also look during the night hours (Availability's night); off pauses it at night.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you work at your desk at night and want the greeting then too.
+
+### `face.watch.when_locked`
+
+Also look while the screen is locked; off pauses it while locked.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you want it to notice you arriving at a locked computer.

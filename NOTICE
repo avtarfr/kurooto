@@ -25,3 +25,8 @@ Voice ID (0.8.10; fetched when you set it up, not included in the package):
 The impostor sets in src/kurooto/data/voiceid/ (when present) are speaker embeddings computed with those models from
 LibriSpeech's dev and test sets (Panayotov, Chen, Povey and Khudanpur, 2015; https://www.openslr.org/12), CC BY 4.0:
 vectors only, no audio, speaker ids or transcripts.
+Downloaded when you set a feature up, not included in Kurooto:
+
+Face presence: YuNet (face_detection_yunet_2023mar.onnx), MIT licence, copyright 2020 Shiqi Yu; SFace
+(face_recognition_sface_2021dec.onnx), Apache-2.0; both from OpenCV's model zoo (https://github.com/opencv/opencv_zoo).
+opencv-python-headless (Apache-2.0, with the third-party libraries its wheel lists) and numpy (BSD-3), from PyPI.

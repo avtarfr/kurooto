@@ -29,6 +29,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
     [Wrong button and test cases](#wrong-button-and-test-cases)
   - [Phone calls](#phone-calls) · [Morning alarm](#morning-alarm) ·
     [Reminders with the lid shut](#reminders-with-the-lid-shut) · [Voice notes](#voice-notes) ·
+    [Voice: talk and listen](#voice-talk-and-listen) · [Face presence](#face-presence) ·
     [Stay awake on charger](#stay-awake-on-charger) · [Calendar](#calendar)
   - [Notes sync](#notes-sync) · [Sync everything](#sync-everything) · [Backups](#backups) ·
     [Space keeper](#space-keeper-cleaning-off-old-backups-and-leftovers) · [Profile sync](#profile-sync)
@@ -2164,6 +2165,38 @@ backed up, synced or put in a diagnostics zip; never your recordings.
 *Undo:* `voice.speaker_id.on` off stops checking at once (messages are then unchecked, as before); `/voice id forget`
 (or the page's Forget my voice, `kurooto voice id forget`, `/forget all`) deletes the voice print and its key;
 `/voice id undo all` drops what it learned over time.
+### Face presence
+Kurooto learns your face, on this computer only, and greets you by voice when you sit down at your desk after a while
+(what's next today, how many questions and approvals wait, one deadline), then opens Voice's conversation so you can
+answer without its name. Off until you turn it on; nothing watches until you enrol. **Never a lock:** a face match
+never approves, unlocks or allows anything. Details: [the user guide](wiki/user/face.md).
+
+- **Set up** (Features → Face presence) downloads OpenCV's headless package and two models from OpenCV's model zoo
+  (YuNet MIT, SFace Apache-2.0; about 0.18 GB, checked by sha256); `kurooto face install-from FOLDER` installs them
+  from a folder on a computer without internet. It then runs offline, on the processor.
+- **Enrol** on the dashboard's Face page (Alt+E): nine guided steps (front, left, right, up, down, near, far, glasses,
+  light; 52 samples, 26 to start), every frame checked with the reason shown, the steps spoken if you like.
+- **Training, honestly:** no network is trained. Your template is the centroid of SFace's numbers per condition
+  (usual, glasses, light), and the threshold is calibrated on your held-out samples against a set of made-up impostor
+  faces (not shipped yet: until then OpenCV's 0.363 + 0.05), never below 0.363. A report: how often you'd be recognised,
+  a grade (good, fair, weak) and advice.
+- **Test** live: the score and the decision, as you and as someone else, plus the honest "a photo of you will pass".
+- **Watching:** the camera stays closed while you type; it looks about once a second only when you're idle, just
+  unlocked or being confirmed, and pauses (saying why) when locked, on a call, in focus, at night, when the camera is
+  busy, covered or blocked. A "● camera" badge shows on the dashboard while Kurooto holds it.
+- **Greeting:** after 20 minutes away, recognised in 3 of 4 frames; through Calm's rules (`face.greet`, not counted
+  against the daily limit, at most 3 a day, an hour apart), never during a call, focus or the night; no greeting with
+  someone else in view (`face.greet.with_others`).
+- **Optional:** noticing you left (`face.away.on`) to hold desktop pop-ups and calls; learning slowly from confident
+  sightings (`face.learn.on`, with Undo).
+- `/face`, `/face pause [1h|off]`, `/face forget`; "is the camera on?", "stop watching", "forget my face".
+
+*Leaves:* nothing. Frames are looked at in memory and dropped; strangers are a count only. Your template (numbers,
+never a picture) is kept encrypted under the key `face.key`, never in backups, Profile sync or diagnostics. Setting up
+downloads from media.githubusercontent.com and PyPI.
+*Undo:* turn Face presence off (the camera closes at once; it offers Delete my face data); `/face forget`,
+`kurooto face forget` or Forget everything on the Face page deletes the key, the template and its status. To free the
+space, delete the `face` folder in Kurooto's app folder (`kurooto paths`, `app`).
 
 ### Stay awake on charger
 While your computer is plugged in, it doesn't go to sleep by itself, so Kurooto keeps answering; on battery it sleeps

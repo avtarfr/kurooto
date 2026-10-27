@@ -24,7 +24,7 @@ These belong to Kurooto itself and answer whichever features are on.
 |---|---|---|
 | `/dream` | what Kurooto did since the last morning message, and the loose ends; `/dream policy`: what it tunes while you sleep (when messages reach you, effort, which AI first, Start-by sizes) and what it changed; `/dream proposal`: a fix for a skill, waiting for your OK (a proposal: Apply, Change, Discard); `/dream check`: duplicates and lines that disagree in what it remembers, now (Keep A / Keep B / Both true) | Dreaming |
 | `/inferred` · `/inferred undo <id>` | what was set up from what you said (a project, a meeting, a class, a recurring quiz, a commitment, a short name), and taking one back | Kurooto itself |
-| `/help`, `/start` | everything I can do, as an index: one line per group with its commands and its page in this wiki, then the features that are off. `/help <group>` (talking, voice, reminders, classes, study, quiz, calls, checkins, notes, projects, skills, research, google, teaching, privacy, settings) shows one group in full, `/help all` every group, `/help <word>` finds a command or feature, on or off | [Talking to Kurooto](talking-to-kurooto.md) |
+| `/help`, `/start` | everything I can do, as an index: one line per group with its commands and its page in this wiki, then the features that are off. `/help <group>` (talking, voice, face, reminders, classes, study, quiz, calls, checkins, notes, projects, skills, research, google, teaching, privacy, settings) shows one group in full, `/help all` every group, `/help <word>` finds a command or feature, on or off | [Talking to Kurooto](talking-to-kurooto.md) |
 | `/status` | what's going on: calls held or allowed, focus, what's coming up, open questions, today's check-ins, what's due soon, the alarm, recent AI requests, the features that are on (answers even with Telegram off, from a terminal) | [Talking to Kurooto](talking-to-kurooto.md) |
 | `/q` (or `/questions`) | the open questions Kurooto asked you, each with its buttons; reply to one to answer it | [Talking to Kurooto](talking-to-kurooto.md#questions-and-approvals) |
 | `/jobs` | what the AI is working on and what waits, with Cancel buttons, and the last few that finished; `/jobs cancel <id>` or `/jobs cancel all` | [AI brains](ai-brains.md) |
@@ -80,6 +80,16 @@ More: [AI brains](ai-brains.md), [Talking to Kurooto](talking-to-kurooto.md#chat
 | `/voice enrol` | start or continue enrolling your voice at the computer (spoken prompts, and the Your voice page `/voice-id`); `/voice enrol stop`, `/voice enrol keep` (keep what's done for later). Typed only |
 
 More: [Voice](voice.md).
+
+### Face presence
+
+| Command | What it does |
+|---|---|
+| `/face` | what Face presence is doing (camera on or off, and why), the model's grade, faces seen since start (counts only) |
+| `/face pause [1h\|30m\|off]` | keep the camera off for that long (or until `/face pause off`) |
+| `/face forget` | delete your face model (asks first: Forget / Keep it) |
+
+More: [Face presence](face.md).
 
 ### Reminders, deadlines and planning
 
@@ -373,6 +383,7 @@ help with setup, repairs and scripts. `kurooto <command> --help` shows each one'
 | `kurooto voice`, `kurooto voice mute`, `kurooto voice unmute`, `kurooto voice stop`, `kurooto voice say <text>` | Voice, as `/voice` ([Voice](voice.md)) |
 | `kurooto voice id`, `kurooto voice id forget [--yes]` | Voice ID's status; forget your voice print and its key (asks y/N; works with Kurooto stopped too) ([Voice](voice.md#voice-id-only-your-voice-can-make-it-act)) |
 | `kurooto voice parts add FILE...` | install Voice's parts from files on this computer (a model file checked against its pinned checksum, or a package's `.whl`), for a computer without internet |
+| `kurooto face`, `kurooto face pause 1h`, `kurooto face forget [--yes]`, `kurooto face install-from FOLDER`, `kurooto face test-camera` | Face presence ([Face presence](face.md)); forget and install-from work with Kurooto stopped; test-camera prints numbers only |
 | `kurooto notify "text"` (`--title`, `--kind`, `--urgent`, `--button "Label=…"`, `--click URL`, `--print-id`, `--reply-to ID`) | send yourself a message |
 | `kurooto send <file>` (`--caption`, `--to drive`) | send yourself a file on Telegram (up to 50 MB), or to your Google Drive |
 | `kurooto ask-me "question"` (`--choices "a\|b"`, `--wait`, `--timeout`, `--expires`, `--title`, `--then CMD`, `--pending`, `--id`) | ask yourself something, answered anywhere |

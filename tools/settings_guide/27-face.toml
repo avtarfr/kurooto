@@ -1,0 +1,146 @@
+title = "Face presence"
+page = "face.md"
+intro = """Kurooto learns your face, on this computer only, and greets you by voice when you sit down at your desk after a
+while. The camera looks at a few frames a second at most, only while you're not typing, and never keeps a picture: your
+face is a small encrypted template, a stranger's face is dropped with the frame, and nothing is sent anywhere."""
+cost = "A little processor time while it watches (about 1-3% of one core), and the camera's light on while it looks."
+needs = "The Face presence feature, a camera, and Voice speaking for the greeting."
+
+[parent."face.away"]
+tip = "Notice when you leave the desk, and hold what Kurooto would start by itself until you're back."
+
+[parent."face.camera"]
+tip = "Which camera Face presence uses and the picture size it asks for."
+
+[parent."face.greet"]
+tip = "The greeting when you sit down: when, how often, what it says, and whether it then listens."
+
+[parent."face.learn"]
+tip = "Refining your face template slowly from times it was very sure it was you."
+
+[parent."face.recognise"]
+tip = "How sure it must be that a face is yours, and how far away a face may be."
+
+[parent."face.watch"]
+tip = "When the camera looks: how often, on battery, at night, and with the screen locked."
+
+[s."face.away.on"]
+tip = "Notice when you leave the desk and come back."
+when = "Turn it on if you want calls and pop-ups held while you're away from the computer."
+
+[s."face.away.after_min"]
+tip = "No sign of you (your face or the keyboard) this long means you've left, in minutes."
+when = "Lengthen it if it decides you've left while you're reading."
+
+[s."face.away.hold_calls"]
+tip = "While you're away, calls Kurooto would start by itself wait for you (up to the longest wait below)."
+when = "Turn it off if you'd rather a call rings the phone anyway."
+needs = "Noticing when you leave (face.away.on)."
+
+[s."face.away.hold_desktop"]
+tip = "Hold desktop pop-ups and spoken answers until you're back at the desk."
+when = "Turn it off if others at the computer should still see Kurooto's pop-ups."
+
+[s."face.away.hold_max_min"]
+tip = "The longest a call waits while you're away, in minutes."
+when = "Shorten it for things that can't wait long."
+
+[s."face.camera.device"]
+tip = "The camera to use: empty for the first ordinary one (infrared ones are skipped), or a number or part of its name."
+when = "Set it if you have several cameras and it picks the wrong one (`kurooto face test-camera` lists them)."
+
+[s."face.camera.width"]
+tip = "The picture width asked of the camera (it may give another)."
+when = "Lower it on a slow computer; recognition needs only a small picture."
+
+[s."face.camera.height"]
+tip = "The picture height asked of the camera."
+when = "Change it together with the width."
+
+[s."face.greet.on"]
+tip = "Greet you by voice when you arrive at the desk."
+when = "Turn it off if you only want it to notice you, without speaking."
+needs = "Voice speaking."
+
+[s."face.greet.after_absent_min"]
+tip = "Greet you only after you've been away at least this long, in minutes."
+when = "Raise it if it greets you after short breaks."
+
+[s."face.greet.gap_min"]
+tip = "The fewest minutes between two greetings."
+when = "Raise it if the greetings feel too frequent."
+
+[s."face.greet.per_day"]
+tip = "A daily cap on greetings."
+when = "Lower it to one for just a morning greeting."
+
+[s."face.greet.say"]
+tip = "What the greeting tells you: what's next today, what's waiting, deadlines in 24 h, what was held while you were away."
+when = "Trim it to what you want to hear first when you sit down."
+
+[s."face.greet.talk"]
+tip = "After the greeting, listen for a reply without its name being said."
+when = "Turn it off if you'd rather start every talk by saying its name."
+needs = "Voice listening."
+
+[s."face.greet.listen_s"]
+tip = "How long that conversation stays open with nothing said, in seconds."
+when = "Shorten it if it keeps listening longer than you'd like."
+
+[s."face.greet.with_others"]
+tip = "When someone else is in view too: skip the greeting, say just \"Welcome back.\", or the full greeting."
+values = "`skip`, `short`, `full`."
+when = "Leave it on skip so your day isn't read out in front of others."
+
+[s."face.learn.on"]
+tip = "Slowly refine your face template from times it was very sure it was you (never unsure ones), with Undo."
+when = "Turn it on if your look changes (glasses, a beard, the light at your desk) and you'd rather it keeps up."
+
+[s."face.learn.every_h"]
+tip = "At most one new sample this often, in hours."
+when = "Raise it to make the template change more slowly."
+
+[s."face.learn.margin"]
+tip = "How far above your threshold a frame's score must be before it may refine your template."
+when = "Raise it to learn only from the surest frames."
+
+[s."face.learn.max"]
+tip = "At most this many learned samples (the oldest goes first); the enrolled ones are never replaced."
+when = "Lower it to keep the template closer to your enrolment."
+
+[s."face.recognise.frames"]
+tip = "Recognised in this many of the last 4 frames means you're here."
+when = "Raise it if it thinks you've arrived when you only passed by."
+
+[s."face.recognise.min_face_px"]
+tip = "Faces smaller than this many pixels are ignored: too far away to judge."
+when = "Lower it if you sit far from the camera."
+
+[s."face.recognise.strictness"]
+tip = "How rarely a stranger may pass: loose (1 in 100 frames), normal (1 in 1,000) or strict (1 in 10,000)."
+values = "`loose`, `normal`, `strict`."
+when = "Strict if others often sit at your desk; loose if it fails to recognise you in poor light."
+
+[s."face.recognise.threshold"]
+tip = "0 uses the calibrated threshold; a score from 0 to 1 overrides it (never below 0.363)."
+when = "Leave it at 0 unless the live test on the Face page shows it gets it wrong."
+
+[s."face.watch.fps"]
+tip = "How many pictures a second it checks while waiting for you (0.2 to 2)."
+when = "Lower it to save processor time; raise it if it's slow to notice you."
+
+[s."face.watch.fps_battery"]
+tip = "Frames a second while the computer is on battery."
+when = "Lower it (or to 0) to save battery."
+
+[s."face.watch.idle_s"]
+tip = "Seconds with no keyboard or mouse before the camera looks; while you type it doesn't need to."
+when = "Raise it to keep the camera off more of the time."
+
+[s."face.watch.night"]
+tip = "Also look during the night hours (Availability's night); off pauses it at night."
+when = "Turn it on if you work at your desk at night and want the greeting then too."
+
+[s."face.watch.when_locked"]
+tip = "Also look while the screen is locked; off pauses it while locked."
+when = "Turn it on if you want it to notice you arriving at a locked computer."

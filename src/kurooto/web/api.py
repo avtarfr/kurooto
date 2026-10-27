@@ -79,6 +79,7 @@ MODULE_ORDER = [
     "lidsafe",
     "voice_notes",
     "voice",
+    "face",
     "awake",
     "calendar",
     "notes_sync",
@@ -289,6 +290,9 @@ class Api:
         if path == "voice/id":  # Voice ID: counts, grades, thresholds, the session; never a vector (voice/voiceid.py)
             v = self.app.modules.get("voice")
             return (200, v.voiceid.status()) if v is not None else (404, {"error": "no Voice here"})
+        if path == "face":  # Face presence: its stage, model quality and switches (modules/face); never a template
+            f = self.app.modules.get("face")
+            return (200, f.status()) if f is not None else (404, {"error": "no Face presence here"})
         if path == "health":  # Kurooto keeps itself working: every check, from what's known here (core/health.py)
             from dataclasses import asdict
 
@@ -471,6 +475,8 @@ class Api:
             return 200, {"ok": gone, "message": self.app.jobs.cancel_text(ref)}
         if path.startswith("voice/"):  # Voice: say, mute, shape (modules/voice)
             return self._voice(path[len("voice/") :], b)
+        if path.startswith("face/"):  # Face presence: enrol, train, test, manage, forget (modules/face)
+            return self._face(path[len("face/") :], b)
         if path == "health/fix":  # a Fix button on the dashboard, or `kurooto doctor --fix ID` (core/health.py)
             ok, message = self.app.health.fix(str(b.get("id") or ""))
             return 200, {"ok": ok, "message": message}
@@ -1007,6 +1013,60 @@ class Api:
         if action == "parts/add":
             return 200, vid.add_file(str(b.get("path") or ""))
         return 404, {"error": "not found"}
+
+    def _face(self, action: str, b: dict) -> tuple[int, dict]:
+        """POST face/<action>. enrol/start and test/start open the camera (the guarded action camera.open: the Face
+        page's Start and Test buttons only); forget deletes the face model (data.delete: a button after a confirm)."""
+        f = self.app.modules.get("face")
+        if f is None:
+            return 404, {"error": "no Face presence here"}
+        sid = str(b.get("session") or "")
+
+        def out(res: tuple[bool, dict | str]) -> tuple[int, dict]:
+            ok, data = res
+            body = data if isinstance(data, dict) else {"message": data}
+            return 200, {"ok": ok, **body}
+
+        if action == "enrol/start":
+            return out(f.enrol_start(b.get("cid"), str(b.get("mode") or "new")))
+        if action == "enrol/step":
+            return out(f.enrol_step(sid, str(b.get("action") or "")))
+        if action == "enrol/pause":
+            return out(f.session_pause(sid, b.get("on", True) is not False))
+        if action == "enrol/discard":
+            return out(f.discard(sid))
+        if action == "train":
+            return out(f.train(sid))
+        if action == "test/start":
+            return out(f.test_start(b.get("cid")))
+        if action == "test/mark":
+            return out(f.test_mark(sid, str(b.get("who") or "")))
+        if action == "test/stop":
+            return out(f.test_stop(sid))
+        if action == "retrain":
+            return out(f.retrain())
+        if action == "strictness":
+            return out(f.set_strictness(str(b.get("level") or "")))
+        if action == "learn/undo":
+            return 200, {"ok": True, "message": f.learn_undo()}
+        if action == "learn/forget":
+            return 200, {"ok": True, "message": f.learn_forget()}
+        if action == "forget":
+            return 200, {"ok": True, "message": f.forget()}
+        if action == "pause":
+            return 200, {"ok": True, "message": f.pause(str(b.get("arg") or ""))}
+        if action == "install-from":
+            folder = str(b.get("folder") or "").strip()
+            if not folder:
+                return 400, {"ok": False, "message": "Which folder?"}
+            return 200, self._background(lambda note: f.install_from(folder, note))
+        return 404, {"error": "not found"}
+
+    def face_frame(self, q: dict) -> bytes | None:
+        """GET /api/face/frame?s=<session>: the live preview's latest frame, a JPEG made in memory (web/server.py sends
+        it with Cache-Control: no-store). None without a live session."""
+        f = self.app.modules.get("face")
+        return f.frame(str(q.get("s") or "")) if f is not None else None
 
     def _power(self) -> dict:
         from kurooto.core.power import on_ac

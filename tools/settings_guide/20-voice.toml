@@ -194,7 +194,7 @@ tip = "A short reply right after a turn it knew was you counts as you (not when 
 when = "Turn it off (or use strict) if guests could answer 'yes' for you."
 
 [s."voice.speaker_id.carry_s"]
-tip = "How long after your last recognised turn a short reply may carry it."
+tip = "The window, in seconds, in which a quick reply after you spoke still counts as you."
 when = "Shorten it in a shared room; lengthen it if your quick follow-ups get refused."
 
 [s."voice.speaker_id.adapt"]
@@ -207,7 +207,7 @@ tip = "At most this many learned turns are kept in your voice print (the oldest 
 when = "Lower it to keep your voice print closer to the samples you trained with."
 
 [s."voice.speaker_id.adapt_per_day"]
-tip = "At most this many learned turns a day."
+tip = "A daily cap on how many of your turns may be added to your voice print."
 when = "Lower it to make the voice print change more slowly."
 
 [s."voice.speaker_id.model"]
@@ -226,7 +226,7 @@ when = "Leave it on so it doesn't join your conversations with other people; not
 needs = "Voice ID (it knows which voice is yours)."
 
 [s."voice.listen.conversation_s"]
-tip = "Conversation mode lasts this many seconds after the last other voice."
+tip = "Seconds after the other person last spoke before Kurooto stops staying out of the conversation."
 when = "Lengthen it if Kurooto joins in too soon after the other person stops talking."
 
 [s."voice.listen.conversation_follow_s"]

@@ -41,6 +41,8 @@ Every claim points at code as `path:symbol` (paths under `src/kurooto/` unless t
    [sorter.md](sorter.md): the notes sorter (0.7.4): a scratch folder's notes move by themselves, never deleting, with Undo.
    [voice.md](voice.md): Voice (0.8.8): speaking and listening on this computer, the gate (noise, chatter, addressed),
    the portal, the `{"t": "voice"}` live messages and `/api/voice`.
+   [face.md](face.md): Face presence (0.8.10): YuNet and SFace on the CPU, enrolment and the honest "training"
+   (centroids and a calibrated threshold), the watcher, the greeting, `core/biometric.py`, the privacy tests.
 9. [testing.md](testing.md): running tests, the real-install guard, scratch `KUROOTO_HOME`, fakes, CI.
 10. [release-and-updates.md](release-and-updates.md): versions, the changelog, building, signing, channels, the updater,
     rollback.

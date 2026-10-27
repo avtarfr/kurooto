@@ -74,6 +74,7 @@ HOSTS = {  # host (".domain": any host under it) -> what reaches it; docs/PRIVAC
     "release-assets.githubusercontent.com": "GitHub's file server for release downloads (Voice's models, Voice ID's "
     "model)",
     "huggingface.co": "Voice: downloading the speech-to-text model and the Piper voice",
+    "media.githubusercontent.com": "Face presence: downloading its two models (OpenCV's model zoo)",
     "api.cloudflare.com": "Phone calls: setting up your call line",
     ".workers.dev": "Phone calls: your call line",
     "ntfy.sh": "Phone calls: ringing your phone",

@@ -54,6 +54,7 @@ KNOWN_SECRETS = [
     "profile.token",
     "profile.key",
     "research.zotero_key",
+    "face.key",  # Face presence's template key (core/biometric.py): never in a backup or Profile sync
 ]
 SENSITIVE_KEYS = re.compile(
     r"name|chat|user|url|repo|topic|link|email|workspace|folder|keywords|list|timetable|persona|"
@@ -341,6 +342,14 @@ def bundle(app, dest: Path | None = None) -> tuple[Path, list[str]]:
             keep["error"] = r.text(str(e["error"]))[:300]
         events.append(keep)
     files["events.json"] = json.dumps(events, indent=1, default=str)
+    face = app.modules.get("face")  # Face presence: on or off, enrolled, how many samples; never <state>/face/
+    if face is not None:
+        st = face.store.status()
+        files["face.json"] = json.dumps(
+            {"on": app.is_on("face"), "enrolled": bool(st.get("enrolled")), "samples": int(st.get("samples") or 0),
+             "set_up": not face.parts.missing(face.wants())},
+            indent=1,
+        )  # fmt: skip
     from kurooto.core import setupsteps  # where setup went quickly and where it stalled: steps and seconds only
 
     files["setup.json"] = json.dumps(setupsteps.timings(app), indent=1)

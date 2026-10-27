@@ -57,6 +57,7 @@ EVENT_CELL = [
     ("lidsafe", "lidsafe"),
     ("voice_note", "voice_notes"),
     ("voice_", "voice"),  # (modules/voice) the portal opening and closing, listening on and off
+    ("face_", "face"),  # (modules/face) the camera on and off, arrivals, greetings; never a score
     ("awake", "awake"),
     ("calendar", "calendar"),
     ("notes_sync", "notes_sync"),
@@ -264,6 +265,62 @@ CELL_PROCS = {"local_models": ("ollama",)}
 PLUMBING = re.compile(r"\.(tick|refresh|sweep|soon|check|probation|logs|idle|write|plan|unstick|missed|task_check)$")
 
 
+def today_items(app, sched: list | None = None) -> dict:
+    """Today: classes, calendar events and what's scheduled for you (not Kurooto's own upkeep), and any focus
+    or no-calls hold. The dashboard's Today and Face presence's greeting (modules/face/greet.py) both read it."""
+    t = now()
+    sched = app.scheduler.jobs() if sched is None else sched
+    day, items = t.date(), []
+    subj = app.modules.get("subjects")
+    if subj is not None and app.is_on("subjects"):
+        skipped = subj.skipped(day)
+        for c in subj.classes_on(day, include_skipped=True):
+            state = (
+                "skipped"
+                if c["subject"] in skipped
+                else "now"
+                if c["start_dt"] <= t < c["end_dt"]
+                else "done"
+                if c["end_dt"] <= t
+                else "next"
+            )
+            items.append(
+                {"at": f"{c['start_dt']:%H:%M}", "end": f"{c['end_dt']:%H:%M}", "what": c["name"], "kind": "class",
+                 "state": state}
+            )  # fmt: skip
+    cal = app.modules.get("calendar")
+    if cal is not None and app.is_on("calendar"):
+        ta = dt.datetime.now().astimezone()  # the calendar's times carry their zone
+        for e in cal.day(day)[:12]:
+            if e.get("all_day"):
+                continue
+            state = "done" if e["end_dt"] <= ta else "now" if e["start_dt"] <= ta else "next"
+            items.append(
+                {"at": f"{e['start_dt']:%H:%M}", "end": f"{e['end_dt']:%H:%M}", "what": e["title"][:60],
+                 "kind": "event", "state": state}
+            )  # fmt: skip
+    end = dt.datetime.combine(day + dt.timedelta(days=1), dt.time(0)).timestamp()
+    for j in sched:
+        if j.next_run >= end or (j.spec or "").startswith("every") or PLUMBING.search(j.action):
+            continue
+        if j.action.startswith("updates."):
+            continue
+        mod = j.module or j.action.partition(".")[0]
+        kind = "call" if mod in ("calls", "alarm") else "job"
+        items.append(
+            {"at": time.strftime("%H:%M", time.localtime(j.next_run)), "what": j.label[:60], "kind": kind,
+             "state": "next", "module": mod}
+        )  # fmt: skip
+    items.sort(key=lambda x: x["at"])
+    av = app.availability
+    focus, quiet = av.focus_until(), av.quiet_until()
+    return {
+        "items": items[:16],
+        "focus": f"{focus:%H:%M}" if focus else None,
+        "quiet": f"{quiet:%H:%M}" if quiet else None,
+    }
+
+
 class Vitals:
     def __init__(self, app: App):
         self.app = app
@@ -420,58 +477,7 @@ class Vitals:
         return {"cpu": round(cpu, 4), "mem": mem, "threads": threads, "up": time.time() - started, "n": len(pids)}
 
     def _today(self, sched: list) -> dict:
-        """Today: classes, calendar events and what's scheduled for you (not Kurooto's own upkeep), and any focus
-        or no-calls hold."""
-        app, t = self.app, now()
-        day, items = t.date(), []
-        subj = app.modules.get("subjects")
-        if subj is not None and app.is_on("subjects"):
-            skipped = subj.skipped(day)
-            for c in subj.classes_on(day, include_skipped=True):
-                state = (
-                    "skipped"
-                    if c["subject"] in skipped
-                    else "now"
-                    if c["start_dt"] <= t < c["end_dt"]
-                    else "done"
-                    if c["end_dt"] <= t
-                    else "next"
-                )
-                items.append(
-                    {"at": f"{c['start_dt']:%H:%M}", "end": f"{c['end_dt']:%H:%M}", "what": c["name"], "kind": "class",
-                     "state": state}
-                )  # fmt: skip
-        cal = app.modules.get("calendar")
-        if cal is not None and app.is_on("calendar"):
-            ta = dt.datetime.now().astimezone()  # the calendar's times carry their zone
-            for e in cal.day(day)[:12]:
-                if e.get("all_day"):
-                    continue
-                state = "done" if e["end_dt"] <= ta else "now" if e["start_dt"] <= ta else "next"
-                items.append(
-                    {"at": f"{e['start_dt']:%H:%M}", "end": f"{e['end_dt']:%H:%M}", "what": e["title"][:60],
-                     "kind": "event", "state": state}
-                )  # fmt: skip
-        end = dt.datetime.combine(day + dt.timedelta(days=1), dt.time(0)).timestamp()
-        for j in sched:
-            if j.next_run >= end or (j.spec or "").startswith("every") or PLUMBING.search(j.action):
-                continue
-            if j.action.startswith("updates."):
-                continue
-            mod = j.module or j.action.partition(".")[0]
-            kind = "call" if mod in ("calls", "alarm") else "job"
-            items.append(
-                {"at": time.strftime("%H:%M", time.localtime(j.next_run)), "what": j.label[:60], "kind": kind,
-                 "state": "next", "module": mod}
-            )  # fmt: skip
-        items.sort(key=lambda x: x["at"])
-        av = app.availability
-        focus, quiet = av.focus_until(), av.quiet_until()
-        return {
-            "items": items[:16],
-            "focus": f"{focus:%H:%M}" if focus else None,
-            "quiet": f"{quiet:%H:%M}" if quiet else None,
-        }
+        return today_items(self.app, sched)
 
     def _models(self) -> list[dict] | None:
         """Models loaded in Ollama right now, if Local AI models is on."""

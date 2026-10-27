@@ -205,7 +205,7 @@ class Notifier:
                 self.app.events.emit("notify_failed", channel="chat", error=str(e)[:200])
         no_other_channel = ref is None and "app" not in self.channels
         if s.get("notify.desktop") and (msg.kind in (s.get("notify.desktop_kinds") or []) or no_other_channel):
-            desktop.notify(msg.title or self.app.name, msg.text, urgent=msg.urgent)
+            self._desktop(msg)
         self.app.events.emit("notified", kind=msg.kind, delivered=ref is not None)
         calm = getattr(self.app, "calm", None)
         if calm is not None and msg.rid:
@@ -220,9 +220,19 @@ class Notifier:
             self.app.events.emit("notify_failed", channel="chat", error=str(e)[:200])
         s = self.app.settings
         if s.get("notify.desktop") and msg.kind in (s.get("notify.desktop_kinds") or []):
-            desktop.notify(msg.title or self.app.name, msg.text, urgent=msg.urgent)
+            self._desktop(msg)
         self.app.events.emit("notified", kind=msg.kind, delivered=ref is not None, via="chat")
         return None  # not a Telegram message id
+
+    def _desktop(self, msg: Message) -> None:
+        """A desktop pop-up, or held while you've stepped away from the desk (face.away.hold_desktop): Face presence
+        shows what waited when you're back (at most 20, the oldest dropped)."""
+        face = (getattr(self.app, "modules", None) or {}).get("face")
+        away = getattr(self.app, "away_from_desk", None)
+        if face is not None and away is not None and self.app.settings.get("face.away.hold_desktop") and away():
+            face.hold_desktop(msg.title or self.app.name, msg.text, msg.urgent)
+            return
+        desktop.notify(msg.title or self.app.name, msg.text, urgent=msg.urgent)
 
     def flush_queue(self) -> int:
         """Deliver what waited during focus (called when focus ends)."""

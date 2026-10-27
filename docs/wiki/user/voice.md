@@ -297,6 +297,12 @@ Licences: CAM++ (3D-Speaker, Apache-2.0), its ONNX conversion (sherpa-onnx, Apac
 (Apache-2.0), onnxruntime (MIT), numpy (BSD-3-Clause); the strangers' voice prints are computed from LibriSpeech
 (CC BY 4.0): numbers only, no audio.
 
+## Greeting you at your desk
+
+With [Face presence](face.md) on, Kurooto can greet you through Voice when you sit down after a while, then open the
+conversation so you can answer without saying its name ("what's next?", "yes"). It opens it like after a reply, not like
+after its name alone, so people talking nearby close it instead of reaching your AI.
+
 ## What it can't do yet
 
 - It can't be interrupted while it speaks: it doesn't listen while speaking (so it doesn't hear itself). `/voice stop`

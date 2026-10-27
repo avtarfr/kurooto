@@ -517,6 +517,9 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `repaired_to`; Calm reason `cases.repaired`), and `expected(text)` is a test case's target for a phrasing.
 - **voice_notes** (`modules/voice_notes.py`): `transcribe()` posts audio to Gemini `generateContent`; used by Telegram.
   18 MB limit.
+- **face** (`modules/face/`, 0.8.10): Face presence: YuNet and SFace (OpenCV, CPU) recognise the owner; enrolment
+  and an honest "training" (centroids, a calibrated threshold), the watcher (camera closed while he types), a spoken
+  greeting through `Voice.greet` and `Calm.speak_ok`, `/face`; never authorises anything. [face.md](face.md).
 - **voice** (`modules/voice/`, 0.8.8): speaking (Kokoro or Piper) and listening on this computer; a local gate decides
   noise, chatter or addressed, and only addressed turns reach the brain through the portal. `heavy`; its listener is
   `background()`; parts fetched by `setup()` (`parts.py`). See [voice.md](voice.md).

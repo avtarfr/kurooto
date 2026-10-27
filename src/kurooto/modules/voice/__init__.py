@@ -677,6 +677,9 @@ class Voice(Module):
         if ev is not None:
             ev.set()
             return
+        away = getattr(self.app, "away_from_desk", None)
+        if away is not None and self.app.settings.get("face.away.hold_desktop") and away():
+            return  # stepped away from the desk (Face presence): the answer stays on screen, not read to an empty room
         if (
             self.app.is_on(self.id)
             and self.setting("speak.what") == "all"
@@ -700,6 +703,29 @@ class Voice(Module):
             return False, "Nothing to say."
         self.publish("voice_text", who="kurooto", text=text)
         return self.speaker.say(text, wait=wait)
+
+    def greet(self, text: str, listen_s: float, talk: bool = True) -> tuple[bool, str]:
+        """Face presence's greeting (0.8.10): shown, spoken (waiting for it to finish), then, when `talk` and listening
+        is on and not blocked, the conversation opens for listen_s seconds (Portal.invite). (False, why) when it can't
+        speak; (True, "talk") when the conversation opened; (True, why not) when only spoken. Never sent anywhere."""
+        if not self.app.is_on(self.id):
+            return False, "Voice is off"
+        if self.muted():
+            return False, "Voice is muted"
+        tts, why = self.tts()
+        if tts is None:
+            return False, why or "Voice can't speak"
+        self.publish("voice_text", who="kurooto", text=text)
+        ok, why = self.speaker.say(text, wait=True)
+        if not ok:
+            return False, why
+        if not talk:
+            return True, "spoken"
+        blocked = self.blocked()
+        if blocked:
+            return True, f"spoken; not listening: {blocked}"
+        self.portal.invite(text, listen_s)
+        return True, "talk"
 
     # ---------------------------------------------------------------------------------------- running
     def start(self) -> None:
