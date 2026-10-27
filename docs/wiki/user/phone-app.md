@@ -52,14 +52,15 @@ WhatsApp, Meet, or one of Kurooto's own), a quiet note says Kurooto called and t
 wait. A wake-up alarm still rings. Your computer also won't start one of Kurooto's calls while another is going on or
 ringing: the second waits.
 
-From 0.7.0 the app opens on four tabs: **Today**, **Inbox**, **Views** and **Phone**, and its icon is Kurooto's mark,
-a moth (a themed icon on Android 13 and up, if your launcher uses them).
+From 0.8.10 the app opens on **Chat**, with four more panes beside it: **Today**, **Alarms**, **Views** and
+**Settings** (see [The app's panes](#the-apps-panes-0810)). Its icon is Kurooto's mark, a moth (a themed icon on Android
+13 and up, if your launcher uses them).
 
-**Switches** (Phone tab, 0.7.2): **Connect straight to your call line** (on; off: calls and messages come through
+**Switches** (0.7.2; since 0.8.10 in **Settings → Calls** and **Settings → Look**): **Connect straight to your call line** (on; off: calls and messages come through
 ntfy.sh only, as before 0.7.0) and **Moving background** (on; off: a still picture, as with Android's "Remove
 animations"). Since 0.7.5 two more: **Vivid colours** (on: a fuller, more colourful scheme made from your wallpaper's colour, with
-tinted cards; off: Android's own quieter colours) and **Floating bar** (on: the tabs are a rounded bar floating over the page, the
-open tab shown with its name; off: the bar sits on the bottom edge as before). Views is off until you turn it on in the dashboard → Phone.
+tinted cards; off: Android's own quieter colours) and **Floating bar** (on: the panes are a rounded bar floating over the page, the
+open one in a filled pill; off: the bar sits on the bottom edge as before). Views is off until you turn it on in the dashboard → Phone.
 Since 0.8.7: **New call screen** (on: the ringing screen and the call in the new style, below; off: the call screen from before
 0.8.7, kept while the new one gets used for real calls).
 
@@ -96,25 +97,54 @@ too). With the app connected it doesn't matter. The connection is light: the app
 while the phone is awake and every few minutes while it sleeps, and nothing in between. **This phone** at the bottom
 of the app's screen says whether it's connected right now.
 
-**The app's screen** (0.7.0) has four tabs, in the bar at the bottom:
+### The app's panes (0.8.10)
 
-- **Today**: the date, big, then **Call** and **Chat**, then your day (see [Today on the phone](#today-on-the-phone)):
-  the alarm, classes and events, what's due, reminders, open threads, and a button when a newer app is out.
-- **Inbox** (a number on it says how much waits): check-ins and quiz questions, answered right on their card (see
-  [Check-in and quiz cards](#check-in-and-quiz-cards)); open questions, approvals and messages (tap one to answer it);
-  and what's **waiting for your computer** (things you sent while it was off).
-- **Views**: your computer's **Systems** and **Notes map** (see [Systems and the Notes map on the
-  phone](#systems-and-the-notes-map-on-the-phone)); the two buttons at the top switch between them. From 0.8.0 it is a real tab: the bar stays at the bottom while you look.
-- **Phone**: the **Checklist** (a tick for each thing that's set up, **Fix** beside the rest), **Location reminders**
-  (Places, see [Location reminders](#location-reminders)), the **Ringtones** (**Call ringtone** and **Wake-up alarm
-  tone**, each showing the tone it's set to; tap to change it. The alarm tone plays on the alarm volume), **Bedside
-  mode** ([below](#bedside-mode-android)), **Senses** (0.8.0: one switch for each thing the phone may tell Brain, all off until you
-  switch them on; see [What it senses](mind.md#what-it-senses-and-what-it-never-does)), and **This phone** (what it's paired with, the app's version, and **Unpair
-  this phone**, which asks first).
+The app opens on **Chat**. The other panes are in a bar floating at the bottom (icons with their names, the open one
+in a filled pill); in Chat the same five icons sit upright at the foot of the chat's rail, and moving to another pane
+the rail slides away to the left while the upright icons stretch out into the bar (back to Chat, the other way). The
+Chat icon's number counts unread messages and what's waiting for you. Back from any pane goes to Chat (swipe slowly
+from the edge on Android 14 and newer and the move follows your thumb); back from Chat leaves the app.
 
-Pull a tab down to look again; the app also looks each time you open it. Back on Inbox or Phone goes to Today. It
-starts listening again by itself after the phone restarts or the app updates ("Listening for calls" stays as a quiet
-notification).
+- **Chat:** your conversations with Kurooto (see [Chat with Kurooto in the app](#chat-with-kurooto-in-the-app)). The
+  **call button** is here, at the top: it's the only place the app starts a call. A bar at the top, "2 waiting for you",
+  opens what's waiting (questions, approvals, check-in and quiz cards, and what waits for your computer) in a sheet,
+  answered right there. Drag the sheet down or go back to close it.
+- **Today:** the date, big; the class you're in now as a large card with a ring of the time left (or what's next, or
+  that the day's done); **Waiting** and **Due soon** as two cards with their counts (tap: down to that part of the page);
+  **The day** as a strip of today's classes and events with a line at now (gone-by ones dimmed, skipped ones grey);
+  **Asked you** (what's waiting, answered in place); **Next** and **Alarm** (tap: Alarms); then **Due**, **Reminders**
+  and **Open threads**. See [Today on the phone](#today-on-the-phone).
+- **Alarms:** the next wake-up alarm from your computer as a big card (its time, day and reason, its tone, and the
+  **Ring on this phone too** switch), the later ones as big numbers two to a row, **Ringtones** (tap the call ringtone or
+  the alarm tone to change it) and **Bedside** (tap: bedside mode). Alarms are set on your computer.
+- **Views:** your computer's **Systems** and **Notes map** (see [Systems and the Notes map on the
+  phone](#systems-and-the-notes-map-on-the-phone)).
+- **Settings:** every setting the app has, in groups, under a search field that finds any of them by name (a ringtone
+  takes you to Alarms). Tap a group and it opens out of its tile; back folds it in again.
+
+**Where each setting went** (from the Phone tab and the other tabs before 0.8.10):
+
+| Setting | Now |
+|---|---|
+| Colours: Material You or **Apricot and plum** (new), **Vivid colours**, **Floating bar**, **Moving background** | Settings → Look |
+| The app's notifications and each kind of notification (opens Android's page for it) | Settings → Notifications |
+| The chat's own settings | Settings → Chat |
+| **New call screen**, **Connect straight to your call line**, Microphone, Full-screen calls | Settings → Calls |
+| Location reminders (Places) | Settings → Places |
+| Senses | Settings → Senses |
+| Open bedside mode, **Open by itself while charging**, **Keep the screen on while charging** | Settings → Bedside |
+| The checklist (battery, exact alarms...), what it's paired with, **Unpair this phone**, the app's version and **Update available** | Settings → This phone |
+| Call ringtone, wake-up alarm tone, **Ring on this phone too**, Allow exact alarms | Alarms |
+| Inbox | the "waiting for you" bar in Chat (a sheet), and Today's **Asked you** |
+| Today's **Call** and **Chat** buttons | gone: calls start from Chat's call button |
+
+Kurooto's own settings (what it does, when, with which AI) stay on your computer's dashboard; Settings says so at the
+bottom. **Apricot and plum** is the app's own palette (apricot and plum on near-black, or on warm paper with the phone
+in light mode); the call, bedside and small screens keep Material You for now.
+
+Pull Today or Alarms down to look again; the app also looks each time you open it. A notification or widget can open
+another pane (what's waiting opens Chat with its sheet; the alarm in the status bar opens Alarms). It starts listening
+again by itself after the phone restarts or the app updates ("Listening for calls" stays as a quiet notification).
 
 **Its look** follows the phone: light or dark as the phone is set, and on Android 12 and newer in your wallpaper's
 colours (Material You). Older phones get Kurooto's own greens. The main screen is Material 3 Expressive (Android 16's
@@ -123,8 +153,8 @@ scroll). The ringing screen is always dark, like the call itself; the other scre
 buttons, and the chat has a bar at the top with a back arrow. Behind the main screen is a living background in the
 same colours, as the dashboard's SYSTEMS view draws Kurooto: a cell with soft rims and a nucleus that breathes slowly,
 fine nerves drifting out of it, and a sky tinted by the hour (cooler at night, warmer at dawn and dusk). The cell
-crosses the top of the screen with the day, like the sun on the website. It's strongest on Today, faint on Inbox and
-Phone, stops when the app isn't on screen, and holds still with **Remove animations** on (Settings → Accessibility);
+crosses the top of the screen with the day, like the sun on the website. It's strongest on Today, faint on the other panes,
+stops when the app isn't on screen, and holds still with **Remove animations** on (Settings → Accessibility);
 on Android 11 and older it's a still picture. The app's icon is the call line's: a white handset in a green circle (on Android 13 and newer it follows
 themed icons if you use them).
 
@@ -162,10 +192,10 @@ An old Android phone on a charger by your bed, as a dock. It shows:
 - one big **Talk to Kurooto** button: one tap starts a voice call with Kurooto, the same call screen as the app's
   **Call** button. **Chat** and **Close** are the small buttons below it.
 
-**Open it** from the app's **Phone** tab: **Bedside mode** → **Open bedside mode**.
+**Open it** from the app's **Alarms** pane (the **Bedside** card) or **Settings → Bedside → Open bedside mode**.
 
 **Its look (0.8.7).** Always on black. The calls due next sit in a faint floating card, "waiting for you" is a small pill
-(tap it for Inbox), **Talk** is a big rounded button with a handset that changes shape as you press it, and **Chat** and
+(tap it for what's waiting, in Chat), **Talk** is a big rounded button with a handset that changes shape as you press it, and **Chat** and
 **Close** share a small floating bar at the bottom. By day the Talk button and the cards take the app's colours (Vivid or
 Calm); from 20:00 to 07:00 everything turns the warm, dim red-orange below.
 
@@ -180,7 +210,7 @@ screen goes, in a warm red-orange with no blue; 06:00 a little brighter. Tap any
 the alarm volume, as always); after the call you're back at the clock. Keep the app listening (the checklist's
 **Battery: unrestricted**) or nothing rings.
 
-**Settings** (the app's **Phone** tab, under **Bedside mode**):
+**Settings** (the app's **Settings → Bedside**):
 
 | Setting | Default | What it does |
 |---|---|---|
@@ -281,7 +311,7 @@ the nightly look back, a reply draft to approve, your own scripts (`kurooto ask-
 
 **Android.** A notification with **Reply** (type the answer right in the notification; on Android 6 it opens a small
 answer window), the question's choices, **Approve / Deny** for approvals, **Later** (ask me on the next call), or the
-message's own buttons. Tap the notification for every option. The app's **Inbox** tab lists what's waiting for you
+message's own buttons. Tap the notification for every option. The "waiting for you" bar at the top of the app's Chat (and **Asked you** on Today) lists what's waiting for you
 (check-ins and quiz questions as [cards](#check-in-and-quiz-cards) you answer right there).
 
 **+1 on a deadline.** With `"deadline"` in `notify.app_kinds`, a deadline with parts still to do comes with **+1**,
@@ -311,7 +341,7 @@ to type in.
 
 ## Check-in and quiz cards
 
-On the **Inbox** tab, the evening (or midday, night) check-in and quiz questions are cards you answer in place:
+In what's waiting (Chat's "waiting for you" sheet, or Today's **Asked you**), the evening (or midday, night) check-in and quiz questions are cards you answer in place:
 
 - **Check-in:** the question (and, in the evening, what today's records show you did), a box for how it went, **Send**,
   and its buttons (**In 30 min**, **Not tonight** or **Skip today**, **Tomorrow morning** for the night one). Your
@@ -327,7 +357,7 @@ plain cards that open the answer window).
 
 ## Location reminders
 
-"Remind me when I reach the library to return the book." Off by default. In the app: **Location reminders → Places →
+"Remind me when I reach the library to return the book." Off by default. In the app: **Settings → Places → Places →
 Turn on location reminders**. The battery cost is said first, and the app asks to use the phone's location only then
 (and, on Android 10 and newer, "Allow all the time" so reminders come with the app closed).
 
@@ -343,19 +373,20 @@ Where your places are never leaves the phone. Details: [reminders-and-deadlines.
 
 ## Today on the phone
 
-Android, 0.6.0. The app's **Today** tab shows, under **Call** and **Chat**, the main parts of the dashboard's Today
-page, as your computer last sent them. If the copy is from an earlier day, it says which.
+Android, 0.6.0 (0.8.10: cards). The app's **Today** pane shows the main parts of the dashboard's Today page, as your
+computer last sent them, as cards (see [The app's panes](#the-apps-panes-0810)). If the copy is from an earlier day, it says which.
 
 - **When it's from:** "As of 14:05" (when your call line got it), and "your computer is off" when it is. It shows
   with the computer asleep or off, and with no internet on the phone (the copy the app last fetched).
-- **Alarm:** the next one, the daily alarm, and **Ring on this phone too** (see below).
-- **Classes and events:** today's classes (a class you're skipping says so) and your calendar, in time order (all-day
-  events first). Something that began the night before shows when it ends: "until 06:00  Busy".
+- **Now:** the class you're in, until when, with a ring of the time left; between classes, what's next and how long until.
+- **Alarm:** the next one (tap it for the Alarms pane, where **Ring on this phone too** is; see below).
+- **The day:** today's classes and your calendar on one strip, by the hour, with their names and times under it (a class
+  you're skipping says so). Events without an end are shown an hour long.
 - **Due:** what's due, soonest first, with parts done ("4/7 · due tomorrow", and a wavy bar). Tap one for **+1** and **Done**: the same
   as those buttons on the deadline's Telegram message. With the computer off, the tap waits on your call line and
   counts when it's back; "Waiting for your computer" lists it meanwhile. Quizzes and exams have no buttons.
 - **Reminders** and **open threads** (what you're in the middle of, with memory threads on).
-- How many questions wait for you; tap the line to go to **Inbox**.
+- **Waiting** (how many things wait for you) and **Asked you**, where you answer them.
 
 Your computer sends a new list within seconds of a change on it (a deadline done on Telegram, an alarm set) and looks
 for changes every 5 minutes; the phone fetches it when it's told, when you open the app, and when it reconnects. Turn it off with `calls.today` (Dashboard → Settings → calls): the app then says "Turned off
@@ -370,7 +401,7 @@ internet just then), opening the app tries again (0.6.1; on 0.6.0, swipe the app
 ## Systems and the Notes map on the phone
 
 Android, 0.7.0, off until you turn it on: dashboard → **Phone** → **Show Systems and the Notes map in the Android app**
-(the setting `calls.views`). Then the app's **Views** tab shows them: **Systems** and **Notes map** at its top switch
+(the setting `calls.views`). Then the app's **Views** pane shows them: **Systems** and **Notes map** at its top switch
 between the two, and it opens on the one you looked at last.
 They're the dashboard's own drawings, drawn on the phone by the same code, in the app's colours (light or dark).
 
@@ -408,10 +439,10 @@ off and your call line or the internet can't be reached**. It rings like the wak
   well), Answer starts the wake-up call. A call that comes after you stopped the phone's alarm doesn't ring.
 - **Only your own alarms.** The phone copies what your computer has: alarms you set yourself, by message, command,
   call or a button you tapped. The app never sets one of its own; the AI can't set one without your tap either.
-- **Ring on this phone too** (Today's alarm group, **On** / **Off**): tap to turn the phone's copy off or on. Off, only the call rings.
-- **Android 12 and newer** asks for exact alarms: the checklist's **Alarms at the exact time** and Today's **Allow
-  exact alarms** open the setting. On Android 13 and newer the app has it from the start. Without it the alarm is set
-  as close as Android allows, which can be a few minutes late in deep sleep, and Today says so.
+- **Ring on this phone too** (the switch on the Alarms pane's big card): turn the phone's copy off or on. Off, only the call rings.
+- **Android 12 and newer** asks for exact alarms: **Settings → This phone**'s **Alarms at the exact time** and the Alarms
+  pane's **Allow exact alarms** open the setting. On Android 13 and newer the app has it from the start. Without it the
+  alarm is set as close as Android allows, which can be a few minutes late in deep sleep, and the Alarms pane says so.
 - **What it needs from your computer:** the list of alarms, sent with Today. An alarm you set or cancel while the phone
   is offline reaches it when it's online again. The daily alarm is sent one morning at a time: the phone always has
   the next one, and the one after once your computer has been awake after the next rings.
@@ -434,7 +465,7 @@ on your call line and is done when it's back, in order.
 
 ## Chat with Kurooto in the app
 
-**Android:** tap **Chat** on the app's **Today** tab. Type as you would on Telegram: a question, "remind me
+**Android:** open the app: it opens on **Chat**. Type as you would on Telegram: a question, "remind me
 at 9 to call Dr Sam Okafor", a /command. It's handled exactly like a Telegram message: the same commands, plain-English
 requests and, with Chat on, your AI. The answer comes back in the chat ("On it." first, then the AI's answer when it's
 done), and as a notification when the chat isn't open. Buttons under an answer work as on Telegram. **Reply** under a
@@ -526,7 +557,7 @@ quick-note.md from your phone: saved to ...". With the computer off the note wai
 inbox when the computer is back ("Your computer is off: the note waits on your call line ..."). If it couldn't be sent
 (no internet), it stays in the box, also after you close it, until you tap **Save to notes** again.
 
-**What the 2x1 widget shows** is the newest of what the app's **Inbox** tab lists. It looks again every 30 minutes,
+**What the 2x1 widget shows** is the newest of what's waiting for you in the app (Chat's "waiting for you" bar). It looks again every 30 minutes,
 when a question arrives or is answered, and each time you open the app. It shows the message's text on your home
 screen, like a notification would. Use the 1x1 widget if you'd rather not.
 
@@ -539,7 +570,7 @@ What you do on the phone while your computer sleeps isn't lost: chat messages, b
 and shared files wait on your call line (the "phone outbox") and go to the computer when it's back, in the order you
 sent them, each once.
 
-- The chat shows **Waiting for your computer** under each one; the app's **Inbox** tab lists what's waiting.
+- The chat shows **Waiting for your computer** under each one; Chat's "waiting for you" sheet lists what's waiting.
 - **+1** taps on a deadline count one each, in order: three taps while the laptop sleeps are three parts done when
   it's back. The notification says the tap is waiting and keeps its **+1**. **Done** and **+1** on Today wait the
   same way.
@@ -600,7 +631,7 @@ There's no undo: the old keys are gone. A phone you don't pair again can't call 
   answers go back like questions do. Your call line keeps the chat's last 50 messages, each for at most 3 days, so a
   phone can catch up while the computer is off.
 - Files you share and quick notes go from the phone through your call line to your computer.
-- The 2x1 widget asks your call line what's waiting (as the app's Inbox tab does); nothing else leaves the phone for
+- The 2x1 widget asks your call line what's waiting (as the app's "waiting for you" bar does); nothing else leaves the phone for
   the widgets or the tile.
 - Tell Kurooto (the iPhone Shortcut): what you say goes, as text, from the iPhone (Apple's dictation) through your call
   line to your computer, like a chat message. The call line keeps a hash of each link (not the link), the phone it

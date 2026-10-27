@@ -141,6 +141,10 @@ final class Prefs {
     static void setVivid(Context c, boolean on) { sp(c).edit().putBoolean("vivid", on).apply(); }
     static boolean floatingBar(Context c) { return sp(c).getBoolean("floatingBar", true); }
     static void setFloatingBar(Context c, boolean on) { sp(c).edit().putBoolean("floatingBar", on).apply(); }
+    // Look → Colours (0.8.10): "you" (Material You from the wallpaper, as before; the default) or "apricot" (apricot and plum
+    // on near-black, the Rail design's own palette)
+    static String palette(Context c) { return sp(c).getString("palette", "you"); }
+    static void setPalette(Context c, String name) { sp(c).edit().putString("palette", name).apply(); }
     // the call screen (0.8.7): the Compose one (Material 3 Expressive), or off the framework one from before 0.8.7, kept
     // reachable until the new one has carried real calls (CallActivity reads it as a call's screen opens)
     static boolean newCallScreen(Context c) { return sp(c).getBoolean("newCallScreen", true); }

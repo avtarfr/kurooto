@@ -37,31 +37,20 @@ import androidx.compose.ui.unit.dp
 import org.json.JSONObject
 
 /**
- * The Inbox tab (0.7.0): what's waiting for you on your call line (/pending), newest first. Check-in and quiz cards
- * are answered right here (InboxCard); questions, approvals and messages open the answer window (AnswerActivity) with
- * every way to answer them. Then what waits for your computer (the phone outbox on the call line), which goes when
- * it's back. The navigation bar's badge counts what waits for you.
+ * What's waiting for you (0.7.0's Inbox tab; 0.8.10: no longer a tab, a sheet opened from the bar at the top of Chat
+ * (WaitingBar) or Today's Waiting card, and a section on Today): what's on your call line (/pending), newest first.
+ * Check-in and quiz cards are answered right here (InboxCard); questions, approvals and messages open the answer window
+ * (AnswerActivity) with every way to answer them. Then what waits for your computer (the phone outbox on the call
+ * line), which goes when it's back. Chat's icon in the bar counts what waits for you.
  */
 @Composable
-fun InboxPage(a: MainActivity, ui: HomeState, outer: PaddingValues) {
-    val n = ui.waiting?.size
-    val sub = when {
-        n == null -> "Looking…"
-        n == 0 -> "Nothing waiting for you"
-        n == 1 -> "1 waiting for you"
-        else -> "$n waiting for you"
-    }
-    TabPage(a, ui, outer, "Inbox", sub) { InboxTab(a, ui) }
-}
-
-@Composable
-private fun ColumnScope.InboxTab(a: MainActivity, ui: HomeState) {
+fun ColumnScope.InboxContent(a: MainActivity, ui: HomeState) {
     val items = ui.waiting
     if (items == null) {
         Box(Modifier.fillMaxWidth().padding(top = 48.dp), contentAlignment = Alignment.Center) { LoadingIndicator() }
         return
     }
-    if (ui.waitingFailed) Dim("Couldn't reach your call line just now. Pull down to try again.", Modifier.padding(start = 4.dp, top = 8.dp))
+    if (ui.waitingFailed) Dim("Couldn't reach your call line just now. Pull Today down to try again.", Modifier.padding(start = 4.dp, top = 8.dp))
     val cards = items.filter { CardRules.kind(it.optString("card"), Inbox.text(it)).isNotEmpty() }
     val rest = items.filter { CardRules.kind(it.optString("card"), Inbox.text(it)).isEmpty() }
     if (items.isEmpty() && !ui.waitingFailed) {
@@ -199,10 +188,56 @@ object InboxCard {
 }
 
 
-/** "2 waiting for you" (0.8.10; owned by the shell part): a bar at the top of Chat's session list that opens what's
- *  waiting (this tab's content) in a sheet. This stub is the contract: its signature stays. */
+/** "2 waiting for you" over a line of what it is ("a check-in, a quiz and an approval"): the sheet's title and Today's
+ *  Waiting card. */
+internal fun waitingTitle(ui: HomeState): String {
+    val n = ui.waiting?.size
+    return when {
+        n == null -> "Looking…"
+        n == 0 -> "Nothing waiting for you"
+        else -> "$n waiting for you"
+    }
+}
+
+/** What's waiting, in a few words: "a check-in, a quiz and 2 more". */
+internal fun waitingWhat(items: List<JSONObject>): String {
+    val words = items.map {
+        when (CardRules.kind(it.optString("card"), Inbox.text(it))) {
+            "checkin" -> "a check-in"
+            "quiz" -> "a quiz"
+            else -> when (it.optString("title").lowercase()) {
+                "approval" -> "an approval"
+                "question" -> "a question"
+                else -> if (it.optBoolean("reply") || it.has("choices")) "a question" else "a message"
+            }
+        }
+    }
+    if (words.isEmpty()) return ""
+    val shown = words.take(if (words.size > 3) 2 else 3)
+    val more = words.size - shown.size
+    val parts = shown + if (more > 0) listOf("$more more") else emptyList()
+    return if (parts.size == 1) parts[0] else parts.dropLast(1).joinToString(", ") + " and " + parts.last()
+}
+
+/**
+ * "2 waiting for you" (0.8.10): a plum bar at the top of Chat's session list (app-chat places it) that opens what's
+ * waiting in a sheet (InboxContent), answered in place. Nothing when nothing waits.
+ */
 @Composable
 fun WaitingBar(a: MainActivity, ui: HomeState) {
-    val n = ui.waiting?.size ?: 0
-    if (n > 0) Text("$n waiting for you", Modifier.padding(16.dp))
+    val items = ui.waiting ?: return
+    if (items.isEmpty()) return
+    val cs = MaterialTheme.colorScheme
+    Tile(cs.tertiaryContainer, cs.onTertiaryContainer, Modifier.fillMaxWidth(), onClick = { ui.waitingSheet = true }, padding = 12.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ShapeBadge(MaterialShapes.Cookie9Sided, cs.tertiary, size = 40) {
+                Icon(painterResource(R.drawable.ic_hourglass), contentDescription = null, tint = cs.onTertiary, modifier = Modifier.size(20.dp))
+            }
+            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                Text(waitingTitle(ui), style = MaterialTheme.typography.titleSmallEmphasized, maxLines = 1)
+                Text(waitingWhat(items), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Chevron()
+        }
+    }
 }

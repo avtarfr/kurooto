@@ -65,7 +65,7 @@ Also, when they apply: `docs/MANUAL.md` (with the Undo), `docs/PRIVACY.md`, `doc
   comment, so it's in Settings and SETTINGS_GUIDE.md); one that changes what people already had starts off, or on only
   when it's invisible until used. Off stops it at once and breaks nothing else. Fixes are never switches. A job core
   code schedules must be listed in `tests/unit/test_feature_switches.py` with its switch, or as plumbing with a reason.
-  The phone app's switches live in `Prefs.java` and the Phone tab's **Switches** group.
+  The phone app's switches live in `Prefs.java` and Settings' groups (`SettingsPane.kt`, 0.8.10; the search index there lists each one).
 
 ## Privacy rules
 

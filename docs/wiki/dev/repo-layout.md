@@ -85,7 +85,7 @@ One line per folder or important file. Paths are relative to the repository root
 |---|---|
 | `AndroidManifest.xml` | permissions and components (Gradle sets the package, minSdk 23, target 35) |
 | `src/.../kurooto/*.java` | activities (`PairActivity`, `CallActivity`, `AnswerActivity`, `ShareActivity`, `ChatActivity`, ...), `ListenService`, receivers, `Crypto`/`Seal` (k1/s1), `Line`/`Net` (HTTP), `Speech`, `Inbox`, `Prefs`, `Tls`, `Ui` |
-| `src/.../kurooto/*.kt` | the main screen in Compose (0.7.0): `MainActivity`, `Home`, `TodayTab`, `InboxTab`, `PhoneTab`, `Kit`, `Theme`, `Sky` |
+| `src/.../kurooto/*.kt` | the main screen in Compose (0.7.0): `MainActivity`, `Home`, `Nav`, `TodayTab`, `AlarmsPane`, `SettingsPane`, `InboxTab`, `Kit`, `Theme`, `Sky` (0.8.10: panes) |
 | `src-demo/`, `src-nodemo/` | `Demo.kt`: made-up data for debug and dev builds; empty in release builds |
 | `res/`, `assets/isrgrootx1.der` | icons; the Let's Encrypt root for old Android versions |
 | `build.sh` | builds with a pinned Gradle it downloads (`--dev` a dev build beside the real app, `--lint`, `--test` the JVM tests) |

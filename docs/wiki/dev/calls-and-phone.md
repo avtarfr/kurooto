@@ -481,7 +481,7 @@ comes back in the answer (`200 {"ok", "note"}`, `400` bad or not tappable, `410`
 the last fetch) first calls `Line.sendSealKey` (a no-op once `sealSent` matches; 0.6.1: before, only the stream's
 reconnect retried a failed send, and a stream can stay up for days, so a phone whose first send failed got no list),
 then opens the token with `Seal`, keeps it in `today.json` and hands `alarm` to `Alarms.update`.
-`TodayTab.kt` draws it on the main screen's Today tab under Call and Chat (`HomeState.today`; `Today.listener`
+`TodayTab.kt` draws it on the Today pane (0.8.10: `TodayPane`, a bento grid; `HomeState.today`; `Today.listener`
 re-reads it when a fetch lands), with Done / +1 under a tapped deadline (`MainActivity.dueAct` -> `Chat.today`, waiting
 kind `today`).
 
@@ -572,8 +572,7 @@ computer, reach, off, palette}`; the palette is the app's colours: `k_bg`, `k_fg
 `k_view_peach` (Material You's accents on 12+, `values-v31`), `k_sand`, `k_rose`, `k_bad`, `k_card`). Systems: watch every 20 s, fetch every 4 s (20 s while the computer is asleep); notes:
 fetched when opened. A WebView older than Chrome 58 (`MIN_CHROME`) gets a message instead. The Gradle task
 `kurootoViewAssets` copies `src/kurooto/web/static/views/*` to `assets/views/` and the Public Sans files to
-`assets/fonts/` at build time. The main screen's **Views** tab (`Home.kt` `TABS`, `Tab.opens`, the `ic_nav_views`
-icon) opens it; at its top two buttons, **Systems** and **Notes map**, switch between them (`show(mode)`: the page is
+`assets/fonts/` at build time. The main screen's **Views** pane (0.8.10: `Pane.VIEWS`, hosted by `ViewsTab`) opens it; at its top two buttons, **Systems** and **Notes map**, switch between them (`show(mode)`: the page is
 loaded afresh, as it draws one kind), and it opens on the one looked at last (`Prefs.viewMode`) unless the extra `mode`
 says. With `demo` (debug and dev builds) it shows `Demo.view(kind)`, made-up copies of both, and fetches nothing.
 
@@ -706,10 +705,10 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   crosses midnight) plugging in, or the hours starting while charging, opens it: `startActivity` below Android 10, a
   full-screen notification on channel `bedside` (silent, `ID_BEDSIDE` 9) from 10. Opened that way (`auto`), unplugging
   closes it. While it's visible, `ListenService.ring` also starts `CallActivity` directly (with the screen kept on,
-  Android shows a full-screen intent only as a heads-up). Its settings are on the main screen's Phone tab
-  (`PhoneTab.kt`; the hours dialog is `BedsideActivity.hours`); `MainActivity` with the extra `bedside` opens it
+  Android shows a full-screen intent only as a heads-up). Its settings are in Settings → Bedside
+  (`SettingsPane.kt`, 0.8.10; the hours dialog is `BedsideActivity.hours`; the Alarms pane's Bedside card opens it); `MainActivity` with the extra `bedside` opens it
   (`smoke.sh` uses that).
-- Components: `MainActivity` (Kotlin, Compose: the tabs or pairing, below), `PairActivity`,
+- Components: `MainActivity` (Kotlin, Compose: the panes or pairing, below), `PairActivity`,
   `CallActivity` (WebView with the `KurootoApp` JS bridge), `AnswerActivity`, `ChatActivity` (the chat; its store and
   the outbox's waiting list are `Chat`, `chat.json` in the app's files), `ShareActivity` (share to Kurooto, with the
   device key so it can wait on the line),
@@ -797,11 +796,33 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     a made-up ring with no link; its buttons send nothing and Answer shows a stand-in page (no script, no microphone, no
     audio changes).
   - `MainActivity` (a `ComponentActivity`, edge to edge, `enableOnBackInvokedCallback` for the predictive back
-    gesture) holds `HomeState` (Compose state: paired, name, tab, today, waiting, queued, the status lines, update,
-    tick) and does what the screens ask (`refresh`, `pull`, `loadWaiting`, `requestCall`, `chat`, `dueAct`, `answer`,
+    gesture) holds `HomeState` (Compose state: paired, name, pane, settingsGroup, waitingSheet, unread, today, waiting,
+    queued, the status lines, update, tick) and does what the screens ask (`refresh`, `pull`, `loadWaiting`, `requestCall`, `chat`, `dueAct`, `answer`,
     `checks`, `pickTone`, `unpair`, `pair`, the update check); the composables only draw it. `tick` is bumped on resume
     and after a setting changes, and what reads settings (the checklist, ringtones, bedside, the alarm toggle) reads it.
-    The tab survives rotation (`onSaveInstanceState`); the extra `tab` picks one.
+    The pane and the open Settings group survive rotation and `recreate()` (`onSaveInstanceState`; a restored pane wins
+    over the intent's extra); the extra `tab` picks a pane (`chat`, `today`, `alarms`, `views`, `settings`; `inbox` opens
+    Chat with the waiting sheet, `phone` Settings → This phone); a launcher intent in `onNewIntent` goes back to Chat.
+    0.8.10: the palette is `Prefs.palette` ("you" or `Apricot.NAME`): `setContent` wraps `Home` in `ApricotTheme` (a
+    nested `MaterialExpressiveTheme` with only the colour scheme) inside `KurootoTheme`.
+  - **0.8.10, the panes** (`Home.kt`, `Nav.kt`): `Panes` draws the sky, then one `SharedTransitionLayout` around
+    `Transition<Pane>.AnimatedContent` with `contentKey = { it == CHAT }`: the move between Chat and the rest slides
+    (the motion scheme's `defaultSpatialSpec`) and Today/Alarms/Views/Settings stay one content under the horizontal
+    `KNav` (`Others`, an inner `AnimatedContent` that fades through with a 0.96 scale). The transition comes from
+    `rememberBackTransition` (a `SeekableTransitionState` that `PredictiveBackHandler` seeks towards Chat; Settings uses
+    it for group → grid). Each pane's content gets `LocalNavShared` (the layout) and `LocalNavPane` (its
+    `AnimatedVisibilityScope`). `KNav(vertical)`: the capsule is `sharedBounds(key = "knav")` (`RemeasureToBounds`, its
+    content cross-faded), each icon `sharedElement("knav-<PANE>")` and the pill `sharedElement("knav-pill")`; the
+    horizontal pill slides with an `Animatable` read in `Modifier.offset { }`. `Modifier.paneStagger(i)` (for Chat's
+    rail) adds a 20 ms-per-row delayed slide (`Delayed`, a `FiniteAnimationSpec` wrapper, since springs have no delay).
+    ChatPane gets no room (`PaddingValues()`): it has no bar and handles its insets itself; the other panes get the
+    bar's room. `WaitingSheet` (a `ModalBottomSheet` with `InboxContent`) is hosted by `Panes` on `ui.waitingSheet`.
+    The bento kit: `PaneGrid` (pull to refresh around a two-column `LazyVerticalGrid`, a status-bar scrim), `wide`,
+    `paneTitle`, `Tile` (a press scales it in `graphicsLayer`), `TileLabel`, `tileColor`. `TodayTab.kt` (`TodayPane`:
+    `NowCard` with a `Canvas` ring, count tiles, `DayStrip` drawn in one `Canvas`, `slots()` parses "09:30–11:00" and
+    "16:30 Event"), `AlarmsPane.kt` (the hero from `alarmTimes(today)`, `Numeral`s, `Tones`, `Bedside`), `SettingsPane.kt`
+    (`SetGroup`, the tile ↔ page container transform as `sharedBounds("set-<GROUP>")`, `index()`/`search()` over every
+    setting, the group pages; the old `PhoneTab.kt` is gone), `InboxTab.kt` (`InboxContent`, `InboxCard`, `WaitingBar`).
   - `Home.kt` (0.7.5: `Prefs.floatingBar` on, the default, draws `FloatingBar`, a `HorizontalFloatingToolbar` over the page
     in a `Box` and the pages get `FLOAT_ROOM` at their end; off: the docked `DockedBar` below):
     `Pairing` (unpaired) or `Tabs`: a `Scaffold` with Material 3 Expressive's `ShortNavigationBar` (Today,
@@ -813,7 +834,7 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     `displaySmallEmphasized`, Today's date in `displayMediumEmphasized`; it folds on scroll, `exitUntilCollapsed`),
     `PullToRefreshBox` with the expressive `LoadingIndicator`, and a column at most 640dp wide that keeps clear of the
     navigation bar and the keyboard.
-  - `TodayTab.kt` (the date as the title, the assistant's initial in a `MaterialShapes.Cookie9Sided`, Call and Chat
+  - Before 0.8.10: `TodayTab.kt` (the date as the title, the assistant's initial in a `MaterialShapes.Cookie9Sided`, Call and Chat
     as a connected `ButtonGroup` of large buttons, then Today's sections: the alarm with its toggle, classes and events,
     due with a still `LinearWavyProgressIndicator` for parts and Done / +1, reminders, threads, "N questions wait in
     Inbox", "as of", the update button), `InboxTab.kt` (cards answered in place, the rest opening `AnswerActivity`,

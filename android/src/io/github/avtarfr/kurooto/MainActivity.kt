@@ -26,14 +26,15 @@ import java.util.Locale
 import kotlin.concurrent.thread
 
 /**
- * The main screen (0.7.0: Compose, Material 3 Expressive). Paired: tabs under a navigation bar (Home.kt): Today
- * (the day from your computer's last copy, Call and Chat), Inbox (what's waiting for you, answered in place or in
- * AnswerActivity, and what waits for your computer), Views (opens ViewsActivity: Systems and the Notes map) and Phone
- * (the checklist, location reminders, ringtones, bedside mode, this phone). Not paired: the pairing screen. This class holds the screen's state (HomeState) and does what
- * the screens ask (calls, fetches, answers, settings); the composables only draw it.
- * Extras: "tab" (today, inbox or phone) opens on that tab; "bedside" opens bedside mode on top (smoke.sh, the
- * shortcut); "justPaired" says so; "demo" (debug and dev builds only, Demo.ON) shows made-up data without pairing,
- * "palette" (the same builds) a named palette instead of Material You, and "hour" (a float) the sky at that hour.
+ * The main screen (0.7.0: Compose, Material 3 Expressive; 0.8.10: panes). Paired: the panes (Home.kt) Chat (where it
+ * opens), Today (the day from your computer's last copy and what's waiting for you), Alarms (the wake-up alarms,
+ * ringtones, bedside mode), Views (Being, Systems and the Notes map) and Settings (every setting the app has, in
+ * groups). Not paired: the pairing screen. This class holds the screen's state (HomeState) and does what the screens
+ * ask (calls, fetches, answers, settings); the composables only draw it.
+ * Extras: "tab" opens on that pane (chat, today, alarms, views, settings; "inbox" opens Chat with what's waiting in a
+ * sheet, "phone" Settings → This phone); "bedside" opens bedside mode on top (smoke.sh, the shortcut); "justPaired"
+ * says so; "demo" (debug and dev builds only, Demo.ON) shows made-up data without pairing, "palette" (the same builds)
+ * a named palette instead of Material You, and "hour" (a float) the sky at that hour. The launcher icon opens Chat.
  */
 class MainActivity : ComponentActivity() {
     internal val h = Handler(Looper.getMainLooper())
@@ -48,7 +49,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(b)
         ui.demo = Demo.ON && intent.getBooleanExtra("demo", false)
-        ui.tab = tabOf(intent) ?: b?.getInt("tab", 0) ?: 0
+        // drawn again (rotation, a Look switch): where it was, not the extra it was first opened with
+        val restored = b?.getString("pane")?.let { n -> Pane.entries.firstOrNull { it.name == n } }
+        ui.settingsGroup = b?.getString("group")
+        ui.pane = restored ?: paneOf(intent) ?: Pane.CHAT
         ListenService.channels(this)
         if (!ui.demo) {
             askPermissions()
@@ -59,7 +63,13 @@ class MainActivity : ComponentActivity() {
         // debug and dev builds: "palette" (e.g. kuro) shows that palette instead of Material You, to look at it here
         if (Demo.ON) ui.palette = intent.getStringExtra("palette") ?: b?.getString("palette")
         if (Demo.ON && intent.hasExtra("hour")) ui.demoHour = intent.getFloatExtra("hour", 12f)
-        setContent { KurootoTheme(palette = ui.palette ?: "kuro", dynamic = ui.palette == null) { Home(this, ui) } }
+        // Look → Colours (0.8.10): Material You, or apricot and plum (Apricot, Home.kt); the debug "palette" extra wins
+        val look = ui.palette ?: Prefs.palette(this)
+        setContent {
+            KurootoTheme(palette = if (look == "you" || look == Apricot.NAME) "kuro" else look, dynamic = look == "you") {
+                if (look == Apricot.NAME) ApricotTheme { Home(this, ui) } else Home(this, ui)
+            }
+        }
         if (intent.getBooleanExtra("bedside", false)) startActivity(Intent(this, BedsideActivity::class.java))
     }
 
@@ -69,14 +79,17 @@ class MainActivity : ComponentActivity() {
         if (Demo.ON && i.getBooleanExtra("demo", false)) ui.demo = true
         if (Demo.ON && i.hasExtra("palette")) ui.palette = i.getStringExtra("palette")
         if (Demo.ON && i.hasExtra("hour")) ui.demoHour = i.getFloatExtra("hour", 12f)
-        tabOf(i)?.let { ui.tab = it }
+        val p = paneOf(i)
+        if (p != null) ui.pane = p
+        else if (i.action == Intent.ACTION_MAIN && i.hasCategory(Intent.CATEGORY_LAUNCHER)) ui.pane = Pane.CHAT // the icon opens Chat
         if (i.getBooleanExtra("justPaired", false)) ui.status = Said("Paired. You're all set.", Said.OK)
         if (i.getBooleanExtra("bedside", false)) startActivity(Intent(this, BedsideActivity::class.java))
     }
 
     override fun onSaveInstanceState(out: Bundle) {
         super.onSaveInstanceState(out)
-        out.putInt("tab", ui.tab)
+        out.putString("pane", ui.pane.name)
+        ui.settingsGroup?.let { out.putString("group", it) }
         ui.palette?.let { out.putString("palette", it) }
     }
 
@@ -91,10 +104,16 @@ class MainActivity : ComponentActivity() {
         if (Today.listener === todayListener) Today.listener = null
     }
 
-    private fun tabOf(i: Intent?): Int? = when (i?.getStringExtra("tab")) {
-        "today" -> 0
-        "inbox" -> 1
-        "phone" -> 2
+    /** The pane an intent asks for ("tab"), or null. "inbox" (the widget, bedside mode): Chat with what's waiting open in
+     *  its sheet; "phone" (before 0.8.10): Settings → This phone. */
+    private fun paneOf(i: Intent?): Pane? = when (i?.getStringExtra("tab")) {
+        "chat" -> Pane.CHAT
+        "today" -> Pane.TODAY
+        "alarms" -> Pane.ALARMS
+        "views" -> Pane.VIEWS
+        "settings" -> Pane.SETTINGS
+        "inbox" -> { ui.waitingSheet = true; Pane.CHAT }
+        "phone" -> { ui.settingsGroup = "PHONE"; Pane.SETTINGS }
         else -> null
     }
 
@@ -119,6 +138,7 @@ class MainActivity : ComponentActivity() {
             ui.waiting = Demo.waiting()
             ui.queued = Demo.queued()
             ui.update = Demo.update()
+            ui.unread = 3
             return
         }
         ui.name = Prefs.assistant(this)
@@ -310,7 +330,7 @@ class MainActivity : ComponentActivity() {
 
     internal fun bedsideHours() = BedsideActivity.hours(this) { ui.tick++ }
 
-    /** The Phone tab's switch for the line's own connection: the listening service starts again without (or with) it. */
+    /** Settings → Calls: the switch for the line's own connection: the listening service starts again without (or with) it. */
     internal fun toggleDirect() {
         Prefs.setDirect(this, !Prefs.direct(this))
         if (!Prefs.direct(this)) Direct.disarm(this)
@@ -319,7 +339,7 @@ class MainActivity : ComponentActivity() {
         ui.tick++
     }
 
-    /** The Phone tab's switch for the moving background; the screen is drawn again with it. */
+    /** Settings → Look: the switch for the moving background; the screen is drawn again with it. */
     internal fun toggleMoving() {
         Prefs.setMoving(this, !Prefs.moving(this))
         recreate()
@@ -348,6 +368,13 @@ class MainActivity : ComponentActivity() {
         ui.tick++
     }
 
+    /** Settings → Look → Colours (0.8.10): "you" (Material You) or Apricot.NAME; the screen is drawn again with it. */
+    internal fun setPalette(name: String) {
+        if (name == Prefs.palette(this)) return
+        Prefs.setPalette(this, name)
+        recreate()
+    }
+
     internal fun toggleKeepOn() {
         Prefs.setBedsideKeepOn(this, !Prefs.bedsideKeepOn(this))
         ui.tick++
@@ -359,7 +386,8 @@ class MainActivity : ComponentActivity() {
             stopService(Intent(this, ListenService::class.java))
         }
         ui.demo = false
-        ui.tab = 0
+        ui.pane = Pane.CHAT
+        ui.settingsGroup = null
         refresh(false)
         ui.status = Said("Unpaired here. Also remove it on your computer (the dashboard's Phone tab).")
     }
@@ -427,10 +455,14 @@ class HomeState {
     var demoHour by mutableStateOf<Float?>(null)
     var paired by mutableStateOf(false)
     var name by mutableStateOf("Kurooto")
-    /** 0 Today, 1 Inbox, 2 Phone (kept across rotation, onSaveInstanceState). */
-    var tab by mutableIntStateOf(0)
-    /** The pane showing (0.8.10): the app opens on Chat. */
+    /** The pane showing (0.8.10): the app opens on Chat (kept across rotation, onSaveInstanceState). */
     var pane by mutableStateOf(Pane.CHAT)
+    /** The Settings group open (SetGroup's name), or null for the grid of groups. */
+    var settingsGroup by mutableStateOf<String?>(null)
+    /** What's waiting for you, open in its sheet (WaitingBar, Today's Waiting tile, the "inbox" extra). */
+    var waitingSheet by mutableStateOf(false)
+    /** Unread chat messages: the Chat icon's badge (with what's waiting). The chat sets it. */
+    var unread by mutableIntStateOf(0)
     /** Today.load's copy: {"list", "at", "computer", "off", "old"}. */
     var today by mutableStateOf(JSONObject())
     /** What's waiting for you, newest first; null until the call line answered once. */
@@ -438,7 +470,7 @@ class HomeState {
     var waitingFailed by mutableStateOf(false)
     /** What waits for your computer (the phone outbox on the call line). */
     var queued by mutableStateOf(listOf<String>())
-    /** Under Call and Chat (and on the pairing screen): calls, pairing, unpairing. */
+    /** How a call, pairing or unpairing went (the pairing screen, Settings → This phone, the chat's call button). */
     var status by mutableStateOf(Said(""))
     /** How Done or +1 on a deadline went. */
     var todaySaid by mutableStateOf<Said?>(null)
