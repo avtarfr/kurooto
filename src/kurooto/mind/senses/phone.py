@@ -109,7 +109,20 @@ def ingest(app: App, payload: dict) -> tuple[int, dict]:
         store.add(app, f"phone:{sensor}", c[0], c[1], c[2], t=t / 1000)
         kept += 1
     app.events.emit("senses_phone", kept=kept, dropped=dropped)
+    if any(_picked_up(b) for b in bins[:BINS_MAX] if isinstance(b, dict) and enabled(app, "screen")):
+        from kurooto.mind import stimulation
+
+        stimulation.jolt(app, "pickup")  # (0.8.14) the phone just picked up: an orienting jolt
     return 200, {"ok": True, "kept": kept}
+
+
+def _picked_up(b: dict) -> bool:
+    """A screen bin from the last 10 minutes with the phone in use."""
+    t = b.get("t")
+    if b.get("s") != "screen" or isinstance(t, bool) or not isinstance(t, (int, float)):
+        return False
+    used = any(isinstance(b.get(f), (int, float)) and b.get(f) > 0 for f in ("unlocks", "on_min"))
+    return used and abs(time.time() - t / 1000) <= 600
 
 
 def today(app: App, sensor: str) -> str:

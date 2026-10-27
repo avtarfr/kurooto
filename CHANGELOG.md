@@ -2,6 +2,19 @@
 
 ## 0.8.15 (unreleased)
 
+- **Kurooto sleeps.** With Brain on, it sleeps while you do and doesn't talk unless woken (`mind.sleep.on`). Its night
+  follows yours: bedtime to the alarm, else the night hours, refined by your phone when its screen, light and charging
+  sensors are on (asleep early, up late, up early). Asleep, what it starts by itself waits for the morning; reminders and
+  calls you set, close deadlines, approvals and answers still come. Its name, a message or a tap wakes it, and it dozes
+  off again after 20 quiet minutes. Drowsy half an hour before: nothing said aloud by itself. `/mind` shows it.
+- **The Brain's heavy work yields to yours.** The lab, play, plans, skills, the harness and the fine-tune wait while your
+  own programs use the graphics card, during a call, on battery or when the computer is hot, and the nightly ones wait for
+  Kurooto to be asleep (`mind.yield.on`, `mind.yield.prefer_sleep`). What you ask for never waits. `/mind` shows the
+  week's contention minutes.
+- **Something sudden is felt at once.** A phone pickup, something close to an add-on's device or a loud room gives an
+  orienting jolt: arousal at once and a fresh look at what's on its mind (`mind.stimulation.jolt`).
+
+
 - **One door for what Kurooto says by itself.** With Brain on, check-ins, Calm's small touches, research watch,
   Dreaming's results, feelings said aloud and add-on ideas now bid at the workspace, and only winners are sent. A
   winner that isn't urgent waits for a natural break (a window switch after a long stretch, a phone pickup, a session

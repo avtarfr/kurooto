@@ -9,13 +9,27 @@ The learned sensorimotor model: which of *its own* actions move *its own* body (
 a training run fills graphics memory). `observe(action, before, after)` keeps a running mean change per action and body
 variable; `expected(action, var)` is what scheduling asks ("would this heat it up?"). Its targets are body variables
 only (I-14): `learn` refuses anything else, and nothing about you (phone sensors, the activity stream) is a target.
+
+The job gate (0.8.14, `mind.yield.on`, on with Brain): before the Brain's own heavy work starts (the lab, play, plans,
+the model of your mind's sync, Dreaming, the fine-tune), `ok(app, cost)` asks the body. Cost "gpu" or "cpu" waits while
+your own work holds the graphics card (a process on it that isn't Kurooto's, from nvidia-smi), during a call, on
+battery, or when the work would heat the computer past HOT_C (`would_overheat`); "light" waits only while it's hot.
+`gated()` runs the work or keeps it, and `retry()` (every 5 minutes) starts it once the body allows, for up to
+PENDING_H hours. With `mind.yield.prefer_sleep` (on) the nightly work also waits for Kurooto's sleep (mind/sleep.py)
+until that night's window ends. What you ask for yourself is never deferred: it doesn't come through here. The
+measure: contention minutes, a minute in which the Brain's heavy work ran while your own work held the card, kept per
+day for 30 days and shown on /mind with the deferrals.
 """
 
 from __future__ import annotations
 
+import datetime as dt
+import os
 import shutil
 import subprocess
+import threading
 import time
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from kurooto import mind
@@ -40,6 +54,20 @@ HISTORY = 120
 HOT_C = 85.0
 
 register_defaults("mind", {"senses": {"intero": True}})  # its own machine's state, every minute (on with Brain)
+register_defaults(
+    "mind",
+    {
+        "yield": {
+            "on": True,  # the Brain's own heavy work waits for the computer: your GPU jobs, calls, battery, heat
+            "prefer_sleep": True,  # its nightly work also waits for Kurooto's sleep (until that night's window ends)
+        }
+    },
+)
+COSTS = ("gpu", "cpu", "light")
+SHARED_GPU = ("ollama",)  # a model server Kurooto shares: what it holds on the card isn't your own job
+FOREIGN_MB = 256  # a process holding less of the card than this doesn't count
+PENDING_H = 12  # deferred work is given up after this long (it comes again at its next time)
+KEEP_DAYS = 30
 
 
 def on(app: App) -> bool:
@@ -183,8 +211,9 @@ def expected(app: App, action: str, var: str) -> float | None:
     return round(e["mean"], 3) if e and e["n"] >= 3 else None
 
 
-def would_overheat(app: App, action: str) -> bool:
-    s = sample(app)
+def would_overheat(app: App, action: str, s: dict | None = None) -> bool:
+    """Would this action take the computer past HOT_C, from now (`s`, else a fresh sample) and what it usually adds?"""
+    s = s or sample(app)
     d = expected(app, action, "cpu_temp_c") or 0.0
     return (s.get("cpu_temp_c") or 0) + max(d, 0) >= HOT_C
 
@@ -288,3 +317,274 @@ def last_fine(app: App) -> float | None:
     """The share of fine checks at the latest reading (None before any)."""
     hist = (jload(app.paths.state / FILE, {}) or {}).get("history") or []
     return fine(hist[-1]) if hist else None
+
+
+# ------------------------------------------------------------------------------------------------- the job gate
+_pending: dict[tuple[int, str], tuple[str, Callable, bool]] = {}  # (app, name) -> (cost, the work, nightly)
+_running: dict[int, set[str]] = {}  # app -> the gated work running now (for contention)
+_glock = threading.Lock()
+_retrying = threading.Lock()
+
+
+def yield_on(app: App) -> bool:
+    return mind.on(app) and bool(app.settings.get("mind.yield.on"))
+
+
+def _own_pids() -> set[int]:
+    import psutil
+
+    try:
+        me = psutil.Process(os.getpid())
+        return {me.pid, *(c.pid for c in me.children(recursive=True))}
+    except Exception:
+        return {os.getpid()}
+
+
+def _compute_apps() -> list[tuple[int, float]]:
+    """(pid, MB) of every compute process on the graphics card, from nvidia-smi; [] without one."""
+    exe = shutil.which("nvidia-smi")
+    if not exe:
+        return []
+    try:
+        r = subprocess.run(  # noqa: S603
+            [exe, "--query-compute-apps=pid,used_memory", "--format=csv,noheader,nounits"],
+            capture_output=True,
+            text=True,
+            timeout=4,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return []
+    out = []
+    for ln in r.stdout.strip().splitlines():
+        try:
+            pid, mb = ln.split(",")[:2]
+            out.append((int(pid), float(_num(mb) or 0)))
+        except ValueError:
+            continue
+    return out
+
+
+def gpu_holders(app: App) -> int:
+    """How many processes that aren't Kurooto's (nor a model server it shares) hold the graphics card."""
+    import psutil
+
+    own = _own_pids()
+    n = 0
+    for pid, mb in _compute_apps():
+        if pid in own or mb < FOREIGN_MB:
+            continue
+        try:
+            name = psutil.Process(pid).name().lower()
+        except Exception:
+            name = ""
+        if any(name.startswith(s) for s in SHARED_GPU):
+            continue
+        n += 1
+    return n
+
+
+def _on_call(app: App) -> bool:
+    try:
+        return bool(app.availability.on_call_until())
+    except Exception:
+        return False
+
+
+def _on_battery(app: App) -> bool:
+    try:
+        p = getattr(app, "power", None)
+        if p is not None:
+            return not p.on_ac()
+        from kurooto.core.power import on_ac
+
+        return not on_ac()
+    except Exception:
+        return False
+
+
+def ok(app: App, cost: str = "gpu", action: str = "") -> tuple[bool, str]:
+    """May the Brain's own work of this cost start now? (True, "") or (False, why). `action` names it, for what the
+    body has learned it does (would_overheat). With mind.yield.on off, or Brain off: always yes."""
+    if not yield_on(app):
+        return True, ""
+    cost = cost if cost in COSTS else "gpu"
+    hist = (jload(app.paths.state / FILE, {}) or {}).get("history") or []
+    last = hist[-1] if hist and time.time() - float(hist[-1].get("at") or 0) < 180 else None  # the minute's reading
+    if cost == "light":
+        hot = (last or {}).get("cpu_temp_c", 0) >= HOT_C
+        return (False, "the computer is hot") if hot else (True, "")
+    if _on_call(app):
+        return False, "you're on a call"
+    if _on_battery(app):
+        return False, "on battery"
+    if gpu_holders(app):
+        return False, "your own work is using the graphics card"
+    try:
+        if would_overheat(app, action or ("lab" if cost == "gpu" else "ai_request"), last):
+            return False, "the computer is hot"
+        if cost == "gpu" and ((last or {}).get("gpu_temp_c") or 0) >= HOT_C:
+            return False, "the graphics card is hot"
+    except Exception:  # noqa: S110 (a sensor that fails doesn't hold the work)
+        pass
+    return True, ""
+
+
+def _sleep_wait(app: App) -> str:
+    """Nightly work, with prefer_sleep: "" when it may go, else why it waits for Kurooto's sleep."""
+    if not app.settings.get("mind.yield.prefer_sleep"):
+        return ""
+    try:
+        from kurooto.mind import sleep
+    except ImportError:
+        return ""
+    try:
+        if not sleep.on(app) or sleep.state(app) == "asleep":
+            return ""
+        from kurooto.core.clock import now
+
+        w, t = sleep.window(app), now()
+        if w and w[0] - dt.timedelta(hours=PENDING_H) <= t < w[1]:
+            return "waiting for its sleep"
+    except Exception:  # noqa: S110
+        pass
+    return ""
+
+
+def _day() -> str:
+    return dt.date.today().isoformat()
+
+
+def _count(app: App, key: str, n: int = 1) -> None:
+    with _glock:
+        st = jload(app.paths.state / FILE, {}) or {}
+        days = st.setdefault(key, {})
+        days[_day()] = int(days.get(_day(), 0)) + n
+        cut = (dt.date.today() - dt.timedelta(days=KEEP_DAYS)).isoformat()
+        st[key] = {d: v for d, v in days.items() if d >= cut}
+        jsave(app.paths.state / FILE, st)
+
+
+def _run(app: App, name: str, fn: Callable):
+    with _glock:
+        _running.setdefault(id(app), set()).add(name)
+    try:
+        return fn()
+    finally:
+        with _glock:
+            _running.get(id(app), set()).discard(name)
+
+
+def gated(app: App, name: str, cost: str, fn: Callable, nightly: bool = False):
+    """Run the Brain's own heavy work `fn()` now if the body allows (and, nightly, Kurooto is asleep), else keep it
+    for retry(). Returns fn's result, or None when it waits. Never for what you asked for."""
+    if not yield_on(app):
+        return fn()
+    go, why = ok(app, cost, name)
+    if go and nightly:
+        why = _sleep_wait(app)
+        go = not why
+    if not go:
+        _defer(app, name, cost, fn, nightly, why)
+        return None
+    _drop(app, name)
+    return _run(app, name, fn)
+
+
+def _defer(app: App, name: str, cost: str, fn: Callable, nightly: bool, why: str) -> None:
+    key = (id(app), name)
+    first = key not in _pending
+    _pending[key] = (cost, fn, nightly)
+    with _glock:
+        st = jload(app.paths.state / FILE, {}) or {}
+        p = st.setdefault("pending", {})
+        p[name] = {"since": (p.get(name) or {}).get("since") or time.time(), "cost": cost, "why": why}
+        jsave(app.paths.state / FILE, st)
+    if first:
+        _count(app, "deferred")
+        app.events.emit("mind_yield", work=name, why=why[:40])
+
+
+def _drop(app: App, name: str) -> None:
+    _pending.pop((id(app), name), None)
+    with _glock:
+        st = jload(app.paths.state / FILE, {}) or {}
+        if name in (st.get("pending") or {}):
+            st["pending"].pop(name, None)
+            jsave(app.paths.state / FILE, st)
+
+
+def retry(app: App, payload: dict | None = None) -> int:
+    """Every 5 minutes: deferred work that the body now allows starts (one at a time); work waiting longer than
+    PENDING_H hours is given up until its next time. How many started."""
+    if not _retrying.acquire(blocking=False):
+        return 0
+    try:
+        st = jload(app.paths.state / FILE, {}) or {}
+        pending = st.get("pending") or {}
+        n = 0
+        for name, p in list(pending.items()):
+            got = _pending.get((id(app), name))
+            if got is None or not yield_on(app):  # a restart lost the work, or the gate was turned off
+                _drop(app, name)
+                if got is not None:
+                    _run(app, name, got[1])
+                    n += 1
+                continue
+            if time.time() - float(p.get("since") or 0) > PENDING_H * 3600:
+                _drop(app, name)
+                _count(app, "skipped")
+                app.events.emit("mind_yield_skipped", work=name)
+                continue
+            cost, fn, nightly = got
+            go, why = ok(app, cost, name)
+            if go and nightly:
+                why = _sleep_wait(app)
+                go = not why
+            if go:
+                _drop(app, name)
+                _run(app, name, fn)
+                n += 1
+        return n
+    finally:
+        _retrying.release()
+
+
+def contention_tick(app: App) -> bool:
+    """Every minute: a minute in which the Brain's heavy work ran while your own work held the card counts."""
+    if not yield_on(app):
+        return False
+    with _glock:
+        busy = bool(_running.get(id(app)))
+    if not busy or not gpu_holders(app):
+        return False
+    _count(app, "contention")
+    return True
+
+
+def contention(app: App, days: int = 7) -> dict:
+    """The last `days` days: contention minutes, how often work was deferred, and given up; what waits now."""
+    st = jload(app.paths.state / FILE, {}) or {}
+    cut = (dt.date.today() - dt.timedelta(days=days - 1)).isoformat()
+
+    def total(key: str) -> int:
+        return sum(int(v) for d, v in (st.get(key) or {}).items() if d >= cut)
+
+    return {
+        "minutes": total("contention"),
+        "deferred": total("deferred"),
+        "skipped": total("skipped"),
+        "waiting": sorted((st.get("pending") or {}).keys()),
+    }
+
+
+def yield_line(app: App) -> str:
+    """One plain line for /mind."""
+    if not yield_on(app):
+        return "Job gate: off."
+    c = contention(app)
+    out = (
+        f"Job gate: {c['minutes']} contention minute{'s' if c['minutes'] != 1 else ''} this week, "
+        f"{c['deferred']} deferred, {c['skipped']} given up"
+    )
+    return out + (f"; waiting: {', '.join(c['waiting'])}." if c["waiting"] else ".")

@@ -42,7 +42,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 49 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
-- [Brain](#brain): 98 settings
+- [Brain](#brain): 105 settings
 - [Voice and voice notes](#voice-and-voice-notes): 58 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
@@ -4835,6 +4835,73 @@ drawn by the being's senses; numbers only, kept in memory and the body map.
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off to ignore what add-ons report; its own body and your phone's sensors are untouched.
 - **Depends on:** `mind.stimulation.on` and an add-on that reports a device.
+
+### `mind.stimulation.jolt`
+
+Something sudden (a pickup, something close, a loud room) is felt at once: a jolt, and a fresh look at its mind.
+
+Add-ons and senses call it; it fades in about two minutes and each kind jolts at most once a minute. Kinds and numbers
+only, kept in memory.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to have sudden things felt only at the next minute's reading.
+- **Depends on:** `mind.stimulation.on`.
+
+### `mind.sleep.on`
+
+Kurooto sleeps in your sleep window: nothing it starts by itself is sent or said aloud until morning.
+
+Asleep, what it would start by itself waits and goes out once the window is over (through the usual limits). Alarms,
+reminders and calls you set, close deadlines, approvals and every answer to you still come. Its name or a message from
+you wakes it; it answers, then dozes off again. Half an hour before, it's drowsy: nothing said aloud by itself.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to have Kurooto keep the day's rules all night (the night hours still hold calls).
+- **Costs and what leaves this computer:** Nothing leaves. The waiting messages stay on this computer until they're
+  sent.
+
+### `mind.sleep.follow_owner`
+
+Its sleep follows yours: bedtime to the alarm, refined by your phone (screen off, dark, charging; first use).
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to have it sleep through the night hours (`availability.night`) exactly as set.
+- **Depends on:** `mind.sleep.on`; the phone part needs the screen, light and charging sensors (`mind.senses.phone`).
+
+### `mind.sleep.window`
+
+Set Kurooto's sleep by hand, like 00:30-08:00 (empty: follow your night).
+
+- **Values:** Empty, or two times `HH:MM-HH:MM` (it may run past midnight). **Default:** empty.
+- **When to change it:** Set it if your nights don't match the night hours and you don't use the alarm.
+- **Depends on:** `mind.sleep.on`.
+
+### `mind.sleep.wake_minutes`
+
+Woken by its name or a message at night, it dozes off again after this many quiet minutes.
+
+- **Values:** A whole number. **Default:** `20`.
+- **When to change it:** Raise it if you often talk with it a while at night.
+- **Depends on:** `mind.sleep.on`.
+
+### `mind.yield.on`
+
+The Brain's heavy work waits while your jobs use the graphics card, during a call, on battery or when hot.
+
+It covers the lab, play, plans, the model of you, skills, the harness and the fine-tune; it tries again every 5 minutes
+and gives up for the night after 12 hours. What you ask for yourself never waits. /mind shows the contention minutes a
+week (its heavy work running while yours held the card).
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to have the Brain's work run at its times whatever the computer is doing.
+
+### `mind.yield.prefer_sleep`
+
+The Brain's nightly work also waits for Kurooto to be asleep (until that night's window ends).
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to have it run at the scheduled time even while you're still up.
+- **Depends on:** `mind.yield.on` and `mind.sleep.on`.
 
 ### `mind.autonomy.on`
 

@@ -210,7 +210,7 @@ or "yes" goes to your AI without saying its name. Chatter nearby closes it at on
 listening on; without it you hear the greeting only.
 
 **It doesn't greet** when Voice is off, muted or can't speak; during a call, "no calls till", focus, the night, a class
-you attend or a calendar event; while Kurooto is paused; within an hour of the last greeting (`face.greet.gap_min`);
+you attend or a calendar event; while Kurooto is asleep or drowsy (with Brain, [its sleep](mind.md#kurooto-sleeps)); while Kurooto is paused; within an hour of the last greeting (`face.greet.gap_min`);
 after three a day (`face.greet.per_day`); during exam season's quiet days or a quiet week; or when you turned them
 off (`face.greet.on`, "Greet me when I sit down" on the card). Greetings aren't counted against the six messages a
 day, and each one, said or skipped, is recorded with its reason (never its words).

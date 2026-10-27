@@ -395,6 +395,48 @@ They feed timing (quieter) and forecasts, never nagging.
 
 `/senses` shows what each sense saw today. `/senses off <name>` switches one off and deletes what it kept; `/senses forget [name]` clears today's.
 
+**Something sudden** (`mind.stimulation.jolt`, on, 0.8.14): the phone picked up, something close to a device an add-on
+reports for, or a loud room is felt at once, as a jolt of arousal that fades in a couple of minutes, and Brain takes a
+fresh look at what's on its mind. Kinds and numbers only, kept in memory.
+
+## Kurooto sleeps
+
+With Brain on, Kurooto sleeps while you do (`mind.sleep.on`, on, 0.8.14), and **doesn't talk during its sleep unless you
+wake it**.
+
+**When.** Its night follows yours (`mind.sleep.follow_owner`, on): from your bedtime to the wake-up alarm when one is
+set, otherwise the night hours (23:30 to 07:00, `availability.night`, or the quiet hours it learned). With your phone's
+screen, light and charging sensors on (`/senses`), it also follows what you actually do: the screen off, the room dark and
+the phone charging for 20 minutes means you're asleep (up to two hours early, and its night starts there); the phone in
+use when its night should start holds it back (up to two hours); the phone in use in the last hour and a half, the
+phone's own alarm, "I'm up" or the alarm ringing end it. `mind.sleep.window` (like `00:30-08:00`) sets it by hand.
+
+**Drowsy:** the half hour before, it says nothing aloud by itself (no greeting).
+
+**Asleep:**
+- Nothing it starts by itself is sent or said aloud. It waits, and goes out once its night is over, through the usual
+  limits. Still coming: alarms, reminders and calls you set, deadlines less than 12 hours away, approvals and
+  questions you're waiting on, and every answer to you.
+- The being's eyes are shut.
+- Voice still listens (with `voice.listen.night` on). Its name wakes it, and so does a message, a tap or a call from
+  you. It answers, then dozes off again after 20 quiet minutes (`mind.sleep.wake_minutes`). What waited still waits
+  for the morning: being woken to answer isn't being up.
+- Its own heavy work runs now (below).
+
+`/mind` says whether it's asleep, until when, and how many messages wait.
+
+## Its heavy work yields to yours
+
+The Brain's own heavy work (the lab, play, plans, the model of you, skills, the harness and the weekly fine-tune) asks
+the computer first (`mind.yield.on`, on, 0.8.14). It waits while your own programs use the graphics card (anything on
+it that isn't Kurooto's, like a training run), during a call, on battery, or when the computer is hot or the work would
+make it so. It looks again every 5 minutes, and gives up for the night after 12 hours. Its nightly work also waits for
+Kurooto to be asleep (`mind.yield.prefer_sleep`, on), so it runs while you sleep. **What you ask for yourself never
+waits.**
+
+`/mind` shows the week's **contention minutes**: minutes in which its heavy work ran while your own work held the graphics
+card (the aim is none), with how often it waited and gave up.
+
 ## Skills it learns
 
 When a task works out (a change it proposed was applied, its tests passed, and you didn't undo it for two days), Kurooto can turn it into a **skill**: a
@@ -505,7 +547,7 @@ its promises) have no guarantee until it's back. Switches: `mind.promises.on`, `
 ## /mind
 
 - **`/mind`:** whether Brain's scorekeeper is running, how long the log is, whether it checks out, and the last
-  anchor.
+  anchor; whether Kurooto is asleep, and the job gate's contention minutes this week (0.8.14).
 - **`/mind gate`:** what the gate held back or removed today, and what it muted.
 - **`/mind verify`:** checks the whole log, record by record, and says the result in one line.
 - **`/capabilities`:** how it does on tasks it has never seen, per kind; `/capabilities run` measures now.
