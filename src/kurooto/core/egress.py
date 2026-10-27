@@ -69,7 +69,10 @@ HOSTS = {  # host (".domain": any host under it) -> what reaches it; docs/PRIVAC
     "gmail.googleapis.com": "Gmail",
     "www.googleapis.com": "Google Drive and Calendar",
     "api.github.com": "Notes sync and Profile sync; gh reading a project's issues (Projects from repositories)",
-    "github.com": "Notes sync; Projects from repos (git); downloading Git, Tectonic, kitty, fish; Voice's models",
+    "github.com": "Notes sync; Projects from repos (git); downloading Git, Tectonic, kitty, fish; Voice's models; "
+    "Voice ID's model",
+    "release-assets.githubusercontent.com": "GitHub's file server for release downloads (Voice's models, Voice ID's "
+    "model)",
     "huggingface.co": "Voice: downloading the speech-to-text model and the Piper voice",
     "api.cloudflare.com": "Phone calls: setting up your call line",
     ".workers.dev": "Phone calls: your call line",

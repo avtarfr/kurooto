@@ -73,7 +73,8 @@ SKIP_STATE = {
 }
 # cases: what you typed, kept on this computer only. mind: Brain's log and scores (0.8.0) stay on this computer; an
 # older copy put back would look like a log cut short (mind/log.py anchors), and its key is only for one run
-SKIP_STATE_DIRS = {"locks", "logs", "cases", "mind", "mind-journal", "mind-story"}
+SKIP_STATE_DIRS = {"locks", "logs", "cases", "mind", "mind-journal", "mind-story", "voiceid", "guest"}  # voiceid: your
+# voice print (Voice ID) is never backed up, nor its key (known_secret_names); guest: a guest request's empty folder
 SKIP_STATE_FILES = {
     ("telegram", "offset.json"),
     ("telegram", "pairing.json"),
@@ -95,9 +96,10 @@ added where missing; a note that's different now is kept, and the backup's copy 
 
 # ---------------------------------------------------------------------------------------------- what goes in
 def known_secret_names(secrets) -> list[str]:
+    from kurooto.core.biometric import BIOMETRIC_SECRETS
     from kurooto.diagnostics import KNOWN_SECRETS
 
-    return sorted(set(secrets.names()) | set(KNOWN_SECRETS))
+    return sorted((set(secrets.names()) | set(KNOWN_SECRETS)) - set(BIOMETRIC_SECRETS))
 
 
 def sources(

@@ -31,6 +31,10 @@ class Incoming:
     respond: Callable[..., Any] | None = None  # respond(text, buttons=None) -> message id
     session: str = ""  # the phone app's chat it was written in (calls/sessions.py); "" or "main": the usual one
     quote: dict | None = None  # {"from", "text"}: the phone app message it replies to, for the AI's context
+    # who said it, when a channel can tell: "owner", "guest" or "unsure" (Voice ID); "" = not checked. Typed channels
+    # are the paired owner's and leave it "": only Voice sets it, and only with voice.speaker_id.on
+    speaker: str = ""
+    speaker_by: str = ""  # what decided it: "voice" (a face part may add "face")
 
     def reply(self, text: str, buttons: list | None = None) -> Any:
         buttons = buttons if buttons is not None else getattr(text, "buttons", None)  # an Answer brings its own

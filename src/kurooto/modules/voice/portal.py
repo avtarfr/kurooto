@@ -4,6 +4,12 @@ Closed (the start, and after every close), nothing leaves the computer: speech i
 (gate.py), and words that weren't to Kurooto are dropped on the spot. A turn the gate calls addressed opens it; the
 words go to your AI like a chat message (send), the answer comes back as text and is spoken (speak). It closes at
 once when the next thing heard isn't addressed, or after close_s seconds with nothing said to it, and says so.
+
+With Voice ID (0.8.10), take() gets the verdict (`who`: owner, unsure or guest) and send() gets it too, so it travels
+with the message. Each opening is a new `session`; the owner's last recognised turn (`last_owner_at`,
+`last_owner_session`) lets a short reply right after it carry. Not the owner: in mode owner_only_at_all nothing is
+sent or shown and it says once per session "I only answer my owner's voice."; in owner_only_acts the turn goes on as
+chat, and the first reply of a session to a guest (or an unsure voice) says once that only the owner can make it act.
 """
 
 from __future__ import annotations
@@ -13,6 +19,11 @@ from collections import deque
 from collections.abc import Callable
 
 from kurooto.modules.voice.gate import Context, Decision, Heard
+
+GUEST_NOTICE = "You can chat with me, but only my owner's voice can make me do things."
+UNSURE_NOTICE = "I couldn't tell it was you, so I'm only chatting: say it again closer to the microphone, or type it."
+AT_ALL = "I only answer my owner's voice."
+AT_ALL_EVERY_S = 60
 
 UNADDRESSED_S = 60  # how far back "people have been talking nearby" looks
 SORRY = "I couldn't get an answer just now."
@@ -40,6 +51,13 @@ class Portal:
         self.spoke_at: float | None = None
         self.last_reply = ""
         self._unaddressed: deque[float] = deque(maxlen=50)  # times only, never words
+        self.session = 0  # (voice id) goes up each time it opens
+        self.last_owner_at: float | None = None
+        self.last_owner_session = -1
+        self.mode = "owner_only_acts"  # voice.speaker_id.mode, set by Voice before each turn
+        self.tell_guests = True
+        self._told: set[str] = set()  # the notices said in this session
+        self._at_all_at: float | None = None
 
     # ---------------------------------------------------------------------------------------------- state
     def context(self) -> Context:
@@ -59,6 +77,9 @@ class Portal:
         self.publish("voice_state", state=state, portal=self.open, listening=self.listening(), why=why)
 
     def _set(self, is_open: bool, why: str) -> None:
+        if is_open and not self.open:
+            self.session += 1
+            self._told = set()
         self.open = is_open
         if not is_open:
             self.awaiting = False
@@ -80,17 +101,32 @@ class Portal:
             self.close("silence")
 
     # ----------------------------------------------------------------------------------------------- a turn
-    def take(self, h: Heard, d: Decision, text: str | None = None) -> str | None:
+    def take(self, h: Heard, d: Decision, text: str | None = None, who=None) -> str | None:
         """What the gate decided about one stretch of speech. Only an addressed one is sent (its `text`, the words
-        with the wake word taken out); anything else closes an open portal at once. Returns the reply, if any."""
+        with the wake word taken out); anything else closes an open portal at once. Returns the reply, if any.
+        who: Voice ID's verdict (speakerid.Verdict), None when it's off."""
         if not d.addressed:
             self._unaddressed.append(self.clock())
             self.close("not addressed")
             return None
         said = (h.text if text is None else text).strip()
+        owner = who is None or who.decision == "owner"
+        if not owner and self.mode == "owner_only_at_all":  # nothing shown or sent; one line a session, said here
+            if not self.open:
+                self._set(True, "someone else")
+            if self.tell_guests and (self._at_all_at is None or self.clock() - self._at_all_at > AT_ALL_EVERY_S):
+                self._at_all_at = self.clock()  # each call opens a new session: said once a minute at most
+                try:
+                    self.speak(AT_ALL)
+                except Exception:
+                    pass
+            self.close("not the owner")
+            return None
         if not self.open:
             self._set(True, d.why)
         self.last = self.clock()
+        if who is not None and who.decision == "owner":
+            self.last_owner_at, self.last_owner_session = self.clock(), self.session
         if not said:  # the wake word alone: ready for the request, nothing sent anywhere
             self.awaiting = True
             self.state("addressed", d.why)
@@ -101,12 +137,19 @@ class Portal:
         self.busy = True
         try:
             self.state("addressed", d.why)
-            self.publish("voice_text", who="you", text=said)
+            if who is None:
+                self.publish("voice_text", who="you", text=said)
+            else:  # the decision word, never the score
+                self.publish("voice_text", who="you", text=said, speaker=who.decision)
             self.state("thinking")
             try:
-                reply = (self.send(said) or "").strip() or SORRY
+                reply = (self.send(said) if who is None else self.send(said, who)) or ""
+                reply = reply.strip() or SORRY
             except Exception:
                 reply = SORRY
+            if not owner and self.tell_guests and who.decision not in self._told:  # once a session per kind
+                self._told.add(who.decision)
+                reply = f"{UNSURE_NOTICE if who.decision == 'unsure' else GUEST_NOTICE} {reply}"
             self.publish("voice_text", who="kurooto", text=reply)
             self.state("speaking")
             try:

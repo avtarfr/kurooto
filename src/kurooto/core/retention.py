@@ -310,6 +310,8 @@ def command(app: App, arg: str) -> tuple[str, list | None]:
             "answered questions, cases, the words of messages I sent, the search index, your open threads and the "
             "logs? Your notes stay. This can't be undone."
         )
+        if _voice_print(app):  # (voice id) the voice print goes too
+            text = text.replace(" and the logs?", ", the logs and your voice print (Voice ID)?")
         asked = int(time.time())
         if gists.on(app) or gists.load(app):  # one line of what each decided (core/gists.py): keep those?
             text += " The gists (one line of what each call or request decided, /gists) can stay or go too."
@@ -345,6 +347,9 @@ def button(app: App, ref: str, act: str) -> str:
     if time.time() - asked > CONFIRM_S:
         return "That button has run out; send /forget all again."
     out = summary(forget(app, 0, gist=act == "all"))
+    if _voice_print(app):  # (voice id) /forget all forgets the voice print and its key too
+        app.modules["voice"].voiceid.forget()
+        out = f"{out[:-1]} and your voice print." if out.startswith("Forgot") else "Forgot your voice print."
     if act == "gists":
         n = gists.clear(app)
         if n:
@@ -353,6 +358,13 @@ def button(app: App, ref: str, act: str) -> str:
     app.events.emit("retention_forgot", span="all" if act == "all" else "all+gists")
     app.notify(out, why="asked")
     return out[:190]
+
+
+def _voice_print(app: App) -> bool:
+    """(voice id) Is there a voice print (or its key) to forget?"""
+    v = app.modules.get("voice") if hasattr(app, "modules") else None
+    vid = getattr(v, "voiceid", None)
+    return bool(vid is not None and (vid.store.exists() or app.secrets.get(vid.store.key_name)))
 
 
 def start(app: App) -> None:

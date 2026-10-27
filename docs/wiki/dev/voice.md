@@ -158,11 +158,154 @@ shows **Set up** (`Module.setup`, run by `POST /api/modules/setup` in the backgr
 through uv (`install.json`'s, else on PATH) or `python -m pip`, with `--target <app>/voice/py-<X.Y>` (never Kurooto's
 venv; `Parts.importable()` appends it to `sys.path`, after Kurooto's own). openwakeword is installed `--no-deps`
 because it declares `tflite-runtime`, which has no Python 3.12 wheels; its real needs are listed beside it. Models
-are fetched with `core/egress.py:urlopen` (feature "Voice") to `<name>.part`, renamed when complete. No checksums are
-pinned yet (the hosts are the projects' own release pages); a pinned sha256 per file is a follow-up.
+are fetched with `core/egress.py:urlopen` (feature "Voice") to `<name>.part`, renamed when complete. A `ModelFile` with
+a `sha256` (0.8.10: Voice ID's two models) is hashed while it downloads; a mismatch deletes the `.part` and fails with
+"… didn't match its checksum (a damaged or changed download); nothing was kept". The other files aren't pinned yet.
+`Parts.add_file(path)` installs from a file already on the computer: a model file only when its basename matches a
+pinned `ModelFile` and its hash matches (unpinned ones: "this part has no checksum pinned yet; download it instead"),
+copied via `.part`; a `.whl` of a package in `PACKAGES` with the installer and `--no-index --find-links <its folder>
+--target <py>` (wheels beside it, numpy's or onnxruntime's, are found too). Surfaces: `kurooto voice parts add FILE...`
+(works without the daemon) and the page's Install from a file.
 
-Hosts: `github.com` (Kokoro, Silero; openWakeWord's feature models only with your own wake word model), `huggingface.co` (faster-whisper, Piper voice); uv/pip
-are counted as handed to them.
+Hosts: `github.com` (Kokoro, Silero; openWakeWord's feature models only with your own wake word model; Voice ID's
+model), `release-assets.githubusercontent.com` (where GitHub's release downloads redirect; urllib follows the redirect,
+so it's listed since 0.8.10), `huggingface.co` (faster-whisper, Piper voice); uv/pip are counted as handed to them.
+
+## Voice ID (0.8.10)
+
+Only the owner's voice can make Kurooto act; any other voice, or one it isn't sure of, can only chat. Switch
+`voice.speaker_id.on` (off by default); its behaviours each have their own: `gate`, `carry`, `tell_guests`, `adapt`
+(off), `spoken_enrol`, and `voice.listen.conversation_mode`. User page: [../user/voice.md](../user/voice.md#voice-id-only-your-voice-can-make-it-act).
+
+### Files
+
+| File | What's in it |
+|---|---|
+| `modules/voice/speakerid.py` | pure-Python vector maths (Kurooto has no numpy dependency), `Thresholds`/`Band`, `calibrate()`, `decide()`, `Verdict`, `Ctx`, `Verifier`, `Adapter`, the impostor `Bank` (`read_bank`/`write_bank`), `Embedder` (numpy + onnxruntime + kaldi-native-fbank from Voice's packages) |
+| `modules/voice/enrol.py` | `CONDITIONS`, `PHRASES`, `CALL_PHRASES`, `quality()`, `voice_checks()`, `Cut`, crops, `control_word()`, `Session` (the state machine, driver-agnostic) |
+| `modules/voice/voiceid.py` | `VoiceID` on `Voice.voiceid`: the template (load/save/forget), `check()`, conversation mode, status for the API, the enrolment thread and its microphone `Listener`, `train()`, `test()`, adapt and its undo, the `vid` button |
+| `core/biometric.py` | `BioStore(app, kind)`: one sealed template per kind; `Locked`; `BIOMETRIC_SECRETS`; `note_others()`/`others_present()` (a shared in-memory "someone else is here" signal a face part can feed) |
+| `core/guest.py` | the guest path: `handle(app, msg)`, `kind()` (match, never run), `prompt()`, the hourly limit |
+| `providers/context.py` | `guest_context(app)` |
+| `web/static/voiceid.html`, `voiceid.js` | the page `/voice-id` |
+| `tools/voiceid_bank.py` | builds `data/voiceid/impostors-<model>.bin` (dev tool, never imported) |
+| `tests/unit/test_voiceid.py`, `tests/unit/test_guest.py`, `tests/unit/test_voice.py` (its Voice ID part) | fakes only |
+
+### The model
+
+CAM++ from 3D-Speaker (Apache-2.0), ONNX by sherpa-onnx (Apache-2.0): `campplus-en` (VoxCeleb, 512-d, default) or
+`campplus-multi` (zh+en, 192-d), parts `model:voiceid-campplus-en|multi` with pinned sha256, and `pkg:voiceid`
+(kaldi-native-fbank). CPU only (`CPUExecutionProvider`, 2 intra-op threads; the GPU is the local AI's). The front end
+comes from the model's metadata (`sample_rate` 16000 only, `normalize_samples`, `feature_normalize_type: global-mean`,
+`output_dim`); fbank: 80 bins, dither 0, snip_edges, 25/10 ms. About 50 ms per 3 s turn on a Ryzen 7 7435HS by the
+spec's bench (not re-measured in this build). The model loads on first use and is dropped on `Voice.stop()` and when
+the switch goes off.
+
+### The flow change in `hear()`
+
+```
+with voice.speaker_id.on and .gate (default):
+  VAD speech -> who = voiceid.check(pcm, speech_s)          # before any transcription
+    not owner, no wake word, portal closed:
+      Whisper on the first and last 2 s only (_edges); its name not called -> chatter, dropped, never written out
+  Whisper (all of it) -> Gate.decide(heard, ctx + conversation) -> portal.take(..., who=who)
+with .gate off: Whisper -> Gate -> addressed only: who = voiceid.check(pcm) -> portal.take(..., who)
+```
+
+`Heard.speech_s` is the VAD's speech time (the listener now passes per-frame flags as a 4th argument to `on_speech`),
+not `seconds` (which includes the pre-roll and tail). The portal counts a `session` per opening, keeps
+`last_owner_at`/`last_owner_session` for carry, publishes `voice_text {who: "you", speaker}` (the decision word, never
+the score), calls `send(said, who)`, and prefixes the guest notice once a session per kind. `owner_only_at_all`: nothing
+published or sent; "I only answer my owner's voice." at most once a minute (each call opens a new session). `ask_brain`
+builds `Incoming(speaker=who.decision, speaker_by="voice")`.
+
+**Conversation mode** (`Context.conversation`): set while `biometric.others_present()` (a guest voice in the last
+`voice.listen.conversation_s`, or a face part's signal) or three guest voices in two minutes. Then the gate takes its
+name only with a question or request after it (or nothing), the wake word, the turn right after them, and a follow-up
+within `conversation_follow_s` of its answer; rules 7 and 9 (open portal, local judge) don't apply.
+
+### `decide()` and `calibrate()`
+
+`decide(score, t, speech_s, ctx)`: missing / locked / model failed -> unsure; voices >= 2 -> unsure; short turns
+(< 2.5 s of speech) use `t.short`; under `min_speech_s`: owner only by carry (same portal session, within `carry_s`,
+score >= unsure; never in strict), else unsure; score >= accept -> owner; >= unsure -> unsure; else guest.
+
+`calibrate(samples, bank, synthetic, strictness, margin, threshold)`: n >= 12; outliers by leave-one-out (`g_i <
+median - 3 * 1.4826 * MAD` and `< 0.30`, at most 10%, named by condition); centroid = normalised mean; held-out genuine
+scores (long, and the 1.5 s crops for short) against `c_-i`; impostor scores from the bank (full + 3 s for long, 1.5 s
+for short, plus Kokoro's 30 synthetic vectors when Kokoro is set up); per set `accept = quantile(I, 1 - far)` with far
+1% / 0.2% / 0 (strict: `max(I) + 0.03`), clamped to [0.30, 0.85]; `unsure = min(quantile(I, .99), accept - margin)`.
+Grade: good (FRR_long <= 5%, FRR_short <= 15%, median genuine - accept >= 0.12), fair (FRR_long <= 15%), weak (saved
+only with Use it anyway). `threshold > 0` overrides accept for both, applied at check time from the stored calibration
+so it takes effect at once; strictness and margin need a Retrain.
+
+**The bank.** `tools/voiceid_bank.py` over LibriSpeech dev/test (146 speakers x 4 utterances x {whole, 3 s, 1.5 s}, about
+1,750 rows; optionally Common Voice's India and South Asia accents with `--cv`), float16, one file per model with the
+model's sha256 in its header. Train refuses when it's missing or for another model. **Not in this commit:** building it
+needs LibriSpeech (about 1.3 GB) and the two model files downloaded; see "Not verified".
+
+### Adapter
+
+Takes a turn only when: owner by "your voice" (not carried), score >= accept_long + 0.08, speech >= 2 s, not two
+voices, under `adapt_per_day`; FIFO up to `adapt_max`; centroid = normalize(0.75 * enrolled + 0.25 * mean(adapted));
+drift guard cos(new, enrolled) >= 0.95, else `drift_stopped`; thresholds derived again after each take. Undo today /
+all.
+
+### Storage
+
+`BioStore(app, "voice")`: `state/voiceid/template.bin` (0600 in a 0700 folder), `nonce || AES-256-GCM(json)` with AAD
+`kurooto-biometric:voice:v1`, key `biometric.voice.key` (secrets; made on the first save and read back; never a new
+key over an existing file: `Locked`). JSON: model, model_sha256, mic, dates, `samples [{e, s, cond, day}]` (base64
+float16), `adapted [{e, day}]`, `centroid`, `centroid_enrolled`, `thresholds`, `calibrated`, `genuine`, `report`,
+`last_test`, `drift_stopped`. Kept out of backups (`SKIP_STATE_DIRS`, and `known_secret_names` drops the key), profile
+sync (`NEVER`), diagnostics (`KNOWN_SECRETS` redacts the key; state isn't bundled), events and the live stream. The
+uninstall part should list `state/voiceid/` among what it deletes. `forget()` deletes the key first, then the file;
+`/forget all` (core/retention.py) calls it.
+
+Coordination with the face part: its spec names the shared file `BioStore(app, feature)` with `<feature>.key` and
+`<state>/<feature>/`; this build's is `BioStore(app, kind)` with `biometric.<kind>.key` and `<state>/<kind>id/`.
+Whoever merges second adapts; there must be one `core/biometric.py`.
+
+### API and the live stream
+
+| Route | Body | Answer |
+|---|---|---|
+| `GET /api/voice/id` | | on, mode, model, enrolled, locked, grade, samples {total, by_cond}, thresholds, calibrated, report (numbers; a 24-bin histogram), pending, last_test, adapt {on, count, cap, today, last, drift_stopped}, mic {enrolled, now}, ready, missing, bank, who (counts), session |
+| `POST /api/voice/id/session` | `{action: start\|continue\|pause\|stop\|keep, own_words?, conds?}` | `{ok, message, session}` |
+| `POST /api/voice/id/skip` | `{cond}` | the session |
+| `POST /api/voice/id/train` | `{use_anyway?}` | `{ok, saved, report, message}` |
+| `POST /api/voice/id/undo` | | back to the template before the last build |
+| `POST /api/voice/id/test` | `{as: me\|other\|synthetic}` | `{ok, score, decision, why, thresholds, speech_s, short, pass}` |
+| `POST /api/voice/id/adapt` | `{undo: today\|all}` | `{ok, message, count}` |
+| `POST /api/voice/id/forget` | `{confirm: true}` | `{ok, message}` |
+| `POST /api/voice/id/parts/add` | `{path}` | `{ok, message}` |
+
+Live (`{"t": "voice"}`, open pages only): `voiceid_session {state, cond, prompt, done, need}`, `voiceid_attempt {cond,
+ok, reason, level_db, snr_db, speech_s}`, `voice_level` while a session listens; `voice_text` gains `speaker`, and an
+addressed `voice_state` gains `who`. Events (counts and words only, no floats): `voiceid_trained {grade, samples,
+dropped}`, `voiceid_session`, `voiceid_forgotten`, `voiceid_adapted`, `voiceid_adapt_stopped`, `voiceid_adapt_undone`,
+`voiceid_locked`, `voiceid_refused {what, speaker}`, `voiceid_guest_job`, `voiceid_guest_turn`, `voiceid_switch`.
+
+### The guest path
+
+`App.handle`, right after `message_in` and before tone/pest: `if msg.speaker not in ("", "owner"): guest.handle()`.
+`guest.handle`: owner_only_at_all -> one line; `/` -> refused; a match (never run) of the enabled modules' intents,
+`threads`' and `ledger`'s question patterns, `repoproject.asked`, `turnon.find` -> refused as action or personal; the
+hourly limit; else `jobs.submit(prompt, audience="guest", text_only=True, quiet=True, effort="low", brain=<local id with
+guest_brain: local>)`. The runner for `audience == "guest"`: no `assembler.for_request`, no selfdoc or scratch,
+`guest_context()`, `tools=[]`, `mcp=None`, `mcp_env={KUROOTO_JOB: id}` only (so agy's own registration of `kurooto mcp`
+carries the guest's job id), a `run_tool` that refuses, `cwd = <state>/guest` (emptied each run), the one AI it was
+given (no fallback, no last resort, no automatic order), no watchers (nothing learns). For a guest job id,
+`core/tools.tools_for` lists nothing (`kurooto mcp` shows no tools; `POST /api/tools/call` answers 404) and
+`run_tool` refuses. When Voice is done waiting (answered, failed or given up), `Jobs.forget_guest(id)` stops it if it's
+still going and blanks its prompt, result and detail: the row stays, titled "Guest", so tuning, gists and the search
+index never see the guest's words. The guest's last four turns of this portal session live
+in `VoiceID.guest_turns` (memory) and go into the next turn's prompt; Chat's history never sees them.
+
+### Guarded
+
+`core/tap.py`: `voice.enrol` (typed, button); the `vid` button is `data.delete`. `/voice id …` and `/voice enrol`
+refuse `msg.via == "voice"`. The settings API is fine (the dashboard and the phone's sealed settings are authenticated).
 
 ## Portability
 
@@ -172,6 +315,13 @@ macOS wheels; Linux uses the system's libportaudio) or `pw-record`/`parec` on Li
 then `pactl` on Linux, else "can't tell". Subprocesses it starts are its own children, stopped by their exact pid.
 
 ## Not verified
+
+Voice ID (0.8.10) ran only with fakes and synthetic data: a fake embedder, fake banks, a fake microphone and
+transcriber. Never run: the CAM++ model itself (the optional test needs `KUROOTO_TEST_MODELS`), kaldi-native-fbank's
+features, a real microphone, a real voice, and the shipped impostor banks, which aren't built yet (LibriSpeech and the
+models weren't downloaded: the network was a metered hotspot); until they are, Train says "the impostor set for this
+model isn't in this version of Kurooto yet". The thresholds' real numbers (about 0.45 to 0.5 for long turns) are the
+spec's expectation, not measured here.
 
 Written against the published APIs of kokoro-onnx 0.4, piper-tts 1.2/1.3, faster-whisper 1.1, openwakeword 0.6,
 Silero VAD v5 and sounddevice 0.5, but run only with fakes: no real microphone, speaker or model was used in the

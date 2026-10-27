@@ -137,3 +137,98 @@ values = "A web address, or empty."
 when = "Only for a proxy or a compatible server of your own."
 cost = "Voice notes go to that address."
 needs = "Voice notes."
+
+[parent."voice.speaker_id"]
+tip = "Voice ID: Kurooto knows your voice, so only you can make it act; anyone else can only chat. All on this computer."
+
+[s."voice.speaker_id.on"]
+tip = "Voice ID: only your voice can make Kurooto act; others can only chat, with none of your data. Enrol first."
+values = "`true` (each turn is checked against your voice print, on this computer), `false` (any voice is treated as yours, as before)."
+when = "Turn it on if other people are ever near the computer while Voice listens. Enrol on the Your voice page first."
+cost = "About 20-60 ms of processor per thing said. Your voice print is stored encrypted on this computer, never sent anywhere."
+needs = "Voice: talk and listen, and an enrolled voice."
+
+[s."voice.speaker_id.mode"]
+tip = "What other voices get: a chat with no actions and none of your data, or just one line saying it only talks with you."
+values = "`owner_only_acts` (others may chat), `owner_only_at_all` (others hear one line, nothing more)."
+when = "Pick `owner_only_at_all` if you don't want Kurooto chatting with anyone else at all."
+
+[s."voice.speaker_id.gate"]
+tip = "Check who's speaking before writing words out: other people not calling Kurooto are never transcribed."
+values = "`true` (others' talk is dropped before transcription), `false` (everything is transcribed, then sorted as in 0.8.8)."
+when = "Leave it on: it keeps other people's conversations private and saves the transcription's processor time."
+
+[s."voice.speaker_id.guest_brain"]
+tip = "Who answers other voices: your AI (none of your data, no tools) or the model on this computer."
+values = "`main` (your AI, only if it can be held to plain text: an API or Claude Code; with agy or Codex the local model answers), `local` (always this computer)."
+when = "Pick `local` to keep guests' words on this computer."
+needs = "For `local`, Local AI models with a chat model."
+
+[s."voice.speaker_id.guest_per_hour"]
+tip = "At most this many answers to other voices an hour."
+when = "Lower it if guests use up your AI's quota."
+
+[s."voice.speaker_id.tell_guests"]
+tip = "Once per conversation, tell others they can chat but only you can make Kurooto act."
+when = "Turn it off if you'd rather it just chats without saying so."
+
+[s."voice.speaker_id.strictness"]
+tip = "How sure it must be that it's you: relaxed, normal or strict (strict turns you away more often)."
+values = "`relaxed`, `normal`, `strict`."
+when = "Strict if a lot of people are around; relaxed if it keeps asking you again in a noisy room."
+
+[s."voice.speaker_id.threshold"]
+tip = "0: worked out from your own samples when you train. A number from 0.3 to 0.9 overrides it."
+when = "Leave it at 0 unless the Test step on the Your voice page shows it gets it wrong."
+
+[s."voice.speaker_id.margin"]
+tip = "The 'not sure' band just below the threshold. Not sure always counts as not you."
+when = "Widen it to be safer; narrow it if you're asked to repeat yourself too often."
+
+[s."voice.speaker_id.min_speech_s"]
+tip = "Speech shorter than this is too short to tell who it is, so it counts as not sure."
+when = "Raise it if quick one-word sounds get mistaken; lower it if your short answers are often 'not sure'."
+
+[s."voice.speaker_id.carry"]
+tip = "A short reply right after a turn it knew was you counts as you (not when the voice is clearly someone else)."
+when = "Turn it off (or use strict) if guests could answer 'yes' for you."
+
+[s."voice.speaker_id.carry_s"]
+tip = "How long after your last recognised turn a short reply may carry it."
+when = "Shorten it in a shared room; lengthen it if your quick follow-ups get refused."
+
+[s."voice.speaker_id.adapt"]
+tip = "Improve over time: turns it was very sure were you refine your voice print, slowly and with undo."
+values = "`false` (default: your voice print stays as trained), `true`."
+when = "Turn it on if your voice changes (a cold, a new mic) and you'd rather it keeps up by itself."
+
+[s."voice.speaker_id.adapt_max"]
+tip = "At most this many learned turns are kept in your voice print (the oldest are replaced)."
+when = "Lower it to keep your voice print closer to the samples you trained with."
+
+[s."voice.speaker_id.adapt_per_day"]
+tip = "At most this many learned turns a day."
+when = "Lower it to make the voice print change more slowly."
+
+[s."voice.speaker_id.model"]
+tip = "The speaker model: campplus-en (English, the most accurate) or campplus-multi. Changing it means enrolling again."
+values = "`campplus-en`, `campplus-multi`."
+when = "Pick campplus-multi if you speak to Kurooto mostly in another language."
+
+[s."voice.speaker_id.spoken_enrol"]
+tip = "During enrolment Kurooto says each step aloud. Off: the page shows the steps only."
+when = "Turn it off if you enrol somewhere you can't have it talk aloud."
+
+[s."voice.listen.conversation_mode"]
+tip = "While another voice is here, Kurooto stays out of people talking: only its name said to it opens a talk."
+values = "`true` (default with Voice ID), `false` (the usual gate)."
+when = "Leave it on so it doesn't join your conversations with other people; nothing said then is kept."
+needs = "Voice ID (it knows which voice is yours)."
+
+[s."voice.listen.conversation_s"]
+tip = "Conversation mode lasts this many seconds after the last other voice."
+when = "Lengthen it if Kurooto joins in too soon after the other person stops talking."
+
+[s."voice.listen.conversation_follow_s"]
+tip = "In conversation mode, a reply to what Kurooto just said counts only this soon after it."
+when = "Lengthen it if your replies to Kurooto in a conversation get ignored."

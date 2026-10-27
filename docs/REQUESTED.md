@@ -13,6 +13,10 @@ Standing plans, never struck through.
 - **Kurooto knows itself**: every feature, command and setting is in `/help` and the wikis the day it ships.
 
 ## Open
+- ~~**Kurooto knows its owner's voice**: "I want a method so it can recognise my voice separately. So no one else can
+  run it and only chat to it." With an entire enrolment and training process for my voice, all local.~~ (0.8.10: Voice
+  ID: `voice.speaker_id.on`, the Your voice page `/voice-id` and `/voice enrol`; only your voice can make it act,
+  anyone else can only chat, with none of your data)
 - ~~**A notes sorter**~~ (0.7.4: Features → Notes sorter; see Notes sorter in the user wiki): notes dropped in a scratch folder are moved by Kurooto into the right zettelkasten or
   Kurooto-style folders, with Undo, a limit a night and never overwriting; it needs a permission to move files in your notes,
   which will be a switch, off until you turn it on.

@@ -67,6 +67,16 @@ CHOICES: dict[str, list[list[str]]] = {
     "skills.auto_pack": [["ask", "ask: a button"], ["auto", "auto: build it"], ["off", "off"]],
     "terminal.default_opens": [["shell", "shell: one tab"], ["layout", "layout: all tabs"]],
     "terminal.top": [["left", "left: a column beside the first tab"], ["tab", "tab: a tab of its own"], ["off", "off"]],
+    "voice.speaker_id.mode": [  # (voice id)
+        ["owner_only_acts", "owner_only_acts: others may chat"],
+        ["owner_only_at_all", "owner_only_at_all: others get one line, nothing else"],
+    ],
+    "voice.speaker_id.model": [
+        ["campplus-en", "campplus-en: English, most accurate"],
+        ["campplus-multi", "campplus-multi: English and other languages"],
+    ],
+    "voice.speaker_id.strictness": [["relaxed", "relaxed"], ["normal", "normal"], ["strict", "strict"]],
+    "voice.speaker_id.guest_brain": [["main", "main: your AI, none of your data"], ["local", "local: this computer"]],
 }
 
 

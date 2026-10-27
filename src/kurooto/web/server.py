@@ -181,6 +181,9 @@ class Server:
                 if path == "/morning":  # the morning page (rhythm): today's plan, opened by the alarm
                     html = server.fill((static("morning.html") or b"").decode())
                     return self._send(200, html.encode(), TYPES[".html"])
+                if path == "/voice-id":  # Your voice: Voice ID's enrolment, training, test (modules/voice/voiceid.py)
+                    html = server.fill((static("voiceid.html") or b"").decode())
+                    return self._send(200, html.encode(), TYPES[".html"])
                 if path == "/proposals":  # the AI's changes waiting for your OK, with diffs (core/proposals.py)
                     html = server.fill((static("proposals.html") or b"").decode())
                     return self._send(200, html.encode(), TYPES[".html"])

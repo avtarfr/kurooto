@@ -50,6 +50,7 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | Setup page: Try it now | what you type that isn't an instant request, like a Chat message; nothing goes to Telegram or your phone | the AI you picked |
 | Voice notes | the recordings | Google (Gemini, your key) |
 | Voice: talk and listen (off; listening off too) | nothing while the portal is closed: what the microphone hears is written out and judged on this computer, and noise and people talking to each other are dropped at once, their words never stored, logged or sent; only what the gate decides you said to Kurooto goes out, as text, like a chat message. Sound is never saved. See [Voice](voice.md#privacy) | the AI you picked (only turns said to Kurooto) |
+| Voice ID (off; improving over time off too) | nothing. What's said is scored against your voice print on this computer and the sound dropped; with `voice.speaker_id.gate` (the default), someone else's talk that isn't calling Kurooto is dropped before it's written out (only its first and last two seconds are, to hear its name). Kept: only your voice print, encrypted, never your recordings or anyone else's voice. A guest's words to Kurooto go to your AI with none of your data (or only to the model on this computer with `guest_brain: local`), and aren't kept in your history (the request's words are blanked once the answer is spoken). Setting it up downloads a 28 MB model from GitHub, once; no cloud API. See [Voice ID](voice.md#voice-id-only-your-voice-can-make-it-act) | the AI you picked (a guest's chat turns, without your data), or nothing |
 | Notes sorter (off until you turn it on) | only for a note its rules can't place, with `sorter.ai` on: the note's first lines and the names of your folders, as one short request; with it off, nothing | the AI you picked |
 | Files into notes | with Chat on, the files you send, so the AI can file them | the AI you picked |
 | Photo to dates | the photo you sent for its dates (`dates` as its caption, `/dates`); nothing is added before you tap | the AI you picked |
@@ -243,7 +244,7 @@ kept (`egress.json` in the state folder, 30 days), never what was sent.
 
 Each host is checked against Kurooto's list, which is the "Where requests go" table in `docs/PRIVACY.md`: Telegram,
 Google's APIs (Gemini, sign-in, Classroom, Gmail, Drive and Calendar), GitHub, Cloudflare and your call line
-(`.workers.dev`), ntfy.sh, Node.js and Ollama downloads, Voice's models (GitHub, Hugging Face), arXiv, bioRxiv and PubMed, and Kurooto's release site.
+(`.workers.dev`), ntfy.sh, Node.js and Ollama downloads, Voice's models (GitHub and its release file server, Hugging Face), arXiv, bioRxiv and PubMed, and Kurooto's release site.
 Addresses you gave are yours and always allowed: your calendar's link, class calendars you subscribed to, your Research feeds, your own AI service, your
 call line, your ntfy server, and pages your AI reads for a request. This computer (`127.0.0.1`) is never counted.
 
@@ -420,6 +421,7 @@ waits there to be forgotten.
 | Test cases | no | no | no |
 | The search index of past requests (Learns from its own work) | no (it's built again from the rest) | no | no |
 | The memory ledger (encrypted) | only with `backups.memory`; it opens only with its key (`backups.secrets`) | no | no |
+| Your voice print (Voice ID, encrypted) and its key | never | never | never |
 
 More on each: [updates-and-backups.md](updates-and-backups.md). Before you share a diagnostics zip, open it and look.
 
@@ -440,6 +442,12 @@ More on each: [updates-and-backups.md](updates-and-backups.md). Before you share
 - **Events** (the activity log) record counts and request names, never what you typed or answered.
 - **Voice** never keeps sound (only a rolling buffer of under a second, in memory) and never keeps the words of noise
   or of people talking to each other: they're dropped as soon as the gate decides. Only counts are kept, in memory.
+- **Voice ID** keeps only your own voice print: numbers, condition names, dates, thresholds, quality numbers and the
+  microphone's name, encrypted with AES-256-GCM in `state/voiceid/template.bin` under a key in your keychain (or the
+  owner-only secrets file where there's none). Never your recordings (each sample's sound is dropped as soon as its
+  numbers are made), never anyone else's voice (scored in memory, then gone), and never a score in a log. It's never
+  backed up, carried by Profile sync, put in a diagnostics zip, logged or shown. Where the key sits in the secrets
+  file, it's on the same disk as the voice print, so the encryption then only protects copies of the state folder.
 
 ## What the AI may read and write on your computer
 
@@ -461,6 +469,9 @@ Details: [ai-brains.md](ai-brains.md).
 ## Removing your data
 
 - **Conversations:** `/forget 7d` or `/forget all` ([How long it's kept](#how-long-its-kept)).
+- **Your voice print (Voice ID):** `/voice id forget`, Forget my voice on the Your voice page, `kurooto voice id
+  forget`, or `/forget all`: the file and its key are deleted. On an SSD the file's blocks may linger until reused;
+  with the key gone, they're unreadable.
 - **One feature:** turn it off (Dashboard → Features). Its data stays until you delete it; your notes are never
   deleted.
 - **A paired phone:** `/phones`, then `/unpair <id>`. A lost phone: `kurooto rotate` gives your call line new keys and

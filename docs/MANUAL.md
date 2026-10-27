@@ -2136,6 +2136,35 @@ never stored, logged or sent. Setting up downloads from PyPI, GitHub and Hugging
 *Undo:* `/voice mute` stops listening and speaking at once; `voice.listen.on` off stops listening; turning Voice off
 (Features) stops both. To free the space, delete the `voice` folder in Kurooto's app folder (`kurooto paths`, `app`).
 
+### Voice ID: only your voice can make it act
+Off until you turn it on (`voice.speaker_id.on`; the Voice card's switch). It learns your voice in a guided enrolment
+on its own dashboard page (**Your voice (Voice ID) →** on the Voice card, `/voice-id`) or with `/voice enrol` typed:
+about five minutes at the computer's own microphone, six conditions (normal, quiet, far, with noise, short requests,
+free speech), about 21 samples, each checked before it counts with the reason shown when it's rejected. Then it
+**trains** (your template, the average of your samples, and thresholds calibrated on your own samples against about
+1,750 strangers' voice prints that ship with Kurooto: a pretrained model, CAM++, plus calibration; no network is trained
+here), shows a grade (good, fair, weak), and lets you **test** it (Try me, Try as someone else, Try a synthetic voice).
+**Improve over time** (`voice.speaker_id.adapt`, off) refines it from turns it was very sure were you, capped, with Undo
+today / Undo all. Manage: add samples, retrain, change model, install the parts from a file, forget.
+
+- **You:** everything as before. **Someone else, or not sure:** chat only: an answer from your AI with none of your
+  data and no actions (or only the model on this computer, `guest_brain: local`), told once per conversation that only
+  your voice can make it act. `owner_only_at_all`: others get one line, nothing else.
+- With `voice.speaker_id.gate` (on), someone else's talk that isn't calling Kurooto is dropped before it's written out,
+  and while another voice is around (**conversation mode**, `voice.listen.conversation_mode`) only "Kurooto, …" opens a
+  conversation.
+- Never by voice: enrolling, its settings and forgetting are typed or on the page. `/voice id` shows the grade, the
+  thresholds and the last test.
+- Honest limits: a recording or a clone of your voice can pass (guarded actions still need your tap); a close relative
+  may pass at normal strictness (use strict); a cold or a new microphone lowers your scores (add samples).
+
+*Leaves:* nothing of your voice. The speaker model (28 MB) downloads once from GitHub, or installs from a file; a
+guest's chat turns go to your AI without your data. *Kept:* only your voice print, encrypted (`state/voiceid/`), never
+backed up, synced or put in a diagnostics zip; never your recordings.
+*Undo:* `voice.speaker_id.on` off stops checking at once (messages are then unchecked, as before); `/voice id forget`
+(or the page's Forget my voice, `kurooto voice id forget`, `/forget all`) deletes the voice print and its key;
+`/voice id undo all` drops what it learned over time.
+
 ### Stay awake on charger
 While your computer is plugged in, it doesn't go to sleep by itself, so Kurooto keeps answering; on battery it sleeps
 as usual. The screen can still turn off.
@@ -4546,6 +4575,10 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | An add-on by link didn't load: "its files changed since you agreed to its card" | `kurooto addons update <name>` (or remove it and add it again). |
 | An add-on isn't marked **Official** | It came from another address (a fork) or is at another commit than the one Kurooto lists. Remove it, then Add it from Official add-ons (or `kurooto addons add <name>`). |
 | "The add-on X may only reach the hosts on its card" / "start the programs on its card" | Refused on purpose: it asked for something its card doesn't say. A newer version that declares it shows it when you update. |
+| Voice ID: "It doesn't recognise me" (it keeps saying it couldn't tell it was you) | `/voice id` shows the grade and the last test. Speak a little closer, or type it. On the Your voice page: Test → Try me; if it turns you away, Manage → Add samples in the condition it names (far, noisy, short requests), then Retrain. `voice.speaker_id.strictness` `relaxed` lets more through; a short "yes" counts only right after a turn it knew was you. |
+| Voice ID: it can't tell it's me after I changed microphone (or turned noise suppression on or off) | Scores shift with the microphone. The page says "enrolled with A, listening with B": Manage → Add samples (This microphone), then Retrain. |
+| Voice ID: "its key can't be read" | The keychain was locked when Kurooto started (it started at boot before you logged in), or the key was removed. Until then every voice can only chat; typing works. Log in and restart Kurooto; if it stays, Forget my voice on the page (or `/voice id forget`) and enrol again. |
+| Voice ID: "the impostor set … isn't in this version" or "doesn't match this model" | Training needs the strangers' voice prints for your model that ship with Kurooto. Update Kurooto; until then Voice ID can't build your voice print. |
 | Something else | `kurooto doctor --bundle` and send the zip to whoever is helping you (see below). |
 
 ## Getting help (diagnostics)

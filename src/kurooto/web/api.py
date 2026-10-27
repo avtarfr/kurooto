@@ -286,6 +286,9 @@ class Api:
         if path == "voice":  # Voice: its state, engines and switches (modules/voice)
             v = self.app.modules.get("voice")
             return (200, v.status()) if v is not None else (404, {"error": "no Voice here"})
+        if path == "voice/id":  # Voice ID: counts, grades, thresholds, the session; never a vector (voice/voiceid.py)
+            v = self.app.modules.get("voice")
+            return (200, v.voiceid.status()) if v is not None else (404, {"error": "no Voice here"})
         if path == "health":  # Kurooto keeps itself working: every check, from what's known here (core/health.py)
             from dataclasses import asdict
 
@@ -965,6 +968,8 @@ class Api:
             return 404, {"error": "no Voice here"}
         if action == "shape":  # works with Voice off too: the estimate (modules/voice/shape.py)
             return 200, v.shape(str(b.get("text") or ""))
+        if action.startswith("id/"):  # (voice id) the Your voice page (/voice-id)
+            return self._voice_id(v.voiceid, action[3:], b)
         if action == "say":
             ok, message = v.say(str(b.get("text") or ""), wait=False)
             return 200, {"ok": ok, "message": message}
@@ -974,6 +979,33 @@ class Api:
         if action == "stop":
             v.speaker.stop()
             return 200, {"ok": True, "message": "Stopped speaking."}
+        return 404, {"error": "not found"}
+
+    def _voice_id(self, vid, action: str, b: dict) -> tuple[int, dict]:
+        """POST voice/id/session {action: start|continue|pause|stop|keep, own_words?, conds?}, skip {cond},
+        train {use_anyway?}, undo (the last build), test {as: me|other|synthetic}, adapt {undo: today|all},
+        forget {confirm: true}, parts/add {path}. Answers carry counts, grades and scores, never a vector."""
+        if action == "session":
+            act = str(b.get("action") or "")
+            if act == "start" and isinstance(b.get("conds"), list):
+                return 200, vid.start_session(bool(b.get("own_words")), [str(c) for c in b["conds"]][:8])
+            return 200, vid.session_cmd(act, bool(b.get("own_words")))
+        if action == "skip":
+            return 200, vid.skip(str(b.get("cond") or ""))
+        if action == "train":
+            return 200, vid.train(use_anyway=bool(b.get("use_anyway")))
+        if action == "undo":
+            return 200, vid.undo_build()
+        if action == "test":
+            return 200, vid.test(str(b.get("as") or "me"))
+        if action == "adapt":
+            return 200, vid.undo_adapt(str(b.get("undo") or ""))
+        if action == "forget":
+            if b.get("confirm") is not True:
+                return 200, {"ok": False, "message": "Confirm first."}
+            return 200, {"ok": True, "message": vid.forget()}
+        if action == "parts/add":
+            return 200, vid.add_file(str(b.get("path") or ""))
         return 404, {"error": "not found"}
 
     def _power(self) -> dict:

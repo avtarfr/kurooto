@@ -33,6 +33,7 @@ PATTERNS = [
 KNOWN_SECRETS = [
     "web.token",
     "ledger.key",
+    "biometric.voice.key",  # (voice id) redacted like the rest; never backed up or synced (core/biometric.py)
     "telegram.token",
     "gemini.api_key",
     "freellmapi.api_key",

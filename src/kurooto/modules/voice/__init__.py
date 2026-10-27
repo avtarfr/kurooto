@@ -15,7 +15,11 @@ touches the disk.
 
 The dashboard: GET /api/voice (state, engines, switches), POST /api/voice/say {text}, POST /api/voice/mute {on},
 POST /api/voice/shape {text} (shape.py), and the live stream's {"t": "voice"} messages: voice_state, voice_level,
-voice_text, voice_speak (docs/wiki/dev/voice.md)."""
+voice_text, voice_speak (docs/wiki/dev/voice.md).
+
+Voice ID (0.8.10, voiceid.py; voice.speaker_id.on, off by default): only the owner's voice can make Kurooto act; any
+other voice, or one it isn't sure of, can only chat (core/guest.py). Its own page is /voice-id; /voice id and /voice
+enrol are typed only, never by voice."""
 
 from __future__ import annotations
 
@@ -35,6 +39,7 @@ from kurooto.modules.voice import shape as shape_mod
 from kurooto.modules.voice.gate import ADDRESSED, CHATTER, NOISE, Gate, Heard
 from kurooto.modules.voice.parts import KOKORO_VOICES, STT_MODELS, Parts
 from kurooto.modules.voice.portal import Portal
+from kurooto.modules.voice.voiceid import NO_VOICE, VoiceID
 
 if TYPE_CHECKING:
     from kurooto.app import App
@@ -65,6 +70,28 @@ register_defaults(
             "language": "",  # the language you speak, e.g. en or hi; empty: worked out each time
             "device": "",  # the microphone: empty is the system's default; a name or number from sounddevice
             "levels": True,  # send the microphone's loudness to the dashboard for its waveform (numbers only)
+            "conversation_mode": True,  # with Voice ID: while another voice is here, only its name opens a talk
+            "conversation_s": 60,  # conversation mode lasts this many seconds after the last other voice
+            "conversation_follow_s": 4,  # in conversation mode, a reply to what it said counts only this soon after
+        },
+        "speaker_id": {
+            "on": False,  # Voice ID: only your voice can make Kurooto act; others can only chat (enrol first)
+            "mode": "owner_only_acts",  # owner_only_acts (others may chat) or owner_only_at_all (others: one line)
+            "model": "campplus-en",  # campplus-en (English, most accurate) or campplus-multi; a change: enrol again
+            "strictness": "normal",  # relaxed, normal or strict (turns you away more often; strangers almost never)
+            "threshold": 0.0,  # 0: worked out from your own samples; a number (0.3 to 0.9) overrides it
+            "margin": 0.05,  # the "not sure" band just below the threshold; not sure counts as not you
+            "min_speech_s": 1.0,  # shorter than this is too short to tell (it counts as not sure)
+            "carry": True,  # a short reply right after a turn it knew was you counts as you (not if clearly not)
+            "carry_s": 15,  # how long after your last recognised turn a short reply may carry it
+            "gate": True,  # check the voice before writing words out: others not calling it are never transcribed
+            "tell_guests": True,  # once per conversation, tell others they can chat but only you can make it act
+            "guest_brain": "main",  # who answers others: main (your AI, none of your data) or local (this computer)
+            "guest_per_hour": 20,  # at most this many answers to others an hour
+            "adapt": False,  # improve over time: turns it was very sure were you refine your voice print (undo)
+            "adapt_max": 40,  # at most this many learned turns are kept (oldest replaced)
+            "adapt_per_day": 10,  # at most this many learned turns a day
+            "spoken_enrol": True,  # during enrolment Kurooto says each step aloud (off: the page shows it only)
         },
     },
 )
@@ -197,6 +224,7 @@ class Voice(Module):
         self._level_buf = bytearray()
         self.mic_error = ""
         self._retry_at = 0.0
+        self.voiceid = VoiceID(self)  # (voice id) the owner's voice: voiceid.py
 
     # ------------------------------------------------------------------------------------------- the parts
     def wants(self) -> list[str]:
@@ -210,6 +238,10 @@ class Voice(Module):
             keys += ["pkg:audio", "pkg:listen", "model:vad", f"model:whisper-{size if size in STT_MODELS else 'base'}"]
             if str(self.setting("listen.wake_word") or "").strip():  # your own model: openWakeWord to run it
                 keys += ["pkg:wake", "model:wake-common"]
+        if self.setting("speaker_id.on"):  # (voice id) listening's parts (enrolment checks the phrase) and the model
+            size = self.setting("listen.stt_model") or "base"
+            keys += ["pkg:audio", "pkg:listen", "model:vad", f"model:whisper-{size if size in STT_MODELS else 'base'}"]
+            keys += ["pkg:voiceid", f"model:{self.voiceid.model_part()}"]
         return list(dict.fromkeys(keys))
 
     def ready(self) -> tuple[bool, str]:
@@ -240,6 +272,9 @@ class Voice(Module):
                 return False, name
             if self.mic_error:
                 return False, f"the microphone stopped: {self.mic_error}"
+        vid = self.voiceid.health()  # (voice id) on but no voice print, its key unreadable, its model failed
+        if vid is not None:
+            return vid
         return True, self.line()
 
     def health_check(self):
@@ -255,12 +290,14 @@ class Voice(Module):
         """One line for /health and /voice: what it does now."""
         engine = self.setting("speak.engine") or "kokoro"
         speak = f"speaks with {engine.capitalize()}" if self.setting("speak.on") and engine != "off" else "silent"
+        vid = self.voiceid.line()  # (voice id) its state, on the being's ear too
+        tail = f"; {vid}" if vid else ""
         if not self.setting("listen.on"):
-            return f"{speak}; not listening (voice.listen.on is off)"
+            return f"{speak}; not listening (voice.listen.on is off){tail}"
         if self.blocked_why:
-            return f"{speak}; not listening: {self.blocked_why}"
+            return f"{speak}; not listening: {self.blocked_why}{tail}"
         own = " or your wake word" if str(self.setting("listen.wake_word") or "").strip() else ""
-        return f"{speak}; listening here (its name{own} wakes it)"
+        return f"{speak}; listening here (its name{own} wakes it){tail}"
 
     def microphone(self) -> tuple:
         at, res = self._mic
@@ -326,6 +363,8 @@ class Voice(Module):
 
     def _portal_changed(self, is_open: bool, why: str) -> None:
         self.app.events.emit("voice_portal", open=is_open, why=why)  # when and why only, never words
+        if not is_open:
+            self.voiceid.portal_closed()  # (voice id) a guest's turns of this conversation are dropped
 
     def _level(self, frame: bytes) -> None:
         if not self.setting("listen.levels"):
@@ -382,6 +421,12 @@ class Voice(Module):
             "missing_gb": self.parts.size_gb(missing),
             "heard": dict(self.heard),
             "choices": {"voices": list(KOKORO_VOICES), "stt_models": list(STT_MODELS)},
+            "speaker_id": {  # (voice id) counts and words only; GET /api/voice/id has the rest
+                "on": self.voiceid.on(),
+                "enrolled": self.voiceid.enrolled(),
+                "who": dict(self.voiceid.who),
+                "last": self.voiceid.last_word,
+            },
         }
 
     def shape(self, text: str) -> dict:
@@ -422,6 +467,8 @@ class Voice(Module):
 
     def blocked(self) -> str:
         """Why it may not listen now ("" when it may)."""
+        if self.voiceid.capturing:  # (voice id) enrolment or a test has the microphone
+            return self.voiceid.capturing
         if not self.setting("listen.on"):
             return "listening is off"
         if self.muted():
@@ -434,7 +481,13 @@ class Voice(Module):
             return "you're on a call"
         if not self.setting("listen.night") and self._night():
             return "night hours"
-        if self.parts.missing([k for k in self.wants() if k != "pkg:wake" and not k.startswith("model:wake")]):
+        if self.parts.missing(  # (voice id) its own parts missing: every voice is unsure (fail closed), still heard
+            [
+                k
+                for k in self.wants()
+                if k not in {"pkg:wake", "pkg:voiceid"} and not k.startswith(("model:wake", "model:voiceid"))
+            ]
+        ):
             return "not set up yet"
         return ""
 
@@ -480,24 +533,64 @@ class Voice(Module):
             return helper._generate(prompt, 40, 8)  # Ollama on this computer (core/helper.py)
         return None
 
-    def hear(self, h: Heard, audio: bytes | None = None) -> str | None:
+    def _write_out(self, pcm: bytes) -> str:
+        try:
+            return self.stt().text(pcm)
+        except Exception as e:
+            self.app.events.emit("voice_failed", part="writing out", error=f"{type(e).__name__}"[:100])
+            return ""
+
+    def hear(self, h: Heard, audio: bytes | None = None, flags: bytes = b"") -> str | None:
         """One stretch of sound, from the listener (or a test): written out here when it's speech, judged, and either
-        dropped or taken through the portal. Returns Kurooto's reply when there was one."""
+        dropped or taken through the portal. Returns Kurooto's reply when there was one.
+
+        With Voice ID on, the voice is checked too (voiceid.py). With its gate (voice.speaker_id.gate) that comes
+        first: someone else's voice that isn't calling Kurooto, with no conversation open, is dropped as chatter and
+        never written out (only its first and last two seconds are, to hear the name). Without it, only turns the gate
+        calls addressed are checked."""
         if self.blocked() or not self.app.is_on(self.id):
             return None
         self.portal.close_s = float(self.setting("listen.close_s") or 8)
         self.portal.state("hearing")
+        vid = self.voiceid
+        on = vid.on()
+        who = None
+        if on:
+            self.portal.mode = vid.mode()
+            self.portal.tell_guests = bool(vid.s("tell_guests", True))
+            if not h.speech_s:
+                h.speech_s = sum(1 for f in flags if f) * 512 / 16000 if flags else h.seconds
+        if on and vid.s("gate", True) and h.speech and audio is not None:  # (voice id) who, before the words
+            who = vid.check(audio, h.speech_s, h.voices)
+            if who.decision != "owner" and not h.wake and not self.portal.open:
+                g = self.gate()
+                edges = _edges(audio)
+                heard = self._write_out(edges)
+                if edges is audio:  # short: that was all of it
+                    h.text = heard
+                elif not g.called(heard):
+                    heard = ""  # dropped: someone else, not to it, never written out in full
+                if not h.text and not heard:
+                    del audio
+                    self.heard[CHATTER] = self.heard.get(CHATTER, 0) + 1
+                    from kurooto.modules.voice.gate import Decision
+
+                    self.portal.take(h, Decision(CHATTER, 0.9, "someone else, not to it"))
+                    self.portal.state("listening", CHATTER)
+                    return None
+                heard = ""
         if h.speech and not h.text and audio is not None:
-            try:
-                h.text = self.stt().text(audio)
-            except Exception as e:
-                self.app.events.emit("voice_failed", part="writing out", error=f"{type(e).__name__}"[:100])
-                h.text = ""
-        del audio
+            h.text = self._write_out(audio)
         g = self.gate()
-        d = g.decide(h, self.portal.context())
+        ctx = self.portal.context()
+        if on and self.setting("listen.conversation_mode"):  # (voice id) people talking: only its name opens it
+            guests_here = who is not None and who.decision == "guest" and vid.others_lately() >= 3
+            ctx.conversation = vid.conversation() or guests_here
+            ctx.follow_s = float(self.setting("listen.conversation_follow_s") or 4)
+        d = g.decide(h, ctx)
         self.heard[d.klass] = self.heard.get(d.klass, 0) + 1
         if not d.addressed:
+            del audio
             h.text = ""  # dropped here: never stored, logged or sent
             was_open = self.portal.open
             self.portal.take(h, d)
@@ -505,16 +598,57 @@ class Voice(Module):
                 self.portal.state("listening", d.klass)
             return None
         said = g.matcher.uncall(h.text) if h.wake or d.why == "its name" else h.text  # the call itself isn't sent
-        return self.portal.take(h, d, text=said)
+        if on and who is None and said and audio is not None:  # (voice id) the gate first is off: addressed only
+            who = vid.check(audio, h.speech_s, h.voices)
+        del audio
+        if on and who is None and said:  # nothing to check it with: unsure (fail closed)
+            from kurooto.modules.voice.speakerid import UNSURE, Verdict
 
-    def ask_brain(self, text: str) -> str:
-        """An addressed turn to your AI, like a chat message (spoken style); its answer as text."""
+            who = Verdict(UNSURE, "no sound to check")
+        if who is not None:
+            self.publish("voice_state", state="addressed", portal=True, listening=True, why=d.why, who=who.word)
+        return self.portal.take(h, d, text=said, who=who)
+
+    def ask_brain(self, text: str, who=None) -> str:
+        """An addressed turn to your AI, like a chat message (spoken style); its answer as text. who: Voice ID's
+        verdict, which travels with the message (Incoming.speaker); not the owner's goes to core/guest.py."""
         replies: list[str] = []
-        msg = Incoming(text=text, via="voice", voice=True, respond=lambda t, buttons=None: replies.append(str(t)))
+        msg = Incoming(
+            text=text,
+            via="voice",
+            voice=True,
+            respond=lambda t, buttons=None: replies.append(str(t)),
+            speaker=who.decision if who is not None else "",
+            speaker_by="voice" if who is not None else "",
+        )
         self.app.handle(msg)
+        if who is not None and who.decision != "owner":  # (voice id) a guest's turn: kept in memory for this talk only
+            gid = getattr(msg, "job", None)
+            try:
+                answer = self._wait_job(msg) if gid else "\n".join(replies)
+            finally:
+                if gid:  # its words leave the request list once answered (or given up on)
+                    try:
+                        self.app.jobs.forget_guest(gid)
+                    except Exception as e:
+                        self.app.events.emit("voice_failed", part="guest words", error=f"{type(e).__name__}"[:100])
+            if answer:
+                self.voiceid.heard_guest(text, answer)
+            return answer
         jid = getattr(msg, "job", None)
         if not jid:
             return "\n".join(replies)
+        answer = self._wait_job(msg)
+        chat = self.app.modules.get("chat")
+        if chat is not None and answer and chat.owns(jid):  # the conversation goes on, as a typed one does
+            try:
+                chat.record_turn(self.app.jobs.get(jid).prompt, answer)
+            except Exception:
+                pass
+        return answer
+
+    def _wait_job(self, msg: Incoming) -> str:
+        jid = msg.job
         done = self._jobs.setdefault(jid, threading.Event())
         try:
             end = time.monotonic() + JOB_WAIT_S
@@ -528,14 +662,7 @@ class Voice(Module):
             self._jobs.pop(jid, None)
         if j is None or j.status != "ok":
             return "I couldn't get an answer just now." if j is not None and j.status == "failed" else ""
-        answer = (j.result or "").strip()
-        chat = self.app.modules.get("chat")
-        if chat is not None and answer and chat.owns(jid):  # the conversation goes on, as a typed one does
-            try:
-                chat.record_turn(j.prompt, answer)
-            except Exception:
-                pass
-        return answer
+        return (j.result or "").strip()
 
     def _portal_speak(self, text: str) -> None:
         """The portal's reply, aloud: not when muted or turned off meanwhile (the text is on the dashboard)."""
@@ -586,6 +713,9 @@ class Voice(Module):
         self.speaker.stop()
         self._stop_listening("turned off")
         self._tts = self._stt = None
+        if self.voiceid.session is not None:  # (voice id) an enrolment ends with Voice
+            self.voiceid.session.command("stop")
+        self.voiceid.drop_model()
 
     async def background(self, stop: asyncio.Event) -> None:
         try:
@@ -599,6 +729,11 @@ class Voice(Module):
                     self._stop_listening(why)
                 elif self.listener is None or not self.listener.running():
                     self._start_listening()
+                if not self.voiceid.on():  # (voice id) switched off: its model goes at once
+                    self.voiceid.drop_model()
+                s = self.voiceid.session
+                if s is not None and self.muted():  # mute ends an enrolment
+                    s.command("stop")
                 self.portal.tick()
                 try:
                     await asyncio.wait_for(stop.wait(), timeout=1)
@@ -661,22 +796,22 @@ class Voice(Module):
             except queue.Empty:
                 break
 
-    def _heard_audio(self, pcm: bytes, woke: bool, seconds: float) -> None:
+    def _heard_audio(self, pcm: bytes, woke: bool, seconds: float, flags: bytes = b"") -> None:
         """From the listener's thread: queued for writing out (the oldest dropped when it can't keep up)."""
         try:
-            self._work.put_nowait((pcm, woke, seconds))
+            self._work.put_nowait((pcm, woke, seconds, flags))
         except queue.Full:
             try:
                 self._work.get_nowait()
-                self._work.put_nowait((pcm, woke, seconds))
+                self._work.put_nowait((pcm, woke, seconds, flags))
             except (queue.Empty, queue.Full):
                 pass
 
     def _work_loop(self) -> None:
         while True:
-            pcm, woke, seconds = self._work.get()
+            pcm, woke, seconds, flags = self._work.get()
             try:
-                self.hear(Heard(speech=True, wake=woke, seconds=seconds), pcm)
+                self.hear(Heard(speech=True, wake=woke, seconds=seconds), pcm, flags)
             except Exception as e:
                 self.app.events.emit("voice_failed", part="hearing", error=f"{type(e).__name__}"[:100])
             finally:
@@ -687,15 +822,110 @@ class Voice(Module):
         return [
             Command(
                 "voice",
-                "Voice: what it's doing; mute, unmute, stop (stop speaking), say <text>",
+                "Voice: what it's doing; mute, unmute, stop (stop speaking), say <text>; id (Voice ID), enrol",
                 self._cmd,
-                usage="/voice [mute|unmute|stop|say <text>]",
+                usage="/voice [mute|unmute|stop|say <text>|id [test|retrain|undo today|undo all|forget]|enrol [stop]]",
             )
         ]
 
-    def _cmd(self, msg: Incoming, arg: str) -> str:
+    def callbacks(self) -> dict:
+        return self.voiceid.callbacks()  # vid: Forget my voice / Keep it (a data.delete button, core/tap.py)
+
+    # ------------------------------------------------------------------------------------------- Voice ID
+    def card(self) -> dict:
+        vid = self.voiceid
+        if not vid.on():
+            line = "Voice ID: off (only your voice can make it act, once it's on and knows your voice)"
+        elif vid.enrolled():
+            t = vid.template() or {}
+            line = f"Voice ID: on · knows your voice ({len(t.get('samples') or [])} samples, " + (
+                f"{(t.get('report') or {}).get('grade', '?')})"
+            )
+        else:
+            line = "Voice ID: on · doesn't know your voice yet"
+        return {
+            "lines": [line],
+            "toggles": [
+                {"id": "speaker_id.on", "label": "Voice ID: only your voice can make it act", "on": vid.on()},
+                {"id": "speaker_id.adapt", "label": "Voice ID: improve over time", "on": bool(vid.s("adapt"))},
+            ],
+        }
+
+    def card_action(self, act: str, value) -> str:
+        if act not in ("speaker_id.on", "speaker_id.adapt"):
+            return "There's no such part."
+        self.app.settings.set(f"voice.{act}", bool(value))
+        self.app.events.emit("voiceid_switch", part=act.split(".")[1], on=bool(value))
+        if act == "speaker_id.on" and value and not self.voiceid.enrolled():
+            return "Voice ID is on, but it doesn't know your voice yet: open Your voice (Voice ID) to enrol."
+        name = "Voice ID" if act == "speaker_id.on" else "Improving over time"
+        return f"{name}: {'on' if value else 'off'}."
+
+    def _cmd_id(self, msg: Incoming | None, arg: str) -> str | None:
+        vid = self.voiceid
         word, _, rest = (arg or "").strip().partition(" ")
         word = word.lower()
+        if word in ("", "status"):
+            st = vid.status()
+            r = st["report"] or {}
+            lines = [vid.line() or "Voice ID: off (voice.speaker_id.on)"]
+            if st["enrolled"]:
+                th = st["thresholds"] or {}
+                lines.append(
+                    f"{st['samples']['total']} samples, {r.get('grade', '?')}; thresholds: long "
+                    f"{th.get('long', {}).get('accept')}, short {th.get('short', {}).get('accept')}"
+                )
+                lt = st["last_test"]
+                if lt:
+                    lines.append(
+                        f"Last test ({lt.get('day')}): you {lt.get('me_passed', 0)} of {lt.get('me_tries', 0)}, "
+                        f"someone else turned away {lt.get('other_passed', 0)} of {lt.get('other_tries', 0)}"
+                    )
+            w = st["who"]
+            lines.append(f"Since start: {w['owner']} you, {w['guest']} someone else, {w['unsure']} unsure; "
+                         f"{st['guest_turns']} guest turns answered.")  # fmt: skip
+            lines.append("/voice enrol, /voice id test, retrain, undo today|all, forget; the page: /voice-id")
+            return "\n".join(lines)
+        if word == "test":
+            r = vid.test("me")
+            if not r.get("ok"):
+                return r.get("message")
+            said = {"owner": "That was you", "unsure": "Not sure it was you", "guest": "That was someone else"}
+            return f"{said[r['decision']]}, score {r['score']:.2f}."
+        if word == "retrain":
+            return vid.train(session=None).get("message")
+        if word == "undo":
+            which = rest.strip().lower()
+            if which not in ("today", "all"):
+                return "/voice id undo today, or /voice id undo all"
+            return vid.undo_adapt(which)["message"]
+        if word == "forget":
+            text = "Forget your voice? The voice print and its key are deleted; you'd enrol again to use Voice ID."
+            if msg is not None:
+                msg.reply(text, buttons=[[("Forget my voice", "vid:0:forget"), ("Keep it", "vid:0:keep")]])
+                return None
+            return text
+        return "/voice id [test|retrain|undo today|undo all|forget]"
+
+    def _cmd_enrol(self, arg: str) -> str:
+        a = (arg or "").strip().lower()
+        if a in ("stop", "keep", "pause"):
+            return self.voiceid.session_cmd(a)["message"]
+        r = self.voiceid.start_session(own_words="own" in a)
+        if not r.get("ok"):
+            return r["message"]
+        return (
+            f"{r['message']} Follow the prompts at the computer (spoken, and on the Your voice page, /voice-id). "
+            "/voice enrol stop stops; /voice enrol keep keeps what's done for later."
+        )
+
+    def _cmd(self, msg: Incoming, arg: str) -> str | None:
+        word, _, rest = (arg or "").strip().partition(" ")
+        word = word.lower()
+        if word in ("id", "enrol", "enroll"):  # (voice id) typed only: never by voice, whoever's voice it is
+            if msg is not None and (msg.via == "voice" or msg.voice):
+                return NO_VOICE
+            return self._cmd_id(msg, rest) if word == "id" else self._cmd_enrol(rest)
         if word == "mute":
             return self.mute(True)
         if word == "unmute":
@@ -712,5 +942,14 @@ class Voice(Module):
             f"Voice: {self.line()}" + ("" if ok else f"\n{why}") + ("\nMuted." if self.muted() else "")
             + f"\nHeard since start: {h[ADDRESSED]} to me, {h[CHATTER]} chatter, {h[NOISE]} noise (words of the last "
             "two are never kept)."
-            + "\n/voice mute, /voice unmute, /voice stop, /voice say <text>"
+            + "\n/voice mute, /voice unmute, /voice stop, /voice say <text>; /voice id (Voice ID), /voice enrol"
         )  # fmt: skip
+
+
+def _edges(pcm: bytes, seconds: float = 2.0) -> bytes:
+    """(voice id) The first and last `seconds` of the sound with a short silence between: enough to hear its name
+    called, first or last, without writing out the rest. Short sound comes back whole (the same object)."""
+    n = int(seconds * 16000) * 2
+    if len(pcm) <= 2 * n + 16000:
+        return pcm
+    return pcm[:n] + bytes(6400) + pcm[-n:]

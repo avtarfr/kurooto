@@ -1128,6 +1128,9 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.after_speak_s` | `6` | Seconds after it spoke during which a question counts as an answer to it. ([guide](wiki/user/settings-guide.md#voicelistenafterspeaks)) |
 | `voice.listen.calls` | `false` | Keep listening while you're on a phone call (off: listening pauses during calls). ([guide](wiki/user/settings-guide.md#voicelistencalls)) |
 | `voice.listen.close_s` | `8` | Seconds of nothing said to it before the spoken conversation closes. ([guide](wiki/user/settings-guide.md#voicelistencloses)) |
+| `voice.listen.conversation_follow_s` | `4` | In conversation mode, a reply to what Kurooto just said counts only this soon after it. ([guide](wiki/user/settings-guide.md#voicelistenconversationfollows)) |
+| `voice.listen.conversation_mode` | `true` | While another voice is here, Kurooto stays out of people talking: only its name said to it opens a talk. ([guide](wiki/user/settings-guide.md#voicelistenconversationmode)) |
+| `voice.listen.conversation_s` | `60` | Conversation mode lasts this many seconds after the last other voice. ([guide](wiki/user/settings-guide.md#voicelistenconversations)) |
 | `voice.listen.device` | `""` | Which microphone to use; empty is the system's default. ([guide](wiki/user/settings-guide.md#voicelistendevice)) |
 | `voice.listen.language` | `""` | The language you speak, e.g. `en` or `hi`; empty works it out each time. ([guide](wiki/user/settings-guide.md#voicelistenlanguage)) |
 | `voice.listen.levels` | `true` | Show the microphone's loudness as a waveform on the dashboard (numbers only). ([guide](wiki/user/settings-guide.md#voicelistenlevels)) |
@@ -1145,6 +1148,23 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.speak.rate` | `1.0` | How fast it speaks: 1.0 is normal, 0.8 slower, 1.2 faster. ([guide](wiki/user/settings-guide.md#voicespeakrate)) |
 | `voice.speak.voice` | `""` | Which Kokoro voice it speaks in; empty is `af_heart`. ([guide](wiki/user/settings-guide.md#voicespeakvoice)) |
 | `voice.speak.what` | `"voice"` | What's read aloud: answers to what you said aloud, every AI answer, or nothing. ([guide](wiki/user/settings-guide.md#voicespeakwhat)) |
+| `voice.speaker_id.adapt` | `false` | Improve over time: turns it was very sure were you refine your voice print, slowly and with undo. ([guide](wiki/user/settings-guide.md#voicespeakeridadapt)) |
+| `voice.speaker_id.adapt_max` | `40` | At most this many learned turns are kept in your voice print (the oldest are replaced). ([guide](wiki/user/settings-guide.md#voicespeakeridadaptmax)) |
+| `voice.speaker_id.adapt_per_day` | `10` | At most this many learned turns a day. ([guide](wiki/user/settings-guide.md#voicespeakeridadaptperday)) |
+| `voice.speaker_id.carry` | `true` | A short reply right after a turn it knew was you counts as you (not when the voice is clearly someone else). ([guide](wiki/user/settings-guide.md#voicespeakeridcarry)) |
+| `voice.speaker_id.carry_s` | `15` | How long after your last recognised turn a short reply may carry it. ([guide](wiki/user/settings-guide.md#voicespeakeridcarrys)) |
+| `voice.speaker_id.gate` | `true` | Check who's speaking before writing words out: other people not calling Kurooto are never transcribed. ([guide](wiki/user/settings-guide.md#voicespeakeridgate)) |
+| `voice.speaker_id.guest_brain` | `"main"` | Who answers other voices: your AI (none of your data, no tools) or the model on this computer. ([guide](wiki/user/settings-guide.md#voicespeakeridguestbrain)) |
+| `voice.speaker_id.guest_per_hour` | `20` | At most this many answers to other voices an hour. ([guide](wiki/user/settings-guide.md#voicespeakeridguestperhour)) |
+| `voice.speaker_id.margin` | `0.05` | The 'not sure' band just below the threshold. Not sure always counts as not you. ([guide](wiki/user/settings-guide.md#voicespeakeridmargin)) |
+| `voice.speaker_id.min_speech_s` | `1.0` | Speech shorter than this is too short to tell who it is, so it counts as not sure. ([guide](wiki/user/settings-guide.md#voicespeakeridminspeechs)) |
+| `voice.speaker_id.mode` | `"owner_only_acts"` | What other voices get: a chat with no actions and none of your data, or just one line saying it only talks with you. ([guide](wiki/user/settings-guide.md#voicespeakeridmode)) |
+| `voice.speaker_id.model` | `"campplus-en"` | The speaker model: campplus-en (English, the most accurate) or campplus-multi. Changing it means enrolling again. ([guide](wiki/user/settings-guide.md#voicespeakeridmodel)) |
+| `voice.speaker_id.on` | `false` | Voice ID: only your voice can make Kurooto act; others can only chat, with none of your data. Enrol first. ([guide](wiki/user/settings-guide.md#voicespeakeridon)) |
+| `voice.speaker_id.spoken_enrol` | `true` | During enrolment Kurooto says each step aloud. Off: the page shows the steps only. ([guide](wiki/user/settings-guide.md#voicespeakeridspokenenrol)) |
+| `voice.speaker_id.strictness` | `"normal"` | How sure it must be that it's you: relaxed, normal or strict (strict turns you away more often). ([guide](wiki/user/settings-guide.md#voicespeakeridstrictness)) |
+| `voice.speaker_id.tell_guests` | `true` | Once per conversation, tell others they can chat but only you can make Kurooto act. ([guide](wiki/user/settings-guide.md#voicespeakeridtellguests)) |
+| `voice.speaker_id.threshold` | `0.0` | 0: worked out from your own samples when you train. A number from 0.3 to 0.9 overrides it. ([guide](wiki/user/settings-guide.md#voicespeakeridthreshold)) |
 
 ### `voice_notes`
 

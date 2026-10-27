@@ -374,7 +374,7 @@ class Listener:
         mic: Mic,
         vad,
         wake: Wake | None,
-        on_speech: Callable[[bytes, bool, float], None],
+        on_speech: Callable[..., None],  # (sound, woke, seconds, flags): flags is the VAD's 1/0 per FRAME
         on_level: Callable[[bytes], None] | None = None,
         on_start: Callable[[], None] | None = None,
         hold: Callable[[], bool] = lambda: False,
@@ -402,6 +402,7 @@ class Listener:
         frame_ms = FRAME * 1000 / RATE
         pre: collections.deque[bytes] = collections.deque(maxlen=max(1, int(self.PRE_MS / frame_ms)))
         buf: bytearray | None = None
+        flags = bytearray()  # (voice id) speech or not, per frame of buf: speech seconds and the noise floor
         quiet = 0
         wake_buf = bytearray()
         woke_at = 0.0
@@ -414,6 +415,7 @@ class Listener:
                 if self.hold():
                     pre.clear()
                     buf, quiet = None, 0
+                    flags = bytearray()
                     wake_buf.clear()
                     self.vad.reset()
                     continue
@@ -427,6 +429,7 @@ class Listener:
                 p = self.vad.prob(frame)
                 if buf is None:
                     if p >= self.START:
+                        flags = bytearray(len(pre)) + b"\x01"
                         buf = bytearray(b"".join(pre)) + frame
                         pre.clear()
                         quiet = 0
@@ -436,14 +439,15 @@ class Listener:
                         pre.append(frame)
                     continue
                 buf += frame
+                flags.append(1 if p >= self.START else 0)
                 quiet = quiet + 1 if p < self.STOP else 0
                 if quiet * frame_ms >= self.END_MS or len(buf) >= self.MAX_S * RATE * 2:
                     seconds = len(buf) / (RATE * 2)
                     woke = time.monotonic() - woke_at <= seconds + 2
-                    audio = bytes(buf)
-                    buf, quiet = None, 0
+                    audio, cut = bytes(buf), bytes(flags)
+                    buf, quiet, flags = None, 0, bytearray()
                     self.vad.reset()
-                    self.on_speech(audio, woke, seconds)
+                    self.on_speech(audio, woke, seconds, cut)
                     del audio
                     if woke:
                         woke_at = 0.0

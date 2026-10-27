@@ -57,7 +57,7 @@ from kurooto.mind import records
 from kurooto.providers import effort as effort_mod
 from kurooto.providers.agy import Agy
 from kurooto.providers.base import Result, Task, Verdict, short_model
-from kurooto.providers.context import headless_context
+from kurooto.providers.context import guest_context, headless_context
 
 if TYPE_CHECKING:
     from kurooto.app import App
@@ -169,6 +169,18 @@ class Job:
     receipt: str | None = None  # the run receipt
 
 
+def guest_folder(app) -> Path:
+    """(voice id) The working folder of a guest's request: <state>/guest, emptied before each run, so an agent program
+    starts somewhere with nothing of yours in it."""
+    import shutil
+
+    d = app.paths.state / "guest"
+    if d.exists():
+        shutil.rmtree(d, ignore_errors=True)
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
 def _process(pid: int) -> str:
     """A process's pid and start time: a pid alone can belong to another program after a reboot."""
     return f"{pid}:{psutil.Process(pid).create_time():.2f}"
@@ -216,6 +228,8 @@ class Jobs:
             self._db.execute("alter table jobs add column runner text")
         if "text_only" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:
             self._db.execute("alter table jobs add column text_only integer default 0")
+        if "audience" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # (voice id) "guest"
+            self._db.execute("alter table jobs add column audience text default ''")
         if "not_before" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # waits for a reset
             self._db.execute("alter table jobs add column not_before real")
         if "why" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # (calm) the answer's reason
@@ -264,6 +278,7 @@ class Jobs:
         offline: bool = False,
         images: list | None = None,
         scratch: str | None = None,
+        audience: str = "",
     ) -> str:
         """Queue an AI request. background=True: work nobody is waiting for, which waits for the charger when the
         laptop is on battery. text_only=True: the answer is just text (agent programs are told to use no tools).
@@ -275,7 +290,9 @@ class Jobs:
         offline: the internet is down and the caller told you it waits (modules/chat.py): it waits from now.
         images: pictures it looks at (paths): an API brain gets them with the request; the prompt says where they are
         for agent programs, which open them.
-        scratch: the id of the scratch folder it works in (core/scratch.py): it may write there and nowhere else."""
+        scratch: the id of the scratch folder it works in (core/scratch.py): it may write there and nowhere else.
+        audience: "guest" (Voice ID: someone else's voice, core/guest.py): a sealed run with none of your data, no
+        tools, no MCP, an empty working folder and a guest context; "" is you."""
         forced, prompt_clean = effort_mod.strip_forced(prompt)
         jid = "j" + uuid.uuid4().hex[:8]
         lane = lane if lane in LANES else ("bg" if background else "you")
@@ -284,8 +301,8 @@ class Jobs:
         with self._lock:
             self._db.execute(
                 "insert into jobs(id,title,prompt,effort_req,status,reply_to,quiet,created,then_action,then_payload,"
-                "background,text_only,why,lane,brain_req,held,held_until,images,scratch) "
-                "values(?,?,?,?, 'queued',?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "background,text_only,why,lane,brain_req,held,held_until,images,scratch,audience) "
+                "values(?,?,?,?, 'queued',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     jid,
                     (title or prompt_clean.split("\n")[0])[:80],
@@ -305,6 +322,7 @@ class Jobs:
                     time.time() + 120 if offline else None,  # core/helper.py:RETRY_S
                     json.dumps([str(p) for p in images]) if images else None,
                     scratch,
+                    "guest" if audience == "guest" else "",
                 ),
             )
         self.app.events.emit("job_queued", job=jid, chars=len(prompt_clean), lane=lane)
@@ -339,6 +357,30 @@ class Jobs:
     @staticmethod
     def _job(r) -> Job:
         return Job(*r[:9], bool(r[9]), *r[10:14], r[14] or "you", r[15], bool(r[16]), r[17], r[18])
+
+    def audience(self, jid: str | None) -> str:
+        """(voice id) "guest" for a guest's request (core/guest.py), else ""."""
+        if not jid:
+            return ""
+        row = self._read("select audience from jobs where id=?", (str(jid),))
+        return (row[0] if row else "") or ""
+
+    def forget_guest(self, jid: str | None) -> bool:
+        """(voice id) A guest's request once Voice is done waiting for it: stopped if it's still going (nobody hears
+        the answer now), then its words blanked, so they aren't in your request list and nothing (tuning, the gists,
+        the search index) learns from them. Only the row stays, titled "Guest". False for any other request."""
+        if self.audience(jid) != "guest":
+            return False
+        j = self.get(str(jid))
+        if j is not None and j.status in ("queued", "running"):
+            self.cancel(str(jid))
+        with self._lock:
+            self._db.execute(
+                "update jobs set prompt='', result=null, detail=null, then_payload=null "
+                "where id=? and audience='guest' and status not in ('queued','running')",
+                (str(jid),),
+            )
+        return True
 
     def scratch_of(self, jid: str) -> str | None:
         """The scratch folder this request works in (core/scratch.py), or None."""
@@ -573,6 +615,11 @@ class Jobs:
                 )
                 main, fallback = pinned, other or fallback
                 fallbacks = [other] if other is not None else fallbacks
+        guest = self.audience(jid) == "guest"  # (voice id) someone else's voice: a sealed run (core/guest.py)
+        if guest:  # only the AI it was given (the local model with guest_brain: local), never a stand-in
+            if want:  # gone meanwhile: nothing answers (never your main AI instead)
+                main = providers.build(self.app, want)
+            fallbacks, fallback = [], None
         origin = None  # what picked the effort (providers/effort.py); none when it was asked for
         if job.effort_req in ("low", "medium", "high"):
             level = job.effort_req
@@ -587,43 +634,59 @@ class Jobs:
         text_only = bool(text_only)
         from kurooto.core import assembler, scratch, selfdoc  # what's remembered that your message refers to
 
-        sc = scratch.for_job(self.app, jid)
-        sc = sc if sc is not None and not sc.lazy else None  # a change request: it writes in its scratch folder only
-        memory, self.recalled[jid] = assembler.for_request(self.app, job)
-        extra = "\n\n".join(
-            x
-            for x in (memory, selfdoc.for_request(self.app, job.prompt), scratch.context(self.app, sc) if sc else "")
-            if x
-        )
+        if guest:  # (voice id) none of your memory, notes, profile, tools or scratch; an empty folder
+            sc, tools, text_only, pics = None, [], True, None
+            memory, self.recalled[jid] = "", 0
+            extra = ""
+        else:
+            sc = scratch.for_job(self.app, jid)
+            sc = sc if sc is not None and not sc.lazy else None  # a change request: it writes in its scratch folder
+            memory, self.recalled[jid] = assembler.for_request(self.app, job)
+            extra = "\n\n".join(
+                x
+                for x in (
+                    memory,
+                    selfdoc.for_request(self.app, job.prompt),
+                    scratch.context(self.app, sc) if sc else "",
+                )
+                if x
+            )
         task = Task(
             prompt=job.prompt,
             effort=level,
             title=job.title,
-            cwd=sc.work if sc is not None else self.app.workspace,
+            cwd=guest_folder(self.app) if guest else sc.work if sc is not None else self.app.workspace,
             scratch=sc.work if sc is not None else None,
             reads=[sc.src] if sc is not None else [],
             timeout_s=minutes * 60,
-            context=headless_context(self.app, extra),
+            context=guest_context(self.app) if guest else headless_context(self.app, extra),
             tools=[] if text_only else tools,  # text-only work gets no tools (and agent programs no MCP)
-            run_tool=lambda name, args: run_tool(self.app, name, args, tools, job=jid),
+            run_tool=(lambda name, args: "Not allowed.")
+            if guest
+            else (lambda name, args: run_tool(self.app, name, args, tools, job=jid)),
             mcp=None if text_only else mcp_command(),
-            mcp_env={**run_env(self.app.paths), ENV_JOB: jid},  # its tool uses come back marked as its steps
+            # its tool uses come back as steps; a guest's run is marked too, so an agent program with Kurooto's MCP
+            # server set up in its own settings (agy) gets no tools listed and every call refused (core/tools.py)
+            mcp_env={ENV_JOB: jid} if guest else {**run_env(self.app.paths), ENV_JOB: jid},
             text_only=text_only,
             images=[Path(p) for p in json.loads(pics or "[]")],
             on_process=lambda pid: self._mark(jid, proc=_process(pid)),
             stop=stop,
         )
         chain = []
-        for b in (main, *fallbacks):  # the AIs you picked take over on any failure, as before
+        if guest:  # (voice id) the one AI it was given; no stand-ins, no last resort
+            chain = [main] if main is not None else []
+            fallbacks = []
+        for b in (main, *fallbacks) if not guest else ():  # the AIs you picked take over on any failure, as before
             if b is not None and b.id not in {c.id for c in chain}:
                 chain.append(b)
         if not want and fallback is not None and level in (s.get("brain.fallback_first") or []):
             chain = [fallback, *[b for b in chain if b is not fallback]]  # tuned while dreaming (core/tuning.py)
-        last = self._last_resort(main)
+        last = None if guest else self._last_resort(main)
         if last is not None and last.id not in {b.id for b in chain}:
             chain.append(last)
         # none picked: at a limit (brain.fallback_on) the automatic order takes over (providers/fallback.py)
-        auto = [] if chosen else providers.fallback.candidates(self.app, {b.id for b in chain})
+        auto = [] if chosen or guest else providers.fallback.candidates(self.app, {b.id for b in chain})
         chain += auto
         auto_ids = {b.id for b in auto}
         on = providers.fallback.triggers(self.app)
@@ -808,7 +871,7 @@ class Jobs:
                 self._following.discard(job.id)
         with self._lock:
             steps = self.steps.pop(job.id, [])
-        if self.watchers:
+        if self.watchers and self.audience(job.id) != "guest":  # (voice id) nothing learns from a guest's turn
             try:
                 payload = json.loads((then[1] if then else None) or "{}")
             except ValueError:

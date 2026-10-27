@@ -43,7 +43,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
 - [Brain](#brain): 89 settings
-- [Voice and voice notes](#voice-and-voice-notes): 22 settings
+- [Voice and voice notes](#voice-and-voice-notes): 42 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
@@ -5531,6 +5531,158 @@ Another address for the voice-note model; empty is Google's.
 - **When to change it:** Only for a proxy or a compatible server of your own.
 - **Costs and what leaves this computer:** Voice notes go to that address.
 - **Depends on:** Voice notes.
+
+### `voice.speaker_id.on`
+
+Voice ID: only your voice can make Kurooto act; others can only chat, with none of your data. Enrol first.
+
+- **Values:** `true` (each turn is checked against your voice print, on this computer), `false` (any voice is treated as
+  yours, as before). **Default:** off.
+- **When to change it:** Turn it on if other people are ever near the computer while Voice listens. Enrol on the Your
+  voice page first.
+- **Costs and what leaves this computer:** About 20-60 ms of processor per thing said. Your voice print is stored
+  encrypted on this computer, never sent anywhere.
+- **Depends on:** Voice: talk and listen, and an enrolled voice.
+
+### `voice.speaker_id.mode`
+
+What other voices get: a chat with no actions and none of your data, or just one line saying it only talks with you.
+
+- **Values:** `owner_only_acts` (others may chat), `owner_only_at_all` (others hear one line, nothing more).
+  **Default:** `owner_only_acts`.
+- **When to change it:** Pick `owner_only_at_all` if you don't want Kurooto chatting with anyone else at all.
+
+### `voice.speaker_id.gate`
+
+Check who's speaking before writing words out: other people not calling Kurooto are never transcribed.
+
+- **Values:** `true` (others' talk is dropped before transcription), `false` (everything is transcribed, then sorted as
+  in 0.8.8). **Default:** on.
+- **When to change it:** Leave it on: it keeps other people's conversations private and saves the transcription's
+  processor time.
+
+### `voice.speaker_id.guest_brain`
+
+Who answers other voices: your AI (none of your data, no tools) or the model on this computer.
+
+- **Values:** `main` (your AI, only if it can be held to plain text: an API or Claude Code; with agy or Codex the local
+  model answers), `local` (always this computer). **Default:** `main`.
+- **When to change it:** Pick `local` to keep guests' words on this computer.
+- **Depends on:** For `local`, Local AI models with a chat model.
+
+### `voice.speaker_id.guest_per_hour`
+
+At most this many answers to other voices an hour.
+
+- **Values:** A whole number. **Default:** `20`.
+- **When to change it:** Lower it if guests use up your AI's quota.
+
+### `voice.speaker_id.tell_guests`
+
+Once per conversation, tell others they can chat but only you can make Kurooto act.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you'd rather it just chats without saying so.
+
+### `voice.speaker_id.strictness`
+
+How sure it must be that it's you: relaxed, normal or strict (strict turns you away more often).
+
+- **Values:** `relaxed`, `normal`, `strict`. **Default:** `normal`.
+- **When to change it:** Strict if a lot of people are around; relaxed if it keeps asking you again in a noisy room.
+
+### `voice.speaker_id.threshold`
+
+0: worked out from your own samples when you train. A number from 0.3 to 0.9 overrides it.
+
+- **Values:** A number. **Default:** `0.0`.
+- **When to change it:** Leave it at 0 unless the Test step on the Your voice page shows it gets it wrong.
+
+### `voice.speaker_id.margin`
+
+The 'not sure' band just below the threshold. Not sure always counts as not you.
+
+- **Values:** A number. **Default:** `0.05`.
+- **When to change it:** Widen it to be safer; narrow it if you're asked to repeat yourself too often.
+
+### `voice.speaker_id.min_speech_s`
+
+Speech shorter than this is too short to tell who it is, so it counts as not sure.
+
+- **Values:** A number. **Default:** `1.0`.
+- **When to change it:** Raise it if quick one-word sounds get mistaken; lower it if your short answers are often 'not
+  sure'.
+
+### `voice.speaker_id.carry`
+
+A short reply right after a turn it knew was you counts as you (not when the voice is clearly someone else).
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off (or use strict) if guests could answer 'yes' for you.
+
+### `voice.speaker_id.carry_s`
+
+How long after your last recognised turn a short reply may carry it.
+
+- **Values:** A whole number. **Default:** `15`.
+- **When to change it:** Shorten it in a shared room; lengthen it if your quick follow-ups get refused.
+
+### `voice.speaker_id.adapt`
+
+Improve over time: turns it was very sure were you refine your voice print, slowly and with undo.
+
+- **Values:** `false` (default: your voice print stays as trained), `true`. **Default:** off.
+- **When to change it:** Turn it on if your voice changes (a cold, a new mic) and you'd rather it keeps up by itself.
+
+### `voice.speaker_id.adapt_max`
+
+At most this many learned turns are kept in your voice print (the oldest are replaced).
+
+- **Values:** A whole number. **Default:** `40`.
+- **When to change it:** Lower it to keep your voice print closer to the samples you trained with.
+
+### `voice.speaker_id.adapt_per_day`
+
+At most this many learned turns a day.
+
+- **Values:** A whole number. **Default:** `10`.
+- **When to change it:** Lower it to make the voice print change more slowly.
+
+### `voice.speaker_id.model`
+
+The speaker model: campplus-en (English, the most accurate) or campplus-multi. Changing it means enrolling again.
+
+- **Values:** `campplus-en`, `campplus-multi`. **Default:** `campplus-en`.
+- **When to change it:** Pick campplus-multi if you speak to Kurooto mostly in another language.
+
+### `voice.speaker_id.spoken_enrol`
+
+During enrolment Kurooto says each step aloud. Off: the page shows the steps only.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you enrol somewhere you can't have it talk aloud.
+
+### `voice.listen.conversation_mode`
+
+While another voice is here, Kurooto stays out of people talking: only its name said to it opens a talk.
+
+- **Values:** `true` (default with Voice ID), `false` (the usual gate). **Default:** on.
+- **When to change it:** Leave it on so it doesn't join your conversations with other people; nothing said then is kept.
+- **Depends on:** Voice ID (it knows which voice is yours).
+
+### `voice.listen.conversation_s`
+
+Conversation mode lasts this many seconds after the last other voice.
+
+- **Values:** A whole number. **Default:** `60`.
+- **When to change it:** Lengthen it if Kurooto joins in too soon after the other person stops talking.
+
+### `voice.listen.conversation_follow_s`
+
+In conversation mode, a reply to what Kurooto just said counts only this soon after it.
+
+- **Values:** A whole number. **Default:** `4`.
+- **When to change it:** Lengthen it if your replies to Kurooto in a conversation get ignored.
 
 ## Privacy and what it keeps
 
