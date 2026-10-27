@@ -209,6 +209,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `calls.today` | `true` | the Android app's Today screen and its copy of your alarm, sealed for each phone (today.py) |
 | `calls.turn_brain` | `"gemini"` | answers turn-by-turn calls here: "gemini" (your key) or "local" (Local AI models) |
 | `calls.views` | `false` | Systems and the Notes map on the Android app (notes' titles, features' health; views.py) |
+| `calls.views_brain` | `true` | the Brain on the app's Views (with calls.views and Brain on), sent only while watched |
 | `calls.views_links` | `20000` | the most links on it (a book's "Seen in" links go first) |
 | `calls.views_notes` | `5000` | most notes on the phone's Notes map (best linked first); lower it on a slow phone |
 | `calls.voice` | `""` | a Gemini Live voice name (e.g. "Kore"); empty = Google's default |
@@ -647,6 +648,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.backfill.study` | `true` | read the study tracker's time per day (for your real pace in week plans) |
 | `mind.beliefs.on` | `true` | every belief keeps its source (said, saw, inferred, imagined) and a confidence |
 | `mind.budget.on` | `true` | the body budget: its variables, setpoints and drive |
+| `mind.console.on` | `true` | the Brain console: the dashboard page and the phone's Brain view that read what Brain keeps |
 | `mind.feelings.empathy` | `true` | concern for what it looks after (deadlines, projects, its body...): notices, gentler |
 | `mind.feelings.express` | `true` | it may say one about an item, through the gate's lints, at most 3 unprompted a week |
 | `mind.feelings.mood` | `true` | its own mood shapes it: low, it does less unasked, asks first, says less; high, bolder |

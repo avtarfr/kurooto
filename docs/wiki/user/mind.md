@@ -577,6 +577,38 @@ hidden, it isn't even loaded.
 - **The board** (`look.board`): `three` puts NOTES, SYSTEMS and BRAIN on top with STATUS and TERMINAL below; `classic` is the board
   from before 0.8.3, with STATUS down the left.
 
+## The Brain console (dashboard and phone)
+
+0.8.10. The dashboard's **Brain console** page (Alt+O, or **console** in the pages row) shows everything Brain keeps, read-only, in
+ten tabs and one search box. It's live: it asks your computer again every few seconds while it's in sight.
+
+- **Now:** what's in the spotlight (an item about you shows as "about you: kept private"), the latest decisions, the parts that
+  wrote the most in the last day, today's limits, and the senses as counts.
+- **Timeline:** every record in the mind log, newest first, grouped by day, each with the part that wrote it (its colour is its
+  region's). Filter by part (or **What it saw**: Kurooto's own events mirrored in) and by day; **Older** pages back. Click a row
+  for its fields; a decision opens on the right.
+- **Decisions:** what it decided on its own before acting (a message it started, a request it queued, a proposal at night).
+  Open one for **why** (the reason its rules gave, the AI's words when an AI chose), **what it weighed** (each choice and its score),
+  **what came of it**, and **evidence**: what it has learned about that kind of action (its class, trust, learned value, recent
+  misses), what the log holds just before and after it, the journal lines that cite it, and its earlier decisions of the same kind.
+- **Parts:** each region's parts with their switches and every setting (with what it does), next to what that part is doing:
+  what it holds now, its last record and how long ago, how many records it wrote in the last day. On the dashboard the on/off
+  settings are switches (the same as Settings); a part that's off says it's doing nothing.
+- **Beliefs** (with their source and confidence, and how each kind of source has fared), **Experiments** (the lab's projects,
+  self-improvement's challengers, play), **Skills**, **Plans** (milestones and the chance of missing each from the last plan),
+  **Model of you** (each row with its source and evidence), **Memory** (what it forgot: how often and how many, never what;
+  stops and crashes; today's limits; promises; the journal's and life story's headings, never their sentences).
+- **Search** looks through the log's kinds and fields, beliefs, the model of you, skills, plans, lab projects and every Brain
+  setting.
+
+Plain facts only: nothing named for money or health is shown (a belief or a row of the model of you that names either is left
+out and counted), and the senses are counts. Off: `mind.console.on`.
+
+**On the phone** (Android, with **Show on the phone** on, `calls.views`): the app's Views gets the same console as a **Brain** choice,
+one column, a decision opening as a sheet. Your computer sends it only while you watch it (`calls.views_brain`, on by default;
+nothing goes until you open it), sealed for your phone like Systems; with your computer asleep the last copy shows with "as of".
+The phone's copy holds the newest 240 records and the evidence of the newest 25 decisions; older ones stay on your computer.
+
 ## Questions
 
 **Does Brain make Kurooto do more on its own?** Not by default. The log only records. The parts that could act

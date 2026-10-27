@@ -52,6 +52,7 @@
 //     can open neither), and hands it over in parts ("view-put"); this keeps only the newest of each, and a phone
 //     fetches its own from /view. Systems is sent only while a phone watches it: the app says so every ~20 s
 //     (/view/watch), which this passes to your computer. Turned off, your computer says "off" and the copies go.
+//     The Brain (0.8.10, kind "brain") goes the same way, also only while watched (/view/watch?kind=brain).
 //   - When Gemini Live won't take a call (web/fallback.js): the call page asks for a token for the next Live model
 //     (the list your computer pushed), then goes turn by turn (/turn: each turn to your computer's AI, or to a Gemini
 //     text model with your key here while the computer is off, with the same instructions and tools), then to
@@ -244,7 +245,7 @@ const SEAL_KEY = /^B[A-Za-z0-9_-]{86}$/; // a phone's P-256 public key, 65 bytes
 const TODAY_TOKEN = /^s1\.B[A-Za-z0-9_-]{86}\.[A-Za-z0-9_-]{40,110000}$/; // the Today list sealed for one phone
 // the phone's views (0.7.0): which, a part's most (bytes), the most parts, a view's key sealed for one phone; a
 // phone's "watching Systems" reaches your computer at most this often
-const VIEW_KINDS = ['notes', 'systems'];
+const VIEW_KINDS = ['notes', 'systems', 'brain']; // brain (0.8.10): the Brain console's copy, sent while watched
 const VIEW_PART = 96 * 1024, VIEW_PARTS = 24;
 const VIEW_KEY = /^s1\.B[A-Za-z0-9_-]{86}\.[A-Za-z0-9_-]{40,600}$/;
 const WATCH_MS = 5e3;
@@ -408,16 +409,18 @@ export class Line {
         const v = views[kind], key = v && v.keys ? v.keys[who.id] : null;
         return json({ view: key ? { rev: v.rev, at: v.at, key, data: await this.viewData(kind, v) } : null, off: !!views.off, computer: this.online() ? 'online' : 'offline' });
       }
-      if (p === '/view/watch' && req.method === 'POST') { // the app has Systems open: your computer sends it live
+      if (p === '/view/watch' && req.method === 'POST') { // the app has Systems (or ?kind=brain, the Brain) open: your computer sends it live
         try { await req.arrayBuffer(); } catch { /* no body */ }
+        const watchKind = url.searchParams.get('kind') === 'brain' ? 'brain' : 'systems';
         const views = (await this.store.get('views')) || {};
         if (((await this.store.get('devices')) || {})[who.id]?.kind !== 'android') return json({ error: 'only the Android app shows these' }, 403);
         if (views.off) return json({ ok: false, off: true, computer: this.online() ? 'online' : 'offline' });
         this.watched = this.watched || {};
         let told = false;
-        if (Date.now() - (this.watched[who.id] || 0) >= WATCH_MS) {
-          told = this.tell({ type: 'event', name: 'views_watch', device: who.id, kind: 'systems' }); // never queued: live or nothing
-          if (told) this.watched[who.id] = Date.now();
+        const watchKey = watchKind === 'systems' ? who.id : `${who.id}:${watchKind}`;
+        if (Date.now() - (this.watched[watchKey] || 0) >= WATCH_MS) {
+          told = this.tell({ type: 'event', name: 'views_watch', device: who.id, kind: watchKind }); // never queued: live or nothing
+          if (told) this.watched[watchKey] = Date.now();
         }
         return json({ ok: true, told, computer: this.online() ? 'online' : 'offline' });
       }

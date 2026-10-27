@@ -26,7 +26,7 @@ The user's side of this is in [../user/calls.md](../user/calls.md) and [../user/
 | `modules/calls/phone.py` | `PhoneApp`: questions and approvals as phone notifications with answer buttons |
 | `modules/calls/chat.py` | `PhoneChat`: the phone app as a chat channel (0.5.16), the `chat` notify channel, files for it as links and files shared from the phone (0.5.18) |
 | `modules/calls/today.py` | `PhoneToday`: the Android app's Today list, sealed for each phone, and Done / +1 tapped on it (0.6.0) |
-| `modules/calls/views.py` | `PhoneViews`, `trim_notes`: Systems and the Notes map for the Android app, sealed for each phone; Systems live while watched (0.7.0) |
+| `modules/calls/views.py` | `PhoneViews`, `trim_notes`: Systems and the Notes map for the Android app, sealed for each phone; Systems live while watched (0.7.0); the Brain console's copy, kind `brain`, only while watched (0.8.10) |
 | `modules/calls/review.py` | the post-call look back and `/lessons` (0.5.8) |
 | `modules/calls/tools.py` | the `Tool` dataclass (shared with `core/tools.py`) and notes helpers |
 | `data/worker/src/worker.js` | the Worker: `fetch`, `scheduled`, Durable Object `class Line` |
@@ -552,6 +552,15 @@ told, computer}` (`{ok: false, off: true}` when off; 403 for a web device). `Cal
 loop: a Systems copy every `SYSTEMS_S` (4) until `until` passes, the connection drops or it's turned off (one
 `phone_views_watching` event per stretch). The phones' keys are asked for at most every `KEYS_S` (60) there; `revoke`
 clears that cache.
+
+**The Brain (0.8.10).** Kind `brain` (`VIEW_KINDS` in the Worker): `PhoneViews.brain_snapshot()` is
+`mind/console.py:snapshot(app, phone=True)` (see [mind.md](mind.md#0810-the-brain-console-mindconsolepy-get-apibrainconsole)).
+Sent only while watched: the app posts `/view/watch?kind=brain`; the Worker passes `views_watch` with `kind: "brain"`, rate-limited
+per phone and kind; `PhoneViews.watch(m)` hands that to `watch_brain`, which runs `_watching_brain` (a copy every `BRAIN_S` 6 s
+until `WATCH_S` passes without a word; event `phone_views_watching` with `view: "brain"`). With `calls.views_brain` off,
+`mind.console.on` off or Brain off, one copy `{"kind": "brain", "off": true, "why"}` replaces the kept one, at the next watch or at
+once on the `setting_changed` / `module_disabled` event (`brain_event`, from `on_event`); then nothing more goes. The phone fetches it
+with `/view?kind=brain` and shows it with `views/brain.html` (`KurootoView.take`, as phone.html). Never pushed with the state push.
 
 **The Worker.** `Line.viewPut`: part 0 (with `size`, `keys`: only paired Android devices, `VIEW_KEY` tokens) starts a
 pending copy (`views.pend[kind]`, replacing one still coming in); a `rev` not above the kept one's is refused (`stale`);

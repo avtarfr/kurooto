@@ -288,6 +288,9 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   without a binding, class fields; `Object.fromEntries` and `.at()` avoided too), because Android 6's WebView may be
   that old: `tests/unit/test_views.py` builds each with esbuild for `chrome58` and for `esnext` and wants the same
   output. `phone.css` avoids `color-mix`.
+- `views/brainconsole.js` + `brainconsole.css` + `brain.html` (0.8.10): the Brain console, one IIFE exposing
+  `BrainConsole.mount` (the dashboard's Brain console page loads both on first open) and, on `brain.html`, `KurootoView.take`
+  for the phone. It doesn't use common.js. See [mind.md](mind.md#0810-the-brain-console-mindconsolepy-get-apibrainconsole).
 - Changing them changes both: check the dashboard (both designs and layouts) and `phone.html` (a sample snapshot,
   light and dark) in a browser.
 

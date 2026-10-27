@@ -23,6 +23,14 @@ SYSTEMS_S until WATCH_S pass without a word. With this computer asleep, the phon
 
 Off (calls.views = false, the dashboard's Phone card): one "view-put {off}" and the call line drops its copies. The
 iPhone (web) app gets nothing: it has no key of its own.
+
+The Brain (0.8.10, calls.views_brain, with calls.views and Brain on): the Brain console's copy (mind/console.py
+snapshot: decisions with their reasons and evidence, the timeline, each part's switches and what it's doing,
+experiments, beliefs, skills, plans, the model of you, senses as counts, what it forgot, stops and limits, the journal
+and story headings; nothing named for money or health), sealed the same way as kind "brain". Sent only while a phone
+watches it (the app's /view/watch?kind=brain, every ~20 s), every BRAIN_S; the call line keeps the last copy for when
+this computer is asleep. Turned off (calls.views_brain, mind.console.on or Brain), the next watch gets an "off" copy in
+its place, so the phone keeps nothing of the Brain.
 """
 
 from __future__ import annotations
@@ -36,12 +44,21 @@ import time
 from collections import Counter
 from typing import TYPE_CHECKING
 
+from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock
 from kurooto.core.state import jload, jsave
 from kurooto.modules.calls import line
 
 if TYPE_CHECKING:
     from kurooto.modules.calls import Calls
+
+register_defaults(
+    "calls",
+    {
+        "views_brain": True,  # the Brain on the app's Views (with calls.views and Brain on), sent only while watched
+    },
+)
+BRAIN_S = 6  # a fresh Brain copy this often while a phone watches it (it reads the mind log: a little slower)
 
 KINDS = ("notes", "systems")
 NOTES_MAX = 5000  # notes in the phone's copy of the map by default (calls.views_notes; the best linked kept)
@@ -335,6 +352,8 @@ class PhoneViews:
     def watch(self, m: dict | None = None) -> bool:
         """A phone has Systems open (the call line passes its "views_watch" on): fresh copies every SYSTEMS_S until
         WATCH_S pass without another word. Called from a thread. False when off or not connected."""
+        if (m or {}).get("kind") == "brain":  # the Brain view (0.8.10): its own copies, below
+            return self.watch_brain()
         c = self.calls.connector
         if not self.on() or c.loop is None or c.ws is None:
             return False
@@ -369,7 +388,98 @@ class PhoneViews:
 
     def on_event(self, rec: dict) -> None:
         """calls.views changed (the Phone card, Settings): the state push soon says it to the call line."""
+        self.brain_event(rec)
         if rec.get("kind") == "setting_changed" and str(rec.get("key") or "") == "calls.views":
             if not self.on():
                 self.until = 0.0
             self.calls.connector.poke()
+
+    # ---------------------------------------------------------------------------------- the Brain (0.8.10)
+    brain_until = 0.0  # a phone watches the Brain until then
+    brain_looping = False
+    brain_sent_off = False  # an "off" copy went in place of the last one
+
+    def brain_on(self) -> bool:
+        """calls.views and calls.views_brain on, Brain on, and its console's switch (mind.console.on) on."""
+        from kurooto import mind
+        from kurooto.mind import console
+
+        return (
+            self.on() and self.calls.setting("views_brain") is not False and mind.on(self.app) and console.on(self.app)
+        )
+
+    def brain_snapshot(self) -> dict:
+        """The Brain console's copy for the phone (mind/console.py): plain facts, decisions with their evidence."""
+        from kurooto.mind import console
+
+        return console.snapshot(self.app, phone=True)
+
+    def brain_off_snapshot(self) -> dict:
+        from kurooto import mind
+
+        if not mind.on(self.app):
+            why = "Brain is off on your computer (Features → Brain)."
+        elif self.calls.setting("views_brain") is False:
+            why = "The Brain on the phone is off on your computer (Settings → Phone calls → views_brain)."
+        else:
+            why = "The Brain console is off on your computer (mind.console.on)."
+        return {"v": 1, "kind": "brain", "off": True, "why": why}
+
+    def watch_brain(self) -> bool:
+        """A phone has the Brain open: fresh copies every BRAIN_S until WATCH_S pass without another word; turned
+        off, one "off" copy replaces what the call line kept. Called from a thread."""
+        c = self.calls.connector
+        if not self.on() or c.loop is None or not c.loop.is_running() or c.ws is None:
+            return False
+        started = time.time() >= self.brain_until
+        self.brain_until = time.time() + WATCH_S
+        if not self.brain_looping:
+            self.brain_looping = True
+            asyncio.run_coroutine_threadsafe(self._watching_brain(c), c.loop)
+            if started:
+                self.app.events.emit("phone_views_watching", view="brain")
+        return True
+
+    async def _watching_brain(self, c) -> None:
+        try:
+            while self.on() and time.time() < self.brain_until and c.ws is not None:
+                t0 = time.time()
+                try:
+                    keys = await self._phones(c)
+                    if not keys:
+                        break
+                    if not self.brain_on():
+                        if not self.brain_sent_off:
+                            res = await self.put(c, "brain", self.brain_off_snapshot(), keys)
+                            self.brain_sent_off = not res.get("error")
+                        break
+                    snap = await asyncio.to_thread(self.brain_snapshot)
+                    res = await self.put(c, "brain", snap, keys)
+                    if res.get("error"):
+                        if res["error"] != "unknown op":
+                            self.app.events.emit("phone_views_failed", view="brain", error=str(res["error"])[:200])
+                        break
+                    self.brain_sent_off = False
+                except (ConnectionError, TimeoutError):
+                    break
+                await asyncio.sleep(max(0.5, BRAIN_S - (time.time() - t0)))
+        finally:
+            self.brain_looping = False
+
+    def brain_event(self, rec: dict) -> None:
+        """calls.views_brain or mind.console.on turned off, or Brain turned off: the phone's copy is replaced by an
+        "off" one now, if the line is there (otherwise at the next watch)."""
+        key = str(rec.get("key") or "")
+        off = (rec.get("kind") == "setting_changed" and key in ("calls.views_brain", "mind.console.on")) or (
+            rec.get("kind") == "module_disabled" and rec.get("module") == "mind"
+        )
+        if not off or self.brain_on() or not self.on():
+            return
+        self.brain_until = 0.0
+        c = self.calls.connector
+        if c.loop is None or not c.loop.is_running() or c.ws is None or self.brain_looping:
+            return
+        self.brain_sent_off = False
+        self.brain_looping = True
+        self.brain_until = time.time() + 1
+        asyncio.run_coroutine_threadsafe(self._watching_brain(c), c.loop)
