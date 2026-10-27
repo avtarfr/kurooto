@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.8.10 (unreleased)
+
+The phone app, rebuilt around chat (the Rail design), and the remaining requested features.
+
+- **The phone app opens on Chat.** Your chats sit on a rail of shapes down the left; each keeps its whole conversation
+  with your AI for as long as it exists (Kurooto's own chat and Telegram keep the short memory). Drag the rail open for
+  search and pinned, recent and archived chats. Swipe or hold a message to reply, copy, share, pin, edit (15 minutes) or
+  delete it; send photos, files and voice notes and see Kurooto's right in the chat; type `/` for commands; call from the
+  top bar (the only call button now). One notification per chat, with Reply and Mark read. Switches:
+  `calls.chat_sessions`, `calls.chat_files_inline`, `calls.chat_edit`, `calls.chat_titles`.
+- **Today, Alarms, Views, Settings** are panes in a floating bar that folds into Chat's rail and stretches back out as
+  you move; back goes to Chat. Today, Alarms and Settings are grids of cards; every setting the app has is in Settings,
+  searchable, and a long press opens its guide entry. Apricot and plum join Material You in Look.
+- **The being on the phone:** the dashboard's own body of Kurooto in Views (Being · Brain · Systems · Notes), turned with
+  a finger, pinched to zoom, every part focusable; its switches and settings work from the phone, sealed and checked by
+  your computer (`calls.views_being`).
+- **The being, in faint organic colour** on the dashboard too, and its eyes look at you when Face presence sees you.
+- **Brain console** (Alt+O, and Brain in the app's Views): what the Brain decided and why, its timeline, search, each
+  part's switches next to what it's doing, its beliefs, plans and experiments (`mind.console.on`, `calls.views_brain`).
+- **A guide to every setting** (765 entries, on the wiki, the dashboard and in the app), with a tooltip for each one.
+- **Uninstall what a feature brought:** Kurooto keeps a receipt of what it installs; `kurooto installed`,
+  `kurooto remove`, and turning a feature off offers to remove what it brought, with its size, never without your tap
+  and never what was there before Kurooto (`uninstall.offer`, `uninstall.with_programs`).
+- **Voice ID** (off): Kurooto learns your voice in a guided enrolment, training and test, all on this computer. Only your
+  voice can make it act; anyone else can chat with it, with none of your data and no tools, and what they say isn't
+  kept. Other people's talk isn't even transcribed, and while you talk with someone it stays out unless named.
+- **Face presence** (off): with OpenCV's face models on this computer, Kurooto learns your face (a guided enrolment,
+  training and live test), greets you by voice when you sit down after a while and listens for your reply; it can hold
+  calls while you're away. No picture is ever kept; your face is an encrypted template, forgotten with one command.
+- The remaining older phone screens (questions, quick note, share, places) are Compose sheets in the same style.
+- For developers: `KUROOTO_NO_DESKTOP=1` keeps a scratch run off the real desktop.
+
 ## 0.8.9 (2026-10-27)
 
 0.8.6, 0.8.7 and 0.8.8 were never published on their own; their changes come with this release (below 0.8.9's own).
