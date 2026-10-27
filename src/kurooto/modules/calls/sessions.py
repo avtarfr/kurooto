@@ -119,6 +119,7 @@ class Sessions:
         """The list (and the commands) to the call line, which keeps it and tells the phones (quiet: only the ones
         connected straight to it, no push notification: a read mark)."""
         m = self.message()
+        self.calls.chat.live("sessions")  # the dashboard's Chat page asks for the list again
 
         def done(res):
             if res and not res.get("error"):

@@ -606,6 +606,13 @@ it on), `chat_files_inline`, `chat_edit`. Each stops at once and leaves the rest
 results and other messages also show in the chat, besides Telegram. Without Telegram they always do. Questions and
 approvals stay under **Waiting for you**, with their answer buttons.
 
+**The same chat on your computer's dashboard (0.8.14).** The dashboard's **Chat** page (Alt+H) shows these chats
+and messages live, with Kurooto's buttons and what's waiting for you, and has a box to write in the open chat. What you
+write there is handled exactly as if you'd typed it here and shows on your phones as yours; a button or an answer there
+is the same as a tap here, so it settles everywhere. A chat you read here shows as read on the dashboard; the app keeps
+its own unread badges, so reading on the dashboard doesn't clear them. What you send on Telegram or say to Voice isn't
+kept in this chat, so it isn't on that page either. See [the dashboard's Chat page](dashboard.md#chat-alth).
+
 **What you see under your message:**
 
 | Under your message | Means |

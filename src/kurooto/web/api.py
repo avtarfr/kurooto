@@ -264,6 +264,10 @@ class Api:
 
         if path in tools_api.GETS:
             return tools_api.get(self.app, path, q)
+        from kurooto.web import chat_api  # the Chat page: the phone app's chat on the dashboard (look.chat_page)
+
+        if path in chat_api.GETS:
+            return chat_api.get(self.app, path, q)
         if path == "addons":  # the add-ons by link, their cards and what's kept for Undo (core/addons.py)
             return 200, self._addons()
         if path == "body":  # Brain's body map for the dashboard (mind/stimulation.py, 0.8.8): plain numbers only
@@ -467,6 +471,10 @@ class Api:
 
         if path in tools_api.POSTS:
             return tools_api.post(self.app, path, b)
+        from kurooto.web import chat_api
+
+        if path in chat_api.POSTS:
+            return chat_api.post(self.app, path, b)
         if path.startswith("addons/"):  # Features → Add-ons by link, `kurooto addons` (core/addons.py)
             return self._addons_post(path[len("addons/") :], b)
         if path.startswith("brain/claude-accounts/"):  # the setup page's AI step, Settings → Claude accounts

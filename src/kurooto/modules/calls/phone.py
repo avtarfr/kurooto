@@ -169,6 +169,7 @@ class PhoneApp:
             d["items"] = [i for i in d["items"] if self._open(i, t)] + [it]
             rev = self._save(d)
         self._push(it, rev)
+        self.calls.chat.live("waiting")  # the dashboard's Chat page lists what's open too
         self.app.events.emit("phone_message", kind=msg.kind)
         return it["id"]
 
@@ -226,6 +227,7 @@ class PhoneApp:
             d["items"] = [i for i in d["items"] if i["id"] not in gone]
             rev = self._save(d)
         self.calls.connector.admin_later("notify-clear", ids=gone, rev=rev)
+        self.calls.chat.live("waiting")
         return len(gone)
 
     # ------------------------------------------------------------------------------------- answers
@@ -248,6 +250,11 @@ class PhoneApp:
         if why:
             self.app.events.emit("phone_answer_refused", why=why)
             return 409, {"ok": False, "note": why}
+        return self.act(item_id, fields)
+
+    def act(self, item_id: str, fields: dict) -> tuple[int, dict]:
+        """Do an answer to one open item: from a phone (answer, once its seal and nonce are checked) or from the
+        dashboard's Chat page (web/chat_api.py, behind the dashboard's key). The same path, so it settles everywhere."""
         d = self._load()
         it = next((i for i in d["items"] if i["id"] == item_id), None)
         if not it or not self._open(it, time.time()):

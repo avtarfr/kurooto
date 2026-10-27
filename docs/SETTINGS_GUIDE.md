@@ -628,6 +628,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `look.being_theme` | `"void"` | The being's colours: white light on black, or the page's palette. ([guide](wiki/user/settings-guide.md#lookbeingtheme)) |
 | `look.board` | `"being"` | The board: Kurooto as one living body (being), three panes on top (three), or STATUS on the left (classic). ([guide](wiki/user/settings-guide.md#lookboard)) |
 | `look.brain_monitor` | `"shown"` | BRAIN's part monitor: shown beside the model, or in a drawer behind a tab. ([guide](wiki/user/settings-guide.md#lookbrainmonitor)) |
+| `look.chat_page` | `true` | The Chat page (Alt+H): the phone app's chat on the dashboard, live, with its buttons, and a box to write in it. ([guide](wiki/user/settings-guide.md#lookchatpage)) |
 | `look.design` | `"new"` | The dashboard's design: new (sans-serif, rounded panes) or classic (the monospace look of 0.5.18). ([guide](wiki/user/settings-guide.md#lookdesign)) |
 | `look.hidden_features` | `[]` | Features hidden from the Features list (they still run if they're on). ([guide](wiki/user/settings-guide.md#lookhiddenfeatures)) |
 | `look.layout` | `"dense"` | Dense (everything on one full-screen board) or roomy (bigger panes and type). ([guide](wiki/user/settings-guide.md#looklayout)) |

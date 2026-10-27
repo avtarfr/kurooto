@@ -61,7 +61,8 @@ Non-API routes (`Handler.do_GET`): `/` (the wizard until the setting `setup.done
 (SSE; the token comes as `?t=` because `EventSource` can't send headers).
 
 API routes: `Handler` strips `/api/` and calls `web/api.py:Api.get(path, q)` or `Api.post(path, body)`, which both
-return `(status, dict)`. Each first delegates paths listed in `web/tools_api.py:GETS` / `POSTS`. Query strings are
+return `(status, dict)`. Each first delegates paths listed in `web/tools_api.py:GETS` / `POSTS`, then
+`web/chat_api.py:GETS` / `POSTS` (the Chat page, below). Query strings are
 flattened to their first value; a non-dict JSON body becomes `{}`. Anything unmatched is 404.
 
 GET (in `Api.get`): `tools`, `job?id=`, `usage?days=` (tools_api); `addons` (the add-ons by link: `linked` rows with their card and text, `kept` for Undo, `official`: the official list with what you have of each), `jobs`, `term`, `health`, `sync/status`,
@@ -89,6 +90,7 @@ POST (in `Api.post`):
 | terminals | `term/<name>/attach`, `input`, `resize`, `leave`, `restart` (403 when Terminals is off) |
 | voice | `voice/say` (`{text}`), `voice/mute` (`{on}`; none flips), `voice/stop`, `voice/shape` (`{text}` -> `{samples, rate, seconds, source}`, works with Voice off); [voice.md](voice.md) |
 | face | `face/enrol/start` and `face/test/start` (`{cid}`; the guarded `camera.open`), `face/enrol/step`, `enrol/pause`, `enrol/discard`, `train`, `test/mark`, `test/stop`, `retrain`, `strictness`, `learn/undo`, `learn/forget`, `forget`, `pause`, `install-from`; `GET face` (status) and `GET face/frame?s=` (a JPEG made in memory, `no-store`, 404 without a session, in `web/server.py`); [face.md](face.md) |
+| chat page | `chat/send` (`{session, text, reply?}`), `chat/button` (`{msg, n}`), `chat/answer` (`{item, answer \| button \| dismiss}`), `chat/op` (`{op, ...}`: `read`, `session.new/rename/delete/pin`, `msg.edit/delete/pin`); `GET chat`, `GET chat/thread?session=` ([below](#the-chat-page-0814)) |
 | live stream | `stream/seen` (`{cid, visible}`: the dashboard is in sight or not, `Live.seen`; `ok: false` for no such page, 400 for a cid that isn't a number) |
 | other | `research/save`, `research/preview`, `research/run`, `classpack/import`, `mail/confidential/settle`, `books/add` |
 
@@ -142,7 +144,11 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   0% with every page hidden. `Sampler.processes` (`core/vitals.py`) reads memory, cpu times and start time for every
   process and the name and thread count only for the rows it lists (`as_dict(["name", "num_threads"])`), which halves
   it. `jobs.recent()` uses the `jobs_created` index (it sorted the whole table, 20 ms with 900 jobs).
-- Message types the page handles (`static/home.js:connect`): `graph`, `body`, `event`, `hello`, `pty`.
+- The Chat page (0.8.14) gets `{"t": "chat", "kind": "msg", "msg", "update"?}` (a message added or changed, as the
+  phones get it: no `_data`, no `pushed`), `"sessions"` and `"waiting"` (ask again) and `"status"` (`session`, `state`
+  working/idle), from `PhoneChat.live` ([below](#the-chat-page-0814)); nothing with `look.chat_page` off.
+- Message types the page handles (`static/home.js:connect`): `graph`, `body`, `event`, `hello`, `pty`, `voice`,
+  `face`, `senses`, `chat`.
 - NOTES names (0.5.19): the pure part of `views/notesmap.js` (`home.js` before 0.7.0) between `// -- the pure part` and `// -- end of the pure part`
   (`noteRole`, `hoodOf`, `assignHoods`, `rankLabels`, `regionSpots`; no DOM, so `tests/unit/test_notes_labels.py`
   runs it in node) gives each note a role (`course`, `hub`, `book` for `<subject>/books/<book>`, `note`), a
@@ -204,9 +210,9 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
 - Plain scripts with `"use strict"`, no bundler, no framework, no modules. Each page has its own `TOKEN`, `$` and
   `api(path, body)` helper (GET without a body, JSON POST with one). `tests/unit/test_static_js.py` runs
   `node --check` on every file.
-- Dashboard tabs (`TABS` in `home.js`): today, activity, jobs, schedule, features, phone, research, about, settings,
-  and terminals. Alt+letter shortcuts in `PKEY` (Alt+T Today, Alt+S Settings). Layouts `dense` and `roomy`
-  (`look.layout`).
+- Dashboard tabs (`TABS` in `home.js`): today, chat, activity, jobs, schedule, features, phone, research, about,
+  settings, and terminals. Alt+letter shortcuts in `PKEY` (Alt+T Today, Alt+H Chat, Alt+S Settings). Layouts `dense`
+  and `roomy` (`look.layout`).
 - Ctrl+K (0.5.8): markup `#cmdk*` in `home.html`, logic in `home.js` (`VERBS`: ask, journal, note, remind, due, alarm,
   find, open, study; `cmdOpen`, `cmdGo`, ...). Every verb except `find`/`open`/`study` calls `POST /api/act`, the same
   path as the Today page (`study` calls `setStudy`). Note: `core/palette.py` is the colour palette and
@@ -543,6 +549,37 @@ never passes it, is as before (`tests/unit/test_being.py`):
   `setting`, `feature`, `mode`, and `inset(top, bottom)`: the CSS pixels under the app's floating bars, so
   `cam.setViewOffset` centres the organ between them. `/state` also carries `rev` (the list's count, with the copy's
   freshness) every 200 ms when it changed; the app then reads `organState`.
+
+## The Chat page (0.8.14)
+
+The phone app's chat on the dashboard (`look.chat_page`, on by default; Alt+H, Ctrl+K `open chat`, the panes menu).
+Nothing of its own is stored: it reads and acts on `modules/calls/chat.py:PhoneChat`, `sessions.py:Sessions` and
+`phone.py:PhoneApp` ([calls-and-phone.md](calls-and-phone.md#the-chat-on-the-dashboard-0814)).
+
+- `web/chat_api.py`: `GET chat` returns `{ok, on, name, sessions, working, waiting, switches}`; `sessions` is
+  `Sessions.listing()` with `unread` (Kurooto's undeleted messages after the session's `read` id; all of them when
+  it's empty or no longer kept), `working` the sessions with an AI request running (`PhoneChat.working`), `waiting`
+  `PhoneApp.inbox()["items"]` (the app's Waiting for you). `GET chat/thread?session=` returns `PhoneChat.thread(sid)`
+  (oldest first, `public()` copies). `POST chat/send` is `PhoneChat.typed` (a new 16-hex id, then the same `_yours`
+  the app's `take` uses: kept, pushed to the phones as `from: "you"`, `Incoming(via="app", message_id="app:<id>",
+  session=...)`, so answers and jobs come back to that chat); `chat/button` is `PhoneChat.press` (= the app's button
+  by number, `App.callback`); `chat/answer` is `PhoneApp.act` (what `answer` does after the seal and nonce checks: the
+  same `ask.answer(..., via="app")` / button / reply / dismiss, so the item leaves the phones with `notify-clear`);
+  `chat/op` is `PhoneChat.change` (the session and message ops only; the being's ops stay the paired phone's).
+- With `look.chat_page` off every route answers 403 `{off: true, note}`; with Phone calls off, 200 `{on: false,
+  note}`. Everything is behind the server's Host, same-user, key and Origin checks like the rest of `/api`.
+- Live: `PhoneChat.live(kind, **fields)` pushes `{"t": "chat", ...}` through `app.live` (no event log entry): from
+  `_add` and `_update` (`msg`), `drop_session` and `Sessions.push` (`sessions`), `status` (`status`), and
+  `PhoneApp.send` / `_remove` (`waiting`). `static/chat.js` (loaded on first open, `window.CHATPAGE.mount/live`)
+  upserts a message of the open chat by id and asks `GET chat` again 300 ms after anything else.
+- Read marks: opening a chat (or a new message arriving while it's open and in sight) posts `chat/op read` with the
+  newest id, as the app does; that moves `Sessions.read` and goes to the line quietly. The Android app keeps its own
+  unread counts (its local `ln` marks) and doesn't take the computer's, so reading on the dashboard doesn't clear the
+  phone's badges; reading on the phone does clear the dashboard's.
+- `home.js` keeps only the page entry (`PKEY`/`TABS`/`DLABEL`, `renderChat`, `setChatPage` for the switch) and the
+  `m.t === "chat"` line in `connect`; the rest is `chat.js`. Text is escaped first, then only `code`, bold and https
+  links are marked up.
+- Tests: `tests/unit/test_chat_page.py`.
 
 ## Threaded jobs (0.8.6)
 
