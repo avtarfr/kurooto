@@ -9,6 +9,8 @@
   organs as they turn; the nerves leave the brainstem as a spinal cord and split into fibre bundles with nerve cells,
   lit in a signal's colour. The blood is tinted red, the fluid round the brain pale aqua, the notes each in a clear
   colour, the heart a little fainter, and speech heard that wasn't to Kurooto shows faintly in the YOU lane.
+- **Voice: an add-on can play Kurooto's voice on another device** (`Voice.add_output`), with this computer's
+  speakers taking over when that device can't.
 
 ## 0.8.11 (2026-10-27)
 

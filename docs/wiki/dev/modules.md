@@ -372,6 +372,10 @@ user's folder over Kurooto:
   `kurooto doctor`) and the call returns a safe default.
 - Extra hooks only add-ons get: `classify_intent(text, intents)` (runs before the built-in patterns, with
   `classify_timeout` seconds, default 2, at most 10; answers under `MIN_CONFIDENCE = 0.6` fall through).
+- Playing Kurooto's voice elsewhere (0.8.12): `app.modules["voice"].add_output(fn)` in `start()`, and the returned
+  `remove()` in `stop()`. `fn(pcm, sr, stop) -> bool` gets each spoken sentence instead of this computer's speakers,
+  blocks until it has played (or `stop` is set) and returns False to let the speakers play it; details and threading
+  in [voice.md](voice.md#outputs-playing-the-voice-elsewhere-0812).
 - The folder can't be inside Kurooto's own folders (`inside_kurooto`), and updates never touch it.
 - Turning add-ons on changes `core/places.py:write_roots` (their `skills/`), which makes agy's consent question appear
   again.
