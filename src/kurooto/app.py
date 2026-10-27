@@ -376,6 +376,11 @@ class App:
         mods = self.enabled() + [m for m in also or [] if not self.is_on(m.id)]
         mods += [m for m in self.basics() if m not in mods]  # /pause, /focus... without Telegram (the app's chat)
         self.events.emit("message_in", via=msg.via, chars=len(msg.text), files=len(msg.files))
+        if msg.speaker not in ("", "owner"):  # (voice id) someone else's voice, or unsure: chat only (core/guest.py)
+            from kurooto.core import guest
+
+            guest.handle(self, msg)
+            return
         from kurooto.mind import (
             tone,
         )  # (Brain, stage 04) its tone tag, on this computer only; nothing without Brain's tone switch

@@ -119,6 +119,7 @@ def test_the_table_names_each_action_and_how_it_is_approved():
         "addon.install",
         "data.delete",
         "proposal.apply",
+        "voice.enrol",  # (voice id) enrolling and changing the voice it knows: typed or a button, never by voice
     }
     for action, g in tap.GUARDED.items():
         assert g.what and g.where and g.ways, action

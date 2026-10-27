@@ -75,6 +75,8 @@ More: [AI brains](ai-brains.md), [Talking to Kurooto](talking-to-kurooto.md#chat
 | `/voice mute`, `/voice unmute` | stop and start listening and speaking (it stays muted across restarts) |
 | `/voice stop` | stop speaking now |
 | `/voice say <text>` | say this aloud now |
+| `/voice id` | Voice ID: whether it knows your voice, its grade, thresholds and last test; `/voice id test` (one try at the computer), `/voice id retrain`, `/voice id undo today` or `undo all` (what it learned over time), `/voice id forget` (deletes your voice print, with buttons). Typed only, never by voice |
+| `/voice enrol` | start or continue enrolling your voice at the computer (spoken prompts, and the Your voice page `/voice-id`); `/voice enrol stop`, `/voice enrol keep` (keep what's done for later). Typed only |
 
 More: [Voice](voice.md).
 
@@ -366,6 +368,8 @@ help with setup, repairs and scripts. `kurooto <command> --help` shows each one'
 | `kurooto ask --popup`, `kurooto ask --shortcut` | a small window to type one request in, the answer shown there (bind it to a hotkey in your system: [Quick ask](talking-to-kurooto.md#quick-ask-a-hotkey)); `--shortcut` adds Kurooto Quick ask to your app menu (on Windows its Properties take a shortcut key) |
 | `kurooto note "an idea"`, `… \| kurooto note --title "output"` | a quick note in your inbox (works with Kurooto stopped) |
 | `kurooto voice`, `kurooto voice mute`, `kurooto voice unmute`, `kurooto voice stop`, `kurooto voice say <text>` | Voice, as `/voice` ([Voice](voice.md)) |
+| `kurooto voice id`, `kurooto voice id forget [--yes]` | Voice ID's status; forget your voice print and its key (asks y/N; works with Kurooto stopped too) ([Voice](voice.md#voice-id-only-your-voice-can-make-it-act)) |
+| `kurooto voice parts add FILE...` | install Voice's parts from files on this computer (a model file checked against its pinned checksum, or a package's `.whl`), for a computer without internet |
 | `kurooto notify "text"` (`--title`, `--kind`, `--urgent`, `--button "Label=…"`, `--click URL`, `--print-id`, `--reply-to ID`) | send yourself a message |
 | `kurooto send <file>` (`--caption`, `--to drive`) | send yourself a file on Telegram (up to 50 MB), or to your Google Drive |
 | `kurooto ask-me "question"` (`--choices "a\|b"`, `--wait`, `--timeout`, `--expires`, `--title`, `--then CMD`, `--pending`, `--id`) | ask yourself something, answered anywhere |

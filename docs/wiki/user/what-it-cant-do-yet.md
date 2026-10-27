@@ -69,6 +69,10 @@ If you need calls that really ring, use an Android phone. See [Phone app](phone-
   voice on calls is Gemini Live. Voice notes go through Gemini too.
 - On Gemini's free tier, Google may use what you send to improve its products, and people may read it. In the EEA, the
   UK and Switzerland you need a paid key. See [Privacy](privacy.md).
+- **Voice ID** knows whose voice it is, not whether it's live: a good recording or a cloned voice of you can pass (the
+  AI's guarded actions still ask for your tap). It can't tell two voices apart inside one turn (overlapping speech is
+  judged as a whole, usually "not sure"). A close relative may pass at normal strictness. See
+  [Voice ID](voice.md#honest-limits).
 
 ## The AI
 

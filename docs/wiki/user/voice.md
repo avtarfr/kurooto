@@ -121,8 +121,18 @@ The dashboard shows each step (listening, hearing, talking to it, thinking, spea
 | `/voice mute`, `/voice unmute` | stop and start listening and speaking |
 | `/voice stop` | stop speaking now |
 | `/voice say <text>` | say this now |
+| `/voice id` | Voice ID: whether it knows your voice, its grade, thresholds, last test, and counts since start |
+| `/voice enrol` | start (or continue) enrolling your voice at the computer; `/voice enrol stop`, `/voice enrol keep` |
+| `/voice id test` | one try at the computer: was that you? |
+| `/voice id retrain` | build your voice print again from your samples (after changing the strictness) |
+| `/voice id undo today`, `/voice id undo all` | drop what it learned from your turns (improving over time) |
+| `/voice id forget` | delete your voice print and its key (with Forget my voice / Keep it buttons) |
 
-The same from a terminal: `kurooto voice`, `kurooto voice mute`, `kurooto voice say Hello`.
+The same from a terminal: `kurooto voice`, `kurooto voice mute`, `kurooto voice say Hello`, `kurooto voice id`,
+`kurooto voice id forget` (asks y/N; `--yes` skips it), `kurooto voice parts add FILE...`.
+
+The `/voice id` and `/voice enrol` commands are typed only: said aloud (by anyone, you included) they answer "That
+can't be done by voice: type it or use the dashboard."
 
 ## Privacy
 
@@ -162,11 +172,132 @@ downloaded to your computer as separate programs, not part of Kurooto.
 
 All of them: [the settings guide](../../SETTINGS_GUIDE.md).
 
+## Voice ID: only your voice can make it act
+
+Off by default (`voice.speaker_id.on`). Once it's on and knows your voice, every turn said to Kurooto is checked
+against your voice print, on this computer, and gets one of three answers: **you**, **not sure** or **someone else**.
+
+- **You:** everything works as before: commands, requests, your AI with its tools, settings, calls.
+- **Someone else, or not sure:** chat only. They get a real answer from your AI (or only the model on this computer,
+  `voice.speaker_id.guest_brain: local`), but with **none of your data** (no notes, calendar, mail, deadlines, memory,
+  profile, history or files) and **no actions** (no commands, reminders, alarms, calls, messages or settings). Once
+  per conversation the reply says so: "You can chat with me, but only my owner's voice can make me do things." Not
+  sure counts as not you ("I couldn't tell it was you, so I'm only chatting: say it again closer to the microphone,
+  or type it.").
+- **`voice.speaker_id.mode: owner_only_at_all`:** others get "I only answer my owner's voice." and nothing else.
+- Typing always works: Telegram, the phone app's chat, the dashboard and the terminal are yours, so they aren't
+  checked.
+
+### Turning it on and enrolling
+
+1. Dashboard → Features → Voice: tick **Voice ID** on the card, then **Set up** (it fetches a 28 MB speaker model and a
+   small package, once; after that it works with no internet). No internet on that computer? **Manage → Install from a
+   file** on the page, or `kurooto voice parts add FILE`: the file is checked against its pinned checksum.
+2. Open **Your voice (Voice ID) →** on the Voice card (the page `/voice-id`), or type `/voice enrol`.
+3. **Capture**, about five minutes at the computer, through the microphone Kurooto listens with (never the
+   browser's). It asks, aloud and on the page, for about twenty short sentences in six ways:
+
+   | Step | What you do | Samples |
+   |---|---|---|
+   | Normal | your normal voice, at your usual distance | 5 |
+   | Quiet | a quiet voice, same place | 3 |
+   | Far | step back about two metres | 3 |
+   | Noise | with music, a fan or the TV on low | 3 |
+   | Short requests | the way you really ask it: "Kurooto, what's on tomorrow?" | 4 |
+   | Free speech | ten seconds about anything | 1 (three samples from it) |
+
+   Each sample is checked before it counts, and a rejected one says why with its number: too short, too loud
+   (clipped), too quiet, too much noise, not the sentence, not the condition ("That sounded as close as before: step
+   back about two metres."), not sounding like your other samples, or identical to an earlier one (a recording). Say
+   **stop**, **skip**, **repeat**, **pause** or **continue** during it. Any step but the first can be skipped. Speak
+   another language? Tick "Say it in my own words".
+4. **Train** builds it (automatically at the end): **good**, **fair** or **weak**, with the thresholds, how often it
+   would turn you away in each condition, and how many of about 1,750 strangers' voice prints would pass. A weak one
+   is saved only when you press **Use it anyway**.
+5. **Test**: **Try me** (should be You), **Try as someone else** (ask someone; should be Someone else), **Try a
+   synthetic voice** (Kokoro's ten voices, if Kokoro is set up). The page shows the score on a dial with the "not
+   sure" and "accept" marks.
+
+### What "training" means here
+
+No neural network is trained or fine-tuned on your computer. A pretrained speaker model (CAM++) turns each sample into
+a list of numbers; training makes **your template** (the average of your samples) and **calibrates your thresholds**:
+each of your samples is scored against the others, and compared with the scores of about 1,750 strangers' voice prints
+that ship with Kurooto, so the threshold sits where strangers almost never pass. Short turns get their own, lower
+thresholds. A classifier trained on top of your samples was considered and not used: with 12 to 60 samples it learns
+the room you enrolled in more than your voice.
+
+### Improving over time, and undo
+
+Off by default (`voice.speaker_id.adapt`; the Improve step, or the card's switch). Turns it was **very** sure were you
+(well above the threshold, at least two seconds, one voice) slowly refine your voice print: at most 10 a day and 40 in
+all, never more than a quarter of its weight, never from a turn it wasn't sure of. If your voice print would drift too
+far from your enrolment, it stops and says so. **Undo today** and **Undo all** (or `/voice id undo today|all`) put it
+back.
+
+### Strictness and the threshold
+
+`voice.speaker_id.strictness`: `relaxed`, `normal` or `strict` (strict turns you away more often; strangers almost
+never pass; a short reply right after your turn no longer carries). Press **Retrain** after changing it.
+`voice.speaker_id.threshold` (0 = worked out from your samples) sets your own; the page shows the calibrated one beside
+it.
+
+### Short replies
+
+A "yes" is too short to tell. Right after a turn it knew was you, in the same conversation and within 15 seconds
+(`voice.speaker_id.carry_s`), a short reply counts as you unless it sounds clearly like someone else
+(`voice.speaker_id.carry`, off in strict mode). That's a deliberate weakness: someone saying "yes" just after you could
+pass.
+
+### Other people talking
+
+With Voice ID on, the voice is checked before the words are written out (`voice.speaker_id.gate`): someone else's
+talk that isn't calling Kurooto by name is dropped as chatter without being written out (only its first and last two
+seconds are, to hear its name). While another voice has been heard in the last minute, Kurooto is in **conversation
+mode** (`voice.listen.conversation_mode`): it stays out of people talking to each other, you included, and only its
+name with a question or request after it ("Kurooto, …") or a reply right after its own answer opens the conversation.
+"Kurooto told me…" only mentions it. The dashboard's ear says "conversation: staying out".
+
+### Your voice print
+
+- **Kept:** only your voice print (numbers, condition names, dates, thresholds, quality numbers and the microphone's
+  name), encrypted (AES-256-GCM) in Kurooto's state folder, with its key in your system's keychain (or the owner-only
+  secrets file where there's none). Never your recordings: sound stays in memory and is dropped as soon as it's
+  checked.
+- **Never:** backed up, synced to another computer, in a diagnostics bundle, logged, on the live stream, or shown.
+- **Forget:** `/voice id forget`, the page's **Forget my voice**, `kurooto voice id forget`, or `/forget all`: the file
+  and its key are deleted. On an SSD the deleted file's blocks may linger until reused, but with its key gone they're
+  unreadable.
+- **Can never be done by voice:** enrolling, changing Voice ID's settings, forgetting.
+
+### Honest limits
+
+- **A recording of your voice will usually pass.** It checks whose voice it is, not whether it's live. What protects
+  you: actions the AI takes still ask for your tap (Approve / Deny) as always, and enrolment refuses identical samples.
+- **A cloned voice** (made from a minute of you on video) can pass too. The synthetic test only covers Kokoro's stock
+  voices.
+- **A close relative** with a similar voice may pass at normal strictness: use strict, and try "Try as someone else"
+  with them.
+- **A cold, or just woken up:** scores drop and you may get "not sure"; add samples while you're ill (Manage → Add
+  samples).
+- **A new microphone** or headset changes scores: it warns "enrolled with A, listening with B"; add a few samples with
+  it.
+- **Two people at once** in one turn give a mixed score (usually not sure); it can't separate voices inside one turn.
+- **Someone at your keyboard** isn't checked: typing is yours.
+- With agy as your AI, a guest's chat turn is told to use no tools and starts in an empty folder, but agy doesn't
+  enforce "no tools" the way Claude Code, the Gemini key or Ollama do; choose `guest_brain: local` if that matters to
+  you.
+
+Licences: CAM++ (3D-Speaker, Apache-2.0), its ONNX conversion (sherpa-onnx, Apache-2.0), kaldi-native-fbank
+(Apache-2.0), onnxruntime (MIT), numpy (BSD-3-Clause); the strangers' voice prints are computed from LibriSpeech
+(CC BY 4.0): numbers only, no audio.
+
 ## What it can't do yet
 
 - It can't be interrupted while it speaks: it doesn't listen while speaking (so it doesn't hear itself). `/voice stop`
   or mute stops it.
-- It doesn't know who is speaking; "several voices" is the rule's best guess, not speaker recognition.
+- Without Voice ID it doesn't know who is speaking; with it, it knows you from anyone else, but can't tell two voices
+  apart inside one turn, and can't tell a recording of you from you.
 - Its name has to be heard and written out first, so waking takes a moment longer than a dedicated wake word model
   would, and a name Whisper mangles in a new way needs `voice.listen.name_variants`.
 - Tested with fakes only so far: real microphones, speakers and the models haven't been tried on many computers.

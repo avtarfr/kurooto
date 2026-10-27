@@ -716,6 +716,9 @@ def tools_for(app: App, job: str | None = None) -> list[Tool]:
 def run_tool(app: App, name: str, args: dict, tools: list[Tool] | None = None, via: str = "ai", job: str | None = None):
     """Run one tool by name. Never raises: a problem comes back as a sentence the AI can read. job: the AI request
     this is a step of (its tool log, core/jobs.py:Jobs.note_step)."""
+    jobs = getattr(app, "jobs", None)
+    if job and jobs is not None and hasattr(jobs, "audience") and jobs.audience(job) == "guest":
+        return "Not allowed: this request came from a voice that isn't the owner's."  # (voice id) core/guest.py
     tool = next((t for t in (tools if tools is not None else agent_tools(app)) if t.name == name), None)
     if not tool:
         return f"There's no {name} tool (that feature may be off)."

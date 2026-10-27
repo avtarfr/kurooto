@@ -1110,6 +1110,9 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.after_speak_s` | `6` | a question or request this many seconds after it spoke counts as an answer to it |
 | `voice.listen.calls` | `false` | keep listening during a phone call (off: it stops while you're on one) |
 | `voice.listen.close_s` | `8` | seconds with nothing said to it before the conversation closes |
+| `voice.listen.conversation_follow_s` | `4` | in conversation mode, a reply to what it said counts only this soon after |
+| `voice.listen.conversation_mode` | `true` | with Voice ID: while another voice is here, only its name opens a talk |
+| `voice.listen.conversation_s` | `60` | conversation mode lasts this many seconds after the last other voice |
 | `voice.listen.device` | `""` | the microphone: empty is the system's default; a name or number from sounddevice |
 | `voice.listen.language` | `""` | the language you speak, e.g. en or hi; empty: worked out each time |
 | `voice.listen.levels` | `true` | send the microphone's loudness to the dashboard for its waveform (numbers only) |
@@ -1127,6 +1130,23 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.speak.rate` | `1.0` | speaking speed: 1.0 normal, 0.8 slower, 1.2 faster |
 | `voice.speak.voice` | `""` | Kokoro's voice (af_heart, af_bella, am_michael, bf_emma, bm_george ...); empty: af_heart |
 | `voice.speak.what` | `"voice"` | what's read aloud: voice (answers to what you said aloud), all (every AI answer) or off |
+| `voice.speaker_id.adapt` | `false` | improve over time: turns it was very sure were you refine your voice print (undo) |
+| `voice.speaker_id.adapt_max` | `40` | at most this many learned turns are kept (oldest replaced) |
+| `voice.speaker_id.adapt_per_day` | `10` | at most this many learned turns a day |
+| `voice.speaker_id.carry` | `true` | a short reply right after a turn it knew was you counts as you (not if clearly not) |
+| `voice.speaker_id.carry_s` | `15` | how long after your last recognised turn a short reply may carry it |
+| `voice.speaker_id.gate` | `true` | check the voice before writing words out: others not calling it are never transcribed |
+| `voice.speaker_id.guest_brain` | `"main"` | who answers others: main (your AI, none of your data) or local (this computer) |
+| `voice.speaker_id.guest_per_hour` | `20` | at most this many answers to others an hour |
+| `voice.speaker_id.margin` | `0.05` | the "not sure" band just below the threshold; not sure counts as not you |
+| `voice.speaker_id.min_speech_s` | `1.0` | shorter than this is too short to tell (it counts as not sure) |
+| `voice.speaker_id.mode` | `"owner_only_acts"` | owner_only_acts (others may chat) or owner_only_at_all (others: one line) |
+| `voice.speaker_id.model` | `"campplus-en"` | campplus-en (English, most accurate) or campplus-multi; a change: enrol again |
+| `voice.speaker_id.on` | `false` | Voice ID: only your voice can make Kurooto act; others can only chat (enrol first) |
+| `voice.speaker_id.spoken_enrol` | `true` | during enrolment Kurooto says each step aloud (off: the page shows it only) |
+| `voice.speaker_id.strictness` | `"normal"` | relaxed, normal or strict (turns you away more often; strangers almost never) |
+| `voice.speaker_id.tell_guests` | `true` | once per conversation, tell others they can chat but only you can make it act |
+| `voice.speaker_id.threshold` | `0.0` | 0: worked out from your own samples; a number (0.3 to 0.9) overrides it |
 
 ### `voice_notes`
 

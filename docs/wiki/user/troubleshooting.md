@@ -289,6 +289,15 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | A low-disk warning | `/space clean` removes Kurooto's own old files; free space elsewhere too. |
 | "Kurooto didn't connect to <host> ... it isn't on the list" | `privacy.egress` is `enforce` and that host isn't on Kurooto's list (an address changed in settings, an add-on). If you trust it, add it to `privacy.allow_hosts` in Settings (`["feeds.example.org"]`), or set `privacy.egress` back to `record`. `/egress` shows what was blocked. |
 
+## Voice ID
+
+| What you see | What to do |
+|---|---|
+| Voice ID: "It doesn't recognise me" (it keeps saying it couldn't tell it was you) | `/voice id` shows the grade and the last test. Speak a little closer, or type it. On the Your voice page: Test → Try me; if it turns you away, Manage → Add samples in the condition it names (far, noisy, short requests), then Retrain. `voice.speaker_id.strictness` `relaxed` lets more through; a short "yes" counts only right after a turn it knew was you. |
+| Voice ID: it can't tell it's me after I changed microphone (or turned noise suppression on or off) | Scores shift with the microphone. The page says "enrolled with A, listening with B": Manage → Add samples (This microphone), then Retrain. |
+| Voice ID: "its key can't be read" | The keychain was locked when Kurooto started (it started at boot before you logged in), or the key was removed. Until then every voice can only chat; typing works. Log in and restart Kurooto; if it stays, Forget my voice on the page (or `/voice id forget`) and enrol again. |
+| Voice ID: "the impostor set … isn't in this version" or "doesn't match this model" | Training needs the strangers' voice prints for your model that ship with Kurooto. Update Kurooto; until then Voice ID can't build your voice print. |
+
 ## Updates, backups and moving
 
 | What you see | What to do |

@@ -92,8 +92,15 @@ GUARDED: dict[str, Guard] = {
         "delete your data",
         ("typed", "confirm", "button"),
         "/forget 7d and /forget all (after Forget everything), /memory forget, /gists forget, Undo and Drop buttons, "
-        "Keep A / Keep B under the morning message's \"Worth a look\", Delete Brain's data after Brain is turned off; "
+        "Keep A / Keep B under the morning message's \"Worth a look\", Delete Brain's data after Brain is turned off, "
+        "Forget my voice (/voice id forget, the Your voice page); "
         "the AI never deletes (a note it changes keeps its earlier version)",
+    ),
+    "voice.enrol": Guard(
+        "enrol or change the voice Kurooto knows as yours",
+        ("typed", "button"),
+        "/voice enrol and /voice id retrain|undo (typed), the dashboard's Your voice page (Start, Build, Undo); never "
+        "by voice, the AI, a request or a schedule",
     ),
 }
 
@@ -103,6 +110,7 @@ GUARDED: dict[str, Guard] = {
 BUTTONS: dict[str, str] = {
     "oad": "addon.install",
     "mnd": "data.delete",  # Delete Brain's data, offered when Brain is turned off (modules/mind.py)
+    "vid": "data.delete",  # Forget my voice under /voice id forget (Voice ID, modules/voice/voiceid.py)
 }
 
 

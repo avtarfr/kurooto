@@ -7,6 +7,7 @@ import json
 
 import pytest
 
+from kurooto.modules.base import Incoming
 from kurooto.modules.voice import Voice
 from kurooto.modules.voice import shape as shape_mod
 from kurooto.modules.voice.gate import ADDRESSED, CHATTER, NOISE, Context, Gate, Heard, parse
@@ -520,3 +521,190 @@ def test_a_reply_isnt_spoken_once_muted(voice, monkeypatch):
     voice.mute(True)
     voice._portal_speak("two")
     assert said == ["one"]
+
+
+# ------------------------------------------------------------------------------------- Voice ID (0.8.10)
+class Stt:
+    """The transcriber: says what it's told to, and counts each call (and how much sound it got)."""
+
+    def __init__(self):
+        self.said = ""
+        self.calls = []
+
+    def text(self, pcm):
+        self.calls.append(len(pcm))
+        return self.said
+
+
+class WhoBrain:
+    def __init__(self, reply="Sure."):
+        self.got = []
+        self.reply = reply
+
+    def __call__(self, text, who=None):
+        self.got.append((text, None if who is None else who.decision))
+        return self.reply
+
+
+@pytest.fixture
+def vid(voice, monkeypatch):
+    """Voice ID on and the owner (voice 1) enrolled, with a fake model, a fake bank and a fake transcriber."""
+    from types import SimpleNamespace
+
+    from tests.unit.test_voiceid import FakeEmbedder, make_bank, owner_samples
+
+    x = voice.voiceid
+    emb = FakeEmbedder()
+    bank = make_bank(0.3, emb)
+    bank.meta["model_sha256"] = x.model_sha()
+    x.embed_fn = emb
+    monkeypatch.setattr(x, "bank", lambda: bank)
+    voice.app.settings.set("voice.speaker_id.on", True)
+    assert x.train(session=SimpleNamespace(existing=[], samples=owner_samples(emb)))["saved"]
+    stt = Stt()
+    monkeypatch.setattr(voice, "stt", lambda: stt)
+    voice.portal.send = WhoBrain()
+    x.emb, x.stt_fake = emb, stt
+    return x
+
+
+def sound(voice=1, utt=1, seconds=3.0):
+    from tests.unit.test_voiceid import pcm
+
+    c = pcm(voice, utt, seconds=seconds)
+    return bytes(c.pcm), c.flags
+
+
+def hear(v, text, who_voice=1, utt=1, seconds=3.0):
+    v.voiceid.stt_fake.said = text
+    pcm_, flags = sound(who_voice, utt, seconds)
+    return v.hear(Heard(speech=True, seconds=seconds), pcm_, flags)
+
+
+def test_with_voice_id_off_nothing_is_embedded_and_the_speaker_is_unset(voice, monkeypatch):
+    from tests.unit.test_voiceid import FakeEmbedder
+
+    emb = FakeEmbedder()
+    voice.voiceid.embed_fn = emb
+    stt = Stt()
+    stt.said = "Kurooto, what's due?"
+    monkeypatch.setattr(voice, "stt", lambda: stt)
+    got = []
+    monkeypatch.setattr(voice.app, "handle", lambda msg: got.append(msg) or msg.reply("ok"))
+    voice.portal.send = Voice.ask_brain.__get__(voice)
+    pcm_, flags = sound()
+    assert voice.hear(Heard(speech=True, seconds=3), pcm_, flags) == "ok"
+    assert emb.calls == 0 and got[0].speaker == "" and got[0].speaker_by == ""
+
+
+def test_the_owner_s_turn_carries_owner_and_a_guest_s_guest(vid, monkeypatch):
+    v = vid.v
+    got = []
+    monkeypatch.setattr(v.app, "handle", lambda msg: got.append(msg) or msg.reply("ok"))
+    v.portal.send = Voice.ask_brain.__get__(v)
+    hear(v, "Kurooto, what's due?")
+    assert got[-1].speaker == "owner" and got[-1].speaker_by == "voice" and got[-1].via == "voice"
+    v.portal.close("test")
+    hear(v, "Kurooto, what's due?", who_voice=55)
+    assert got[-1].speaker == "guest"
+    texts = [m for m in v.app.live.sent if m["kind"] == "voice_text" and m.get("who") == "you"]
+    assert [m.get("speaker") for m in texts] == ["owner", "guest"]
+    assert not any("score" in m for m in v.app.live.sent)
+
+
+def test_a_guest_is_told_once_per_conversation(vid):
+    v = vid.v
+    r1 = hear(v, "Kurooto, what's the capital of France?", who_voice=55)
+    assert r1.startswith("You can chat with me, but only my owner's voice can make me do things.")
+    r2 = hear(v, "and of Spain?", who_voice=55, utt=2)
+    assert r2 == "Sure."  # the same conversation: not again
+    v.portal.close("silence")
+    assert hear(v, "Kurooto, one more?", who_voice=55, utt=3).startswith("You can chat")
+    assert [w for _t, w in v.portal.send.got] == ["guest", "guest", "guest"]
+    v.app.settings.set("voice.speaker_id.tell_guests", False)
+    v.portal.close("silence")
+    assert hear(v, "Kurooto, and again?", who_voice=55, utt=4) == "Sure."
+
+
+def test_owner_only_at_all_sends_and_shows_nothing(vid):
+    v = vid.v
+    v.app.settings.set("voice.speaker_id.mode", "owner_only_at_all")
+    said = v.spoken
+    assert hear(v, "Kurooto, what's due tomorrow?", who_voice=55) is None
+    assert v.portal.send.got == [] and said == ["I only answer my owner's voice."]
+    assert not any(m["kind"] == "voice_text" and m.get("who") == "you" for m in v.app.live.sent)
+    assert not v.portal.open
+    hear(v, "Kurooto, what's due tomorrow?", who_voice=55, utt=2)
+    assert said == ["I only answer my owner's voice."]  # once a minute at most
+    assert hear(v, "Kurooto, what's due tomorrow?") == "Sure."  # the owner still gets through
+
+
+def test_someone_else_not_calling_it_is_never_transcribed(vid):
+    v = vid.v
+    stt = vid.stt_fake
+    hear(v, "did you see the match last night, it was something", who_voice=55, seconds=8.0)
+    assert stt.calls and max(stt.calls) < 8 * 16000 * 2  # only the edges, never the whole of it
+    assert v.portal.send.got == [] and v.heard[CHATTER] == 1
+    stt.calls.clear()
+    hear(v, "Kurooto, what's the time?", who_voice=55, utt=2, seconds=8.0)
+    assert len(stt.calls) == 2 and stt.calls[1] > stt.calls[0]  # the name at the edges: then all of it
+    assert v.portal.send.got[-1] == ("what's the time?", "guest")
+
+
+def test_without_the_gate_only_addressed_turns_are_checked(vid):
+    v = vid.v
+    v.app.settings.set("voice.speaker_id.gate", False)
+    v.judge.answers = ['{"class": "chatter", "confidence": 0.9}']
+    before = vid.emb.calls
+    hear(v, "no I'll get the snacks later", who_voice=55)
+    assert vid.emb.calls == before  # dropped by the gate: never embedded
+    hear(v, "Kurooto, what's due?")
+    assert vid.emb.calls == before + 1 and v.portal.send.got[-1] == ("what's due?", "owner")
+
+
+def test_conversation_mode_stays_out_unless_called_by_name(vid):
+    v = vid.v
+    v.judge.answers = ['{"class": "addressed", "confidence": 0.95}'] * 5
+    hear(v, "so are you coming to the lab tomorrow", who_voice=55)  # another voice: conversation mode
+    assert vid.conversation()
+    hear(v, "can you check when the lab is", utt=7)  # the owner, ambiguous: the local judge isn't asked
+    assert v.portal.send.got == [] and not v.portal.open and v.judge.prompts == []
+    hear(v, "Kurooto told me it moved to Friday", utt=8)
+    assert v.portal.send.got == []
+    hear(v, "Kurooto, when is the lab?", utt=9)
+    assert v.portal.send.got == [("when is the lab?", "owner")]
+    assert "conversation: staying out" in v.line()
+    v.app.settings.set("voice.listen.conversation_mode", False)
+    assert not vid.conversation()
+
+
+def test_voice_id_commands_refuse_voice(vid):
+    v = vid.v
+    for arg in ("id", "id forget", "enrol", "id retrain", "id undo all"):
+        assert v._cmd(Incoming(text="/voice " + arg, via="voice", voice=True), arg) == (
+            "That can't be done by voice: type it or use the dashboard."
+        )
+    assert v._cmd(Incoming(text="/voice id", via="telegram"), "id").startswith("Voice ID: on")
+    replies = []
+    msg = Incoming(text="/voice id forget", via="telegram", respond=lambda t, buttons=None: replies.append(buttons))
+    assert v._cmd(msg, "id forget") is None and replies[0][0][0][1] == "vid:0:forget"
+    assert v.voiceid.store.exists()  # nothing deleted before the tap
+
+
+def test_listening_waits_while_enrolling(vid):
+    v = vid.v
+    vid.capturing = "enrolling your voice"
+    assert v.blocked() == "enrolling your voice"
+    assert hear(v, "Kurooto, hello") is None
+    vid.capturing = ""
+    assert v.blocked() == ""
+
+
+def test_not_enrolled_fails_closed(vid):
+    v = vid.v
+    vid.forget()
+    hear(v, "Kurooto, set an alarm for six")
+    assert v.portal.send.got[-1] == ("set an alarm for six", "unsure")
+    assert "doesn't know your voice yet" in v.line()
+    ok, why = v.health()
+    assert not ok and "doesn't know your voice yet" in why

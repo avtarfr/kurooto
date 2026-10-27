@@ -1804,14 +1804,83 @@ def jobs_parsers(sub) -> None:
 
 
 def voice_parsers(sub) -> None:
-    vo = sub.add_parser("voice", help="Voice: what it's doing; mute, unmute, stop (stop speaking), say TEXT")
-    vo.add_argument("what", nargs="*", help="nothing (status), mute, unmute, stop, or say followed by the text")
+    vo = sub.add_parser(
+        "voice",
+        help="Voice: what it's doing; mute, unmute, stop (stop speaking), say TEXT; id [status|forget]; parts add FILE",
+    )
+    vo.add_argument(
+        "what",
+        nargs="*",
+        help="nothing (status), mute, unmute, stop, say followed by the text; id (Voice ID's status), id forget; "
+        "parts add FILE... (install Voice's parts from files on this computer, for a machine without internet)",
+    )
+    vo.add_argument("--yes", action="store_true", help="with id forget: don't ask first")
+
+
+def voice_id_run(a) -> int:
+    """`kurooto voice id [status|enrol|forget [--yes]]` (Voice ID, modules/voice/voiceid.py)."""
+    word = a.what[1] if len(a.what) > 1 else "status"
+    if word == "forget":
+        if not a.yes:
+            try:
+                ok = input("Forget your voice print and its key? [y/N] ").strip().lower() in ("y", "yes")
+            except EOFError:
+                ok = False
+            if not ok:
+                print("Kept.")
+                return 1
+        r = ask_running("voice/id/forget", {"confirm": True})
+        if r is None:  # Kurooto isn't running: forgotten here (the same file and key)
+            from types import SimpleNamespace
+
+            from kurooto.core.biometric import BioStore
+            from kurooto.core.secrets import Secrets
+
+            p = paths()
+            had = BioStore(SimpleNamespace(paths=p, secrets=Secrets(p.config)), "voice").forget()
+            print("Forgot your voice: the voice print and its key are deleted." if had else "There was no voice print.")
+            return 0
+        print(r.get("message") or "Done.")
+        return 0 if r.get("ok") else 1
+    if word in ("enrol", "enroll"):
+        print(
+            "Start it on the Your voice page (`kurooto open`, then Features → Voice → Your voice (Voice ID), or "
+            "/voice-id on the dashboard's address), or type /voice enrol in the chat. It runs at this computer's "
+            "microphone; it's never started by voice."
+        )
+        return 0
+    r = say("/voice id")
+    if r is None:
+        return 1
+    print("\n".join(r.get("replies") or []) or "Done.")
+    return 0
+
+
+def voice_parts_run(files: list[str]) -> int:
+    """`kurooto voice parts add FILE...`: Voice's parts from files on this computer (checksummed; nothing fetched)."""
+    from kurooto.modules.voice.parts import Parts
+
+    if not files:
+        print("kurooto voice parts add FILE... (a model file Voice uses, or a package's .whl)", file=sys.stderr)
+        return 2
+    p = paths()
+    parts = Parts(p.app / "voice", p.app)
+    bad = 0
+    for f in files:
+        ok, msg = parts.add_file(f, progress=print)
+        print(("✓ " if ok else "✗ ") + msg)
+        bad += not ok
+    return 1 if bad else 0
 
 
 def voice_run(a) -> int | None:
     """Runs `kurooto voice [...]`: /voice, through the running Kurooto (modules/voice); None for any other command."""
     if a.cmd != "voice":
         return None
+    if a.what[:1] == ["id"]:
+        return voice_id_run(a)
+    if a.what[:2] == ["parts", "add"]:
+        return voice_parts_run(a.what[2:])
     r = say(("/voice " + " ".join(a.what)).strip())
     if r is None:
         return 1

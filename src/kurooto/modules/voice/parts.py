@@ -11,6 +11,8 @@ they take on disk, roughly.
         wake     only with a wake word model of your own (voice.listen.wake_word): openwakeword 0.6.0
                  (Apache-2.0), installed without its tflite-runtime dependency (no wheels for Python 3.12;
                  the ONNX models are used instead), with scipy, scikit-learn, tqdm, requests          ~0.2 GB
+        voiceid  only with Voice ID (voice.speaker_id.on): kaldi-native-fbank (Apache-2.0), the feature
+                 extractor the speaker model was converted with                                       ~0.001 GB
     models (into <app>/voice/models)
         kokoro       Kokoro-82M v1.0, ONNX (Apache-2.0) and its voices                              337 MB
         piper        the en_US "lessac" medium voice (MIT voice card; trained on a public dataset)   63 MB
@@ -20,17 +22,27 @@ they take on disk, roughly.
         wake-common  openWakeWord's feature models (melspectrogram, and the speech embedding derived from
                      Google's Apache-2.0 model), which any openWakeWord model needs; only with your own
                      wake word model                                                             2.4 MB
+        voiceid-campplus-en     Voice ID's speaker model: CAM++ trained on VoxCeleb (3D-Speaker, Apache-2.0),
+                                ONNX conversion by k2-fsa/sherpa-onnx (Apache-2.0)                    28 MB
+        voiceid-campplus-multi  the same for English and other languages (CAM++ zh+en, Apache-2.0)    27 MB
     openWakeWord's ready-made wake words ("hey jarvis" ...) are never fetched: they're CC BY-NC-SA 4.0. By default
     Kurooto wakes on its name, heard by the transcriber (names.py).
 
-Downloads go through core/egress.py (github.com, huggingface.co); the packages are handed to uv (or pip), which
+Files with a pinned sha256 (Voice ID's models) are checked while they download: a mismatch keeps nothing. They can also
+be installed from a file already on this computer (Parts.add_file: `kurooto voice parts add FILE`, the Your voice
+page), for a machine without internet; so can a package's wheel (.whl), with the usual installer and no index.
+
+Downloads go through core/egress.py (github.com, whose release files come from release-assets.githubusercontent.com,
+and huggingface.co); the packages are handed to uv (or pip), which
 fetches them from PyPI. Each file lands as <name>.part and is renamed when complete, so a broken download is fetched
 again next time.
 """
 
 from __future__ import annotations
 
+import hashlib
 import os
+import re
 import shutil
 import sys
 from collections.abc import Callable
@@ -73,6 +85,17 @@ class ModelFile:
     name: str
     url: str
     mb: float
+    sha256: str = ""  # pinned: checked while it downloads (and for a file installed from disk); "" not pinned
+
+
+SV = "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models"  # (sic: the tag's spelling)
+VOICEID_MODELS = {  # voice.speaker_id.model -> (part key, file); the speaker models (Voice ID, speakerid.py)
+    "campplus-en": ("voiceid-campplus-en", "voiceid/3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx"),
+    "campplus-multi": (
+        "voiceid-campplus-multi",
+        "voiceid/3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx",
+    ),
+}
 
 
 PACKAGES = {
@@ -91,6 +114,9 @@ PACKAGES = {
             0.2,
             "the wake word",
             no_deps=("openwakeword==0.6.0",),
+        ),
+        Package(
+            "voiceid", ("kaldi-native-fbank>=1.22,<2",), "kaldi_native_fbank", 0.001, "telling your voice from others'"
         ),
     )
 }
@@ -120,6 +146,22 @@ def models() -> dict[str, list[ModelFile]]:
             ModelFile("embedding_model.onnx", f"{OWW}/embedding_model.onnx", 1.3),
         ],
     }
+    out["voiceid-campplus-en"] = [
+        ModelFile(
+            VOICEID_MODELS["campplus-en"][1],
+            f"{SV}/3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx",
+            28.2,
+            "357a834f702b80161e5b981182c038e18553c1f2ca752ed6cec2052365d4129b",
+        )
+    ]
+    out["voiceid-campplus-multi"] = [
+        ModelFile(
+            VOICEID_MODELS["campplus-multi"][1],
+            f"{SV}/3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx",
+            27.0,
+            "aa3cfc16963a10586a9393f5035d6d6b57e98d358b347f80c2a30bf4f00ceba2",
+        )
+    ]
     for size, mb in STT_MODELS.items():
         base = f"{HF}/Systran/faster-whisper-{size}/resolve/main"
         out[f"whisper-{size}"] = [
@@ -210,16 +252,22 @@ class Parts:
             part = dest.with_name(dest.name + ".part")
             progress(f"Downloading {f.name} ({f.mb:g} MB)…")
             try:
+                digest = hashlib.sha256()
                 with egress.urlopen(f.url, "Voice", timeout=60) as r, open(part, "wb") as out:
                     total = int(r.headers.get("Content-Length") or 0)
                     done, last = 0, -1
                     while chunk := r.read(1 << 20):
                         out.write(chunk)
+                        digest.update(chunk)
                         done += len(chunk)
                         pct = int(done * 100 / total) if total else -1
                         if total and pct // 25 != last:
                             last = pct // 25
                             progress(f"{f.name}: {pct}%")
+                if f.sha256 and digest.hexdigest() != f.sha256:  # (voice id) a damaged or changed download
+                    part.unlink(missing_ok=True)
+                    what = Path(f.name).name
+                    return False, f"{what} didn't match its checksum (a damaged or changed download); nothing was kept"
                 os.replace(part, dest)
             except Exception as e:
                 part.unlink(missing_ok=True)
@@ -250,3 +298,62 @@ class Parts:
                 return False, msg
         self.importable()
         return True, "Voice is set up."
+
+    # ---------------------------------------------------------------------------------- from a file (offline)
+    def add_file(self, path: str | Path, progress: Progress = lambda _m: None) -> tuple[bool, str]:
+        """Install one part from a file already on this computer (a machine without internet). A model file only when
+        its name matches a part with a pinned sha256 and its hash matches; a wheel (.whl) of a package Voice uses,
+        with the usual installer and no index (other wheels in the same folder, numpy's or onnxruntime's, are found
+        too). Nothing is uploaded or fetched."""
+        f = Path(str(path)).expanduser()
+        if not f.is_file():
+            return False, f"{f}: no such file"
+        if f.suffix == ".whl":
+            return self._add_wheel(f, progress)
+        entry = next((m for files in self.table.values() for m in files if Path(m.name).name == f.name), None)
+        if entry is None:
+            return False, f"{f.name} isn't a part Voice uses"
+        if not entry.sha256:
+            return False, f"{f.name}: this part has no checksum pinned yet; download it instead"
+        progress(f"Checking {f.name}…")
+        digest = hashlib.sha256()
+        with open(f, "rb") as src:
+            while chunk := src.read(1 << 20):
+                digest.update(chunk)
+        if digest.hexdigest() != entry.sha256:
+            return False, f"{f.name} didn't match its checksum (a damaged or different file); nothing was kept"
+        dest = self.models_dir / entry.name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        part = dest.with_name(dest.name + ".part")
+        try:
+            shutil.copyfile(f, part)
+            os.replace(part, dest)
+        except OSError as e:
+            part.unlink(missing_ok=True)
+            return False, f"Couldn't copy {f.name}: {type(e).__name__}"
+        return True, f"{f.name}: installed from the file"
+
+    def _add_wheel(self, f: Path, progress: Progress) -> tuple[bool, str]:
+        dist = re.sub(r"[-_.]+", "-", f.name.split("-", 1)[0]).lower()
+        pkg = next(
+            (
+                p
+                for p in PACKAGES.values()
+                for spec in p.specs + p.no_deps
+                if re.sub(r"[-_.]+", "-", re.split(r"[<>=!~\[ ]", spec, maxsplit=1)[0]).lower() == dist
+            ),
+            None,
+        )
+        if pkg is None:
+            return False, f"{f.name} isn't a package Voice uses"
+        cmd = self.installer()
+        if cmd is None:
+            return False, "neither uv nor pip is available to install Python packages"
+        progress(f"Installing {f.name} from its file…")
+        self.py.mkdir(parents=True, exist_ok=True)
+        args = [*cmd, "--no-index", "--find-links", str(f.parent), "--target", str(self.py), str(f)]
+        res = proc.run(args, timeout=900)
+        if not res.ok:
+            return False, f"Installing {f.name} failed: {(res.err or res.out).strip()[-300:]}"
+        self.importable()
+        return True, f"{f.name}: installed from the file"

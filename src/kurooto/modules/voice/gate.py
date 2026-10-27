@@ -20,6 +20,12 @@ Kurooto (addressed)? Every step runs on this computer, and only "addressed" open
     9. Otherwise the model on this computer judges (voice.listen.model_judge), from the words and the context
        above; its answer counts only at voice.listen.threshold confidence or more. No local model: not addressed.
 
+Conversation mode (0.8.10, with Voice ID: voice.listen.conversation_mode): while another voice (or a second face) has
+been here lately, only its name (4) with a question or a request after it (or nothing: then 5), the wake word (2) and a
+direct follow-up within voice.listen.conversation_follow_s of its own answer (8) count; rules 7 and 9 don't, so people
+talking to each other, the owner included, are left alone ("conversation: staying out"), and "Kurooto told me..."
+only mentions it.
+
 The gate never keeps what it heard: it returns a class, a confidence and the rule that decided (never the words)."""
 
 from __future__ import annotations
@@ -77,6 +83,7 @@ class Heard:
     wake: bool = False  # the wake word fired during it or just before
     voices: int | None = None  # how many voices, when the listener can tell (None: it can't)
     seconds: float = 0.0
+    speech_s: float = 0.0  # (voice id) seconds the VAD called speech, without the pre-roll and the tail
 
 
 @dataclass
@@ -89,6 +96,8 @@ class Context:
     since_spoke_s: float | None = None  # seconds since Kurooto last finished speaking
     last_reply: str = ""  # what it last said (for the local model's context only)
     unaddressed: int = 0  # stretches of speech in the last minute that weren't to it
+    conversation: bool = False  # (voice id) people are talking with each other here: only its name opens it
+    follow_s: float = 4.0  # in a conversation, a follow-up counts only this soon after it spoke
 
 
 @dataclass
@@ -171,11 +180,19 @@ class Gate:
         if not words(text) or (not ctx.portal_open and made_up(text)):
             return Decision(NOISE, 0.9, "no words")
         if self.called(text):
+            rest = self.matcher.uncall(text) if ctx.conversation else ""
+            if rest and not asks(rest):  # (voice id) in a conversation, "Kurooto told me..." only mentions it
+                return Decision(CHATTER, 0.8, "conversation: only mentioned")
             return Decision(ADDRESSED, 0.95, "its name")
         if ctx.awaiting:
             return Decision(ADDRESSED, 0.9, "right after it was called")
         if (h.voices or 0) >= 2:
             return Decision(CHATTER, 0.8, "several voices, none to it")
+        if ctx.conversation:  # (voice id) people talking with each other: only its name, or a reply right after it
+            it_asked = ctx.last_reply.rstrip().endswith("?")
+            if ctx.since_spoke_s is not None and ctx.since_spoke_s <= ctx.follow_s and asks(text, reply=it_asked):
+                return Decision(ADDRESSED, 0.8, "an answer to what it said")
+            return Decision(CHATTER, 0.8, "conversation: staying out")
         recent = ctx.since_portal_s is not None and ctx.since_portal_s <= self.close_s
         if ctx.portal_open and recent and asks(text):
             return Decision(ADDRESSED, 0.85, "it follows the conversation")

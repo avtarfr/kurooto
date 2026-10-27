@@ -14,3 +14,14 @@ Public Sans (variable, weights 100-900; the Latin and Latin Extended cuts from @
 5.1.0), SIL Open Font License 1.1, copyright 2015 The Public Sans Project Authors
 (https://github.com/uswds/public-sans); the dashboard's typeface. Unmodified copies, with the licence text, are in
 src/kurooto/web/static/fonts/.
+
+Voice ID (0.8.10; fetched when you set it up, not included in the package):
+- CAM++ speaker verification models from 3D-Speaker (Alibaba DAMO Academy, https://github.com/modelscope/3D-Speaker),
+  Apache License 2.0: speech_campplus_sv_en_voxceleb_16k (trained on VoxCeleb2, whose annotations are CC BY 4.0) and
+  speech_campplus_sv_zh_en_16k-common_advanced (https://www.modelscope.cn/models/iic/), in the ONNX conversions by
+  k2-fsa/sherpa-onnx (https://github.com/k2-fsa/sherpa-onnx), Apache License 2.0.
+- kaldi-native-fbank (https://github.com/csukuangfj/kaldi-native-fbank), Apache License 2.0; onnxruntime, MIT; numpy,
+  BSD-3-Clause.
+The impostor sets in src/kurooto/data/voiceid/ (when present) are speaker embeddings computed with those models from
+LibriSpeech's dev and test sets (Panayotov, Chen, Povey and Khudanpur, 2015; https://www.openslr.org/12), CC BY 4.0:
+vectors only, no audio, speaker ids or transcripts.

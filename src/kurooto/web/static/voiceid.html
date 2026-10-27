@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en" data-palette="{{PALETTE}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="kurooto-token" content="{{TOKEN}}">
+<title>Your voice · Kurooto</title>
+<link rel="icon" href="/static/favicon.ico" sizes="any"><link rel="icon" type="image/svg+xml" href="/static/favicon.svg"><link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<link rel="stylesheet" href="/static/style.css">
+<style>
+  .vid { max-width: 980px; margin: 0 auto; padding: 22px 16px 60px; }
+  .vid header { margin-bottom: 10px; }
+  .vid h1 { font-size: 26px; margin: 4px 0 2px; }
+  .vid .line { color: var(--dim); margin: 0 0 14px; overflow-wrap: anywhere; }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 2px; padding: 14px 16px; margin: 0 0 14px; }
+  .box h2 { margin: 0 0 10px; }
+  .stepper { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 16px; }
+  .stepper button { flex: 1 1 auto; min-width: 88px; }
+  .stepper button.on { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); font-weight: 600; }
+  .hidden { display: none; }
+  .vid section.pane { display: none; }
+  .vid section.pane.on { display: block; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .prompt { font-size: 24px; line-height: 1.35; margin: 8px 0 4px; overflow-wrap: anywhere; }
+  .msg { color: var(--dim); min-height: 1.4em; overflow-wrap: anywhere; }
+  .bar { height: 10px; background: var(--line); border-radius: 2px; overflow: hidden; margin: 8px 0 4px; }
+  .bar > i { display: block; height: 100%; width: 0; background: var(--accent); }
+  .meter { display: flex; align-items: flex-end; gap: 2px; height: 34px; margin: 8px 0; }
+  .meter i { flex: 1; background: var(--lav); min-height: 2px; border-radius: 1px; }
+  .conds { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin: 10px 0; }
+  .cond { border: 1px solid var(--line); border-radius: 2px; padding: 8px; display: flex; gap: 8px; align-items: center; }
+  .cond.cur { border-color: var(--accent); }
+  .cond.skip { opacity: .55; }
+  .cond small { color: var(--dim); display: block; }
+  .cond svg { flex: none; width: 36px; height: 36px; }
+  .attempts { list-style: none; margin: 8px 0 0; padding: 0; font-size: 14px; }
+  .attempts li { padding: 3px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+  .attempts .ok { color: var(--ok); }
+  .attempts .no { color: var(--bad); }
+  .grade { font: 600 13px var(--mono); padding: 2px 8px; border: 1px solid var(--line); border-radius: 2px; }
+  .grade.good { color: var(--ok); border-color: var(--ok); }
+  .grade.fair { color: var(--warn); border-color: var(--warn); }
+  .grade.weak { color: var(--bad); border-color: var(--bad); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  td, th { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .chipd { display: inline-block; font: 600 15px var(--sans); padding: 4px 12px; border-radius: 2px; border: 1px solid var(--line); }
+  .chipd.owner { color: var(--ok); border-color: var(--ok); }
+  .chipd.unsure { color: var(--warn); border-color: var(--warn); }
+  .chipd.guest { color: var(--bad); border-color: var(--bad); }
+  svg { max-width: 100%; height: auto; display: block; }
+  #report svg, #dial svg { width: 100%; max-width: 480px; margin-top: 10px; }
+  .row2 { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .row2 input[type=text] { flex: 1 1 220px; margin-top: 0; }
+  .row2 select { font: 14px var(--sans); color: var(--fg); background: var(--panel); border: 1px solid var(--line); padding: 8px; border-radius: 2px; }
+  label.sw { display: flex; gap: 8px; align-items: center; margin: 8px 0; color: var(--fg); }
+  .note { color: var(--dim); font-size: 14px; }
+  .warn { color: var(--warn); }
+  dialog { background: var(--panel); color: var(--fg); border: 1px solid var(--line); max-width: min(440px, calc(100vw - 32px)); }
+</style>
+</head>
+<body>
+<div class="vid">
+  <header>
+    <div class="brand">KUROOTO <span class="ver">{{VERSION}}</span></div>
+    <a href="/">dashboard</a>
+  </header>
+  <h1>Your voice</h1>
+  <p class="line" id="line">Loading…</p>
+  <div class="box" id="top"></div>
+  <nav class="stepper" id="steps">
+    <button data-step="capture" class="on">Capture</button>
+    <button data-step="train">Train</button>
+    <button data-step="test">Test</button>
+    <button data-step="improve">Improve</button>
+    <button data-step="manage">Manage</button>
+  </nav>
+
+  <section class="pane on" id="p-capture">
+    <div class="box">
+      <h2>Capture</h2>
+      <p class="note">About five minutes at the computer, through the microphone Kurooto listens with. Each sample is checked before it counts; the sound is dropped as soon as it's checked. Never by voice: start it here or by typing /voice enrol.</p>
+      <div class="bar"><i id="overall"></i></div>
+      <div class="msg" id="overall-t"></div>
+      <div class="conds" id="conds"></div>
+      <div class="prompt" id="prompt"></div>
+      <div class="msg" id="smsg"></div>
+      <div class="meter" id="meter"></div>
+      <label class="sw"><input type="checkbox" id="own"> Say it in my own words (for other languages)</label>
+      <div class="actions">
+        <button class="primary" id="start">Start</button>
+        <button id="pause">Pause</button>
+        <button id="skip">Skip this</button>
+        <button id="stop">Stop</button>
+        <button id="keep">Keep for later</button>
+      </div>
+      <ul class="attempts" id="attempts"></ul>
+    </div>
+  </section>
+
+  <section class="pane" id="p-train">
+    <div class="box">
+      <h2>Train</h2>
+      <p class="note">Training here is a personal template and thresholds over a pretrained speaker model: the average of your samples, and thresholds calibrated on your own samples against about 1,750 strangers' voice prints that ship with Kurooto. No network is trained on this computer.</p>
+      <div class="actions"><button class="primary" id="build">Build</button><button id="anyway" class="hidden">Use it anyway</button><button id="undo-build">Undo</button></div>
+      <div class="msg" id="tmsg"></div>
+      <div id="report"></div>
+    </div>
+  </section>
+
+  <section class="pane" id="p-test">
+    <div class="box">
+      <h2>Test</h2>
+      <p class="note">One try at the computer: say anything (up to 15 seconds).</p>
+      <div class="actions">
+        <button class="primary" data-test="me">Try me</button>
+        <button data-test="other">Try as someone else</button>
+        <button data-test="synthetic">Try a synthetic voice</button>
+      </div>
+      <div class="msg" id="xmsg"></div>
+      <div id="dial"></div>
+    </div>
+  </section>
+
+  <section class="pane" id="p-improve">
+    <div class="box">
+      <h2>Improve over time</h2>
+      <label class="sw"><input type="checkbox" id="adapt"> Turns it's very sure were you refine your voice print, slowly (a quarter of its weight at most)</label>
+      <div class="msg" id="amsg"></div>
+      <div class="actions"><button data-undo="today">Undo today</button><button data-undo="all">Undo all</button></div>
+    </div>
+  </section>
+
+  <section class="pane" id="p-manage">
+    <div class="box">
+      <h2>Your voice print</h2>
+      <div id="quality"></div>
+      <div class="actions">
+        <span class="row2"><select id="addc"></select><button id="add">Add samples</button></span>
+        <button id="retrain">Retrain</button>
+      </div>
+    </div>
+    <div class="box">
+      <h2>Model</h2>
+      <div class="row2"><select id="model"></select><button id="setmodel">Change model</button></div>
+      <p class="note">Changing the model means enrolling again: vectors from two models can't be compared, and your sound is never kept to compute them again.</p>
+      <h2>Install from a file</h2>
+      <p class="note">For a computer without internet: the path of the model file (or a package's .whl) already on this computer. It's checked against its pinned checksum; nothing is uploaded.</p>
+      <div class="row2"><input type="text" id="path" placeholder="/path/to/3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx"><button id="install">Install</button></div>
+      <div class="msg" id="imsg"></div>
+    </div>
+    <div class="box">
+      <h2>Forget</h2>
+      <p class="note">Deletes your voice print and its key from this computer. Nothing of it was ever sent anywhere.</p>
+      <div class="actions"><button id="forget">Forget my voice</button></div>
+      <div class="msg" id="fmsg"></div>
+    </div>
+  </section>
+</div>
+<dialog id="confirm"><p>Forget your voice? The voice print and its key are deleted; you'd enrol again to use Voice ID.</p><div class="actions"><button class="primary" id="yes">Forget my voice</button><button id="no">Keep it</button></div></dialog>
+<script src="/static/voiceid.js"></script>
+</body>
+</html>
