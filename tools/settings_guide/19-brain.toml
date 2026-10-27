@@ -190,6 +190,12 @@ tip = "Its senses felt as a body (heat, load, touch), for its feelings and the d
 when = "Turn it off to drop the body. What it senses about you never moves its mood either way."
 needs = "`mind.senses.intero`."
 
+[s."mind.stimulation.addons"]
+tip = "Let an add-on feed another device's sensors into its body (light, motion, battery, loudness...)."
+what = "Each reading is felt as its physical analogue (light on its face, being moved, being picked up, hunger, heat, sound) and drawn by the being's senses; numbers only, kept in memory and the body map."
+when = "Turn it off to ignore what add-ons report; its own body and your phone's sensors are untouched."
+needs = "`mind.stimulation.on` and an add-on that reports a device."
+
 [s."mind.autonomy.on"]
 tip = "Brain learns from your reactions how far it may act on its own, per class of action (shadow first)."
 when = "Turn it off to have it always ask (or never act) as before."

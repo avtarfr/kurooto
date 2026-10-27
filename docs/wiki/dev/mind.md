@@ -998,7 +998,7 @@ region intensity = max, region valence and `tone` = weighted by `I + 0.05`, `aro
 (the engine's `TONE_GAIN` 0.005 per tick); `arousal / 2` adds to the feelings' arousal. Kept: `<state>/mind-stimulation.json`
 (latest only). `/senses body` shows it.
 
-`GET /api/body` (`stimulation.body`), for the dashboard: `{"on", "regions": {"head"|"hands"|"gut"|"skin": {"intensity",
+`GET /api/body` (`stimulation.body`), for the dashboard: `{"on", "regions": {"head"|"hands"|"gut"|"skin"|"face": {"intensity",
 "valence", "channels": {name: {"intensity", "valence"}}}}, "arousal", "tone", "mood", "at"}`, floats only (no readings,
 labels or places). Off: the same shape with empty channels and zeros.
 
@@ -1009,6 +1009,43 @@ Only its own body's tone moves the mood; the channels about him never do (I-14).
 the week's sum, not V or Q. (7) Talk costs and the pest model apply to Brain's own kinds; a reminder he set isn't one.
 (8) `mind.feelings.vocal` is off by default (the standing rule for features that change what people had). (9) The Brain
 page (`core/brainview.py`) doesn't list the three new switches yet: its 3D layout counts 31 parts and is being rebuilt.
+
+#### Another device's senses (0.8.12, `stimulation.feed`, `mind.stimulation.addons`)
+
+`feed(app, source, readings) -> bool` is for add-ons: another device's sensors (a phone standing as its face, the eye
+page on its screen), reported as raw numbers. `translate` keeps the keys of `ADDON` (each with its range; anything else,
+a non-number, NaN or out of range is dropped) and makes each a channel of region `face` (new in `REGIONS`), `skin` or
+`gut`, every one `own=False`, so they raise arousal and show on the map but never reach `own_tone` or the mood:
+
+| Reading (unit) | Channel | Region | Kind | x |
+|---|---|---|---|---|
+| `light_lux` | `brightness` | face | tonic | `log10(1 + lux)`: 0 dark, 2 a room, 5 sunlight (comfort 2.3) |
+| `proximity_cm`, or `near` (0/1) | `closeness` | face | phasic | `1 - cm / 10` clipped to [0, 1], or `near` |
+| `accel_x/y/z` (m/s^2, all three) | `sway` | face | phasic | `abs(abs(a) - g)`: being moved (the otoliths) |
+| `accel_x/y/z` | `tilt` | face | tonic | degrees between gravity and the device's y axis (upright 0); none while falling |
+| `gyro_x/y/z` (rad/s, all three) | `turning` | face | phasic | `abs(w)` (the canals) |
+| `heading_deg` | `heading` | face | tonic | degrees, unwrapped from the last one (359 -> 1 is +2); amplitude 0, no valence |
+| `screen_on` (0/1) | `eyes` | face | tonic | its eyes open (1) or shut |
+| `loudness_db` (SPL), or `loudness_dbfs` | `loudness` | face | tonic | dB; full scale read as `dBFS + 100`; 100 dB or more hurts |
+| `picked_up` (0/1 or a count) | `handled` | skin | phasic | as given |
+| `battery_temp_c` | `temperature` | skin | tonic | C (comfort 30); over 45 hurts |
+| `battery_pct`, `charging` (0/1) | `satiety` | gut | tonic | battery + 10 on the charger; under 5 % off it hurts |
+
+A hurt here (`ADDON_PAIN`) sets that channel's valence to -1 and intensity to at least 0.8, and isn't counted in `pain`
+(its own head). The readings live in memory only (`_fed`, a weak map per app: no file of their own): a phasic channel is
+felt at the next tick at its strongest since the last one, a tonic one at its latest, and one over `FED_S` (10 minutes)
+old is left out. One device at a time per channel: a second source's reading of the same kind takes it over. Each call
+also pushes `{"t": "senses", "source", "readings": {key: number}, "channels": {channel: x}, "at"}` to open dashboards
+(at most every `LIVE_S` = 0.2 s per source; `source` a plain name of up to 30 characters, else "another device"), never
+the event log. False with nothing done when Brain, `mind.stimulation.on` or `mind.stimulation.addons` is off, or no
+reading is one it knows.
+
+The being (`being.js`, `far(m)` exported as `senses`, `home.js` routes `t: "senses"`): these numbers go in `FAR`
+(merged per device), apart from your phone's `SENSE`, and are let go 30 s after the device's last message. Light sets
+the pupil (over the phone's band), the screen off shuts the lids, sway shakes and tilt settles the otoliths, turning
+swirls them, closeness bends the cilia and a pick-up flinches them, loudness lights the cochlea, the device's
+temperature warms the coil (the hotter of it and this computer). The sense panels add rows named after the source
+(`farRows`).
 
 ## 0.8.10: the Brain console (`mind/console.py`, `GET /api/brain/console`)
 

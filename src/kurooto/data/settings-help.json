@@ -513,6 +513,7 @@
 "mind.skills.from_demos": "Also offer skills from what you do over and over (asked once).",
 "mind.skills.on": "Solved tasks become tested, reusable skills; each new one starts out asking first.",
 "mind.stimulation": "Brain's senses felt as a body, for its feelings and the dashboard.",
+"mind.stimulation.addons": "Let an add-on feed another device's sensors into its body (light, motion, battery, loudness...).",
 "mind.stimulation.on": "Its senses felt as a body (heat, load, touch), for its feelings and the dashboard.",
 "mind.story": "The life story every part of Kurooto starts from.",
 "mind.story.on": "One life story every part of Kurooto reads first: a fixed core, then its recent weeks.",

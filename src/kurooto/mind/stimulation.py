@@ -16,6 +16,26 @@ stream if it's on, the phone's bins if they're on), each reading becomes a chann
     place        home 1 (a saved place or Wi-Fi labelled home), else 0   hands    tonic
 (head = the laptop, hands = the phone, gut = nourishment, skin = heat and touch.)
 
+Another device an add-on reports for (0.8.12, `feed`, `mind.stimulation.addons`): a phone standing as its face, the
+eye page on its screen. Each raw reading is translated to a physical analogue (ADDON, `translate`), kept in memory
+only, and felt at the next tick like the rest; older than 10 minutes, it's left out.
+
+    channel      reading (the add-on's key, unit) -> x                    region   kind
+    brightness   light_lux -> log10(1 + lux): 0 dark, 2 a room, 5 sun     face     tonic    light on its face, the pupil
+    closeness    proximity_cm -> 1 - cm/10 in [0, 1], or near (0/1)       face     phasic   something at its face
+    sway         accel_x/y/z m/s^2 -> | |a| - g |                         face     phasic   the otoliths: being moved
+    tilt         accel_x/y/z -> degrees from upright (y up), 0..180       face     tonic    the otoliths: gravity
+    turning      gyro_x/y/z rad/s -> |w|                                  face     phasic   the canals: rotation
+    heading      heading_deg -> degrees, unwrapped from the last one      face     tonic    orientation (no valence)
+    eyes         screen_on 0/1                                            face     tonic    its eyes open or shut
+    loudness     loudness_db (SPL), or loudness_dbfs + 100                face     tonic    hearing: the room's sound
+    handled      picked_up (0/1, or pick-ups since the last report)       skin     phasic   touch: being picked up
+    temperature  battery_temp_c                                           skin     tonic    heat (over 45 C hurts)
+    satiety      battery_pct, +10 while charging                          gut      tonic    hunger (under 5 % hurts)
+(face = that device.) Unknown keys, non-numbers and readings out of range are ignored. None of these move the mood:
+an add-on can make it feel, never make it glad or sad (as the channels about him, I-14). A phasic channel is felt at
+its strongest since the last tick; a tonic one at its latest.
+
 Per channel, every minute:
     baseline     mu and spread s are slow EWMAs, alpha = 1 - exp(-dt / 6 h): it adapts like skin does
     intensity    I = 2 sigmoid(g ln(1 + |x - mu| / (s + eps))) - 1 = tanh(g/2 ln(1 + |x - mu| / (s + eps)))
@@ -42,7 +62,10 @@ way (I-14). The dashboard reads it at GET /api/body (numbers only). It stays on 
 from __future__ import annotations
 
 import math
+import re
+import threading
 import time
+import weakref
 from typing import TYPE_CHECKING
 
 from kurooto import mind
@@ -59,6 +82,7 @@ register_defaults(
     {
         "stimulation": {
             "on": True,  # its senses felt as a body (heat, load, touch, pain...), for its feelings and the dashboard
+            "addons": True,  # an add-on may feed another device's sensors in (light, motion, battery...): feed()
         }
     },
 )
@@ -69,7 +93,7 @@ PHASIC_TAU_S = 120.0  # a touch or a movement fades with this
 PAIN = {"hot_c": 90.0, "disk_pct": 5.0, "battery_pct": 5.0, "crash_s": 3600.0}
 PAIN_FLOOR = 0.8
 FLOOR_W = 0.05
-REGIONS = ("head", "hands", "gut", "skin")
+REGIONS = ("head", "hands", "gut", "skin", "face")
 
 
 class Channel:
@@ -92,6 +116,18 @@ CHANNELS: dict[str, Channel] = {
     "hearing": Channel("hands", False, 0.3, 1.5, 0.1, 0.5, 1.0, 1.0, 0.2, False),
     "quiet": Channel("hands", False, 0.3, 1.5, 0.1, 0.5, 1.0, 1.0, 0.3, False),
     "place": Channel("hands", False, 0.4, 1.5, 0.1, 1.0, 1.5, 1.5, 0.6, False),
+    # another device an add-on reports for (feed): never its own body, so never the mood
+    "brightness": Channel("face", False, 0.4, 1.5, 0.2, 2.3, 2.3, 2.5, 0.5, False),
+    "closeness": Channel("face", True, 0.6, 1.5, 0.2, 0.3, 1.0, 1.0, 0.3, False),
+    "sway": Channel("face", True, 0.5, 1.5, 0.3, 0.5, 1.0, 4.0, 0.4, False),
+    "tilt": Channel("face", False, 0.3, 1.5, 3.0, 0.0, 30.0, 90.0, 0.4, False),
+    "turning": Channel("face", True, 0.4, 1.5, 0.1, 0.2, 1.0, 3.0, 0.4, False),
+    "heading": Channel("face", False, 0.2, 1.2, 5.0, 0.0, 180.0, 180.0, 0.0, False),
+    "eyes": Channel("face", False, 0.2, 1.5, 0.1, 1.0, 1.5, 1.0, 0.3, False),
+    "loudness": Channel("face", False, 0.4, 1.5, 2.0, 45.0, 45.0, 35.0, 0.4, False),
+    "handled": Channel("skin", True, 0.6, 1.5, 0.5, 1.0, 2.0, 4.0, 0.5, False),
+    "temperature": Channel("skin", False, 0.5, 1.5, 1.0, 30.0, 25.0, 15.0, 0.6, False),
+    "satiety": Channel("gut", False, 0.5, 1.5, 2.0, 85.0, 80.0, 60.0, 0.6, False),
 }
 
 
@@ -210,6 +246,7 @@ def readings(app: App, t: float, prev: dict | None = None) -> tuple[dict[str, fl
         x["pain"] = float(pains)
         broken["pain"] = pains > 0
     _phone(app, t, x, prev)
+    _devices(app, t, x, broken)
     return x, broken
 
 
@@ -271,6 +308,135 @@ def _phone(app: App, t: float, x: dict, prev: dict) -> None:
         else:  # else the last saved place it reported
             home = "home" in str((p or {}).get("target") or "").lower()
         x["place"] = 1.0 if home else 0.0
+
+
+# ------------------------------------------------------------------------------------------------- another device
+# An add-on's raw readings: key -> (lowest, highest) it may say; anything else, or out of range, is ignored.
+ADDON = {
+    "light_lux": (0.0, 200_000.0),
+    "proximity_cm": (0.0, 1000.0),
+    "near": (0.0, 1.0),
+    "accel_x": (-200.0, 200.0),
+    "accel_y": (-200.0, 200.0),
+    "accel_z": (-200.0, 200.0),
+    "gyro_x": (-100.0, 100.0),
+    "gyro_y": (-100.0, 100.0),
+    "gyro_z": (-100.0, 100.0),
+    "heading_deg": (-360.0, 720.0),
+    "screen_on": (0.0, 1.0),
+    "loudness_db": (0.0, 160.0),
+    "loudness_dbfs": (-160.0, 0.0),
+    "picked_up": (0.0, 1000.0),
+    "battery_temp_c": (-40.0, 100.0),
+    "battery_pct": (0.0, 100.0),
+    "charging": (0.0, 1.0),
+}
+ADDON_PAIN = {"temperature": lambda x: x > 45.0, "loudness": lambda x: x >= 100.0, "satiety": lambda x: x < 5.0}
+FED_S = 600.0  # a device's reading older than this isn't felt any more (as intero's sample)
+LIVE_S = 0.2  # to open dashboards at most 5 a second per device
+G = 9.80665
+SOURCE = re.compile(r"^[\w .'-]{1,30}$")
+_fed: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()  # app -> {channel: {x, peak, t, src}}: memory only
+_live_at: dict[tuple[int, str], float] = {}
+_fed_lock = threading.Lock()
+
+
+def _ok(readings: dict) -> dict[str, float]:
+    """The readings it knows, as floats in range (a yes/no as 0/1); the rest dropped."""
+    out = {}
+    for k, v in readings.items():
+        lim = ADDON.get(k) if isinstance(k, str) else None
+        if lim is None or not isinstance(v, (int, float)) or not math.isfinite(v):
+            continue
+        if lim[0] <= float(v) <= lim[1]:
+            out[k] = float(v)
+    return out
+
+
+def translate(readings: dict, heading_was: float | None = None) -> dict[str, float]:
+    """An add-on device's raw readings -> {channel: x} (the table at the top); unknown ones are ignored."""
+    r = _ok(readings) if isinstance(readings, dict) else {}
+    x: dict[str, float] = {}
+    if "light_lux" in r:
+        x["brightness"] = math.log10(1.0 + r["light_lux"])
+    if "proximity_cm" in r:
+        x["closeness"] = max(0.0, 1.0 - r["proximity_cm"] / 10.0)
+    elif "near" in r:
+        x["closeness"] = 1.0 if r["near"] else 0.0
+    if all(k in r for k in ("accel_x", "accel_y", "accel_z")):
+        a = math.sqrt(r["accel_x"] ** 2 + r["accel_y"] ** 2 + r["accel_z"] ** 2)
+        x["sway"] = abs(a - G)
+        if a > 1.0:  # not falling: gravity says which way is down
+            x["tilt"] = math.degrees(math.acos(max(-1.0, min(1.0, r["accel_y"] / a))))
+    if all(k in r for k in ("gyro_x", "gyro_y", "gyro_z")):
+        x["turning"] = math.sqrt(r["gyro_x"] ** 2 + r["gyro_y"] ** 2 + r["gyro_z"] ** 2)
+    if "heading_deg" in r:  # a circle: 359 -> 1 is a turn of 2 degrees, not 358
+        h = r["heading_deg"] % 360.0
+        x["heading"] = h if heading_was is None else heading_was + ((h - heading_was % 360.0 + 540.0) % 360.0 - 180.0)
+    if "screen_on" in r:
+        x["eyes"] = 1.0 if r["screen_on"] else 0.0
+    if "loudness_db" in r:
+        x["loudness"] = r["loudness_db"]
+    elif "loudness_dbfs" in r:  # full scale, uncalibrated: 0 dBFS read as a loud 100 dB
+        x["loudness"] = max(0.0, r["loudness_dbfs"] + 100.0)
+    if "picked_up" in r:
+        x["handled"] = r["picked_up"]
+    if "battery_temp_c" in r:
+        x["temperature"] = r["battery_temp_c"]
+    if "battery_pct" in r:
+        x["satiety"] = min(110.0, r["battery_pct"] + (10.0 if r.get("charging") else 0.0))
+    return x
+
+
+def addons_on(app: App) -> bool:
+    return on(app) and bool(app.settings.get("mind.stimulation.addons"))
+
+
+def feed(app: App, source: str, readings: dict) -> bool:
+    """For add-ons: another device's sensor readings (`source` names it, e.g. "body phone"; `readings` the raw numbers
+    of ADDON: light_lux, proximity_cm, accel_x/y/z, battery_pct...). Each becomes its physical analogue on the body
+    map, felt at the next minute's tick (kept in memory only), and the numbers go to open dashboards at once as
+    {"t": "senses", "source", "readings", "channels", "at"} for the being's senses. Call it as often as the device
+    reads (the page gets at most 5 a second). False, with nothing done, when Brain, its body
+    (mind.stimulation.on) or mind.stimulation.addons is off, or none of the readings is one it knows."""
+    if not addons_on(app) or not isinstance(readings, dict):
+        return False
+    src = str(source or "").strip()[:30]
+    src = src if SOURCE.match(src) else "another device"
+    t = time.time()
+    with _fed_lock:
+        fed = _fed.setdefault(app, {})
+        x = translate(readings, (fed.get("heading") or {}).get("x"))
+        if not x:
+            return False
+        for name, val in x.items():
+            was = fed.get(name)
+            peak = max(val, float(was["peak"])) if was and t - was["t"] < FED_S else val  # phasic: the strongest
+            fed[name] = {"x": val, "peak": peak, "t": t, "src": src}
+    key = (id(app), src)
+    live = getattr(app, "live", None)
+    if live is not None and time.monotonic() - _live_at.get(key, 0.0) >= LIVE_S:
+        _live_at[key] = time.monotonic()
+        try:
+            live.push({"t": "senses", "source": src, "readings": {k: round(v, 3) for k, v in _ok(readings).items()},
+                       "channels": {k: round(v, 3) for k, v in x.items()}, "at": round(t, 1)})  # fmt: skip
+        except Exception:
+            pass
+    return True
+
+
+def _devices(app: App, t: float, x: dict, broken: dict) -> None:
+    """The fed channels into this tick: a phasic one at its strongest since the last tick, a tonic one its latest."""
+    if not addons_on(app):
+        return
+    with _fed_lock:
+        for name, r in (_fed.get(app) or {}).items():
+            if t - r["t"] >= FED_S or name not in CHANNELS:
+                continue
+            x[name] = float(r["peak"] if CHANNELS[name].phasic else r["x"])
+            r["peak"] = r["x"]
+            if name in ADDON_PAIN:
+                broken[name] = ADDON_PAIN[name](x[name])
 
 
 # ------------------------------------------------------------------------------------------------- the tick
@@ -358,3 +524,5 @@ def report(app: App) -> str:
 
 def forget(app: App) -> None:
     (app.paths.state / FILE).unlink(missing_ok=True)
+    with _fed_lock:
+        _fed.pop(app, None)
