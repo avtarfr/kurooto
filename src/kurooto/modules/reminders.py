@@ -100,8 +100,9 @@ class Reminders(Module):
         if rows:
             self._lidsafe_poke()
 
-    def add(self, when: dt.datetime, what: str) -> str:
-        key = f"reminders:{uuid.uuid4().hex[:8]}"
+    def add(self, when: dt.datetime, what: str, key: str | None = None) -> str:
+        # key: a caller that may take the reminder back (Brain's Undo, mind/study_push.py) names it "reminders:<ref>"
+        key = key if key and key.startswith("reminders:") else f"reminders:{uuid.uuid4().hex[:8]}"
         self.app.scheduler.action("reminders.fire", self._fire)
         self.app.scheduler.at(
             when, "reminders.fire", {"what": what, "ref": key.split(":", 1)[1]}, key=key, module=self.id

@@ -33,8 +33,10 @@ CLASSES: dict[str, str] = {
     # R1
     "study.move_block": "R1", "reminder.snooze_nonurgent": "R1", "list.reorder_today": "R1", "note.tag_own_block": "R1",
     "job.queue": "R1", "deadline.merge": "R1",
+    "study.block": "R1", "job.revision_pack": "R1", "dream.keep_card": "R1",  # 0.8.16 (mind.act.more)
     # R2
     "schedule.cross_day": "R2", "notes.write_proposal": "R2", "setting.own_nonsafety": "R2",
+    "deadline.reshape": "R2", "dream.keep_lesson": "R2",  # 0.8.16: across days; a line in your how-to-help-me note
     # R3
     "setting.message_affecting": "R3",
     # ALWAYS, besides everything in GUARDED

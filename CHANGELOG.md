@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.8.16 (unreleased)
+
+- **Brain's trust decides more of what it proposes.** A study block from the morning line, moving part of a slipping
+  deadline's work to tomorrow, a revision pack the evening before an exam, and keeping the quiz cards and
+  how-to-help-me lines it wrote at night: below the trust bar for their class it asks with the same buttons as before,
+  and each yes counts toward that trust; above it, it does it and says so with Undo, and an Undo sends it back to
+  asking. A low mood or beliefs no better than a guess still make it ask first. `/mind` and `/autonomy` list each kind
+  with its trust (`mind.act.more`).
+- **Brain forecasts when you'll be at your desk and free.** For the next six hours, learned from the activity sense
+  and Face presence, scored each hour against what they then show and against "same as yesterday", and rewarded for
+  accuracy only (at most 0.05 a day of its reward; nothing about talking to Kurooto counts). Check-ins planned into a
+  class or an hour you're usually away move to a likelier time nearby, and calls Kurooto places by itself wait for one
+  (`mind.presence_forecast.on`, `.prefer`, `.within_min`). `/mind` shows its accuracy and the next likely-free hour.
+- **Quieter ready-made messages, and a polite voice learner.** With Brain on, a nudge a feature sends by itself keeps
+  the register's 2 to 4 sentences, plus the question its buttons answer; digests, lists, answers and anything exempt
+  stay whole (`mind.register.templates`). The nightly voice learning now waits for the machine like Brain's own heavy
+  work.
+
 ## 0.8.15 (unreleased)
 
 - **The phone app's Memory page is as sharp as the dashboard's.** It drew at 1.5 pixels per point and stretched that

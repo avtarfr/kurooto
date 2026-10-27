@@ -520,8 +520,37 @@ by default (`enforce` off) `fn` still runs and the act is recorded for the Sunda
 verdict of ask stores a pending question (`aut:<id>:do|later|never`; the runner registered with `act.register` does it later) and `fn` doesn't
 run. An ALWAYS action never runs through here (`act_always_ask` event): the guarded ones keep their own path in `core/tap.py`, unchanged.
 The digest (`act.digest`, Sundays 19:10) lists the week's acts with Undo and a Seen it, which sends `silence` evidence (the only silence that
-counts). The only call site so far is the retro's duplicate deadline merge; the others the spec lists (proposals, queued jobs, Dreaming
-actions, calendar blocks, reschedules) each need an action id and a runner, and move onto `act.run` one at a time.
+counts). `act.run`'s only call site is still the retro's duplicate deadline merge; 0.8.16 adds the path below for what features propose.
+
+### 0.8.16: the ladder on real actions (`mind.act.more`)
+
+`act.KINDS` names the kinds a feature proposes that trust now decides; each is in `risk.CLASSES`: `study.block` R1,
+`deadline.reshape` R2, `job.revision_pack` R1, `dream.keep_card` R1, `dream.keep_lesson` R2.
+
+- `act.trusted(app, action)`: `more_on` (autonomy, Brain and `mind.act.more`) and `verdict()["do"]`, never ALWAYS.
+  So the low-mood check and the `knobs.ask` uncertainty check in `verdict` turn "do" into "ask" here too. Shadow and
+  `enforce` play no part: the class's bar is the gate (the 0.8.14 "no shadow periods" decision). Each call is counted
+  in `mind-acts.json` `kinds[action]` (`done` / `asked`).
+- `act.attempt(app, action, fn, args, summary, undo_from)`: when trusted, runs `fn(args)`; falsy output means it did
+  nothing, so `None` comes back and the caller asks. Otherwise the act is `record`ed (Sunday digest), with an undo
+  `{"runner": action, "payload": undo_from(out)}` when an undoer is registered (`act.register(action, undoer=...)`,
+  `fn(app, payload) -> str`), and it returns `{"out", "id", "buttons": [[("Undo", "aut:<id>:undo")]]}`. The caller puts
+  the buttons under the message that tells it. `aut:<id>:undo` is the existing `act.button` path: the undoer runs and
+  the class gets `undo` evidence (b += 3 x impact, a 7 day cooldown).
+- `act.answered(app, action, yes)`: the feature's own yes / Keep is `ok` evidence for the class; a no is nothing (it's
+  an answer to a question, not a complaint about an act).
+- `act.kinds_lines(app)`: `/mind` (modules/mind.py `status`) and `/autonomy`.
+
+Call sites, each with its undoer registered at import or in its module's `start()` so Undo works after a restart:
+
+| Kind | Where | Done by | Undo |
+|---|---|---|---|
+| `study.block` | `study_push.push` | `_do(app, day, "auto")`: `reminders.add(..., key="reminders:msp<day>")` (new optional `key`), else Start-by's `start_today` | `study_push.undo`: cancels that reminder key, answer "undone" |
+| `deadline.reshape` | `startby.offer_reshape` | `_reshape_do(i, "auto")` (the old Do that path, also used by `reshape_answer`) | `reshape_undo`: cancels `startby:moved:<i>`, deletes the Agent plan blocks it added (matched by title and start), state "undone" |
+| `job.revision_pack` | `skills.auto_packs` (ask mode) | `_pack_start(ref, text, lane="bg")` | `pack_undo`: `jobs.cancel(jid)` |
+| `dream.keep_card` / `dream.keep_lesson` | `dream.section(send=True)` | `_keep(app, kind, ref)` (the old Keep path, also used by `button`) | `dream.undo(app, uid)` |
+
+The dream section lists what it kept under "Kept by itself" with one Undo row each; what's left keeps Keep / Drop.
 
 
 ## Stage 07: a true journal (I-10)
@@ -1344,3 +1373,44 @@ the switches, the surprise check-in and its exclusions, the late-wake rule).
   never shows under Finish setting up.
 - **Naming:** the AI that answers is the "AI model" in the user wiki, MANUAL, setup and messages (Settings' `brain`
   section is titled "AI model"); `brain.*` keys and `/brain` stay. "Brain" is this feature.
+
+## 0.8.16: presence forecast, the voice learner's gate, the register on templates
+
+- **Presence forecast** (`mind/presence_forecast.py`, `mind.presence_forecast.on`, `.prefer`, `.within_min`): `tick`
+  every 15 minutes (modules/mind.py job `presence`, on a thread). One look when `sensing()` (activity sense or Face
+  presence): `free_now` = `at_desk` (an `activity` store event in `DESK_S`, or the face watcher's `last_seen_owner`
+  within `DESK_S` on its own `clock`) and not `availability.on_call_until` and not the `subjects:class` blocker; added
+  to `looks[slot]` (slot = `YYYY-MM-DDTHH`). The next `HOURS` (6) slots get `frozen[slot] = p_free(start)` the first
+  time only, so a scored forecast was made hours ahead. A slot that's over with `MIN_LOOKS` (2) or more: `y` = free
+  looks / looks; `cells["<weekday>-<hour>"]` and `hours["<hour>"]` gain `[y, 1]`; `seen[slot] = y` (kept `KEEP_DAYS`);
+  with a frozen `p`, the local `score` sums grow and `presence_check {p, y, base}` goes to the scorekeeper, `base` =
+  `seen` of the same hour the day before, else 0.5. `p_free(t)`: `BLOCKED_P` (0.02) when `blocked(t)` (class, Kurooto's
+  sleep window via `sleep.window`, else `availability.night`, or a call), else `(a_cell + K p_hour) / (n_cell + K)`
+  with `p_hour = (a_h + 1) / (n_h + 2)`, `K` = 2, clipped to [0.02, 0.98]. `prefer(app, at, earliest, latest,
+  within_min, skip)`: leaves `at` when `p(at) >= FREE_P` (0.5); else the best quarter hour within the window (nearest
+  first) if it's `>= FREE_P` and beats `p(at)` by `MARGIN` (0.2). `skip=("asleep",)` lets a bedtime check-in ignore
+  the sleep blocker (then only the learned hours count for it). `line(app)` for `/mind`. State `mind-presence.json`
+  (in `Mind`'s delete list and the backups skip list).
+- **Its reward** (`mind/presence_reward.py`, a reward module: `REWARD = True`, in `whitelist.REWARD_SOURCES`):
+  `pay(st, t, p, y, base)`: `r = GAIN (0.01) x ((base - y)^2 - (p - y)^2)`, the day's sum (04:00 days) clipped to
+  `+-W` (0.05); numbers outside [0, 1] pay nothing. `Engine.presence` (the scorekeeper's `presence_check` branch,
+  `log.BUDGET_KINDS`): nothing inside a stop span; `r` into the mood and `weekr:<week>` like the talk reward (never V
+  or Q); `vars["presence"]` keeps the day's sum and the running Brier sums in its meta; one `presence_reward` record
+  `{r, n, why}` per check. Accuracy only: the fact carries three numbers and none of them is about talking to Kurooto.
+- **Where it's used:** `checkins._presence(plan, new, day)` after `_lighter` in `_plan`: a newly planned check-in moves
+  to `prefer(at, earliest=now, latest=end of the check-in day)`, the old time kept under `"presence"`, event
+  `checkin_presence_moved`; the night check-in passes `skip=("asleep",)`. `calls.place` (not alarm, not force) after
+  `_held_call`: `_presence_later(why, due)` for a `why` other than `calls.own` / `alarm.ring`, no deadline under 12 h,
+  `free_now` not True: `prefer(now, earliest=now)` at least 10 minutes on goes to `_hold_until` (the split-out half of
+  `_held_call`) with "you're usually free then".
+- **The voice learner** (modules/voice/__init__.py): the `learn` job runs `_gated(app, fn)`, which is
+  `intero.gated(app, "voice:learn", "cpu", fn, nightly=True)` behind a guarded import. With Brain or `mind.yield.on`
+  off, `gated` runs it at once (0.8.13).
+- **The register on templates** (`mind.register.templates`, `register.shorten`, `Notifier.temperament`): in
+  `Notifier.send` after the gate's verdict, before the door. A message with a `why` other than "asked", no
+  `reply_to`, not `workspace.exempt` (approval, call, urgent, Calm's exemptions) gets `shorten(text,
+  register.sentences(app), buttons)`: unchanged when it's a list (`LIST_LINE`) or more than one paragraph or short
+  enough; else the first n sentences (`gate.SENTENCES`) plus each later one that ends in "?" or names a button label,
+  when there are buttons. Event `mind_register_shortened` (the reason id and characters cut).
+- Tests: `tests/unit/test_mind_trust_presence.py`.
+

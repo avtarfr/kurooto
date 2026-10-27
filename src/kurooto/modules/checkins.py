@@ -187,6 +187,7 @@ class Checkins(Module):
                 plan[name] = {"time": t, "status": "planned"}
                 new.append(name)
         self._lighter(plan, new, day)
+        self._presence(plan, new, day)
         self._save(plan, day)
         for name, c in plan.items():
             if c["status"] == "planned" and c.get("time"):
@@ -206,6 +207,29 @@ class Checkins(Module):
         later = f"{was + dt.timedelta(minutes=LATER_MIN):%H:%M}"
         if first in new and self.at(day, later) > was:  # still the same check-in day
             plan[first] = {"time": later, "status": "planned", "lighter": plan[first]["time"]}
+
+    def _presence(self, plan: dict, new: list[str], day: dt.date) -> None:
+        """(Brain, 0.8.16: mind.presence_forecast.prefer) a check-in just planned for an hour Brain forecasts you won't
+        be at your desk and free moves to a nearby likelier one (within the setting's minutes, the same check-in day,
+        never earlier than now). The night one is for bedtime, so its sleep isn't held against it. Its own time is
+        kept under "presence"."""
+        try:
+            from kurooto.mind import presence_forecast as pf
+        except ImportError:
+            return
+        if not pf.prefer_on(self.app):
+            return
+        end = dt.datetime.combine(day + dt.timedelta(days=1), self._day_start()) - dt.timedelta(minutes=1)
+        for name in new:
+            c = plan.get(name) or {}
+            if c.get("status") != "planned" or not c.get("time"):
+                continue
+            was = self.at(day, c["time"])
+            skip = ("asleep",) if name == "night" else ()
+            to = pf.prefer(self.app, was, earliest=now(), latest=end, skip=skip)
+            if to != was and self.day_of(to) == day:
+                plan[name] = {**c, "time": f"{to:%H:%M}", "presence": c.get("presence") or c["time"]}
+                self.app.events.emit("checkin_presence_moved", name=name, minutes=int((to - was).total_seconds() // 60))
 
     def unlighten(self, day: dt.date) -> None:
         """Not today: a check-in a lighter day moved goes back to its time (not one you moved since)."""

@@ -222,6 +222,32 @@ make a class always ask. By default nothing it already does changes in these wee
 its verdicts bind (then it asks above R0 during shadow, and after it for what it isn't trusted with). Switch the whole thing off
 with `mind.autonomy.on`.
 
+### Its trust on real things (0.8.16)
+
+Five things Kurooto proposes are now decided by that trust (`mind.act.more`, on), so it stops asking about what you
+always say yes to:
+
+| What | Class | Where you see it |
+|---|---|---|
+| A study block from the morning line ("25 min at 16:00?") | R1 | the morning's "Uneasy about ..." line |
+| Moving part of a slipping deadline's work to tomorrow | R2 | Start-by's "Reshape the plan?" |
+| A revision pack the evening before a quiz or exam (with packs set to ask) | R1 | "A revision pack for it tonight?" |
+| Keeping a quiz card it wrote at night | R1 | the morning message's dream cards |
+| Keeping a how-to-help-me line from the night | R2 | the morning message's dream lines |
+
+- **Below the bar** for its class it asks with the feature's own buttons (Yes / Later, Do that / Not today, Build it,
+  Keep / Drop), as before. Every yes or Keep is an OK for that class, so trust grows from your own answers. A no isn't
+  held against it.
+- **Above the bar** it does it and says so in the same message, with **Undo** ("I've set it: I'll remind you at 16:00
+  for 25 min of Measure Theory."). An Undo counts three times against the class and pauses it for a week, so it goes
+  back to asking. The act is on the Sunday list too.
+- It still asks first while its mood is low, or while its beliefs have been no better than a guess (`mind.knobs.on`).
+  The bar is the only gate: no shadow weeks, and `mind.autonomy.enforce` isn't needed.
+- `/mind` and `/autonomy` list each of the five with its class, its trust against the bar, whether it acts or asks
+  now, and how often it did each.
+
+Turn `mind.act.more` off to have all five ask, as in 0.8.15.
+
 ## Its journal: true by construction
 
 Each night Kurooto writes a short journal of its own day: what it got wrong, what you undid, what failed, when it broke a promise,
@@ -435,6 +461,9 @@ make it so. It looks again every 5 minutes, and gives up for the night after 12 
 Kurooto to be asleep (`mind.yield.prefer_sleep`, on), so it runs while you sleep. **What you ask for yourself never
 waits.**
 
+The nightly voice learning (Voice, 04:10) waits the same way since 0.8.16: for its own computer work, not while your
+work holds the machine, a call or the battery. With Brain off it runs at its time as before.
+
 `/mind` shows the week's **contention minutes**: minutes in which its heavy work ran while your own work held the graphics
 card (the aim is none), with how often it waited and gave up.
 
@@ -612,6 +641,12 @@ anything it writes for you unasked to 2, 3 or 4 sentences; a call it places itse
 greeting and the reason, or two warm sentences; what Voice says unasked (a greeting) is spoken a little slower or
 quicker, within 8% of `voice.speak.rate`. Never for replies to you or calls you asked for.
 
+Since 0.8.16 its ready-made messages follow the same register (`mind.register.templates`, on): a nudge or a line a
+feature sends by itself keeps its first 2, 3 or 4 sentences, plus any later sentence its buttons answer (a question,
+or one that names a button). Digests and lists (more than one paragraph, or a line that starts a list) stay whole, and
+so do answers to you and anything that always comes as it is: alarms, your own reminders, a deadline under 12 hours
+away, calls, approvals and anything urgent.
+
 **Three honest knobs** (`mind.knobs.on`):
 
 - **Mood sets exploration:** with a low mood the lab and play get half their nightly budget (never more than you set).
@@ -627,11 +662,36 @@ shaky on lately (up to three, from your quizzes and notes) and what's on its min
 about you). It's read from Brain's files with no model call, in well under 50 ms. Your read, tone, mood and body state
 never go in, so a cloud AI never gets them; answers use it silently, never "since you seem stressed".
 
+## When you'll be free (0.8.16)
+
+Brain forecasts, for each of the next six hours, how likely you are to be **at your desk and free**: at your desk (the
+activity sense saw the computer in use, or Face presence saw you, in the last quarter hour), not on a call and not in a
+class. The night and Kurooto's sleep window count as not free (`mind.presence_forecast.on`, on with Brain).
+
+- **How it learns:** every 15 minutes it looks, and learns each hour of the week from what it saw. With nothing seen
+  yet it has no opinion (50%); a class on your timetable, the night or a call make an hour almost surely not free.
+- **How it's scored:** each hour that's over is checked against the forecast it made hours before, and against "same
+  as yesterday" (what that hour showed the day before). Brain gets a small reward for beating that baseline, at most
+  0.05 a day of its reward, and loses a little for doing worse. Only **accuracy** counts: nothing here looks at whether
+  you answered Kurooto or how much you talk to it, and it never asks you to be anywhere.
+- **What it changes** (`mind.presence_forecast.prefer`, on): a check-in planned for an hour it thinks you won't be
+  free (a class, an hour you're usually away) moves to a clearly likelier time nearby, within
+  `mind.presence_forecast.within_min` (60) minutes, the same check-in day. The night check-in keeps its bedtime. A
+  call Kurooto places by itself (not one you asked for, an alarm or a deadline under 12 hours away) waits for a
+  likelier time when you aren't seen at your desk, and says "Held a call until 11:00 (you're usually free then)".
+- **Where it shows:** `/mind` gives its Brier score (lower is better) next to the baseline's, and the next hour you're
+  likely free.
+
+Without the activity sense or Face presence nothing is scored and it learns nothing; classes and the night still move
+check-ins. It keeps hour-of-week counts and the last three days' outcomes in `mind-presence.json`, numbers only, on this
+computer, not in backups.
+
 ## /mind
 
 - **`/mind`:** whether Brain's scorekeeper is running, how long the log is, whether it checks out, and the last
   anchor; whether Kurooto is asleep, and the job gate's contention minutes this week (0.8.14); with dreaming on, the
-  dream cards kept and dropped, your recall on them next to your own cards, and the lessons kept.
+  dream cards kept and dropped, your recall on them next to your own cards, and the lessons kept; each kind of thing
+  its trust decides, with its trust and whether it acts or asks, and the presence forecast's accuracy (0.8.16).
 - **`/mind gate`:** what the gate held back or removed today, and what it muted.
 - **`/mind verify`:** checks the whole log, record by record, and says the result in one line.
 - **`/mind measures`:** information only (0.8.14): what each part changed outwardly in the last 30 days (a message

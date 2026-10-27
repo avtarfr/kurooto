@@ -113,6 +113,7 @@ BUDGET_KINDS = frozenset(
         "talk_rejected",  # Less of this, a mute or an hour unanswered on one of them: it costs 3w
         "talk_met",  # 0.8.12: an add-on chatted with someone in the room (a quality 0..1 only): its own small budget
         "decision_outcome",  # 0.8.14: what came of a decision's expectation; the scorekeeper writes the outcome record
+        "presence_check",  # 0.8.16: an hour's presence forecast, what it showed and the baseline (three numbers)
     }
 )  # stages 05, 09 and 10: see mind/engine.py
 

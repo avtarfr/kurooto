@@ -683,6 +683,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 
 | Setting | Default | What it does |
 |---|---|---|
+| `mind.act.more` | `true` | Its trust decides study blocks, reshaped plans, revision packs and keeping its night's cards and lines. ([guide](wiki/user/settings-guide.md#mindactmore)) |
 | `mind.anchor_every` | `1000` | How often (in records) Brain notes where its log has got to, besides once a day. ([guide](wiki/user/settings-guide.md#mindanchorevery)) |
 | `mind.attention.on` | `true` | A model of its own attention: "what are you thinking about?" is answered from it. ([guide](wiki/user/settings-guide.md#mindattentionon)) |
 | `mind.autonomy.enforce` | `false` | Make its trust verdicts bind: it asks first for what it isn't trusted with. ([guide](wiki/user/settings-guide.md#mindautonomyenforce)) |
@@ -760,10 +761,14 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.play.on` | `false` | A little nightly time to explore its own questions on your topics (off until you turn it on). ([guide](wiki/user/settings-guide.md#mindplayon)) |
 | `mind.precedents.on` | `false` | Judgement calls between your values are asked once, then followed (off until you turn it on). ([guide](wiki/user/settings-guide.md#mindprecedentson)) |
 | `mind.precedents.threshold` | `0.75` | How alike two situations must be (0 to 1) for a precedent to be followed. ([guide](wiki/user/settings-guide.md#mindprecedentsthreshold)) |
+| `mind.presence_forecast.on` | `true` | Forecast, hour by hour for the next six hours, when you'll be at your desk and free; scored against what the senses then show. ([guide](wiki/user/settings-guide.md#mindpresenceforecaston)) |
+| `mind.presence_forecast.prefer` | `true` | Check-ins and calls Kurooto places by itself prefer an hour you're likely free. ([guide](wiki/user/settings-guide.md#mindpresenceforecastprefer)) |
+| `mind.presence_forecast.within_min` | `60` | How far (minutes) a check-in or a call may move to a likelier hour. ([guide](wiki/user/settings-guide.md#mindpresenceforecastwithinmin)) |
 | `mind.promises.on` | `true` | Its own promises ("I'll check back at 6") are noticed, kept, or owned up to first. ([guide](wiki/user/settings-guide.md#mindpromiseson)) |
 | `mind.read.asks_per_week` | `2` | How many times a week, at most, it may ask whether the week felt heavier than usual. ([guide](wiki/user/settings-guide.md#mindreadasksperweek)) |
 | `mind.read.on` | `true` | Brain's read of how you're doing, from numbers about your days; in shadow mode it only watches. ([guide](wiki/user/settings-guide.md#mindreadon)) |
 | `mind.register.on` | `true` | One temperament: its mood and arousal set how long its unprompted words are, its call openers and Voice's pace. ([guide](wiki/user/settings-guide.md#mindregisteron)) |
+| `mind.register.templates` | `true` | Its ready-made unprompted messages keep the register's 2, 3 or 4 sentences too, not only what the AI writes. ([guide](wiki/user/settings-guide.md#mindregistertemplates)) |
 | `mind.senses.activity` | `false` | The activity stream: the app in front, hashed window titles, saves and commits (never keystrokes, the screen or URLs). ([guide](wiki/user/settings-guide.md#mindsensesactivity)) |
 | `mind.senses.intero` | `true` | Its own machine's state every minute: temperatures, memory, battery, disk, AI limits. ([guide](wiki/user/settings-guide.md#mindsensesintero)) |
 | `mind.senses.phone` | `"(computed)"` | Each of your phone's sensors, off until you switch it on (here and in the phone app). ([guide](wiki/user/settings-guide.md#mindsensesphone)) |

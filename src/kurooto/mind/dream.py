@@ -507,6 +507,20 @@ def section(app: App, send: bool) -> tuple[str, list]:
             items[:] = keep
         if send:
             _save(app, st)
+    kept: list[str] = []
+    if send:  # 0.8.16 (mind.act.more): what Brain is trusted to keep, it keeps itself and says so, with Undo
+        for kind, out in (("c", cards), ("l", lessons)):
+            for it in list(out):
+                did = _auto_keep(app, kind, it)
+                if did is None:
+                    continue
+                out.remove(it)
+                kept.append(did["out"][0])
+                buttons += [[(f"Undo: {(it.get('title') or it.get('line') or '')[:24]}", b[1]) for b in row]
+                            for row in did["buttons"]]  # fmt: skip
+    if kept:
+        parts.append("Kept by itself (its trust in these is earned; Undo below takes one back):\n"
+                     + "\n".join(f"- {k}" for k in kept))  # fmt: skip
     if cards:
         lines = []
         for n, c in enumerate(cards, 1):
@@ -559,6 +573,32 @@ def button(app: App, ref: str, act: str) -> str:
             return "Dropped." if kind == "c" else "Left out; I won't offer that one again."
         if act != "keep":
             return "unknown button"
+    said = _keep(app, kind, ref)
+    if isinstance(said, tuple):
+        try:  # 0.8.16: a Keep is an OK for its kind (mind.act.more), so Brain's trust in keeping them can grow
+            from kurooto.mind import act as _act
+
+            _act.answered(app, KEEP_ACTION[kind], True)
+        except ImportError:
+            pass
+        app.notify(said[0], kind="info", why="asked", buttons=[[("Undo", f"mdr:u{said[1]}:undo")]])
+        return said[0][:190]
+    return said
+
+
+KEEP_ACTION = {"c": "dream.keep_card", "l": "dream.keep_lesson"}  # their kinds for Brain's trust (mind/act.py)
+
+
+def _keep(app: App, kind: str, ref: str) -> tuple[str, str] | str:
+    """Keep a waiting card (into Quiz) or lesson (into the how-to-help-me note): (what was said, its undo id), or a
+    line saying why it couldn't be."""
+    with Lock(app.paths.state, "mind-dream"):
+        st = _load(app)
+        pool = st["cards"] if kind == "c" else st["lessons"] if kind == "l" else []
+        it = next((x for x in pool if x["ref"] == ref), None)
+        if it is None:
+            return "That's settled already, or was let go."
+        dkey = f"c:{it['slug']}" if kind == "c" else f"l:{it['h']}"
         if kind == "c":
             quiz = app.modules.get("quiz")
             if quiz is None or not app.is_on("quiz"):
@@ -588,8 +628,35 @@ def button(app: App, ref: str, act: str) -> str:
         st["undo"][uid] = {**rec, "at": time.time()}
         _save(app, st)
     app.events.emit("mind_dream_answer", what=rec["what"], how="kept")
-    app.notify(said, kind="info", why="asked", buttons=[[("Undo", f"mdr:u{uid}:undo")]])
-    return said[:190]
+    return said, uid
+
+
+def _auto_keep(app: App, kind: str, it: dict) -> dict | None:
+    """0.8.16 (mind.act.more): once Brain's trust in keeping its cards (R1) or lessons (R2) is earned, it keeps the
+    morning's ones itself and the message says so, with Undo. None: it asks with Keep / Drop as before."""
+    try:
+        from kurooto.mind import act
+    except ImportError:
+        return None
+    if kind == "c" and (app.modules.get("quiz") is None or not app.is_on("quiz")):
+        return None
+    _register_undo()
+    return act.attempt(
+        app,
+        KEEP_ACTION[kind],
+        lambda _: (lambda r: r if isinstance(r, tuple) else None)(_keep(app, kind, it["ref"])),
+        summary=f"kept a {'quiz card' if kind == 'c' else 'how-to-help-me line'} from the night",
+        undo_from=lambda out: {"uid": out[1]},
+    )
+
+
+def _register_undo() -> None:
+    try:
+        from kurooto.mind import act
+    except ImportError:
+        return
+    for action in KEEP_ACTION.values():
+        act.register(action, undoer=lambda app, p: undo(app, str((p or {}).get("uid") or "")))
 
 
 def quiz_subject(it: dict) -> str:
@@ -666,5 +733,7 @@ def mind_lines(app: App) -> list[str]:
         )
     return out
 
+
+_register_undo()  # Undo under what Brain kept by itself works after a restart too
 
 __all__ = ["nightly", "section", "button", "undo", "recall", "mind_lines", "voice_line", "outcomes", "distil", "WHEN"]

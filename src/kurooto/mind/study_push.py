@@ -173,14 +173,16 @@ def _name(app: App, subject: str) -> str:
         return subject
 
 
-def line(app: App, r: dict, at: dt.datetime | None, minutes: int) -> str:
+def line(app: App, r: dict, at: dt.datetime | None, minutes: int, ask: bool = True) -> str:
     due = dt.datetime.fromisoformat(r["due"])
     when = f"{due:%a}" if (due.date() - now().date()).days < 6 else f"{due:%a %d %b}"
     bits = [f"due {when}", f"{r['logged']} min logged this week"]
     if r.get("cards") is not None:
         bits.append(f"{r['cards']} card{'s' if r['cards'] != 1 else ''} due")
-    ask = f"{minutes} min at {at:%H:%M}?" if at else f"{minutes} min today?"
-    return f"Uneasy about {_name(app, r['subject'])}: " + ", ".join(bits) + f". {ask}"
+    head = f"Uneasy about {_name(app, r['subject'])}: " + ", ".join(bits) + "."
+    if not ask:
+        return head
+    return head + (f" {minutes} min at {at:%H:%M}?" if at else f" {minutes} min today?")
 
 
 # --------------------------------------------------------------------------------------------------- the morning
@@ -203,15 +205,75 @@ def push(app: App, payload: dict | None = None) -> str | None:
             {"day": today, "subject": r["subject"], "deadline": r["id"], "title": r["title"][:80],
              "at": at.isoformat() if at else None, "minutes": minutes, "answer": None},
         )  # fmt: skip
-    app.notify(
-        text,
-        kind="question",
-        why="mind.study_push",
-        about=r["title"],
-        buttons=[[("Yes", f"msp:{today}:yes"), ("Later", f"msp:{today}:later")]],
-    )
+    # 0.8.16 (mind.act.more): once its trust in study blocks is earned, it sets the block itself and says so, with Undo
+    did = _auto(app, today, minutes)
+    if did is not None:
+        text = f"{line(app, r, at, minutes, ask=False)} {did['out']['said']}"
+        app.notify(text, kind="info", why="mind.study_push", about=r["title"], buttons=did["buttons"] or None)
+    else:
+        app.notify(
+            text,
+            kind="question",
+            why="mind.study_push",
+            about=r["title"],
+            buttons=[[("Yes", f"msp:{today}:yes"), ("Later", f"msp:{today}:later")]],
+        )
     app.events.emit("mind_study_push", cards=bool(r.get("cards")), logged=bool(r["logged"]), slot=at is not None)
     return text
+
+
+def _auto(app: App, day: str, minutes: int) -> dict | None:
+    try:
+        from kurooto.mind import act
+    except ImportError:
+        return None
+    return act.attempt(
+        app,
+        "study.block",
+        lambda _: _do(app, day, "auto"),
+        summary=f"set {minutes} min of study from the morning line",
+        undo_from=lambda out: out.get("undo"),
+    )
+
+
+def _do(app: App, day: str, how: str = "yes") -> dict | None:
+    """The study block itself (Yes, or Kurooto by itself once trusted): a reminder at the time offered, else
+    Start-by counts the deadline as started today. {"said", "undo"}; None when it's answered already or gone."""
+    with Lock(app.paths.state, "mind-study-push"):
+        st = _state(app)
+        if st.get("day") != day or st.get("answer"):
+            return None
+        st["answer"] = how
+        jsave(app.paths.state / FILE, st)
+    name = _name(app, st["subject"])
+    minutes = int(st.get("minutes") or 25)
+    at = dt.datetime.fromisoformat(st["at"]) if st.get("at") else None
+    lead = "Done:" if how == "yes" else "I've set it:"
+    rem = _on(app, "reminders")
+    if rem is not None:
+        when = at if at and at > now() else now() + dt.timedelta(minutes=30)
+        key = f"reminders:msp{day.replace('-', '')}"
+        rem.add(when, f"{minutes} min of {name} ({st.get('title') or 'the deadline'})", key=key)
+        return {"said": f"{lead} I'll remind you at {when:%H:%M} for {minutes} min of {name}.",
+                "undo": {"day": day, "reminder": key}}  # fmt: skip
+    sb = _on(app, "startby")
+    if sb is not None and hasattr(sb, "start_today"):
+        sb.start_today(st["deadline"])
+        return {"said": f"{'Noted' if how == 'yes' else 'I counted it as started'}: "
+                f"{st.get('title') or name} counts as started today.", "undo": {"day": day}}  # fmt: skip
+    return {"said": f"Noted. {minutes} min of {name}" + (f" at {at:%H:%M}." if at else " today."), "undo": None}
+
+
+def undo(app: App, payload: dict | None) -> str:
+    """Undo under a study block Kurooto set by itself: the reminder goes, and the morning line counts as unanswered."""
+    p = payload or {}
+    gone = bool(p.get("reminder") and app.scheduler.cancel(str(p["reminder"])))
+    with Lock(app.paths.state, "mind-study-push"):
+        st = _state(app)
+        if st.get("day") == p.get("day") and st.get("answer") == "auto":
+            st["answer"] = "undone"
+            jsave(app.paths.state / FILE, st)
+    return "Taken back: no study reminder." if gone else "Taken back."
 
 
 def folded(app: App, subject: str | None, what: str = "") -> bool:
@@ -233,28 +295,36 @@ def button(app: App, day: str, act: str) -> str:
             return "That was for another day."
         if st.get("answer"):
             return "Already answered."
-        st["answer"] = "yes" if act == "yes" else "later"
-        jsave(app.paths.state / FILE, st)
-    app.events.emit("mind_study_answer", how=st["answer"])
+        if act != "yes":
+            st["answer"] = "later"
+            jsave(app.paths.state / FILE, st)
+    app.events.emit("mind_study_answer", how="yes" if act == "yes" else "later")
     if act != "yes":
         return "OK, later. Its other reminders stay folded today; the six-hour one still comes."
-    name = _name(app, st["subject"])
-    minutes = int(st.get("minutes") or 25)
-    at = dt.datetime.fromisoformat(st["at"]) if st.get("at") else None
-    rem = _on(app, "reminders")
-    if rem is not None:
-        when = at if at and at > now() else now() + dt.timedelta(minutes=30)
-        rem.add(when, f"{minutes} min of {name} ({st.get('title') or 'the deadline'})")
-        return f"Done: I'll remind you at {when:%H:%M} for {minutes} min of {name}."
-    sb = _on(app, "startby")
-    if sb is not None and hasattr(sb, "start_today"):
-        sb.start_today(st["deadline"])
-        return f"Noted: {st.get('title') or name} counts as started today."
-    return f"Noted. {minutes} min of {name}" + (f" at {at:%H:%M}." if at else " today.")
+    out = _do(app, day, "yes")
+    if out is None:
+        return "Already answered."
+    try:  # 0.8.16: a yes to a study block is an OK for its kind (mind.act.more), so trust can grow
+        from kurooto.mind import act as _act
+
+        _act.answered(app, "study.block", True)
+    except ImportError:
+        pass
+    return out["said"]
 
 
 def forget(app: App) -> None:
     (app.paths.state / FILE).unlink(missing_ok=True)
 
 
-__all__ = ["push", "folded", "button", "pick", "line", "slot"]
+def _register() -> None:
+    try:
+        from kurooto.mind import act
+    except ImportError:
+        return
+    act.register("study.block", undoer=undo)
+
+
+_register()
+
+__all__ = ["push", "folded", "button", "pick", "line", "slot", "undo"]

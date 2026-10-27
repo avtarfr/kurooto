@@ -42,7 +42,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 49 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
-- [Brain](#brain): 119 settings
+- [Brain](#brain): 124 settings
 - [Voice and voice notes](#voice-and-voice-notes): 58 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
@@ -5659,6 +5659,76 @@ never go in, so a cloud AI never gets them. Answers use it silently. Off, the wo
 - **Costs and what leaves this computer:** The concept names and what's on its mind go with each request to the AI you
   picked.
 - **Depends on:** Brain on; the hints need the model of you (`mind.tom.on`).
+
+### `mind.act.more`
+
+Its trust decides study blocks, reshaped plans, revision packs and keeping its night's cards and lines.
+
+Five kinds of thing it proposes: a study block from the morning line (R1), moving part of a slipping deadline's work to
+tomorrow (R2), a revision pack the evening before a quiz or exam (R1, with packs set to ask), keeping a quiz card it
+wrote at night (R1) and keeping a how-to-help-me line from the night (R2). While its trust in that class is below the
+bar (`mind.autonomy.thresholds`), it asks with the feature's own buttons, as before, and each yes is an OK that builds
+trust. Once it's above, it does it and says so with Undo; an Undo costs trust and pauses the class for a week. A low
+mood, or beliefs no better than a guess lately (`mind.knobs.on`), make it ask first again. It works whether or not
+`mind.autonomy.enforce` is on, and needs no shadow weeks: the bar is the gate. /mind and /autonomy list each kind with
+its trust.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to have every one of them ask, as in 0.8.15.
+- **Depends on:** `mind.autonomy.on`; each kind needs its feature (Deadlines, Start-by, Reminders, Skills, Quiz, Brain's
+  dreaming).
+
+### `mind.presence_forecast.on`
+
+Forecast, hour by hour for the next six hours, when you'll be at your desk and free; scored against what the senses then
+show.
+
+Free means at your desk (the activity sense saw the computer in use, or Face presence saw you, in the last quarter
+hour), not on a call and not in a class; the night and Kurooto's sleep window count as not free. It learns each hour of
+the week from its looks every 15 minutes. Each hour that's over is scored against the forecast made hours before and
+against "same as yesterday"; Brain is paid a little for beating that baseline (at most 0.05 a day of its reward), for
+accuracy only: nothing here counts what you said to Kurooto. /mind shows its accuracy and the next likely-free hour.
+Numbers only, on this computer.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you don't use the activity sense or Face presence (without them nothing is
+  scored), or don't want it.
+- **Depends on:** Brain on; the activity sense (`mind.senses.activity`) or Face presence to score it.
+
+### `mind.presence_forecast.prefer`
+
+Check-ins and calls Kurooto places by itself prefer an hour you're likely free.
+
+A check-in just planned for an hour the forecast thinks you won't be free (a class, a call, an hour you're usually away)
+moves to a clearly likelier one nearby, the same check-in day; the night check-in isn't held to your sleep. A call
+Kurooto places by itself (not one you asked for, not an alarm, not a deadline under 12 hours away) waits for a likelier
+time when you aren't seen at your desk, and says so. With nothing learned yet, only classes, the night and calls move
+anything.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep check-ins and calls exactly at their times.
+- **Depends on:** `mind.presence_forecast.on`.
+
+### `mind.presence_forecast.within_min`
+
+How far (minutes) a check-in or a call may move to a likelier hour.
+
+- **Values:** A whole number. **Default:** `60`.
+- **When to change it:** Lower it to keep them close to their times; 0 never moves them.
+- **Depends on:** `mind.presence_forecast.prefer`.
+
+### `mind.register.templates`
+
+Its ready-made unprompted messages keep the register's 2, 3 or 4 sentences too, not only what the AI writes.
+
+A nudge or a line a feature sends by itself keeps its first sentences, and any later one its buttons answer (a question,
+or one naming a button). Digests and lists (more than one paragraph, or a line that starts a list) stay whole, and so do
+answers to you and anything exempt: alarms, your own reminders, a deadline under 12 hours away, calls, approvals,
+anything urgent.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to have Kurooto's ready-made messages come whole, as in 0.8.15.
+- **Depends on:** `mind.register.on`.
 
 ## Voice and voice notes
 

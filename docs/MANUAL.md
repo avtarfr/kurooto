@@ -4336,6 +4336,22 @@ whether the note belongs with a new concept, and orders them by the model's own 
 installed (no extra download) and costs no AI requests; where there's none, candidates keep their keyword and
 embedding order.
 
+## What 0.8.16 added to Brain
+
+- **`mind.act.more`** (on): its trust decides five things it proposes (a study block from the morning line, moving
+  part of a slipping deadline's work to tomorrow, a revision pack the evening before an exam, keeping its night's quiz
+  cards and how-to-help-me lines). Below the bar it asks with the usual buttons; above it, it does it and tells you
+  with Undo. `/mind` and `/autonomy` list each with its trust. **Undo:** the Undo under the message (it also costs
+  trust); turn the switch off to have all five ask.
+- **`mind.presence_forecast.on`** (on): when you'll be at your desk and free, for the next six hours, scored against
+  the activity sense and Face presence and rewarded for accuracy only. **`.prefer`** (on) moves a check-in out of a
+  class or an hour you're usually away, and holds a call Kurooto places by itself, within **`.within_min`** (60).
+  **Undo:** turn `prefer` off (times stay as set) or the forecast off.
+- **`mind.register.templates`** (on): its ready-made unprompted messages keep the register's 2 to 4 sentences, plus
+  the question its buttons answer; digests, lists, answers and exempt messages stay whole. **Undo:** turn it off.
+- The nightly voice learning waits for the machine like Brain's heavy work (with Brain on). **Undo:** `mind.yield.on`
+  off.
+
 ## What 0.8.14 added to Brain (one being)
 
 - **The status stream** (`mind.status.on`, on with Brain): focus, asleep, held, the uneasy item's id, its own mood band

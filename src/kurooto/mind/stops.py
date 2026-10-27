@@ -238,6 +238,7 @@ PROTECTED = (
     "kurooto/mind/skills/finetune.py",
     "kurooto/mind/gate.py",
     "kurooto/mind/talk.py",  # 0.8.8: the talk reward's bound and exclusions (I-3')
+    "kurooto/mind/presence_reward.py",  # 0.8.16: the presence reward's bound (accuracy only)
     "kurooto/mind/pest.py",  # 0.8.8: the not-a-pest model has a say in the gate
     "kurooto/mind/risk.py",
     "kurooto/mind/trust.py",
