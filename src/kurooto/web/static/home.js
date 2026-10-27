@@ -1897,6 +1897,7 @@ function connect() {
     let m; try { m = JSON.parse(ev.data); } catch { return; }
     if (m.t === "graph") { mind.update(m); GRAPH = m; if (BEING) try { BEING.graph(m); } catch (e) { console.error(e); } }
     else if (m.t === "voice") { if (BEING) BEING.voice(m); }
+    else if (m.t === "face") { if (BEING) BEING.face(m); } // Face presence: where your face is, so the being's eyes find you
     else if (m.t === "body") {
       const first = !last; last = m; LIGHT = m.sys.profile === "light" || matchMedia("(prefers-reduced-motion: reduce)").matches;
       body.update(m); renderStatus(m); if (BEING) BEING.update(m);

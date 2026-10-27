@@ -91,7 +91,11 @@ window.beingMount = async function (host, opts) {
   const THEME = opts.theme === "theme" && opts.pal ? "theme" : "void";
   const PAL = THEME === "theme" ? opts.pal : null;
   const P = THEME === "void"
-    ? { bg: "#000000", ink: "#f2f2ef", mute: "#7a7a76", a: 0xffffff, flesh: 0xe9e4de, vein: 0xcfc9c4, nerve: 0x9a9a96 }
+    ? { bg: "#000000", ink: "#f2f2ef", mute: "#7a7a76", a: 0xffffff, flesh: 0xe9e4de, vein: 0xcfb2ad, nerve: 0xb8ab8c, back: 0x9aa3c4,
+        // faint, organic tints: never saturated, the being stays a pale thing in the dark
+        cortex: 0xe3c1b8, sulci: 0xb498b9, cereb: 0xdfbcae, stem: 0xe2cfbb, thal: 0xdcb49c, hippo: 0xc7a9c9, caudate: 0xd9c19a,
+        callosum: 0xeee5d4, muscle: 0xc77d72, fat: 0xe2c793, artery: 0xd58378, iris: [.62, .5, .34], coch: 0xe2bdb6,
+        coil: 0xd2a17c, canal: 0xe6dac4, tip: 0xe0d29a, fog: 0xbdb2ee }
     : { bg: PAL.bg, ink: PAL.fg, mute: PAL.dim || PAL.mute || "#8d9a84", a: new THREE.Color(PAL.fg).getHex(), flesh: new THREE.Color(PAL.fg).getHex(), vein: new THREE.Color(PAL.rose || PAL.bad || "#d0706a").getHex(), nerve: new THREE.Color(PAL.accent || "#9ccf5e").getHex() };
 
   /* --- the page: the 3D canvas, a 2D layer for labels and the voice, a panel for what you click --- */
@@ -169,7 +173,7 @@ window.beingMount = async function (host, opts) {
     o = o || {};
     const m = new THREE.ShaderMaterial({
       defines: o.solid ? { SOLID: "" } : {},
-      uniforms: { c: { value: new THREE.Color(col) }, t: { value: 0 }, k: { value: 0 }, op: { value: o.op ?? 1 }, va: { value: 0 }, vv: { value: 0 }, ao: { value: 0 }, hl: { value: 0 }, dm: { value: 1 }, fp: { value: V(0, 0, 0) }, fr: { value: .25 }, fk: { value: 0 }, fc: { value: new THREE.Color(0xffffff) }, gh: { value: 0 } },
+      uniforms: { c: { value: new THREE.Color(col) }, c2: { value: new THREE.Color(o.col2 ?? col) }, t: { value: 0 }, k: { value: 0 }, op: { value: o.op ?? 1 }, va: { value: 0 }, vv: { value: 0 }, ao: { value: 0 }, hl: { value: 0 }, dm: { value: 1 }, fp: { value: V(0, 0, 0) }, fr: { value: .25 }, fk: { value: 0 }, fc: { value: new THREE.Color(0xffffff) }, gh: { value: 0 } },
       transparent: !!o.op, depthWrite: !o.op, clipping: true, side: THREE.DoubleSide,
       vertexShader: `#include <clipping_planes_pars_vertex>
       uniform float va,vv,ao;${o.deform || "vec3 deform(vec3 p){return p;}"}
@@ -177,7 +181,7 @@ window.beingMount = async function (host, opts) {
       #include <clipping_planes_vertex>
       }`,
       fragmentShader: `#include <clipping_planes_pars_fragment>
-      uniform vec3 c,fp,fc;uniform float t,k,op,hl,dm,fr,fk,gh;varying vec3 n;varying vec3 v;varying vec3 w;${NOISE}
+      uniform vec3 c,c2,fp,fc;uniform float t,k,op,hl,dm,fr,fk,gh;varying vec3 n;varying vec3 v;varying vec3 w;${NOISE}
       void main(){
       #include <clipping_planes_fragment>
       vec3 N=normalize(n);if(!gl_FrontFacing)N=-N;vec3 Vv=normalize(v);vec3 L=normalize(vec3(.4,.8,.6));float ndl=max(0.,dot(N,L));float f=pow(1.-max(0.,dot(N,Vv)),2.2);
@@ -185,7 +189,8 @@ window.beingMount = async function (host, opts) {
       float sc=${(o.scale || 1).toFixed(2)};float e1=abs(fract(dot(w*sc,vec3(.31,.94,.12))*150.+fbm(w*sc*4.)*2.)-.5),e2=abs(fract(dot(w*sc,vec3(-.62,.33,.71))*120.)-.5);
       float etch=smoothstep(.07,.0,e1)*clamp(.85-ndl,0.,1.)+smoothstep(.06,.0,e2)*clamp(.45-ndl,0.,1.);float cont=smoothstep(.035,.0,abs(fract(w.y*sc*34.+fbm(w*sc*2.5)*2.)-.5));
       ${o.fibre ? "float fib=smoothstep(.12,.0,abs(fract((w.y*1.3+atan(w.z,w.x)*.22+fbm(w*3.)*.4)*55.)-.5));" : "float fib=0.;"}
-      vec3 base=c*(.07+.30*ndl+mot*.6);vec3 col=base*(1.-.35*vein)*(1.-.55*etch)*(1.-.3*fib)+c*vein*.25*(1.+2.*k)+c*cont*.07+c*f*(.45+.8*hl)+pow(max(0.,dot(reflect(-L,N),Vv)),40.)*.18;
+      vec3 cc=mix(c,c2,smoothstep(.3,.78,fbm(w*${(o.mottle || 6).toFixed(1)}+3.1))); // a second tint, mottled like living tissue
+      vec3 base=cc*(.07+.30*ndl+mot*.6);vec3 col=base*(1.-.35*vein)*(1.-.55*etch)*(1.-.3*fib)+cc*vein*.25*(1.+2.*k)+cc*cont*.07+cc*f*(.45+.8*hl)+pow(max(0.,dot(reflect(-L,N),Vv)),40.)*.18;
       float inS=fr<=0.?0.:fr>8.?1.:smoothstep(fr,fr*.3,distance(w,fp));float foc=mix(1.,mix(.4,1.16,inS),fk);
       vec3 sel=fc*fk*inS*(.08+.42*f)*(.85+.15*sin(t*2.6));vec3 outc=col*dm*foc+sel*dm;
       #ifdef SOLID
@@ -229,25 +234,29 @@ window.beingMount = async function (host, opts) {
           let [vx, vy, vz] = field(px, py, pz); vx *= sgn; vy *= sgn; vz *= sgn; const L = Math.hypot(vx, vy, vz) || 1; let dx = vx / L, dy = vy / L, dz = vz / L;
           if (dir && dx * dir[0] + dy * dir[1] + dz * dir[2] < 0) { dx = -dx; dy = -dy; dz = -dz; } dir = [dx, dy, dz];
           const nx = px + dx * .014, ny = py + dy * .014, nz = pz + dz * .014; if (!inside(nx, ny, nz)) break; seg.push([nx, ny, nz]);
-          const f = (Math.sin(Math.PI * Math.min(1, i / len)) * .85 + .15) * .8; pos.push(px, py, pz, nx, ny, nz); col.push(f, f, f, f, f, f); px = nx; py = ny; pz = nz;
+          // the fibres coloured by their direction, as tract maps are (left-right red, front-back green, up-down blue),
+          // softened towards white by w
+          const f = (Math.sin(Math.PI * Math.min(1, i / len)) * .85 + .15) * .8, w = .3;
+          const r = f * (w + (1 - w) * Math.abs(dx)), gg = f * (w + (1 - w) * Math.abs(dz)), bb = f * (w + (1 - w) * Math.abs(dy));
+          pos.push(px, py, pz, nx, ny, nz); col.push(r, gg, bb, r, gg, bb); px = nx; py = ny; pz = nz;
         }
         if (sgn === 1) line.push(...seg.reverse()); else line.push([x, y, z], ...seg);
       }
       if (line.length > 12) FIB.push(line);
     }
     const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
-    return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: P.a, vertexColors: true, transparent: true, opacity: .05, blending: THREE.AdditiveBlending, depthWrite: false }));
+    return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: P.a, vertexColors: true, transparent: true, opacity: .09, blending: THREE.AdditiveBlending, depthWrite: false }));
   }
   const mind = { g: new THREE.Group(), b: new THREE.Group(), cut: 0 };
   {
     const M = mind.g, B = mind.b; M.position.copy(BRAIN_C); add(M); B.scale.setScalar(BS); M.add(B);
     const below = new THREE.Plane(V(0, -1, 0), 0), above = new THREE.Plane(V(0, 1, 0), 0);
-    const cortex = new THREE.Mesh(G.grey, flesh(P.flesh, { twin: 1 })); cortex.material.clippingPlanes = [below]; cortex.position.copy(OFF); B.add(cortex); mind.cortex = cortex; twin(cortex);
+    const cortex = new THREE.Mesh(G.grey, flesh(P.cortex ?? P.flesh, { twin: 1, col2: P.sulci, mottle: 9 })); cortex.material.clippingPlanes = [below]; cortex.position.copy(OFF); B.add(cortex); mind.cortex = cortex; twin(cortex);
     mind.mats = [cortex.material]; mind.part = { grey: cortex };
-    for (const nm of ["cerebellum", "brainstem"]) { const m = new THREE.Mesh(G[nm], flesh(P.flesh)); m.position.copy(OFF); B.add(m); mind.mats.push(m.material); mind.part[nm] = m; }
+    for (const nm of ["cerebellum", "brainstem"]) { const m = new THREE.Mesh(G[nm], flesh((nm === "cerebellum" ? P.cereb : P.stem) ?? P.flesh, { col2: P.sulci, mottle: 7 })); m.position.copy(OFF); B.add(m); mind.mats.push(m.material); mind.part[nm] = m; }
     // the deep structures (in the anatomy file all along): seen in X-ray, through a selection, or below the cut
     mind.deep = [];
-    for (const nm of ["thalamus", "hippocampus", "caudate", "callosum"]) { if (!G[nm]) continue; const m = new THREE.Mesh(G[nm], flesh(new THREE.Color(P.flesh).multiplyScalar(.92).getHex())); m.position.copy(OFF); B.add(m); mind.mats.push(m.material); mind.part[nm] = m; mind.deep.push(m); }
+    for (const nm of ["thalamus", "hippocampus", "caudate", "callosum"]) { if (!G[nm]) continue; const tint = { thalamus: P.thal, hippocampus: P.hippo, caudate: P.caudate, callosum: P.callosum }[nm]; const m = new THREE.Mesh(G[nm], flesh(tint ?? new THREE.Color(P.flesh).multiplyScalar(.92).getHex())); m.position.copy(OFF); B.add(m); mind.mats.push(m.material); mind.part[nm] = m; mind.deep.push(m); }
     mind.mode = "solid"; mind.cutK = 0;
     const [nx, ny, nz] = VOL.h.shape, tex = new THREE.DataTexture3D(VOL.d, nx, ny, nz); tex.format = THREE.RedFormat; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.unpackAlignment = 1; tex.needsUpdate = true;
     const capM = new THREE.ShaderMaterial({
@@ -262,7 +271,7 @@ window.beingMount = async function (host, opts) {
     const lid = new THREE.Group(); B.add(lid); const tr = tracts(1500); tr.position.copy(OFF); tr.material.clippingPlanes = [above]; lid.add(tr);
     const fogs = [];
     for (let i = 0; i < 4; i++) {
-      const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { t: { value: 0 }, s: { value: i }, c: { value: new THREE.Color(P.a) }, k: { value: 0 } },
+      const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { t: { value: 0 }, s: { value: i }, c: { value: new THREE.Color(P.fog ?? P.a) }, k: { value: 0 } },
         vertexShader: `varying vec3 w;varying vec3 n;varying vec3 v;void main(){w=position;vec4 m=modelViewMatrix*vec4(position,1.);n=normalize(normalMatrix*normal);v=-m.xyz;gl_Position=projectionMatrix*m;}`,
         fragmentShader: `uniform float t,s,k;uniform vec3 c;varying vec3 w;varying vec3 n;varying vec3 v;${NOISE}void main(){float f=pow(1.-abs(dot(normalize(n),normalize(v))),1.4);float d=fbm(w*3.+vec3(0.,t*.05,t*.03)+s*7.);gl_FragColor=vec4(c,smoothstep(.45,.85,d)*(.035+.045*f)*(1.+.8*k));}` });
       const fm = new THREE.Mesh(G.grey, m); fm.position.copy(OFF); fm.scale.setScalar(1.06 + i * .07); B.add(fm); fogs.push(m);
@@ -301,10 +310,10 @@ window.beingMount = async function (host, opts) {
   const heart = { g: new THREE.Group() };
   {
     const g = heart.g; g.position.copy(HEART_C); g.scale.setScalar(.62); g.rotation.z = -.3; add(g);
-    const mat = flesh(P.flesh, { deform: HEART_DEF, fibre: 1, scale: 1.4, twin: 1 }); const hm = new THREE.Mesh(G.heart, mat); g.add(hm); heart.mesh = hm; twin(hm);
+    const mat = flesh(P.muscle ?? P.flesh, { deform: HEART_DEF, fibre: 1, scale: 1.4, twin: 1, col2: P.fat, mottle: 4 }); const hm = new THREE.Mesh(G.heart, mat); g.add(hm); heart.mesh = hm; twin(hm);
     const pa = G.heart.attributes.position.array, na = G.heart.attributes.normal.array, nv = pa.length / 3;
     const snap = (pts) => pts.map((T3) => { let b = 0, bd = 1e9; for (let i = 0; i < nv; i += 2) { const dx = pa[i * 3] - T3.x, dy = pa[i * 3 + 1] - T3.y, dz = pa[i * 3 + 2] - T3.z, d = dx * dx + dy * dy + dz * dz; if (d < bd) { bd = d; b = i; } } return V(pa[b * 3] + na[b * 3] * .012, pa[b * 3 + 1] + na[b * 3 + 1] * .012, pa[b * 3 + 2] + na[b * 3 + 2] * .012); });
-    const cmat = flesh(P.vein, { deform: HEART_DEF, scale: 2 }), LAD = [], CX = [], RCA = [], paths = [];
+    const cmat = flesh(P.artery ?? P.vein, { deform: HEART_DEF, scale: 2, col2: P.fat, mottle: 12 }), LAD = [], CX = [], RCA = [], paths = [];
     for (let i = 0; i <= 26; i++) { const u = i / 26; LAD.push(hp(-.04 - .05 * u, .2 - .85 * u, .6)); }
     for (let i = 0; i <= 22; i++) { const a = Math.PI / 2 - i / 22 * 2.2; CX.push(hp(.5 * Math.cos(a), .13, .5 * Math.sin(a))); }
     for (let i = 0; i <= 22; i++) { const a = Math.PI / 2 + i / 22 * 2.3; RCA.push(hp(.5 * Math.cos(a), .12, .5 * Math.sin(a))); }
@@ -360,7 +369,7 @@ window.beingMount = async function (host, opts) {
       vertexShader: `varying vec3 n;varying vec3 lp;varying vec3 v;void main(){lp=position;vec4 m=modelViewMatrix*vec4(position,1.);n=normalize(normalMatrix*normal);v=-m.xyz;gl_Position=projectionMatrix*m;}`,
       fragmentShader: `uniform float dil,dm,al;varying vec3 n;varying vec3 lp;varying vec3 v;${NOISE}void main(){vec3 d=normalize(lp);float r=acos(clamp(d.z,-1.,1.))/.6;float a=atan(d.y,d.x);
       vec3 scl=vec3(.84,.80,.76)*(.8+.2*n3(d*6.));float vein=smoothstep(.9,1.,n3(vec3(a*6.,r*14.,1.))+n3(vec3(a*20.,r*30.,2.))*.4)*smoothstep(.9,2.4,r);scl=mix(scl,vec3(.45,.1,.12),vein*.75);
-      float fib=.5+.5*sin(a*110.+n3(vec3(a*12.,r*20.,3.))*7.);vec3 iris=vec3(.62,.6,.56)*(.35+.65*fib)*(1.-.5*smoothstep(.55,.85,n3(vec3(a*14.,r*9.,4.))));iris=mix(iris*1.5,iris*.3,smoothstep(.25,1.,r));
+      float fib=.5+.5*sin(a*110.+n3(vec3(a*12.,r*20.,3.))*7.);vec3 iris=vec3(${(P.iris || [.62, .6, .56]).map((x) => x.toFixed(2)).join(",")})*(.35+.65*fib)*(1.-.5*smoothstep(.55,.85,n3(vec3(a*14.,r*9.,4.))));iris=mix(iris*1.5,iris*.3,smoothstep(.25,1.,r));
       vec3 col=mix(iris,scl,smoothstep(.96,1.04,r));col*=1.-.8*smoothstep(.85,1.,r)*(1.-smoothstep(1.,1.1,r));float slit=abs(d.x)/(dil*.6)+abs(d.y)/(dil*1.6);col=mix(vec3(0.),col,smoothstep(.95,1.05,slit));
       vec3 N=normalize(n),Vv=normalize(v),L=normalize(vec3(.4,.7,.6));gl_FragColor=vec4((col*(.35+.65*max(0.,dot(N,L)))+pow(max(0.,dot(reflect(-L,N),Vv)),140.)*1.6)*dm,al);}` });
   }
@@ -374,33 +383,37 @@ window.beingMount = async function (host, opts) {
   const ptsMat = (col) => new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { map: { value: dot() }, c: { value: new THREE.Color(col) }, dm: { value: 1 } },
     vertexShader: `attribute float a;varying float va;void main(){va=a;vec4 m=modelViewMatrix*vec4(position,1.);gl_PointSize=(1.5+6.*a)*(6./-m.z)*${DPR.toFixed(2)};gl_Position=projectionMatrix*m;}`,
     fragmentShader: `uniform sampler2D map;uniform vec3 c;uniform float dm;varying float va;void main(){gl_FragColor=vec4(c,1.)*texture2D(map,gl_PointCoord)*(.25+va)*dm;}` });
-  const eyes = [];
+  const eyes = [], GAZE = { x: 0, y: 0, tx: 0, ty: 0, at: 0 };
   {
     const S = senses.g; S.position.copy(SENSE_C); add(S); const O = senses.organs, hit = senses.hit;
     const sight = new THREE.Group(); sight.position.set(...SPOS.sight); S.add(sight); const big = eyeWithLids(.3); sight.add(big); eyes.push(big); const rings = [];
     for (let k = 0; k < 2; k++) { const ring = new THREE.Group(), R0 = .55 + k * .2; ring.add(new THREE.Mesh(new THREE.TorusGeometry(R0, .025, 10, 140), flesh(P.flesh))); for (let i = 0; i < 7 + k * 3; i++) { const a = i / (7 + k * 3) * 6.283, e = eyeWithLids(.075); e.position.set(Math.cos(a) * R0, Math.sin(a) * R0, 0); ring.add(e); eyes.push(e); } ring.rotation.set(.4 + k * .6, k * .5, 0); sight.add(ring); rings.push(ring); }
     const coch = new THREE.Group(); coch.position.set(...SPOS.hearing); S.add(coch); const pts = []; for (let i = 0; i < 220; i++) { const u = i / 219, a = u * 6.283 * 2.6, r = .32 * (1 - u * .85); pts.push(V(Math.cos(a) * r, Math.sin(a) * r, u * .18)); }
-    const cm = flesh(P.flesh); coch.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 260, .045, 12, false), cm)); coch.rotation.set(.5, .4, 0);
+    const cm = flesh(P.coch ?? P.flesh, { col2: P.sulci, mottle: 10 }); coch.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 260, .045, 12, false), cm)); coch.rotation.set(.5, .4, 0);
     for (let i = 6; i < pts.length - 6; i += 7) { const ring = new THREE.Mesh(new THREE.TorusGeometry(.05 * (1 - i / pts.length * .4), .005, 6, 24), cm); ring.position.copy(pts[i]); ring.lookAt(pts[i + 1]); coch.add(ring); }
     const hcN = 520, hcp = new Float32Array(hcN * 3), hca = new Float32Array(hcN); for (let i = 0; i < hcN; i++) { const u = i / hcN, a = u * 6.283 * 2.6, r = .32 * (1 - u * .85) - .05; hcp.set([Math.cos(a) * r, Math.sin(a) * r, u * .18 + .04], i * 3); }
     const hcg = new THREE.BufferGeometry(); hcg.setAttribute("position", new THREE.BufferAttribute(hcp, 3)); hcg.setAttribute("a", new THREE.BufferAttribute(hca, 1)); coch.add(new THREE.Points(hcg, ptsMat(PROC.hear.c)));
     const touch = new THREE.Group(); touch.position.set(...SPOS.touch); S.add(touch); const cil = []; for (let i = 0; i < 360; i++) { const a = rnd() * 6.283, r = Math.sqrt(rnd()) * .38; cil.push([Math.cos(a) * r, Math.sin(a) * r * .5, rnd()]); }
     const cgeo = new THREE.BufferGeometry(), cpos = new Float32Array(cil.length * 6); cgeo.setAttribute("position", new THREE.BufferAttribute(cpos, 3)); touch.add(new THREE.LineSegments(cgeo, new THREE.LineBasicMaterial({ color: P.flesh, transparent: true, opacity: .35 })));
     touch.add(new THREE.Mesh(new THREE.CircleGeometry(.4, 48).scale(1, .5, 1).rotateX(-Math.PI / 2), flesh(new THREE.Color(P.flesh).multiplyScalar(.45).getHex())));
-    const tipP = new Float32Array(cil.length * 3), tipA = new Float32Array(cil.length).fill(.2), tipG = new THREE.BufferGeometry(); tipG.setAttribute("position", new THREE.BufferAttribute(tipP, 3)); tipG.setAttribute("a", new THREE.BufferAttribute(tipA, 1)); touch.add(new THREE.Points(tipG, ptsMat(PROC.touch.c)));
-    const bal = new THREE.Group(); bal.position.set(...SPOS.balance); S.add(bal); for (let k = 0; k < 3; k++) { const t2 = new THREE.Mesh(new THREE.TorusGeometry(.2, .022, 10, 80, Math.PI * 1.6), flesh(P.flesh)); t2.rotation.set(k === 0 ? Math.PI / 2 : 0, k === 1 ? Math.PI / 2 : 0, k * .7); bal.add(t2); }
+    const tipP = new Float32Array(cil.length * 3), tipA = new Float32Array(cil.length).fill(.2), tipG = new THREE.BufferGeometry(); tipG.setAttribute("position", new THREE.BufferAttribute(tipP, 3)); tipG.setAttribute("a", new THREE.BufferAttribute(tipA, 1)); touch.add(new THREE.Points(tipG, ptsMat(P.tip ?? PROC.touch.c)));
+    const bal = new THREE.Group(); bal.position.set(...SPOS.balance); S.add(bal); for (let k = 0; k < 3; k++) { const t2 = new THREE.Mesh(new THREE.TorusGeometry(.2, .022, 10, 80, Math.PI * 1.6), flesh(P.canal ?? P.flesh)); t2.rotation.set(k === 0 ? Math.PI / 2 : 0, k === 1 ? Math.PI / 2 : 0, k * .7); bal.add(t2); }
     bal.add(new THREE.Mesh(new THREE.SphereGeometry(.09, 24, 16), flesh(P.flesh, { op: .35 }))); for (let k = 0; k < 3; k++) { const am = new THREE.Mesh(new THREE.SphereGeometry(.045, 16, 12), flesh(P.flesh)); am.position.set(k === 0 ? .2 : k === 1 ? 0 : -.14, k === 2 ? .14 : 0, k === 1 ? .2 : 0); bal.add(am); }
     const otN = 90, otp = new Float32Array(otN * 3), ota = new Float32Array(otN).fill(.3), ot0 = []; for (let i = 0; i < otN; i++) { const v = V(gauss(), gauss(), gauss()).normalize().multiplyScalar(.06 * rnd()); ot0.push(v); otp.set([v.x, v.y, v.z], i * 3); }
     const otg = new THREE.BufferGeometry(); otg.setAttribute("position", new THREE.BufferAttribute(otp, 3)); otg.setAttribute("a", new THREE.BufferAttribute(ota, 1)); bal.add(new THREE.Points(otg, ptsMat(0xffffff)));
     const heat = new THREE.Group(); heat.position.set(...SPOS.heat); S.add(heat); const hpts = []; for (let i = 0; i < 160; i++) { const u = i / 159; hpts.push(V(Math.sin(u * 31) * .13 * (1 - u * .3), u * .75 - .37, Math.cos(u * 31) * .13 * (1 - u * .3))); }
-    const hm = flesh(P.flesh); heat.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(hpts), 260, .022, 8, false), hm)); for (let i = 8; i < hpts.length - 4; i += 10) { const ring = new THREE.Mesh(new THREE.TorusGeometry(.034, .004, 6, 20), hm); ring.position.copy(hpts[i]); ring.lookAt(hpts[i + 1]); heat.add(ring); }
+    const hm = flesh(P.coil ?? P.flesh, { col2: P.fat, mottle: 14 }); heat.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(hpts), 260, .022, 8, false), hm)); for (let i = 8; i < hpts.length - 4; i += 10) { const ring = new THREE.Mesh(new THREE.TorusGeometry(.034, .004, 6, 20), hm); ring.position.copy(hpts[i]); ring.lookAt(hpts[i + 1]); heat.add(ring); }
     Object.assign(O, { sight, hearing: coch, touch, balance: bal, heat });
     for (const [k, o] of Object.entries(O)) { const list = []; o.traverse((x) => { const ms = x.material ? [].concat(x.material) : []; for (const m of ms) { if (m.uniforms && m.uniforms.dm) list.push(m); else if (m.isLineBasicMaterial) { m.userData.base = m.opacity; list.push(m); } } }); senses.mats[k] = [...new Set(list)]; }
     const sizes = { sight: .95, hearing: .4, touch: .45, balance: .3, heat: .45 };
     for (const [k, o] of Object.entries(O)) { const px = new THREE.Mesh(new THREE.SphereGeometry(sizes[k], 12, 8), new THREE.MeshBasicMaterial({ visible: false })); px.userData.pick = { organ: "senses", part: k }; o.add(px); }
     ticks.push((t, dt) => {
       rings[0].rotation.y += dt * .3; rings[1].rotation.x += dt * .22; const mot = Math.min(1, (SENSE.motion || 0) / 15), scr = Math.min(1, (SENSE.screen || 0) / 15);
-      for (const e of eyes) { const u = e.userData; if (Math.abs(t - (hit.sight ?? -9)) < .02 || rnd() < .002) u.blink = t; const bk = Math.max(0, 1 - Math.abs(t - u.blink) / .12); u.set(Math.max(.05, (OPEN.senses ? 1 : .82) - bk)); e.lookAt(cam.position); u.ball.material.uniforms.dil.value = SENSE.light == null ? .32 : [.42, .32, .2][Math.min(2, Math.max(0, SENSE.light | 0))]; }
+      const seen = GAZE.at && performance.now() - GAZE.at < 3000, right = V(1, 0, 0).applyQuaternion(cam.quaternion), upv = V(0, 1, 0).applyQuaternion(cam.quaternion);
+      // the camera faces you and isn't mirrored: your right is the frame's left, so x and y turn round
+      GAZE.tx += ((seen ? -GAZE.x : 0) - GAZE.tx) * Math.min(1, dt * 5); GAZE.ty += ((seen ? -GAZE.y : 0) - GAZE.ty) * Math.min(1, dt * 5);
+      const look = cam.position.clone().add(right.multiplyScalar(GAZE.tx * view.d * .45)).add(upv.multiplyScalar(GAZE.ty * view.d * .3));
+      for (const e of eyes) { const u = e.userData; if (Math.abs(t - (hit.sight ?? -9)) < .02 || rnd() < .002) u.blink = t; const bk = Math.max(0, 1 - Math.abs(t - u.blink) / .12); u.set(Math.max(.05, (OPEN.senses ? 1 : .82) - bk)); e.lookAt(look); u.ball.material.uniforms.dil.value = SENSE.light == null ? .32 : [.42, .32, .2][Math.min(2, Math.max(0, SENSE.light | 0))]; }
       senses.level = (senses.level || 0) * Math.exp(-dt * 3); const hh = Math.max(Math.min(1, senses.level * 1.5), 1 - (t - (hit.hearing ?? -9)) / 1.2); for (let i = 0; i < hcN; i++) hca[i] = .15 + hh * Math.max(0, Math.sin(i / hcN * 30 - t * 14)); hcg.attributes.a.needsUpdate = true; cm.uniforms.k.value = hh;
       const th = Math.max(scr * .5, 1 - (t - (hit.touch ?? -9)) / 1.4); for (let i = 0; i < cil.length; i++) { const [x, z, ph] = cil[i], bend = .05 * Math.sin(t * 2 + ph * 6) + th * .18 * Math.sin(t * 9 - Math.hypot(x, z) * 20); cpos.set([x, 0, z, x + bend, .22 + ph * .08, z + bend * .4], i * 6); tipP.set([x + bend, .22 + ph * .08, z + bend * .4], i * 3); }
       tipA.fill(.04 + th * .7); cgeo.attributes.position.needsUpdate = tipG.attributes.position.needsUpdate = tipG.attributes.a.needsUpdate = true;
@@ -797,7 +810,7 @@ window.beingMount = async function (host, opts) {
     const t = NOW, k = KIND[e.kind]; recent.push(performance.now()); const col = k ? new THREE.Color(PROC[k].c) : new THREE.Color(P.a);
     if (k) {
       mind.fire(k, t, ["memory", "speak", "hear", "touch", "feel", "see"].includes(k) ? 3 : k === "hold" ? 3 : 10);
-      const ven = col.clone().multiplyScalar(.55);
+      const ven = col.clone().lerp(new THREE.Color(P.back ?? P.a), .5).multiplyScalar(.55); // returning blood leans blue
       if (k === "think" || k === "plan" || k === "conscience" || k === "act") FLOW.push([PATHS.mind.cu, t, 1.1, col, 0]);
       if (k === "memory") { FLOW.push([PATHS.memory.cu, t, 1.1, col, 0], [PATHS.memory.cu, t + 1.2, 1.1, ven, 1], [NERVES.memory, t + .2, .5, col, 1], [NERVES.memory, t + .9, .5, col, 0]); if (memory.a) { const n = memory.a.length, c = (rnd() * n) | 0; for (let i = 0; i < 28; i++) fires.push([(c + ((gauss() * 30) | 0) + n * 4) % n, t + rnd() * .35]); } }
       if (k === "hear" || k === "touch") { FLOW.push([NERVES.senses, t, .5, col, 0], [PATHS.senses.cu, t + .4, 1, ven, 1]); senses.hit[k === "hear" ? "hearing" : "touch"] = t; }
@@ -807,7 +820,7 @@ window.beingMount = async function (host, opts) {
     }
     if (e.kind === "senses_phone" && e.sensor) SENSE[String(e.sensor).replace("phone:", "")] = e.value;
     const id = EV_FEATURE[e.kind], o = id && ORG[id];
-    if (o) { o.flash = t; const w = o.g.getWorldPosition(V(0, 0, 0)), mid = HEART_C.clone().lerp(w, .5).add(V(gauss() * .3, .3, .2)), cv = new THREE.CatmullRomCurve3([HEART_C.clone(), mid, w]); FLOW.push([cv, t, .9, new THREE.Color(o.col), 0]); if (RETURNS.has(e.kind)) FLOW.push([cv, t + 1.1, .9, new THREE.Color(o.col).multiplyScalar(.55), 1]); }
+    if (o) { o.flash = t; const w = o.g.getWorldPosition(V(0, 0, 0)), mid = HEART_C.clone().lerp(w, .5).add(V(gauss() * .3, .3, .2)), cv = new THREE.CatmullRomCurve3([HEART_C.clone(), mid, w]); FLOW.push([cv, t, .9, new THREE.Color(o.col), 0]); if (RETURNS.has(e.kind)) FLOW.push([cv, t + 1.1, .9, new THREE.Color(o.col).lerp(new THREE.Color(P.back ?? P.a), .5).multiplyScalar(.55), 1]); }
   }
   function graph(g) { memory.build(g); }
   async function voice(m) {
@@ -815,6 +828,9 @@ window.beingMount = async function (host, opts) {
     if (m.kind === "voice_speak" && m.samples) LANES.me = { text: "", s: m.samples, t: NOW };
     if (m.kind === "voice_state") muteState();
     if (m.kind === "voice_level" && m.levels) senses.level = Math.max(senses.level || 0, ...m.levels.map(Number).filter(isFinite));
+  }
+  function face(m) { // Face presence (t:"face"): where the owner's face is in the camera's frame, nothing else
+    if (m && m.owner && Number.isFinite(+m.x) && Number.isFinite(+m.y)) { GAZE.x = Math.max(-1, Math.min(1, +m.x)); GAZE.y = Math.max(-1, Math.min(1, +m.y)); GAZE.at = performance.now(); }
   }
   async function body(b) { // GET /api/body (0.8.8 stimulation): the phone's latest readings for the senses
     const ch = (b && b.regions && b.regions.hands && b.regions.hands.channels) || {}; if (ch.motion) SENSE.motion = 15 * ch.motion.intensity;
@@ -877,7 +893,7 @@ window.beingMount = async function (host, opts) {
   }
   frame();
   return {
-    update, event, graph, voice, body, typed, setHints,
+    update, event, graph, voice, body, typed, setHints, face,
     stop() { dead = true; if (LAYOUT) LAYOUT.terminate(); ro.disconnect(); removeEventListener("keydown", onKey); R.dispose(); host.innerHTML = ""; host.classList.remove("being"); },
   };
 };
