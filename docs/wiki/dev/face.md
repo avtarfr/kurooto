@@ -82,8 +82,8 @@ States: `off`, `paused(why)`, `resting` (camera closed, input is presence), `wat
    starts a *return* (`returning = {since, gap}`), which waits 30 s for his face. Input ends `away` ("back").
 3. Away (`away.on`): no presence for `away.after_min` while unlocked and watching, or locked that long → "left".
 4. `paused()` (the module's `pause_reason()`) or a camera problem: close, state `paused`.
-5. The camera is wanted when idle ≥ `watch.idle_s`, or (woke, confirming a return, or already open) within 6 s of input
-   becoming active. Otherwise it closes (`resting`).
+5. The camera is wanted when idle ≥ `watch.idle_s`, or locked with `watch.when_locked` on, or (woke, confirming a
+   return, or already open while idle can be read) within 6 s of input becoming active. Otherwise it closes (`resting`).
 6. A frame is due at the rate: `watch.fps` (`fps_battery` on battery), 2 fps for 5 s after the first owner frame,
    divided by `slow` (doubled, up to 8, whenever a frame takes more than 150 ms), never below 0.2.
 7. **Arrival:** a return is pending, `recognise.frames` (3) owner frames among the last 4 within 6 s, and not *still*
@@ -99,7 +99,9 @@ paused · on battery (pause mode) · screen locked · you're on a call · focus 
 another program · no camera · camera blocked by the system · camera covered · template locked.
 
 **Decision worth knowing:** when the computer can't say how long it's been idle (`IdleProbe.idle_seconds()` is None),
-the camera opens only after an unlock or a wake, never "while idle": failing closed keeps the camera free.
+the camera opens only after an unlock or a wake (or to confirm a return), never "while idle", and "already open"
+doesn't keep it open: it closes when that window ends. Failing closed keeps the camera free (0.8.10 review: before
+the fix it stayed open for good once a wake had opened it).
 
 ## Enrolment and the test (`enrol.py`)
 
@@ -136,7 +138,8 @@ only `{frames, recognised, decided}` or `{frames, best, any_accepted}` in `Templ
 - `J = score(I)` for the impostor matrix `I` against the full template.
 - `T_far = max(quantile(J, 1 − far), mean(J) + z·std(J))`, `T_hi = max(0.363, T_far)`, `T_lo = max(0.20, T_hi − 0.10)`.
   `far, z` from `face.recognise.strictness`: loose 1e-2 / 2.33, normal 1e-3 / 3.09, strict 1e-4 / 3.72.
-  `face.recognise.threshold > 0` overrides `T_hi` (`method: "override"`); fewer than 20 impostors or none:
+  `face.recognise.threshold > 0` overrides `T_hi` (`method: "override"`), never below 0.363 (a setting can make it
+  stricter, never looser than the floor); fewer than 20 impostors or none:
   `T_hi = 0.413` (`method: "floor"`).
 - TAR = share of `G ≥ T_hi`, overall and per step. Grade: good (TAR ≥ 0.95, median(G) − T_hi ≥ 0.15, near/far/glasses/
   light complete), fair (TAR ≥ 0.80), weak. Advice per step with TAR < 0.7, when median(J) > 0.25, for missing steps,

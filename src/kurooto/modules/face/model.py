@@ -193,6 +193,7 @@ class Template:
         self.created = time.time()
         self.updated = self.created
         self.impostors_sha = ""
+        self.from_store = False  # unsealed from the store (Face.template): saved again only while it's the current one
 
     # -------------------------------------------------------------------------------------------- stored
     def to_payload(self) -> dict:

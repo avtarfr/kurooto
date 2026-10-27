@@ -148,7 +148,8 @@ Once you've enrolled, Kurooto looks for you **only while you're not using the co
   camera free for a video call you start (on Linux only one program can use a camera at a time).
 - After a minute with no input (`face.watch.idle_s`), right after you unlock the screen or the computer wakes, it opens
   the camera and looks about once a second (`face.watch.fps`; 0.33 on battery). When you start typing again, it gets up
-  to 6 seconds to recognise you, then closes.
+  to 6 seconds to recognise you, then closes. On a computer that can't say how long you've been idle, it looks only
+  after an unlock or a wake, for a few seconds.
 - A dashboard badge "● camera" shows while Kurooto holds the camera, and the card says "Camera: on (looking for you)".
   The camera's own light is the honest signal: look for it.
 
@@ -273,7 +274,7 @@ From a terminal: `kurooto face`, `kurooto face pause 1h`, `kurooto face forget [
 | `face.watch.idle_s` | 60 | seconds without input before it looks |
 | `face.watch.when_locked`, `night` | off, off | also look while locked, at night |
 | `face.recognise.strictness` | `normal` | `loose`, `normal` or `strict` (retrains) |
-| `face.recognise.threshold` | 0 | a fixed threshold instead of the calibrated one |
+| `face.recognise.threshold` | 0 | a fixed threshold instead of the calibrated one (never below 0.363) |
 | `face.recognise.min_face_px` | 60 | smaller faces are ignored |
 | `face.recognise.frames` | 3 | frames of 4 that must be you |
 | `face.greet.on`, `talk` | on, on | the greeting, and the conversation after it |

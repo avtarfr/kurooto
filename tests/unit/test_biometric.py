@@ -112,6 +112,8 @@ def test_calibrate_edge_cases():
     assert none.method == "floor"
     over = calibrate([0.7], [0.1] * 100, 1e-3, 3.09, 0.363, override=0.5)
     assert over.method == "override" and over.hi == 0.5 and math.isclose(over.lo, 0.4)
+    loose = calibrate([0.7], [0.1] * 100, 1e-3, 3.09, 0.363, override=0.1)  # a setting never goes under the floor
+    assert loose.method == "override" and loose.hi == 0.363
     assert calibrate([], [0.0] * 100, 1e-3, 3.09, 0.1).lo == 0.20  # T_lo never below 0.20
 
 

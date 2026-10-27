@@ -401,7 +401,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `face.recognise.frames` | `3` | recognised in this many of the last 4 frames = you're here |
 | `face.recognise.min_face_px` | `60` | faces smaller than this (pixels, at the capture size) are ignored: too far to judge |
 | `face.recognise.strictness` | `"normal"` | false accepts per frame: loose 1 in 100, normal 1 in 1,000, strict 1 in 10,000 |
-| `face.recognise.threshold` | `0.0` | 0 = the calibrated one; otherwise this cosine score (0 to 1) overrides it |
+| `face.recognise.threshold` | `0.0` | 0 = the calibrated one; else this cosine score (0 to 1) overrides it, never below 0.363 |
 | `face.watch.fps` | `1.0` | frames a second it looks at while watching for you (0.2 to 2) |
 | `face.watch.fps_battery` | `0.33` | frames a second on battery |
 | `face.watch.idle_s` | `60` | seconds with no keyboard or mouse before the camera looks (while you type, it doesn't) |

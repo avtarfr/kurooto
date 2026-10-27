@@ -420,6 +420,72 @@ def test_unsure_and_stranger_frames_never_trigger():
     assert "arrived" not in t2.kinds()
 
 
+def test_unsure_frames_count_as_not_you_and_never_trigger():
+    t = W(mine(20))
+    t.w.classify = lambda e: ("unsure", t.tpl.hi - 0.01)  # just under the cut-off: unsure is never you
+    t.w.present_at -= 3600
+    t.run(10)
+    assert "arrived" not in t.kinds() and t.w.counts.unsure >= 3 and t.w.counts.you == 0
+    assert t.w.last_seen_owner is None and t.w.candidate is None
+
+
+def test_with_no_idle_time_the_camera_closes_after_the_wake_look():
+    t = W(mine(10_000), idle=None, locked=True)  # this computer can't say how long it's been idle
+    t.run(2)
+    assert not t.w.camera_open
+    t.locked = False  # an unlock: a look of WAKE_S seconds, then closed (never left open for good)
+    t.run(1)
+    assert t.w.camera_open
+    t.run(600, step=1.0)
+    assert not t.w.camera_open and t.w.state == "resting" and t.cam.closed >= 1
+
+
+def test_when_locked_looks_while_the_screen_is_locked():
+    t = W(mine(100), idle=None, locked=True)
+    t.run(3)
+    assert not t.w.camera_open  # off by default: locked means no look
+    t.cfg["when_locked"] = True
+    t.run(2)
+    assert t.w.camera_open and t.w.state == "watching"
+
+
+def test_turning_it_off_closes_the_camera_at_once(app, trained, monkeypatch):
+    from kurooto.core import desktop
+
+    f = trained
+    shown = []
+    monkeypatch.setattr(desktop, "notify", lambda title, text, urgent=False: shown.append(text))
+    monkeypatch.setattr(app, "notify", lambda text, **kw: None)
+    t = W(mine(100))
+    t.run(1)
+    assert t.w.camera_open
+    f.watcher = t.w
+    f.hold_desktop("Kurooto", "Held while you were away.")
+    app.disable("face")
+    assert not t.w.camera_open and t.cam.closed == 1 and f._halt.is_set()
+    assert f.pause_reason() == "feature off"
+    assert shown == ["Held while you were away."] and not f.held  # nothing held is lost when it goes off
+
+
+def test_a_learn_racing_forget_never_brings_the_template_back(app, trained):
+    f = trained
+    f._tpl = None
+    stale = f.template()  # what a learn or a retrain was holding
+    f.forget()
+    f._retrain(stale)
+    assert not f.store.exists() and not app.secrets.get("face.key")
+
+
+def test_a_threshold_setting_never_goes_under_the_floor(app, trained):
+    f = trained
+    t = f.template()
+    e = you(noise=4.0, r=random.Random(7))  # noqa: S311 (made-up test data) someone a little like you
+    s = t.score(e)
+    assert 0.1 < s < mo.FLOOR
+    app.settings.set("face.recognise.threshold", s - 0.05)  # would take them for you
+    assert f._classify(e)[0] != "owner"
+
+
 def test_a_still_picture_waits_for_movement():
     still = [frame([face()], [BASE]) for _ in range(6)]
     t = W(still)

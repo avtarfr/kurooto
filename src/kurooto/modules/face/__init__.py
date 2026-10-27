@@ -36,7 +36,7 @@ from kurooto.core.state import jsave
 from kurooto.modules.base import Answer, Command, Incoming, Intent, Module
 from kurooto.modules.face import parts as face_parts
 from kurooto.modules.face.enrol import MINIMUM, PLAN, TARGET, TARGETS, Enrolment, Session, Vision
-from kurooto.modules.face.model import MODEL, STRICTNESS, Template
+from kurooto.modules.face.model import FLOOR, MODEL, STRICTNESS, Template
 from kurooto.modules.face.watch import PAUSES, Watcher
 
 if TYPE_CHECKING:
@@ -59,7 +59,7 @@ register_defaults(
         },
         "recognise": {
             "strictness": "normal",  # false accepts per frame: loose 1 in 100, normal 1 in 1,000, strict 1 in 10,000
-            "threshold": 0.0,  # 0 = the calibrated one; otherwise this cosine score (0 to 1) overrides it
+            "threshold": 0.0,  # 0 = the calibrated one; else this cosine score (0 to 1) overrides it, never below 0.363
             "min_face_px": 60,  # faces smaller than this (pixels, at the capture size) are ignored: too far to judge
             "frames": 3,  # recognised in this many of the last 4 frames = you're here
         },
@@ -222,6 +222,8 @@ class Face(Module):
             if self._tpl is None:
                 d = self.store.load()
                 self._tpl = Template.from_payload(d) if d else None
+                if self._tpl is not None:
+                    self._tpl.from_store = True
             return self._tpl
 
     def _template_or_none(self) -> Template | None:
@@ -232,6 +234,8 @@ class Face(Module):
 
     def _save(self, t: Template) -> None:
         with self._tpl_lock:
+            if t.from_store and t is not self._tpl:
+                return  # forgotten (or replaced) meanwhile: a learn or a retrain never brings an old template back
             t.updated = t.updated or time.time()
             status = {**t.status(), "model_sha": face_parts.SFACE_SHA[:12], "greets": self._greets}
             self.store.save(t.to_payload(), status)
@@ -384,6 +388,7 @@ class Face(Module):
             "fps": s("watch.fps"),
             "fps_battery": s("watch.fps_battery"),
             "idle_s": s("watch.idle_s"),
+            "when_locked": s("watch.when_locked"),
             "after_absent_min": s("greet.after_absent_min"),
             "frames": s("recognise.frames"),
             "min_face_px": s("recognise.min_face_px"),
@@ -397,6 +402,7 @@ class Face(Module):
             return "stranger", 0.0
         over = float(self.setting("recognise.threshold") or 0)
         if over > 0:
+            over = max(FLOOR, over)  # an override never goes under OpenCV's published floor: unsure is never you
             s = t.score(e)
             return ("owner" if s >= over else "unsure" if s >= max(0.2, over - 0.1) else "stranger"), s
         return t.classify(e)
@@ -886,6 +892,7 @@ class Face(Module):
     def stop(self) -> None:
         super().stop()
         self.app.availability.blockers.pop("face:away", None)
+        self.flush_desktop()  # pop-ups held while you were away show now: no "back" will come to show them
         self.end_session("turned off")
         self._halt.set()
         if self.watcher is not None:

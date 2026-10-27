@@ -8,7 +8,9 @@ The camera is open only when the feature is on, you're enrolled, nothing in the 
 and one of: no keyboard or mouse for face.watch.idle_s; the screen just unlocked or the computer just woke (10 s); an
 arrival is being confirmed. While you type, input is the presence signal and the camera stays closed (on Linux one
 program can stream from a camera at a time, so a video call you start gets it). Once input is active again, recognition
-gets up to 6 s to confirm you, then the camera closes, confirmed or not.
+gets up to 6 s to confirm you, then the camera closes, confirmed or not. When this computer can't say how long it's
+been idle, only a wake, an unlock or a confirmation opens it, and it closes when that window ends. With
+face.watch.when_locked on, a locked screen counts as idle.
 
 Rate: face.watch.fps (fps_battery on battery); 2 a second for up to 5 s after the first frame it recognises you in;
 halved (down to 0.2) when one frame takes more than 150 ms on a slow machine.
@@ -164,7 +166,11 @@ class Watcher:
         woke = now < self.wake_until
         confirming = (self.returning is not None and now - self.returning["since"] < WAKE_S) or now < self.confirm_until
         grace = self.input_since is None or now - self.input_since < INPUT_GRACE_S
-        want = (idle is not None and idle >= idle_s) or ((woke or confirming or self.camera_open) and grace)
+        # an open camera stays open only while idle time can be measured (input then closes it after the grace);
+        # when it can't (None), only a wake, an unlock or a confirmation keeps it open, never "it was open already"
+        keep = self.camera_open and idle is not None
+        looking = (idle is not None and idle >= idle_s) or (locked and bool(c.get("when_locked")))
+        want = looking or ((woke or confirming or keep) and grace)
         if not want:
             self._close("resting")
             self._set("away" if self.away else "resting", "")

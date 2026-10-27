@@ -239,7 +239,7 @@ def calibrate(genuine, impostor, far: float, z: float, floor: float, override: f
     del genuine
     imp = list(impostor or [])
     if override and override > 0:
-        hi = float(override)
+        hi = max(floor, float(override))  # a setting may make it stricter, never looser than the floor
         return Thresholds(hi, max(LO_FLOOR, hi - LO_GAP), far, "override", len(imp))
     if len(imp) < 20:  # too few to say anything: the floor, a little above it
         hi = floor + 0.05
