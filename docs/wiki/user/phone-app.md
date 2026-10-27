@@ -422,6 +422,10 @@ the dashboard's words over it. Views opens on the page you looked at last.
   thousand, centred between the bars, with its features' lights on a ring just round them and their names on screen.
   Before, it framed a fixed ring of lights, so a small set of notes sat tiny in the middle with a name cut off at the
   edge.
+- **Brain's status** (0.8.14, with Brain on): under the organ's name, a line says what Brain is like now ("eyes shut:
+  focus time · 2 held · uneasy about Sheet 5"), and the drawing shows the same as the dashboard's being: eyes shut, the
+  held count by the heart, the glow on what it's uneasy about, its mood in the fluid and the beat. Tap the line's uneasy
+  part to see where. It comes in the sealed Systems copy (`look.being_status`, `look.being_mood`).
 - **Switches work from the phone**, sealed to your computer over your call line and checked there as on the dashboard
   (below). Other settings are shown there; change them on the dashboard, or in the whole being (next).
 

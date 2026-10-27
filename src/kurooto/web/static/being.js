@@ -12,7 +12,14 @@
    While the microphone's levels come (0.8.13, look.being_live_waveform) the YOU lane is a live trace of them; both
    lanes are smooth mirrored waveforms.
 
-   beingMount(host, {api, token, theme}) -> {update(body), event(ev), graph(g), voice(m), stop()}
+   Brain's status (0.8.14, mind/status.py, enums and numbers only; status(m)): with look.being_status its eyes shut while
+   focus time is on or it's asleep, a small count of held messages sits by the heart, and a slow glow marks the one
+   deadline or promise it's uneasy about (a tap opens it: opts.openItem, else that feature's panel). With
+   look.being_mood its own mood tints the fluid round the brain and sets the heart's rhythm (low is only quieter: dimmer
+   and softer, never a sad face), arousal quickens the pulse, and the pupil follows how much it explores (mood) and
+   narrows a little while its beliefs are no better than a guess.
+
+   beingMount(host, {api, token, theme, openItem}) -> {update(body), event(ev), graph(g), voice(m), status(m), stop()}
    Needs vendor/three (three.js r128 and its bloom passes) and body/anatomy.bin, body/cerebrum.vol (tools/gen_body_meshes.py).
    Turn and zoom: drag, wheel; right-drag pans. Click an organ to look into it, a part of it for its settings, a point of
    light for its feature, a note for its preview; Esc or empty space goes back. */
@@ -246,6 +253,11 @@ window.beingMount = async function (host, opts) {
   /* --- the heartbeat: its rate follows how busy Kurooto has been in the last ten minutes --- */
   const recent = [];
   let phase = 0, BPM = 56;
+  /* --- Brain's status (0.8.14): what the glance and the mood in the drawing read; neutral until a status comes --- */
+  const ST = { on: false, focus: false, asleep: false, held: 0, uneasy: null, item: null, mood: "mid", arousal: 0, knobs: {}, look: { status: true, mood: true }, moodK: 1, fogK: 1, warm: 0, dil: 0 };
+  const glance = () => ST.on && ST.look.status !== false, moodOn = () => ST.on && ST.look.mood !== false;
+  const shutEyes = () => glance() && (ST.focus || ST.asleep);
+  const WARM = new THREE.Color(0xf0dcb4);
   const beat = (ph) => { const u = ((ph % 1) + 1) % 1; return Math.exp(-(((u - .06) / .035) ** 2)) * .45 + Math.exp(-(((u - .2) / .045) ** 2)); };
   const cycle = (ph) => { const u = ((ph % 1) + 1) % 1, sm = (a, b, x) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); }; return { va: Math.exp(-(((u - .06) / .04) ** 2)), vv: sm(.12, .2, u) * (1 - sm(.34, .5, u)), ao: sm(.15, .24, u) * (1 - sm(.36, .6, u)) }; };
   const PATHS = {}, SPEED = 3.6;
@@ -324,7 +336,7 @@ window.beingMount = async function (host, opts) {
       for (let i = mind.sparks.length - 1; i >= 0; i--) { const s = mind.sparks[i], u = (t - s.t0) / s.dur; if (u > 1) { mind.sparks.splice(i, 1); continue; } if (u < 0 || n >= NF) continue; fp.set(s.f[Math.min(s.f.length - 1, (u * s.f.length) | 0)], n * 3); fc[n * 3] = s.c.r; fc[n * 3 + 1] = s.c.g; fc[n * 3 + 2] = s.c.b; fa[n] = Math.sin(Math.PI * u); n++; }
       for (let i = n; i < NF; i++) fa[i] = 0; fg.attributes.position.needsUpdate = fg.attributes.a.needsUpdate = fg.attributes.col.needsUpdate = true;
       fire.material.uniforms.cz.value = M.getWorldPosition(V(0, 0, 0)).applyMatrix4(cam.matrixWorldInverse).z; // the brain's middle, seen from here
-      const k = Math.min(1, mind.sparks.length / 70); for (const f of fogs) { f.uniforms.t.value = t; f.uniforms.k.value = k; f.uniforms.c.value.copy(FOG).multiplyScalar((1 - .75 * cortex.material.uniforms.gh.value) * (1 - .55 * (OPEN.mind || 0))); } cortex.material.uniforms.t.value = t;
+      const k = Math.min(1, mind.sparks.length / 70), FM = FOG.clone().lerp(WARM, ST.warm).multiplyScalar(ST.fogK); for (const f of fogs) { f.uniforms.t.value = t; f.uniforms.k.value = k; f.uniforms.c.value.copy(FM).multiplyScalar((1 - .75 * cortex.material.uniforms.gh.value) * (1 - .55 * (OPEN.mind || 0))); } cortex.material.uniforms.t.value = t;
       mind.cutK += ((FOCUS === "mind" && mind.mode === "cut" ? 1 : 0) - mind.cutK) * .1; const om = mind.cutK, cy = om > .03 ? .22 - om * .12 : 9; cap.visible = om > .03; capM.uniforms.y.value = cy; cap.position.y = cy + OFF.y; lid.position.y = om * .55;
       B.updateMatrixWorld(true); const wp = V(0, cy + OFF.y, 0).applyMatrix4(B.matrixWorld), wn = V(0, 1, 0).transformDirection(B.matrixWorld);
       below.setFromNormalAndCoplanarPoint(wn.clone().negate(), wp);
@@ -356,7 +368,7 @@ window.beingMount = async function (host, opts) {
     for (let k = 0; k < 5; k++) { const s = (k % 2 ? CX : RCA)[5 + k * 3], br = []; for (let i = 0; i < 8; i++) br.push(s.clone().add(hp((k % 2 ? 1 : -1) * .01 * i, -.07 * i, 0))); paths.push([br, .009]); }
     for (const [pts, r] of paths) { const sp = snap(pts); g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(sp), sp.length * 6, r, 6, false), cmat)); }
     heart.mats = [mat, cmat];
-    ticks.push((t) => { const { va, vv, ao } = cycle(phase); for (const m of [mat, cmat]) { m.uniforms.va.value = va; m.uniforms.vv.value = vv; m.uniforms.ao.value = ao; m.uniforms.t.value = t; m.uniforms.k.value = vv; } mat.uniforms.hl.value = HOVER === "heart" ? .6 : 0; });
+    ticks.push((t) => { const { va, vv, ao } = cycle(phase), mk = ST.moodK; for (const m of [mat, cmat]) { m.uniforms.va.value = va * mk; m.uniforms.vv.value = vv * mk; m.uniforms.ao.value = ao; m.uniforms.t.value = t; m.uniforms.k.value = vv; } mat.uniforms.hl.value = HOVER === "heart" ? .6 : 0; });
   }
 
   /* ===================== vessels, nerves, blood ===================== */
@@ -512,14 +524,14 @@ window.beingMount = async function (host, opts) {
     ticks.push((t, dt) => {
       rings[0].rotation.y += dt * .3; rings[1].rotation.x += dt * .22; const mot = Math.max(Math.min(1, (SENSE.motion || 0) / 15), Math.min(1, (fc("sway") || 0) / 3)), scr = Math.min(1, (SENSE.screen || 0) / 15);
       // another device (FAR): its light sets the pupil over your phone's band, its screen off shuts the lids
-      const glow = fc("brightness"), lids = fc("eyes") === 0 ? .12 : null, dil0 = glow != null ? .42 - .22 * Math.min(1, glow / 4) : SENSE.light == null ? .32 : [.42, .32, .2][Math.min(2, Math.max(0, SENSE.light | 0))];
+      const glow = fc("brightness"), shut = shutEyes(), lids = shut ? .05 : fc("eyes") === 0 ? .12 : null, dil0 = ST.dil + (glow != null ? .42 - .22 * Math.min(1, glow / 4) : SENSE.light == null ? .32 : [.42, .32, .2][Math.min(2, Math.max(0, SENSE.light | 0))]);
       const pn = performance.now(), calm = calmEye(), at = attend(pn, calm), right = V(1, 0, 0).applyQuaternion(cam.quaternion), upv = V(0, 1, 0).applyQuaternion(cam.quaternion);
       // the camera faces you and isn't mirrored: your right is the frame's left, so x and y turn round; a saccade is
       // quick, a lone face is followed closely, several are watched a little more slowly, calm is slow and smooth
       const gk = Math.min(1, dt * (calm ? 1.5 : pn < GAZE.fast ? 22 : ATT.faces.size === 1 ? 9 : 5));
       GAZE.tx += ((at ? -at.x : 0) - GAZE.tx) * gk; GAZE.ty += ((at ? -at.y : 0) - GAZE.ty) * gk;
       const look = cam.position.clone().add(right.multiplyScalar(GAZE.tx * view.d * .45)).add(upv.multiplyScalar(GAZE.ty * view.d * .3));
-      for (const e of eyes) { const u = e.userData; if (Math.abs(t - (hit.sight ?? -9)) < .02 || rnd() < .002) u.blink = t; const bk = Math.max(0, 1 - Math.abs(t - u.blink) / .12); u.set(Math.max(.05, (lids ?? (OPEN.senses ? 1 : .82)) - bk)); e.lookAt(look); u.ball.material.uniforms.dil.value = dil0 + (SENSE.face ? .06 : 0); }
+      for (const e of eyes) { const u = e.userData; if (!shut && (Math.abs(t - (hit.sight ?? -9)) < .02 || rnd() < .002)) u.blink = t; const bk = Math.max(0, 1 - Math.abs(t - u.blink) / .12); u.set(Math.max(.05, (lids ?? (OPEN.senses ? 1 : .82)) - bk)); e.lookAt(look); u.ball.material.uniforms.dil.value = dil0 + (SENSE.face ? .06 : 0); }
       senses.level = (senses.level || 0) * Math.exp(-dt * 3); const loud = fc("loudness"); if (loud != null) senses.level = Math.max(senses.level, .6 * Math.min(1, Math.max(0, (loud - 35) / 50))); const hh = Math.max(Math.min(1, senses.level * 1.5), 1 - (t - (hit.hearing ?? -9)) / 1.2); for (let i = 0; i < hcN; i++) hca[i] = .15 + hh * Math.max(0, Math.sin(i / hcN * 30 - t * 14)); hcg.attributes.a.needsUpdate = true; cm.uniforms.k.value = hh;
       const th = Math.max(scr * .5, 1 - (t - (hit.touch ?? -9)) / 1.4, .8 * (fc("closeness") || 0)); for (let i = 0; i < cil.length; i++) { const [x, z, ph] = cil[i], bend = .05 * Math.sin(t * 2 + ph * 6) + th * .18 * Math.sin(t * 9 - Math.hypot(x, z) * 20); cpos.set([x, 0, z, x + bend, .22 + ph * .08, z + bend * .4], i * 6); tipP.set([x + bend, .22 + ph * .08, z + bend * .4], i * 3); }
       tipA.fill(.04 + th * .7); cgeo.attributes.position.needsUpdate = tipG.attributes.position.needsUpdate = tipG.attributes.a.needsUpdate = true;
@@ -1026,6 +1038,57 @@ window.beingMount = async function (host, opts) {
     for (const s of m.schedule || []) { const k = s.key || s.what, was = REST.when.get(k); if (was != null && s.when > was && was <= now + 2) mind.fire(procOfFeature(s.module), NOW, 3); REST.when.set(k, s.when); }
   }
   ticks.push((t, dt) => { if (!REST.on) return; REST.acc += dt * Math.min(3, REST.own * 3); while (REST.acc >= 1) { REST.acc--; mind.fire("attend", t, 1); } }); // a whole core busy: 3 a second
+  // Brain's status (0.8.14): what's pushed ({t:"mind", kind:"status"}, GET /api/mind/status, the phone's "mind" block)
+  const UNEASY = document.createElement("button"); UNEASY.type = "button"; UNEASY.className = "uneasy";
+  UNEASY.style.cssText = "position:absolute;z-index:3;display:none;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:0;background:transparent;cursor:pointer;padding:0";
+  host.append(UNEASY);
+  UNEASY.addEventListener("click", (e) => { e.stopPropagation(); const it = ST.item; if (opts.openItem && it) opts.openItem(it); else if (ST.uneasy && ST.uneasy.startsWith("deadline:") && ORG.deadlines) showFeature("deadlines"); });
+  function status(m) {
+    if (!m) return;
+    const was = ST.uneasy;
+    for (const k of ["focus", "asleep", "held", "uneasy", "mood", "arousal"]) if (k in m) ST[k] = m[k];
+    if (m.knobs) ST.knobs = m.knobs;
+    if (m.look) ST.look = m.look;
+    ST.on = m.on !== false;
+    if ("uneasy_item" in m) ST.item = m.uneasy_item || null; else if ("uneasy_title" in m) ST.item = m.uneasy_title ? { title: m.uneasy_title } : null; else if (ST.uneasy !== was) ST.item = null;
+    ST.arousal = Math.max(0, Math.min(1, +ST.arousal || 0)); ST.held = Math.max(0, ST.held | 0);
+    const title = ST.item && ST.item.title ? ` (${ST.item.title})` : "";
+    UNEASY.title = `uneasy about this${title}: tap to open it`; UNEASY.setAttribute("aria-label", UNEASY.title);
+    if (OM) organDirty();
+  }
+  // where the uneasy glow sits: the deadline's point of light, the conscience for a promise, a note in memory
+  function uneasyAt() {
+    const u = ST.uneasy; if (!glance() || !u) return null;
+    const [kind, key] = [u.slice(0, u.indexOf(":")), u.slice(u.indexOf(":") + 1)];
+    if (kind === "deadline" && ORG.deadlines) return ORG.deadlines.g.getWorldPosition(V(0, 0, 0));
+    if (kind === "note") { const i = memory.nodes.findIndex((n) => n.id === key); if (i >= 0 && memory.p) return V(memory.p[i * 3], memory.p[i * 3 + 1], memory.p[i * 3 + 2]).applyMatrix4(memory.g.matrixWorld); }
+    return V(...REGIONS.conscience.at).add(OFF).applyMatrix4(mind.b.matrixWorld);
+  }
+  // the mood in the drawing eases in over a few seconds: low only dims and softens, high warms a little
+  ticks.push((t, dt) => {
+    const on = moodOn(), low = on && ST.mood === "low", high = on && ST.mood === "high", e = STILL ? 1 : Math.min(1, dt * .6);
+    ST.fogK += ((low ? .7 : high ? 1.08 : 1) - ST.fogK) * e; ST.warm += ((high ? .18 : 0) - ST.warm) * e; ST.moodK += ((low ? .75 : 1) - ST.moodK) * e;
+    const ex = on && ST.knobs.explore != null ? +ST.knobs.explore : 1, unsure = on && ST.knobs.uncertainty != null && ST.knobs.uncertainty >= .25;
+    ST.dil += ((on ? (ex - 1) * .08 - (unsure ? .03 : 0) : 0) - ST.dil) * e;
+  });
+  // the glance, over the drawing: the held count by the heart, the uneasy glow (its button follows it for the tap)
+  function glanceDraw(c) {
+    const show = (org) => !OM ? !FOCUS || FOCUS === org : ONLY === org;
+    if (glance() && ST.held > 0 && show("heart")) {
+      const [x, y, z] = proj(HEART_C.clone().add(V(.55, -.45, 0))); if (z < 1) {
+        c.save(); c.globalAlpha = .9; c.fillStyle = P.bg; c.strokeStyle = P.mute; c.lineWidth = 1; c.beginPath(); c.arc(x, y, 9, 0, 6.2832); c.fill(); c.stroke();
+        c.fillStyle = P.ink; c.font = "600 10px Inter,sans-serif"; c.textAlign = "center"; c.fillText(String(Math.min(99, ST.held)), x, y + 3.5);
+        c.textAlign = "left"; c.fillStyle = P.mute; c.font = "400 9.5px Inter,sans-serif"; c.fillText("held", x + 13, y + 3); c.restore();
+      }
+    }
+    const q = uneasyAt(), org = ST.uneasy && ST.uneasy.startsWith("note:") ? "memory" : ST.uneasy && ST.uneasy.startsWith("deadline:") ? (ORG.deadlines ? ORG.deadlines.org : "heart") : "mind";
+    if (!q || !show(org)) { UNEASY.style.display = "none"; return; }
+    const [x, y, z] = proj(q); if (z > 1) { UNEASY.style.display = "none"; return; }
+    const k = STILL ? .7 : .55 + .35 * Math.sin(NOW * 1.3); // slow: about one breath in five seconds
+    const g = c.createRadialGradient(x, y, 0, x, y, 18); g.addColorStop(0, `rgba(240,200,140,${(.55 * k).toFixed(3)})`); g.addColorStop(1, "rgba(240,200,140,0)");
+    c.save(); c.fillStyle = g; c.beginPath(); c.arc(x, y, 18, 0, 6.2832); c.fill(); c.restore();
+    UNEASY.style.display = "block"; UNEASY.style.left = `${x}px`; UNEASY.style.top = `${y}px`;
+  }
   function update(m) {
     BODY = m; SYS = m.sys || SYS; CELLS = m.cells || CELLS; placeFeatures(CELLS); resting(m);
     if (PANEL === "pc" && PANEL_SENSE === "heat") { const live = panel.querySelector(".pc"); if (live) live.outerHTML = pcHTML(); }
@@ -1204,6 +1267,16 @@ window.beingMount = async function (host, opts) {
     }
     return null;
   }
+  // the organ pages' status line (the app shows it under the organ's name): enums in words, never how you are
+  function mindLine() {
+    if (!glance()) return "";
+    const bits = [];
+    if (ST.asleep) bits.push("asleep, eyes shut"); else if (ST.focus) bits.push("eyes shut: focus time");
+    if (ST.held) bits.push(`${ST.held} held`);
+    if (ST.uneasy) bits.push(`uneasy about ${(ST.item && ST.item.title) || (ST.uneasy.startsWith("deadline:") ? "a deadline" : ST.uneasy.startsWith("note:") ? "a note" : "a promise")}`);
+    if (moodOn() && ST.mood !== "mid") bits.push(ST.mood === "low" ? "quieter today" : "bright today");
+    return bits.join(" · ");
+  }
   async function describe() {
     const o = ONLY; while (KREC.length && performance.now() - KREC[0][0] > 600000) KREC.shift();
     let parts = [];
@@ -1213,7 +1286,7 @@ window.beingMount = async function (host, opts) {
     if (o === "memory") parts = memory.hoods.filter((h) => h.n > 0).sort((x, y) => y.n - x.n).slice(0, 40).map((h) => ({ kind: "hood", key: String(h.key), name: h.name, sub: `most linked: ${h.hub}`, live: `${h.n} notes` }));
     const head = { mind: `${recent.length} ${recent.length === 1 ? "event" : "events"} in 10 minutes · ${Math.round(BPM)} a minute`, heart: `${Math.round(BPM)} a minute: faster when it's busier`, senses: "sight, hearing, touch, balance, its own body", memory: `${memory.nodes.length} notes · they light up as they link` }[o];
     const sel = SUB ? { kind: SUB.kind, key: String(SUB.key) } : null;
-    return { page: PAGE_OF[o], head, mode: mind.mode, sel, parts, detail: SUB ? await detail(SUB) : null, feats: o === "memory" && !SUB ? featsAt("memory", null) : [], said: SAID };
+    return { page: PAGE_OF[o], head, mode: mind.mode, sel, parts, detail: SUB ? await detail(SUB) : null, feats: o === "memory" && !SUB ? featsAt("memory", null) : [], said: SAID, mind: mindLine(), uneasy: glance() && ST.uneasy ? { id: ST.uneasy, title: (ST.item && ST.item.title) || "" } : null };
   }
   async function organTick() {
     if (OBUSY) return; OBUSY = true; ODIRTY = false;
@@ -1270,7 +1343,7 @@ window.beingMount = async function (host, opts) {
     if (dead) return; requestAnimationFrame(frame);
     if (document.hidden || !host.isConnected || host.offsetWidth === 0) return;
     const now = performance.now(), dt = Math.min(.1, (now - last) / 1000); last = now; const t = (now - t0) / 1000; NOW = t;
-    while (recent.length && now - recent[0] > 600000) recent.shift(); BPM = 52 + Math.min(48, recent.length * 1.2); phase += dt * BPM / 60;
+    while (recent.length && now - recent[0] > 600000) recent.shift(); BPM = 52 + Math.min(48, recent.length * 1.2) + (moodOn() ? (ST.mood === "low" ? -4 : 0) + 10 * ST.arousal : 0); phase += dt * BPM / 60;
     HINT = HINTS ? Math.max(0, 1 - t / 6, Math.min(1, (hintUntil - t) / 3)) : 0;
     // the camera, eased; a turned organ keeps a little of its spin; unfocused, the mind turns by itself
     if (STILL && !drag) spinning.obj = null; // Remove animations: a turned organ stops where the finger left it
@@ -1303,6 +1376,7 @@ window.beingMount = async function (host, opts) {
     if (FOCUS === "heart") for (const [k, r] of Object.entries(HEART_PARTS)) { if (OM && PICKED !== k) continue; const v = V(...r.at).applyMatrix4(heart.g.matrixWorld); const [x] = proj(v); tag(v, x > W / 2 ? 110 : -110, -16, r.name, r.sub, OPEN.heart * (PICKED && PICKED !== k ? .35 : 1), PICKED === k); }
     if (FOCUS === "senses") for (const [k, o] of Object.entries(senses.organs)) { if (OM && PICKED !== k) continue; const v = o.getWorldPosition(V(0, 0, 0)); const [x, y] = proj(v); tag(v, x > W / 2 ? 130 : -130, y > H / 2 ? 40 : -40, SENSES[k].name, SENSES[k].sub, OPEN.senses * (PICKED && PICKED !== k ? .35 : 1), PICKED === k); }
     if (FOCUS === "memory") for (const h of memory.hoods.filter((x) => x.n >= 5).slice(0, 10)) { if (OM && !(SUB && SUB.kind === "hood" && SUB.key === h.key)) continue; const v = V(...h.at).applyMatrix4(memory.g.matrixWorld); const [x] = proj(v); tag(v, x > W / 2 ? 90 : -90, -16, h.name, `${h.n} notes · most linked: ${String(h.hub).slice(0, 28)}`, OPEN.memory * (SUB && SUB.kind === "hood" && SUB.key !== h.key ? .25 : 1), !!(SUB && SUB.kind === "hood" && SUB.key === h.key)); }
+    glanceDraw(c);
     if (SUB) {
       const q = SUB.pos(), [sx, sy, sz] = proj(q);
       if (sz < 1) {
@@ -1322,12 +1396,14 @@ window.beingMount = async function (host, opts) {
   }
   frame();
   return {
-    update, event, graph, voice, body, typed, setHints, face, setRest, setLive, senses: far,
+    update, event, graph, voice, body, typed, setHints, face, setRest, setLive, senses: far, status,
     // phone: the back button goes up one level (as Esc), and how deep you are (0: the whole being)
     escape() { if (OM) { if (!SUB) return false; back(); return true; } if (SUB) back(); else if (FOCUS || panel.style.display === "block") { closePanel(); focusOn(null); } else return false; return true; },
     depth() { if (OM) return SUB ? 1 : 0; return SUB ? 2 : FOCUS || panel.style.display === "block" ? 1 : 0; },
     // organ pages (opts.only): what the app reads and calls
     ...(OM ? { only, pick, setting, feature, mode: (m) => { if (["solid", "cut", "xray"].includes(m)) { setMode(m); organDirty(); } }, state: () => OSTATE, rev: () => OREV } : {}),
+    // the organ pages' status line: a tap on its uneasy part focuses the glow's place (the app calls it)
+    uneasy() { const u = ST.uneasy; if (!u) return false; if (u.startsWith("deadline:") && ORG.deadlines) { if (OM && ORG.deadlines.org === ONLY) { pick("feature", "deadlines"); return true; } if (!OM) { showFeature("deadlines"); return true; } } return false; },
     stop() { dead = true; if (OM) clearInterval(OTIMER); if (LAYOUT) LAYOUT.terminate(); ro.disconnect(); removeEventListener("keydown", onKey); R.dispose(); host.innerHTML = ""; host.classList.remove("being"); },
   };
 };

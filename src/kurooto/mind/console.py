@@ -1114,6 +1114,99 @@ def search(app: App, q: str, limit: int = SEARCH_MAX) -> dict:
 
 
 # ----------------------------------------------------------------------------------------------------- whole
+# --------------------------------------------------------------------------------- measurements (0.8.14)
+# What each part changed outwardly: a message held, reworded or made quieter, an act it did on its own, a decision it
+# recorded before acting, a promise it made you. Information only: nothing is turned off by these numbers.
+OUTWARD_KINDS = ("decision", "mind_act", "gate_receipt", "gate_lint", "gate_mute", "gate_call", "promise_made")
+AUDIT_DAYS = 30
+LATENCY_DAYS = 7
+# a decision's action names the part that made it ("message:mind.feeling", "proposal:lab", "job:play"...)
+ACTION_PART = (("feeling", "feelings"), ("lab", "lab"), ("play", "play"), ("plan", "plans"), ("dream", "dreaming"),
+               ("forecast", "forecast"), ("checkin", "forecast"), ("belief", "beliefs"), ("precedent", "precedents"),
+               ("improve", "improve"), ("skill", "skills"), ("promise", "promises"), ("workspace", "workspace"),
+               ("arbiter", "workspace"), ("concern", "feelings"), ("study", "tom"), ("quiz", "tom"))  # fmt: skip
+
+
+def _decision_part(body: dict) -> str:
+    act = f"{body.get('action') or ''} {body.get('scored_reason') or ''}".lower()
+    return next((part for word, part in ACTION_PART if word in act), "autonomy")
+
+
+def audit(app: App, days: int = AUDIT_DAYS) -> dict:
+    """The decoration audit: per Brain part, how many outward decisions it changed in the last `days` days, from the
+    mind log. A part that's on and changed none is labelled decoration (it still runs; this is information)."""
+    since = time.time() - days * 86400
+    marks = ",".join("?" * len(OUTWARD_KINDS))
+    count: dict[str, int] = {}
+    sql = f"SELECT kind, body FROM records WHERE ts >= ? AND kind IN ({marks})"  # noqa: S608 (placeholders only)
+    for kind, raw in _q(app, sql, (since, *OUTWARD_KINDS)):
+        part = _decision_part(_body(raw)) if kind == "decision" else part_of(kind)
+        count[part] = count.get(part, 0) + 1
+    rows = []
+    for isl in parts(app, {}):
+        for p in isl["parts"]:
+            n = count.pop(p["id"], 0)
+            rows.append(
+                {"id": p["id"], "name": p["name"], "on": p["on"], "changed": n, "decoration": bool(p["on"] and n == 0)}
+            )
+    for pid, n in sorted(count.items()):  # a part the islands don't list (dreaming, an add-on's)
+        rows.append({"id": pid, "name": pid, "on": True, "changed": n, "decoration": False})
+    return {"days": days, "parts": rows, "decoration": [r["id"] for r in rows if r["decoration"]]}
+
+
+def _p95(xs: list[float]) -> float | None:
+    xs = sorted(x for x in xs if x >= 0)
+    return round(xs[min(len(xs) - 1, int(0.95 * len(xs)))], 2) if xs else None
+
+
+def latency(app: App, days: int = LATENCY_DAYS) -> dict:
+    """p95 reply latency of your own requests (lane "you", queued to finished) over the last `days` days, and Brain's
+    own share of it: the p95 of building its block for a request (providers/context.py mind_context)."""
+    secs: list[float] = []
+    jobs = getattr(app, "jobs", None)
+    if jobs is not None:
+        try:
+            rows = jobs._read(  # noqa: SLF001
+                "select created, finished from jobs where coalesce(lane, 'you') = 'you' and finished is not null "
+                "and created >= ? and status not in ('queued', 'running')",
+                (time.time() - days * 86400,),
+                one=False,
+            )
+            secs = [float(f) - float(c) for c, f in rows if c is not None and f is not None]
+        except Exception:
+            secs = []
+    try:
+        from kurooto.providers.context import p95_ms
+
+        ctx = p95_ms()
+    except Exception:
+        ctx = None
+    return {"days": days, "n": len(secs), "p95_s": _p95(secs), "context_p95_ms": ctx, "brain_on": mind.on(app)}
+
+
+def measurements(app: App) -> dict:
+    """/mind measures and the console's Measurements: the decoration audit and the reply latency. Information only."""
+    return {"audit": audit(app), "latency": latency(app)}
+
+
+def measures_text(app: App) -> str:
+    """/mind measures in words."""
+    m = measurements(app)
+    a, lat = m["audit"], m["latency"]
+    lines = [f"What each part changed outwardly in {a['days']} days (information only; nothing is turned off by it):"]
+    for r in sorted(a["parts"], key=lambda r: (-r["changed"], r["name"])):
+        if r["on"] or r["changed"]:
+            tail = "  decoration: on, changed nothing" if r["decoration"] else ""
+            lines.append(f"  {r['name']}: {r['changed']}{tail}")
+    if lat["p95_s"] is None:
+        lines.append(f"Reply latency: no requests of yours finished in {lat['days']} days.")
+    else:
+        lines.append(f"Reply latency (your requests, {lat['days']} days, {lat['n']}): p95 {lat['p95_s']:.1f} s.")
+    if lat["context_p95_ms"] is not None:
+        lines.append(f"Brain's share (its block for each request): p95 {lat['context_p95_ms']:.1f} ms.")
+    return "\n".join(lines)
+
+
 def head(app: App) -> dict:
     on_ = mind.on(app)
     try:
@@ -1124,6 +1217,13 @@ def head(app: App) -> dict:
     h = _q(app, "SELECT MAX(seq), COUNT(*) FROM records")
     seq, n = (int(h[0][0] or 0), int(h[0][1] or 0)) if h else (0, 0)
     return {"on": on_, "running": bool(up), "head": seq, "records": n}
+
+
+def _safe_measurements(app: App) -> dict | None:
+    try:
+        return measurements(app)
+    except Exception:
+        return None
 
 
 def snapshot(app: App, phone: bool = False) -> dict:
@@ -1151,6 +1251,7 @@ def snapshot(app: App, phone: bool = False) -> dict:
         "model": model(app, 50 if phone else 80),
         "senses": senses(app),
         "memory": memory(app, act),
+        "measurements": _safe_measurements(app),
         "made": int(time.time()),
     }
     if phone:
@@ -1184,6 +1285,8 @@ def view(app: App, q: dict | None = None) -> tuple[int, dict]:
         return (200, d) if d else (404, {"error": "no such decision"})
     if v == "search":
         return 200, search(app, str(q.get("q") or ""))
+    if v == "measurements":
+        return 200, measurements(app)
     if v == "all":
         return 200, snapshot(app)
-    return 400, {"error": "which view? all, timeline, decisions, decision or search"}
+    return 400, {"error": "which view? all, timeline, decisions, decision, search or measurements"}

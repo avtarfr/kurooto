@@ -45,6 +45,7 @@ from kurooto.mind import (
     promises,
     signals,
     sleep,
+    status,
     stimulation,
     story,
     study_push,
@@ -56,6 +57,7 @@ from kurooto.mind import log as mlog
 from kurooto.mind import plans as mind_plans
 from kurooto.mind import play as mind_play
 from kurooto.mind import precedents as mind_precedents
+from kurooto.mind import register as _register  # noqa: F401 (its setting, mind.register.on: one temperament)
 from kurooto.mind.harness import indicators as harness_indicators
 from kurooto.mind.harness import run as harness_run
 from kurooto.mind.lab import report as lab_report
@@ -117,6 +119,7 @@ class Mind(Module):
     def start(self) -> None:
         if self._unsub is None:
             self._unsub = subscribe(self._mirror)
+        status.start(self.app)  # 0.8.14: one status stream for the being, the phone's Views and add-ons
         self.every("gate", "every 1m", lambda p: gate.release(self.app) if gate.on(self.app) else 0)  # held messages
         self.every("pest", "every 1m", lambda p: pest.sweep(self.app) if mind.on(self.app) else 0)  # ignored an hour
         # stage 04 (shadow mode: computed, logged and shown, nothing depends on it yet); each part has its own switch
@@ -237,6 +240,7 @@ class Mind(Module):
         if self._unsub is not None:
             self._unsub()
             self._unsub = None
+        status.stop(self.app)
         c = mind._clients.get(id(self.app))
         if c is not None:
             c.flush(2.0)
@@ -469,9 +473,10 @@ class Mind(Module):
             Command(
                 "mind",
                 "Brain: its scorekeeper, its log and whether the log checks out; /mind verify checks all of it; "
-                "/mind gate shows what it held back or removed from messages today; /mind backfill feeds it the past",
+                "/mind gate shows what it held back or removed from messages today; /mind measures what each part "
+                "changed and the reply latency; /mind backfill feeds it the past",
                 self.cmd,
-                usage="/mind [verify | gate | backfill [dry | run [source] | verify | forget [source]]]",
+                usage="/mind [verify | gate | measures | backfill [dry | run [source] | verify | forget [source]]]",
             ),
         ]
 
@@ -780,6 +785,8 @@ class Mind(Module):
             text, buttons = gate.status(self.app)
             msg.reply(text, buttons or None)
             return None
+        if (arg or "").strip().lower() in ("measures", "measurements"):
+            return _console.measures_text(self.app)
         words = (arg or "").split()
         if words and words[0].lower() == "backfill":
             return self.backfill(words[1:])

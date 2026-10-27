@@ -30,8 +30,9 @@ phone too, from the Notes map's copy (the graph, with its "Seen in" links) and a
 scheduled next (its labels) and the calls booked, the call line's link, this computer's readings (the coil's bars),
 Voice's state, the last events (their kinds and times only: they fire the sparks), the board's look, and, when they
 changed or a phone starts watching (else at most every SETTINGS_S), the settings its panels show (their values,
-without the tooltips) and the Brain's parts with their switches. Never what a note says: a preview is asked for when
-you tap a note (chat.py "note.get", answered sealed for that phone).
+without the tooltips) and the Brain's parts with their switches. With Brain on (0.8.14, mind.status.on), "mind": its
+status stream (mind/status.py: focus, asleep, held, the uneasy item's id and title, its mood band and arousal). Never
+what a note says: a preview is asked for when you tap a note (chat.py "note.get", answered sealed for that phone).
 
 The Brain (0.8.10, calls.views_brain, with calls.views and Brain on): the Brain console's copy (mind/console.py
 snapshot: decisions with their reasons and evidence, the timeline, each part's switches and what it's doing,
@@ -299,10 +300,34 @@ class PhoneViews:
                 "theme": str(app.settings.get("look.being_theme") or "void"),
                 "hints": app.settings.get("look.being_hints") is not False,
                 "rest": app.settings.get("look.being_resting_sparks") is not False,
+                "status": app.settings.get("look.being_status") is not False,
+                "mood": app.settings.get("look.being_mood") is not False,
             },
         }
+        mind = self._being_mind()
+        if mind is not None:
+            out["mind"] = mind
         out.update(self._being_settings())
         return out
+
+    def _being_mind(self) -> dict | None:
+        """(0.8.14) Brain's status stream (mind/status.py: enums and numbers, the knobs the drawing shows) and the
+        title of the one item it's uneasy about, for the being's glance; None with Brain or the stream off."""
+        try:
+            from kurooto.mind import status
+
+            if not status.on(self.app):
+                return None
+            snap = status.cached(self.app)
+            k = status.knobs(self.app, snap)
+            item = status.uneasy_target(self.app, snap.get("uneasy"))
+            return {
+                **snap,
+                "knobs": {x: k[x] for x in ("explore", "respond", "uncertainty")},
+                "uneasy_title": _clip(item["title"], 60) if item else "",
+            }
+        except Exception:
+            return None
 
     def _being_sys(self) -> dict:
         """This computer's readings for the coil (being.js pcHTML) and the heat it feels: the dashboard's, cut down."""

@@ -771,7 +771,7 @@ class Linker:
         if not self.hw.setting("link"):
             return "Linking is off (handwritten.link)."
         if not self.brain():
-            return "Linking needs an AI: set one up under AI brain."
+            return "Linking needs an AI: set one up under AI model."
         todo = self.unlinked()
         if not todo:
             st = self.load()

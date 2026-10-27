@@ -372,7 +372,7 @@ class Deployer:
     def run(self) -> tuple[bool, str]:
         app = self.app
         if not app.secrets.get("gemini.api_key"):
-            return False, "Add your free Gemini key first (AI brain → Gemini API key); calls use it for the voice."
+            return False, "Add your free Gemini key first (AI model → Gemini API key); calls use it for the voice."
         if not app.settings.get("you.timezone"):
             return False, "Set your timezone first (Settings → You)."
         self.say("Preparing your call line…")

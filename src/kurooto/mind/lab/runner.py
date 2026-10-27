@@ -582,7 +582,9 @@ def nightly(app: App, payload: dict | None = None) -> dict:
     """Each approved project's batch, within `mind.lab.gpu_hours_per_night`; the digest is sent in the morning."""
     if not mind.part_on(app, "lab"):
         return {}
-    budget = float(app.settings.get("mind.lab.gpu_hours_per_night") or 2) * 3600
+    from kurooto.mind import status  # 0.8.14 (mind.knobs): a low mood explores less, never more than you set
+
+    budget = float(app.settings.get("mind.lab.gpu_hours_per_night") or 2) * 3600 * status.explore(app)
     t0 = time.monotonic()
     out = {}
     for slug_, root in projects(app).items():

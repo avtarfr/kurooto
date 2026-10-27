@@ -93,7 +93,7 @@ If you need calls that really ring, use an Android phone. See [Phone app](phone-
 - Local models (Ollama) are private and offline but much weaker, and need a good graphics card; without one, only
   the offline helper's quick decisions run here, and only if its speed test passes.
 - Antigravity (agy) is Google's own program signed in as you; Google's answers differ on whether other tools may start
-  it unattended, so there's some risk to that Google account. See [AI brains](ai-brains.md).
+  it unattended, so there's some risk to that Google account. See [AI models](ai-brains.md).
 - The AI can be wrong. Kurooto never sends anything outward (mail, messages) without your tap, but check what it
   writes into your notes.
 

@@ -622,7 +622,9 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 |---|---|---|
 | `look.being_hints` | `true` | The being's hints: what to click and what each part is (H on the board toggles them). ([guide](wiki/user/settings-guide.md#lookbeinghints)) |
 | `look.being_live_waveform` | `true` | The being's YOU lane live: a trace of the microphone's loudness as you speak, the last six seconds. ([guide](wiki/user/settings-guide.md#lookbeinglivewaveform)) |
+| `look.being_mood` | `true` | Brain's own mood in the drawing: the fluid's tint and the heart's beat; its pupil and pulse show the three knobs. ([guide](wiki/user/settings-guide.md#lookbeingmood)) |
 | `look.being_resting_sparks` | `true` | The being's resting sparks: a low trickle in the brain from what Kurooto does all the time. ([guide](wiki/user/settings-guide.md#lookbeingrestingsparks)) |
+| `look.being_status` | `true` | The being as a glance: eyes shut in focus or asleep, the held count by the heart, a glow on the deadline it's uneasy about. ([guide](wiki/user/settings-guide.md#lookbeingstatus)) |
 | `look.being_theme` | `"void"` | The being's colours: white light on black, or the page's palette. ([guide](wiki/user/settings-guide.md#lookbeingtheme)) |
 | `look.board` | `"being"` | The board: Kurooto as one living body (being), three panes on top (three), or STATUS on the left (classic). ([guide](wiki/user/settings-guide.md#lookboard)) |
 | `look.brain_monitor` | `"shown"` | BRAIN's part monitor: shown beside the model, or in a drawer behind a tab. ([guide](wiki/user/settings-guide.md#lookbrainmonitor)) |
@@ -699,6 +701,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.budget.on` | `true` | The body budget: a few things about Kurooto's own state it tries to keep level, and its drive. ([guide](wiki/user/settings-guide.md#mindbudgeton)) |
 | `mind.checkins.surprise` | `true` | The next check-in comes early when the day departs strongly from Brain's forecast. ([guide](wiki/user/settings-guide.md#mindcheckinssurprise)) |
 | `mind.console.on` | `true` | The Brain console: a dashboard page (Alt+O) and the phone's Brain view showing what the Brain decided and why. ([guide](wiki/user/settings-guide.md#mindconsoleon)) |
+| `mind.context.on` | `true` | Every AI request gets Brain's hints: concepts you're shaky on, and what's on its mind. ([guide](wiki/user/settings-guide.md#mindcontexton)) |
 | `mind.dream.cards` | `true` | Each night, 1 to 3 quiz cards for concepts you studied that day that are on your frontier, kept by a tap. ([guide](wiki/user/settings-guide.md#minddreamcards)) |
 | `mind.dream.cards_max` | `3` | The most dream cards a night (1 to 3). ([guide](wiki/user/settings-guide.md#minddreamcardsmax)) |
 | `mind.dream.lessons` | `true` | Each night, 1 to 3 lines for your how-to-help-me note from the day's outcomes, written only when you tap Keep. ([guide](wiki/user/settings-guide.md#minddreamlessons)) |
@@ -739,6 +742,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.journal.in_notes_file` | `"Kurooto journal.md"` | The journal note's file name (`.md` is added if missing). ([guide](wiki/user/settings-guide.md#mindjournalinnotesfile)) |
 | `mind.journal.in_notes_folder` | `""` | The folder inside your notes the journal note goes in; empty is the top. ([guide](wiki/user/settings-guide.md#mindjournalinnotesfolder)) |
 | `mind.journal.on` | `true` | A daily journal of Brain's own states, reasons and mistakes, every line checked against its log. ([guide](wiki/user/settings-guide.md#mindjournalon)) |
+| `mind.knobs.on` | `true` | Three knobs: its mood sets how much it explores, arousal how soon it speaks up, calibration whether it asks first. ([guide](wiki/user/settings-guide.md#mindknobson)) |
 | `mind.lab.gpu` | `false` | Let lab runs use the graphics card (off: CPU only). ([guide](wiki/user/settings-guide.md#mindlabgpu)) |
 | `mind.lab.gpu_hours_per_night` | `2` | The most graphics-card hours the lab uses in a night. ([guide](wiki/user/settings-guide.md#mindlabgpuhourspernight)) |
 | `mind.lab.in_repo` | `false` | Keep a project's lab protocol in its `.kurooto` folder (off: in Kurooto's own state). ([guide](wiki/user/settings-guide.md#mindlabinrepo)) |
@@ -758,6 +762,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.promises.on` | `true` | Its own promises ("I'll check back at 6") are noticed, kept, or owned up to first. ([guide](wiki/user/settings-guide.md#mindpromiseson)) |
 | `mind.read.asks_per_week` | `2` | How many times a week, at most, it may ask whether the week felt heavier than usual. ([guide](wiki/user/settings-guide.md#mindreadasksperweek)) |
 | `mind.read.on` | `true` | Brain's read of how you're doing, from numbers about your days; in shadow mode it only watches. ([guide](wiki/user/settings-guide.md#mindreadon)) |
+| `mind.register.on` | `true` | One temperament: its mood and arousal set how long its unprompted words are, its call openers and Voice's pace. ([guide](wiki/user/settings-guide.md#mindregisteron)) |
 | `mind.senses.activity` | `false` | The activity stream: the app in front, hashed window titles, saves and commits (never keystrokes, the screen or URLs). ([guide](wiki/user/settings-guide.md#mindsensesactivity)) |
 | `mind.senses.intero` | `true` | Its own machine's state every minute: temperatures, memory, battery, disk, AI limits. ([guide](wiki/user/settings-guide.md#mindsensesintero)) |
 | `mind.senses.phone` | `"(computed)"` | Each of your phone's sensors, off until you switch it on (here and in the phone app). ([guide](wiki/user/settings-guide.md#mindsensesphone)) |
@@ -767,6 +772,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.sleep.on` | `true` | Kurooto sleeps in your sleep window: nothing it starts by itself is sent or said aloud until morning. ([guide](wiki/user/settings-guide.md#mindsleepon)) |
 | `mind.sleep.wake_minutes` | `20` | Woken by its name or a message at night, it dozes off again after this many quiet minutes. ([guide](wiki/user/settings-guide.md#mindsleepwakeminutes)) |
 | `mind.sleep.window` | `""` | Set Kurooto's sleep by hand, like 00:30-08:00 (empty: follow your night). ([guide](wiki/user/settings-guide.md#mindsleepwindow)) |
+| `mind.status.on` | `true` | One status stream: focus, asleep, messages held, the one thing it's uneasy about, its own mood and arousal. ([guide](wiki/user/settings-guide.md#mindstatuson)) |
 | `mind.stimulation.addons` | `true` | Let an add-on feed another device's sensors into its body (light, motion, battery, loudness...). ([guide](wiki/user/settings-guide.md#mindstimulationaddons)) |
 | `mind.stimulation.jolt` | `true` | Something sudden (a pickup, something close, a loud room) is felt at once: a jolt, and a fresh look at its mind. ([guide](wiki/user/settings-guide.md#mindstimulationjolt)) |
 | `mind.stimulation.on` | `true` | Its senses felt as a body (heat, load, touch), for its feelings and the dashboard. ([guide](wiki/user/settings-guide.md#mindstimulationon)) |

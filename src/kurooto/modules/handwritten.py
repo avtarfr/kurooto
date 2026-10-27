@@ -125,7 +125,7 @@ class Handwritten(Module):
         if not self.setting("cloud"):
             return False, "needs a model on this computer that reads pictures (Local models), or handwritten.cloud on"
         if not self.app.secrets.get("gemini.api_key"):
-            return False, "needs your free Gemini key (AI brain → Gemini API key), or Local models on a graphics card"
+            return False, "needs your free Gemini key (AI model → Gemini API key), or Local models on a graphics card"
         return True, ""
 
     def health(self):

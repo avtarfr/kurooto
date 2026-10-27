@@ -385,7 +385,7 @@ on this computer only. Every watched job is listed in `watch.log` in the state f
 that program can use Kurooto's tools: reminders, calls, deadlines, notes and more, depending on the features you have
 on. Each tool call goes to the running Kurooto, so it does exactly what it does on a call or in Chat.
 
-- agy and Claude Code as your [AI brain](ai-brains.md) get these tools automatically (agy after you approve it once;
+- agy and Claude Code as your [AI model](ai-brains.md) get these tools automatically (agy after you approve it once;
   Claude Code for each request only, nothing saved in its settings).
 - For your own agent sessions, add the command `kurooto mcp` as an MCP server in that program's settings.
 - While Kurooto isn't running, the tools still list, but calling one says Kurooto isn't running.

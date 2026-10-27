@@ -119,6 +119,11 @@ def verdict(app: App, action: str, ai_class: str | None = None) -> dict:
 
         if feelings.mood_band(app) == "low":
             out["do"], out["why"] = False, "its mood is low, so it asks first"
+    if out["do"] and k != "R0":  # 0.8.14 (mind.knobs): beliefs no better calibrated than a coin flip ask first
+        from kurooto.mind import status
+
+        if status.knobs(app).get("ask"):
+            out["do"], out["why"] = False, "its beliefs are no better than a guess lately, so it asks first"
     return out
 
 

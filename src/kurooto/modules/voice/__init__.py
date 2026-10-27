@@ -199,17 +199,18 @@ class Speaker:
 
         return remove
 
-    def say(self, text: str, wait: bool = True) -> tuple[bool, str]:
+    def say(self, text: str, wait: bool = True, rate: float | None = None) -> tuple[bool, str]:
+        """rate: this one utterance's speed in place of voice.speak.rate (Brain's register: what it says unasked)."""
         tts, why = self.v.tts()
         if tts is None:
             return False, why
         if not wait:
-            threading.Thread(target=self._speak, args=(tts, text), name="voice-say", daemon=True).start()
+            threading.Thread(target=self._speak, args=(tts, text, rate), name="voice-say", daemon=True).start()
             return True, "Speaking."
-        self._speak(tts, text)
+        self._speak(tts, text, rate)
         return True, "Spoken."
 
-    def _speak(self, tts, text: str) -> None:
+    def _speak(self, tts, text: str, rate: float | None = None) -> None:
         limit = int(self.v.setting("speak.max_chars") or 800)
         parts = shape_mod.sentences(text, numbers=bool(self.v.setting("speak.numbers_as_words")))
         out, n = [], 0
@@ -231,6 +232,9 @@ class Speaker:
             self.busy = True
             self._cancel.clear()
             pool = ThreadPoolExecutor(1, thread_name_prefix="voice-tts")
+            base = getattr(tts, "rate", None)
+            if rate and base is not None:  # one utterance only: put back below, under the same lock
+                tts.rate = rate
             try:
                 fut = pool.submit(tts.synth, out[0])
                 for i in range(len(out)):
@@ -246,6 +250,8 @@ class Speaker:
                 self.v.app.events.emit("voice_failed", part="speaking", error=f"{type(e).__name__}: {e}"[:300])
             finally:
                 pool.shutdown(wait=False, cancel_futures=True)
+                if rate and base is not None:
+                    tts.rate = base
                 self.busy = False
                 self.until = time.monotonic() + 0.4
 
@@ -1119,8 +1125,21 @@ class Voice(Module):
         speaking thread while holding() is true, so the microphone doesn't hear Kurooto. Returns remove()."""
         return self.speaker.add_output(fn)
 
-    def say(self, text: str, wait: bool = False) -> tuple[bool, str]:
-        """Speak this now (POST /api/voice/say, /voice say)."""
+    def _unasked_rate(self) -> float | None:
+        """(Brain 0.8.14, mind.register) the pace for what it says unasked: voice.speak.rate within +-8% by its
+        register; None (the setting as it is) when Brain or the register is off."""
+        base = float(self.setting("speak.rate") or 1.0)
+        try:
+            from kurooto.mind import register
+
+            r = register.rate(self.app, base, unprompted=True)
+        except Exception:
+            return None
+        return r if r != base else None
+
+    def say(self, text: str, wait: bool = False, unprompted: bool = False) -> tuple[bool, str]:
+        """Speak this now (POST /api/voice/say, /voice say). unprompted: an add-on's line said without being asked
+        (Brain's register sets its pace); anything said back to you keeps voice.speak.rate."""
         if not self.app.is_on(self.id):
             return False, "Voice is off."
         if self.muted():
@@ -1129,7 +1148,7 @@ class Voice(Module):
         if not text:
             return False, "Nothing to say."
         self.publish("voice_text", who="kurooto", text=text)
-        return self.speaker.say(text, wait=wait)
+        return self.speaker.say(text, wait=wait, rate=self._unasked_rate() if unprompted else None)
 
     def greet(self, text: str, listen_s: float, talk: bool = True) -> tuple[bool, str]:
         """Face presence's greeting (0.8.10): shown, spoken (waiting for it to finish), then, when `talk` and listening
@@ -1145,7 +1164,7 @@ class Voice(Module):
         if tts is None:
             return False, why or "Voice can't speak"
         self.publish("voice_text", who="kurooto", text=text)
-        ok, why = self.speaker.say(text, wait=True)
+        ok, why = self.speaker.say(text, wait=True, rate=self._unasked_rate())  # a greeting is said unasked
         if not ok:
             return False, why
         if not talk:

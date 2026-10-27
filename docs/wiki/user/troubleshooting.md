@@ -201,7 +201,7 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | Study time counts while I'm away (Wayland) | Add the idle hook (`kurooto idle away` / `back`; see [Books and study](books-and-study.md)). `kurooto doctor` shows what it uses now. |
 | Study time stopped counting | A `kurooto idle away` without its `back`: run `kurooto idle back`. |
 | A handwritten PDF isn't written out | PDFs read on this computer wait for the night on the charger, and while the graphics card is busy. `/handwritten` starts it now; "can't be drawn": install Poppler's PDF tools. |
-| A handwritten note has no Links section | Linking needs an AI (AI brain) and `handwritten.link` on; when the AI's answer was unusable nothing is written. `/handwritten link` tries every note without one again; `/handwritten undo` takes back the last linking. |
+| A handwritten note has no Links section | Linking needs an AI (AI model) and `handwritten.link` on; when the AI's answer was unusable nothing is written. `/handwritten link` tries every note without one again; `/handwritten undo` takes back the last linking. |
 
 ## Notes, skills and research
 

@@ -33,7 +33,7 @@ def test_chat_needs_a_brain(tmp_path, monkeypatch):
     monkeypatch.setenv("KUROOTO_HOME", str(tmp_path))
     app = App()
     try:
-        assert app.enable("chat") == (False, "pick an AI brain first")
+        assert app.enable("chat") == (False, "pick an AI model first")
     finally:
         app.close()
 

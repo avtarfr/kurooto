@@ -2,6 +2,24 @@
 
 ## 0.8.15 (unreleased)
 
+- **Brain is one being.** One status stream (focus, asleep, how many messages are held, the one deadline it's uneasy
+  about, its own mood and arousal; enums and numbers only) feeds the dashboard's being, the phone's Views and add-ons.
+  The being's eyes shut in focus time or while it's asleep, a small count by the heart says what's held, and a slow
+  glow on the uneasy deadline opens it with a tap (`look.being_status`). Its mood tints the fluid and sets the heart's
+  beat; low is only quieter, never sad (`look.being_mood`).
+- **One temperament and three honest knobs.** Its mood and arousal set how long its unprompted words are, how a call it
+  places opens and Voice's pace for what it says unasked (within 8%), never replies to you (`mind.register.on`). Mood
+  sets how much the lab and play explore, arousal how soon it speaks up, and calibration whether its own acts ask
+  first (`mind.knobs.on`). Mood never adds a confirm step or slows anything you asked for.
+- **Brain's hints in every request.** Each AI request gets the concepts you're shaky on lately and what's on Brain's
+  mind, read from its files in under 50 ms with no model call; your read, tone, mood and body state never go in
+  (`mind.context.on`). `/mind measures` shows what each part changed in 30 days and the reply latency, information
+  only.
+- **"AI model", and an Inner life step.** The AI that answers you is now called the AI model everywhere you read it
+  (Settings, setup, the wiki); Brain is Kurooto's mind. Setup has an optional step, "Let it grow an inner life", that
+  turns Brain on with a plain explanation.
+
+
 - **Brain dreams about the day.** Each night it offers, in the morning message, 1 to 3 quiz cards for concepts you
   studied that day and are ready for next (written by the model on your computer from your own note), 1 to 3 lines for
   your how-to-help-me note from the day's outcomes (what you undid, what went unanswered, when you told Voice off), and

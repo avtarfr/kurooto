@@ -43,7 +43,7 @@ class VoiceNotes(Module):
 
     def ready(self):
         if not self.app.secrets.get("gemini.api_key"):
-            return False, "needs your free Gemini key (AI brain → Gemini API key)"
+            return False, "needs your free Gemini key (AI model → Gemini API key)"
         return True, ""
 
     def transcribe(self, path: Path, timeout: float = 120) -> str:

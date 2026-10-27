@@ -162,7 +162,7 @@ class Projects(Module):
     def ready(self):
         main = self.app.settings.get("brain.main")
         if not main:
-            return False, "pick an AI brain first"
+            return False, "pick an AI model first"
         b = providers.build(self.app, main)
         ok, why = b.available() if b else (False, "unknown brain")
         return (True, "") if ok else (False, f"{providers.CHOICES.get(main, main)}: {why}")

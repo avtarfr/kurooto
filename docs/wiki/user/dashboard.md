@@ -122,6 +122,11 @@ the right), settles into your turn's outline when the turn ends, and fades out w
 half. Turn the live trace off with `look.being_live_waveform`; Remove animations and your system's reduced motion keep it
 still (it sweeps across instead of scrolling). Both lanes are smooth waveforms, older parts fainter.
 
+**Brain's glance** (0.8.14, with Brain on): the being shows Brain's status. Its eyes shut while focus time is on or
+it's asleep, a small number by the heart counts the messages it's holding, and a slow glow sits on the one deadline it's
+uneasy about: click it to open the deadline (`look.being_status`). Its own mood tints the fluid round the brain and sets
+the heart's beat: a low mood is only dimmer and softer, never sad (`look.being_mood`). More: [mind.md](mind.md#one-being-its-status-temperament-and-knobs).
+
 **The talk box** (bottom right, on every board; **Alt+K**): type to Kurooto as on Telegram; the answer prints in it.
 Turn it off with `look.talk_box`.
 

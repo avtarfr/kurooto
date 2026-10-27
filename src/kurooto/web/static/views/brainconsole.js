@@ -163,12 +163,19 @@
       const mem = d.memory || {};
       const limits = (mem.limits || []).length ? kv(mem.limits.map((r) => [r[0], esc(r[1])])) : empty("The gate is off: no limits counted.");
       const senses = `<ul class="bc-senses">${((d.senses || {}).rows || []).map((r) => `<li class="${r.on ? "" : "bc-offline"}"><span>${esc(r.name)}</span><b>${r.on ? num(r.today) : "off"}</b></li>`).join("")}</ul><p class="bc-note">Readings kept today, counted. What they were stays on your computer.</p>`;
+      // 0.8.14: what each part changed outwardly in 30 days, and the reply time; information only (/mind measures)
+      const ms = d.measurements || null, au = ms && ms.audit, lat = ms && ms.latency;
+      const changed = au ? au.parts.filter((p) => p.on || p.changed).sort((a, b) => b.changed - a.changed) : [];
+      const measures = !ms ? empty("No measurements yet.") : `${kv(changed.slice(0, 12).map((p) => [p.name, p.decoration ? "0 · decoration" : num(p.changed)]))}
+        <p class="bc-note">Outward decisions each part changed in ${num(au.days)} days; on and changed nothing is decoration. Information only.</p>
+        ${lat && lat.p95_s != null ? `<p class="bc-note">Your requests' reply time, p95 over ${num(lat.days)} days: ${esc(lat.p95_s.toFixed(1))} s${lat.context_p95_ms != null ? `; Brain's share ${esc(lat.context_p95_ms.toFixed(1))} ms` : ""}.</p>` : ""}`;
       return `<div class="bc-grid">
         ${card("In the spotlight", spot)}
         ${card('Latest decisions <span tabindex="0" role="button" class="bc-link" data-tab="decisions">all</span>', rowsOfDecisions((d.decisions || []).slice(0, 5)))}
         ${card('Busiest parts, last 24 hours <span tabindex="0" role="button" class="bc-link" data-tab="parts">all parts</span>', busy)}
         ${card("Limits today", limits)}
         ${card("Senses", senses)}
+        ${card("Measurements", measures)}
       </div>`;
     }
 

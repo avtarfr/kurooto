@@ -27,7 +27,7 @@ all of them.
 - [Getting started](getting-started.md): install on Windows, macOS or Linux, the setup wizard, your first 15 minutes.
 - [What it can't do yet](what-it-cant-do-yet.md): what doesn't work, or only partly, said plainly: iPhone calls are
   notifications, the computer has to be on, few real computers tested so far.
-- [AI brains](ai-brains.md): which AI answers you, free limits, what the AI may do on your computer, and the run
+- [AI models](ai-brains.md): which AI answers you, free limits, what the AI may do on your computer, and the run
   receipt under each answer.
 - [Talking to Kurooto](talking-to-kurooto.md): Telegram, plain English, chat, questions and approvals, pause, focus, voice notes, sending files.
 - [Voice](voice.md): Kurooto speaks with a voice made on your computer and, if you turn listening on, hears you; a

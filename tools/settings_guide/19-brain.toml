@@ -668,3 +668,37 @@ tip = "The next check-in comes early when the day departs strongly from Brain's 
 what = "Two hours past the predicted wake time with no sign of you while your phone shows you up, or a deadline moved twice in a day: the next check-in planned today comes now instead of at its time, once a day. Never in a class or while you're asleep."
 when = "Turn it off to have check-ins only at their times."
 needs = "`mind.forecast.on` and Check-ins (the phone's screen sense for the wake case)."
+
+[parent."mind.status"]
+tip = "One status stream for every face of Brain: the being, the phone's Views, Voice and add-ons."
+[parent."mind.knobs"]
+tip = "Three honest knobs: its mood sets exploration, arousal how soon it speaks up, calibration whether it asks."
+[parent."mind.register"]
+tip = "One temperament from its mood and arousal: how long its unprompted words are, and Voice's pace for them."
+[parent."mind.context"]
+tip = "Brain's hints in every AI request: concepts you're shaky on and what's on its mind, never how you are."
+
+[s."mind.status.on"]
+tip = "One status stream: focus, asleep, messages held, the one thing it's uneasy about, its own mood and arousal."
+what = "Enums and numbers only, made again whenever something happens (at most once a second) and pushed to the dashboard's being, copied to the phone's Views, and handed to add-ons that listen (an add-on's own face, for example). The mood is Brain's own; nothing in it says how you are. It stays on this computer and your phone's sealed copy."
+when = "Turn it off and the being, the phone and add-ons stop getting it: the glance and the mood in the drawing go neutral."
+needs = "Brain on."
+
+[s."mind.knobs.on"]
+tip = "Three knobs: its mood sets how much it explores, arousal how soon it speaks up, calibration whether it asks first."
+what = "Mood: with a low mood the lab and play get half their nightly budget (never more than you set), and an add-on's interest bar rises a little. Arousal: how soon unprompted things may go (the arbiter's longest hold is scaled by 0.75 to 1.25). Calibration: while its beliefs score no better than a coin flip (a Brier score of 0.25 or worse, after 10), its own acts above R0 ask first. Drawn as the being's pupil and pulse. Nothing here touches what you asked for: no confirm step, no slower answer. Add-ons read it with `kurooto.mind.status.knobs(app)`."
+when = "Turn it off to keep the budgets and asking as they were in 0.8.13."
+needs = "Brain on."
+
+[s."mind.register.on"]
+tip = "One temperament: its mood and arousal set how long its unprompted words are, its call openers and Voice's pace."
+what = "Quiet (low mood), even or lively (high mood and roused). An AI request Kurooto starts itself is told at most 2, 3 or 4 sentences for anything that goes to you unasked; a call it places itself opens in one short sentence, a greeting and the reason, or two warm sentences; what Voice says unasked (a greeting, an add-on's line) is spoken at `voice.speak.rate` scaled within 8% either way. Never for replies to you or calls you asked for."
+when = "Turn it off to keep every unprompted message, opener and pace as in 0.8.13."
+needs = "Brain on."
+
+[s."mind.context.on"]
+tip = "Every AI request gets Brain's hints: concepts you're shaky on, and what's on its mind."
+what = "Read from Brain's own files with no model call (under 50 ms): up to three concepts below solid from your quizzes and notes in the last two weeks, and the workspace's winners that aren't about you. Your read, tone, mood and body state never go in, so a cloud AI never gets them. Answers use it silently. Off, the workspace's winners go as they did in 0.8.13."
+cost = "The concept names and what's on its mind go with each request to the AI you picked."
+when = "Turn it off if you'd rather requests carry nothing from Brain beyond its story and feelings."
+needs = "Brain on; the hints need the model of you (`mind.tom.on`)."
