@@ -1,16 +1,95 @@
-"""What the AI is told before every unattended request: who you are, the time, where your notes are, the rules."""
+"""What the AI is told before every unattended request: who you are, the time, where your notes are, the rules.
+
+mind.context (Brain, 0.8.14, `mind.context.on`): with Brain on, every request also gets what Brain holds that helps
+answer it, read from its files with no model call (under 50 ms): mastery hints (the concepts its model of your mind
+says you're shaky on, from knowledge tracing) and what's on its mind (the workspace's winners that aren't about you).
+Your read, tone, mood and body state never go in: they stay on this computer. Answers use it silently.
+"""
 
 from __future__ import annotations
 
+import time
+from collections import deque
 from typing import TYPE_CHECKING
 
 from kurooto.core.clock import now
+from kurooto.core.config import register_defaults
 
 if TYPE_CHECKING:
     from kurooto.app import App
 
 
-def headless_context(app: App, extra: str = "") -> str:
+register_defaults(
+    "mind",
+    {
+        "context": {
+            "on": True,  # every AI request gets Brain's mastery hints and what's on its mind (never how you are)
+        }
+    },
+)
+
+SHAKY_MAX = 3  # concepts named at most
+SHAKY_DAYS = 14  # a concept counts while its estimate moved this recently
+TIMES: deque = deque(maxlen=200)  # how long the last builds took, in ms (/mind measures: Brain's share of a reply)
+
+
+def _shaky(app: App) -> list[str]:
+    """The concepts its model of your mind puts below solid, with some evidence, most recently touched first."""
+    from kurooto.mind.tom import knowledge, model
+
+    if not model.on(app):
+        return []
+    since = time.time() - SHAKY_DAYS * 86400
+    rows = [
+        r
+        for r in model.rows(app, knowledge.PART)
+        if isinstance(r.get("p"), (int, float))
+        and r["p"] < knowledge.SOLID_FROM
+        and float(r.get("updated") or 0) >= since
+        and len(r.get("evidence") or []) >= 2
+        and not r.get("wrong")
+    ]
+    rows.sort(key=lambda r: -float(r.get("updated") or 0))
+    return [str(r["subject"]).replace("-", " ").replace("_", " ").strip() for r in rows[:SHAKY_MAX]]
+
+
+def mind_context(app: App) -> str:
+    """Brain's block for a request: mastery hints and the workspace's winners (not about you). "" with Brain or
+    mind.context off. A file read only; how long it took is kept in TIMES."""
+    from kurooto import mind
+
+    if not mind.part_on(app, "context"):
+        return ""
+    t0 = time.perf_counter()
+    lines = []
+    try:
+        shaky = _shaky(app)
+    except Exception:
+        shaky = []
+    if shaky:
+        lines.append(
+            "Concepts they're still shaky on (an estimate from their quizzes and notes; pitch explanations of these "
+            "a little more carefully, and don't mention this): " + ", ".join(shaky) + "."
+        )
+    try:
+        from kurooto.mind import workspace
+
+        ws = workspace.context(app)  # its winners that aren't about you: never the read, a forecast of you or a tone
+    except Exception:
+        ws = ""
+    if ws:
+        lines.append(ws)
+    TIMES.append((time.perf_counter() - t0) * 1000.0)
+    return "\n".join(lines)
+
+
+def p95_ms() -> float | None:
+    """The 95th percentile of mind_context's build time over its last builds, or None before any."""
+    xs = sorted(TIMES)
+    return round(xs[min(len(xs) - 1, int(0.95 * len(xs)))], 2) if xs else None
+
+
+def headless_context(app: App, extra: str = "", lane: str = "you") -> str:
     you = app.settings.get("you") or {}
     who = you.get("name") or "the user"
     tz = you.get("timezone") or app.scheduler.tz
@@ -54,13 +133,17 @@ def headless_context(app: App, extra: str = "") -> str:
         lines.append(
             f"How they like to be helped ({help_rel(app)} in their notes; follow it, their requests win):\n{helps}"
         )
+    from kurooto import mind
     from kurooto.mind import (  # (Brain) its story first, the honesty rule about feelings and its state, if on
         feelings,
+        register,
         story,
         workspace,
     )
 
-    for part in (story.prompt(app), feelings.prompt(app), workspace.context(app)):
+    # (0.8.14) mind.context holds the workspace's winners with the mastery hints; off, the winners go as in 0.8.13
+    held = mind_context(app) if mind.part_on(app, "context") else workspace.context(app)
+    for part in (story.prompt(app), feelings.prompt(app), held, register.line(app, lane)):
         if part:
             lines.append(part)
     from kurooto.core import persona  # your persona card and the boundaries it keeps (core/persona.py)

@@ -245,6 +245,7 @@ private fun OrganPanel(st: OrganState, organ: String, pane: ViewsPane, modifier:
                 val line = listOf(st.head, st.status).filter { it.isNotEmpty() }.joinToString(" · ")
                 if (line.isNotEmpty()) Text(line, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (st.warn.isNotEmpty()) Text(st.warn, style = MaterialTheme.typography.bodySmall, color = cs.error)
+                if (st.mind.isNotEmpty()) MindLine(st) { pane.uneasy() }
                 if (organ == "brain" && st.parts.isNotEmpty()) BrainLook(st.mode) { pane.brainMode(it) }
             }
             if (st.parts.isNotEmpty() || lead > 0) {
@@ -293,6 +294,24 @@ private fun OrganPanel(st: OrganState, organ: String, pane: ViewsPane, modifier:
             if (st.said.isNotEmpty()) Text(st.said, style = MaterialTheme.typography.bodyMedium, color = cs.error, modifier = Modifier.padding(horizontal = 18.dp).padding(top = 8.dp))
         }
     }
+}
+
+/** (0.8.14) Brain's status under the organ's name, from its status stream: eyes shut, held, the one thing it's uneasy
+ *  about (a tap shows where on the drawing), quieter or bright. Plain words from enums; never how you are. */
+@Composable
+private fun MindLine(st: OrganState, openUneasy: () -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    val tap = st.uneasy != null
+    Text(
+        st.mind,
+        style = MaterialTheme.typography.bodySmall,
+        color = if (tap) cs.tertiary else cs.onSurfaceVariant,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.padding(top = 2.dp).then(
+            if (tap) Modifier.clickable(onClickLabel = "Show what it's uneasy about") { openUneasy() }.semantics { role = Role.Button } else Modifier,
+        ),
+    )
 }
 
 /** One part: its name and what it's doing now; the picked one filled. */
@@ -469,6 +488,8 @@ internal class OrganState private constructor(j: JSONObject) {
     val parts: List<OrganPart> = objects(j.optJSONArray("parts")).map { OrganPart(it) }
     val detail: JSONObject? = j.optJSONObject("detail")
     val feats: List<Feat> = objects(j.optJSONArray("feats")).map { Feat(it) }
+    val mind: String = j.optString("mind") // (0.8.14) Brain's status line, "" with Brain or look.being_status off
+    val uneasy: JSONObject? = j.optJSONObject("uneasy")
 
     companion object {
         fun of(j: JSONObject) = OrganState(j)

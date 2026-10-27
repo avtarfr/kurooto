@@ -659,7 +659,7 @@ class Jobs:
             scratch=sc.work if sc is not None else None,
             reads=[sc.src] if sc is not None else [],
             timeout_s=minutes * 60,
-            context=guest_context(self.app) if guest else headless_context(self.app, extra),
+            context=guest_context(self.app) if guest else headless_context(self.app, extra, lane=job.lane or "you"),
             tools=[] if text_only else tools,  # text-only work gets no tools (and agent programs no MCP)
             run_tool=(lambda name, args: "Not allowed.")
             if guest
@@ -712,7 +712,7 @@ class Jobs:
             self.plan_line(job, chain[0], level, self.recalled.get(jid, 0))
         tried = time.time()
         before = scratch.fingerprint(self.app, sc) if sc is not None else None  # what changed outside it, after
-        used, result, first = None, Result(Verdict.ERROR, detail="no AI brain is set up"), None
+        used, result, first = None, Result(Verdict.ERROR, detail="no AI model is set up"), None
         retried: set[str] = set()  # the brains that had a refused run tried again
         limits: list[dict] = []  # every limit hit on the way, also one a stand-in then answered for
         moved = bool(skipped) and "rate_limited" in on  # a limit already moves this request on

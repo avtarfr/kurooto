@@ -1102,3 +1102,52 @@ elements, because the dashboard's stylesheets hide every `section` and style eve
 Tests: `tests/unit/test_brain_console.py` (a made-up log and stores: decisions and evidence, part and day filters, paging, search,
 nothing named for money or health, part settings, the phone's copy), `tests/unit/test_brain_phone.py` (the sealed copy while
 watched, off copies, the page files), `test_views.py` (Chrome 58 build of `brainconsole.js`), `test_panes.py` (the page key).
+
+## 0.8.14: one being (`mind/status.py`, `mind/register.py`, `providers/context.py`)
+
+- **The status stream** (`mind.status.on`): `status.snapshot(app)` is `{focus, asleep, held, uneasy, mood, arousal,
+  top}`, enums and numbers only (`KEYS`; `NEUTRAL` with Brain or the switch off). `focus` is
+  `availability.focus_until()`; `asleep` is `mind.sleep.state(app) == "asleep"` (the sleep group's, imported
+  defensively); `held` is `workspace.held_count(app)` (the arbiter's), else the gate's `held` list; `uneasy` is
+  `"promise:<id>"` (an uneasy, worried or frustrated feeling about promise slack: the open promise due first) or
+  `"deadline:<id>"` (the deadline concern at or over `feelings.NOTICE_AT`, matched to `deadlines.upcoming(168)` by
+  title), never a title; `mood` is `feelings.mood_band` with even as `"mid"`; `arousal` the feelings state's; `top` the
+  kind of the first workspace winner that isn't private. `status.start(app)` (Mind.start) runs one `Stream` thread per
+  app: any event (`core.events.subscribe`) or `STALE_S` (15 s) wakes it, at most once a second (`MIN_GAP_S`) it makes
+  the snapshot, and on a change `deliver()` pushes `{"t": "mind", "kind": "status", ...snap, "knobs": {explore,
+  respond, uncertainty}}` to open pages (`app.live.push`, never the event log) and calls each `add_listener` fn as
+  `fn(app, snap)` (a raising listener is skipped). `GET /api/mind/status` (`status.view`) adds the knobs, the look
+  switches and `uneasy_item` (its title and the tab it opens): only this computer's own page asks for the title.
+  The phone: `calls/views.py` `_being_mind()` puts the cached snapshot, the three knob numbers and `uneasy_title` in
+  the being block's `mind` (sealed like the rest of the Systems copy).
+- **The knobs** (`mind.knobs.on`, `status.knobs(app)`): `explore` 0.5 at low mood else 1.0 (play's
+  `minutes_per_night` and the lab's `gpu_hours_per_night` are multiplied by it, never above the setting);
+  `interest_shift` (+0.1 low, -0.05 high) for an add-on's interest bar; `respond` = arousal and `hold_scale` =
+  1.25 - 0.5 x arousal for the arbiter's longest hold (read it with `getattr`); `uncertainty` = the beliefs' mean
+  Brier score weighted by n (None before `BRIER_MIN_N` = 10), and `ask` when it's at or over 0.25: `act.verdict`
+  then turns an R1+ "do" into "ask first", after the 0.8.8 mood check. R0 and everything you asked for are untouched.
+- **The register** (`mind.register.on`, `register.py`): `score = {low: -1, high: 1}[mood] + (arousal - 0.5)`; quiet
+  at or below -0.5, lively at or over 0.75. `line(app, lane)` goes into `headless_context` for lanes other than
+  "you" (core/jobs.py passes `job.lane`): "at most N sentences" for anything written for them unasked (2/3/4), a
+  length only. `opener(app, asked)` goes into the call brief as `opener` (calls `pending()`) for a call Kurooto placed
+  whose `why` isn't in `calls.ASKED_WHYS` (`""`, `asked`, `calls.own`; live.json now keeps the ring's `why`).
+  `rate(app, base, unprompted=True)` scales `voice.speak.rate` by up to +-8% (`PACE`); Voice's `greet()` and
+  `say(..., unprompted=True)` pass it to `Speaker.say(rate=)`, which sets the engine's `rate` for that utterance under
+  the speaking lock and puts it back. Answers (`_job_done`) and `say()` keep the setting.
+- **mind.context** (`mind.context.on`, `providers/context.py`): `mind_context(app)` is the workspace's
+  `context()` (winners that aren't private: never the read, a forecast of him or a tone) plus up to `SHAKY_MAX`
+  concepts from `mind-tom.json` knowledge rows below `SOLID_FROM`, with 2+ evidence ids, touched in `SHAKY_DAYS`, named
+  from their slugs (no notes scan, no model call). `headless_context` uses it in place of `workspace.context` when on.
+  Each build's time goes into `TIMES` (`p95_ms()`); `tests/unit/test_mind_being.py` holds it under 50 ms with 600 rows.
+  Known exception, older than this: `feelings.prompt()`'s tone hint ("Keep it short and calm; they have a lot on") still
+  comes from his read at 70%+ confidence; it's the 0.8.0 rule and not part of mind.context.
+- **Measurements** (`console.audit`, `console.latency`, `/mind measures`, the console's `measurements`, `GET
+  /api/brain/console?view=measurements`): per brainview part, the outward records in 30 days (`OUTWARD_KINDS`:
+  decisions, `mind_act`, the gate's receipts, lints, mutes and calls, `promise_made`; a decision is attributed by
+  keywords in its action, `ACTION_PART`, else autonomy); a part that's on with 0 is `decoration`. Latency: p95 of
+  `finished - created` for lane "you" jobs over 7 days, and `context_p95_ms`. Information only.
+- **Setup** (`core/setupsteps.py` "mind", `setup.js` `renderMind`): the optional Inner life step after Features; it
+  adds or removes "mind" in the ticked set, which Finish setup turns on. `finished(app, "mind")` is always True, so it
+  never shows under Finish setting up.
+- **Naming:** the AI that answers is the "AI model" in the user wiki, MANUAL, setup and messages (Settings' `brain`
+  section is titled "AI model"); `brain.*` keys and `/brain` stay. "Brain" is this feature.

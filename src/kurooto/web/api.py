@@ -270,6 +270,10 @@ class Api:
             from kurooto.mind import stimulation
 
             return 200, stimulation.body(self.app)
+        if path == "mind/status":  # Brain's status for the being (mind/status.py, 0.8.14): enums, numbers, its item
+            from kurooto.mind import status
+
+            return 200, status.view(self.app)
         if path == "brain/console":  # the Brain console: decisions, timeline, search, parts (mind/console.py)
             from kurooto.mind import console
 
@@ -1259,6 +1263,7 @@ class Api:
     )
     # the core sections' titles where the section's name alone says little
     TITLES = {
+        "brain": "AI model",  # (0.8.14) the AI that answers; "Brain" is Kurooto's mind (Features → Brain)
         "quota": "AI limits",
         "local_helper": "Offline helper",
         "health": "Health checks",

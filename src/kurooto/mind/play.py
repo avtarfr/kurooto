@@ -128,7 +128,9 @@ def run_session(app: App, asker=None, clock=time.monotonic, questions: list[dict
     qs = (questions if questions is not None else curiosity(app))[:PER_SESSION]
     if not qs:
         return {"ran": False, "why": "nothing it's curious about right now", "asked": 0, "minutes": 0.0}
-    budget = float(app.settings.get("mind.play.minutes_per_night") or 20) * 60
+    from kurooto.mind import status  # 0.8.14 (mind.knobs): a low mood explores less, never more than you set
+
+    budget = float(app.settings.get("mind.play.minutes_per_night") or 20) * 60 * status.explore(app)
     _prereg(app, qs)  # the plan is in the log before the first question
     if asker is None:
         from kurooto.mind.skills.library import ask_text as asker_  # noqa: N813

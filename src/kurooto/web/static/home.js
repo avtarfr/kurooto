@@ -934,15 +934,30 @@ async function mountBeing() {
     if (!window.beingMount) await loadScript("/static/being.js?v=1");
     if (!beingBoard()) return; // the board changed while it loaded
     const hoodOf = (id) => { const n = mind.nodes && mind.nodes.get(id), k = n && n.neighborhood, h = k && mind.hoods && mind.hoods.get(k); return k ? { key: k, label: h ? h.label : k } : null; };
-    const b = await window.beingMount(host, { api, hoodOf, pal: PAL, theme: BEING_THEME, hints: BEING_HINTS, restSparks: BEING_REST, liveWave: BEING_LIVE, talkWidth: TALK.on ? 400 : 190, talkRoom: TALK.on ? 230 : 150 });
+    const b = await window.beingMount(host, { api, hoodOf, pal: PAL, theme: BEING_THEME, hints: BEING_HINTS, restSparks: BEING_REST, liveWave: BEING_LIVE, talkWidth: TALK.on ? 400 : 190, talkRoom: TALK.on ? 230 : 150, openItem: openUneasy });
     if (!beingBoard()) { b.stop(); return; }
     BEING = b;
     if (last) BEING.update(last);
     if (GRAPH) try { BEING.graph(GRAPH); } catch (e) { console.error(e); }
     for (const e of feed.slice(0, 12).reverse()) BEING.event(e);
+    mindStatus(null, true);
   } catch (e) { host.innerHTML = '<p class="d" style="padding:20px">The being could not load (it needs WebGL 2). Pick another board in the panes menu.</p>'; console.error(e); }
   finally { BEING_LOADING = false; }
 }
+// Brain's status stream (0.8.14, mind/status.py): focus, asleep, held, the id of the one thing it's uneasy about, its
+// own mood band and arousal, pushed as {t: "mind", kind: "status"} when it changes; the being draws it (look.being_status,
+// look.being_mood). The uneasy item's title is asked of this computer only when the id changes (GET /api/mind/status).
+let MINDST = null;
+async function mindStatus(m, fresh) {
+  const was = MINDST;
+  if (m) MINDST = Object.assign({}, MINDST || {}, m);
+  if (fresh || !was || !MINDST || (m && m.uneasy !== (was && was.uneasy))) {
+    try { MINDST = Object.assign({}, MINDST || {}, await api("mind/status")); } catch { /* the pushed one will do */ }
+  }
+  if (BEING && BEING.status && MINDST) BEING.status(MINDST);
+}
+// a tap on the uneasy glow: the deadline on Today, a promise in the Brain console
+function openUneasy(item) { if (item && item.tab) openPage(item.tab); }
 // The talk box (look.talk_box, 0.8.9): a small box over the board, on every board, to talk to Kurooto in plain
 // English as on Telegram; the answer prints in it. Alt+K goes to it. Hidden while a page is open.
 const TALK = { on: true, fold: false, log: [] };
@@ -1970,6 +1985,7 @@ function connect() {
       if (window.FACE) window.FACE.live(m);
     }
     else if (m.t === "senses") { if (BEING) BEING.senses(m); } // another device an add-on reports for: numbers only
+    else if (m.t === "mind") { if (m.kind === "status") mindStatus(m); } // Brain's status (0.8.14): enums and numbers
     else if (m.t === "body") {
       const first = !last; last = m; LIGHT = m.sys.profile === "light" || matchMedia("(prefers-reduced-motion: reduce)").matches;
       body.update(m); renderStatus(m); if (BEING) BEING.update(m);
@@ -2000,6 +2016,7 @@ function settingChanged(key, value) {
   if (key === "look.being_hints") { BEING_HINTS = value !== false; if (BEING) BEING.setHints(BEING_HINTS); }
   if (key === "look.being_resting_sparks") { BEING_REST = value !== false; if (BEING) BEING.setRest(BEING_REST); }
   if (key === "look.being_live_waveform") { BEING_LIVE = value !== false; if (BEING) BEING.setLive(BEING_LIVE); }
+  if (key === "look.being_status" || key === "look.being_mood" || /^mind\.(status|knobs)\./.test(key)) mindStatus(null, true);
   if (key === "look.brain_monitor") { BRAIN_MON = value === "drawer" ? "drawer" : "shown"; if (B3 && B3.setMonitor) B3.setMonitor(BRAIN_MON); }
   if (key === "look.hidden_features") HIDDEN_F = new Set(Array.isArray(value) ? value : []);
   if (key === "look.study_mode") setStudy(!!value, false);

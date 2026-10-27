@@ -92,6 +92,7 @@ SECRETS = ("calls.call_secret", "calls.connector_secret", "calls.ntfy_topic", "c
 ALARM_RING_S = 300  # how long the call line and the Android app ring a wake-up call (worker.js ALARM_RING_S)
 ON_CALL_S = 90  # a live call checks in every few seconds; this long after the last sign of it, it's over
 GEMINI_KEY = "gemini.api_key"
+ASKED_WHYS = ("", "asked", "calls.own")  # a call you asked for (or an alarm, a reminder): Brain's register leaves it be
 APP_LINE_SOON_MIN = 1  # a new phone app goes to the call line this soon after it's fetched
 APP_LINE_BUSY_MIN = 10  # on a call, or another deploy running: looked at again this much later
 APP_LINE_RETRY_MIN = 30  # a deploy that failed (offline, Cloudflare): tried again this much later
@@ -602,6 +603,16 @@ class Calls(Module):
                 out["story"] = tale
         except Exception as e:
             self.app.events.emit("calls_brief_failed", module="story", error=str(e)[:200])
+        try:  # (Brain 0.8.14, mind.register) a call it placed itself opens as its register says; one you asked for not
+            from kurooto.mind import register
+
+            cur = self.live_call()
+            asked = cur is None or str(cur.get("why") or "") in ASKED_WHYS
+            line = register.opener(self.app, asked=asked)
+            if line:
+                out["opener"] = line
+        except Exception as e:
+            self.app.events.emit("calls_brief_failed", module="register", error=str(e)[:200])
         upcoming = [f"{dt.datetime.fromtimestamp(c['at']):%H:%M} {c['reason']}" for c in self.schedule_list()[:5]]
         if upcoming:
             out["calls_planned"] = upcoming
@@ -1120,7 +1131,10 @@ class Calls(Module):
             )
             r = self._ring_state(m.get("since", ""), "answered") if m.get("since") else None
             jsave(
-                self.dir / "live.json", {"key": r.get("key", ""), "reason": r["reason"], "at": time.time()} if r else {}
+                self.dir / "live.json",
+                {"key": r.get("key", ""), "reason": r["reason"], "at": time.time(), "why": r.get("why") or ""}
+                if r
+                else {},
             )
             if r:
                 self.app.scheduler.cancel(f"calls:missed:{m['since']}")

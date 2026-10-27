@@ -7,7 +7,8 @@
                        height, dragged or flung), and the words over the canvas set for a narrow screen.
    window.KurootoBeing what the app calls (evaluateJavascript): take(text) with this phone's copies (the Systems copy,
                        whose "being" block calls/views.py being_snapshot makes, and the Notes map's when it's new),
-                       back() for the back button. The page can't call into the app; it asks through two addresses
+                       back() for the back button, uneasy() for the organ pages' status line (0.8.14: Brain's status
+                       comes in the being block's "mind" and is drawn as on the dashboard). The page can't call into the app; it asks through two addresses
                        the app answers itself (ViewsPane.serve): /ask (a setting, a feature on or off, a note's
                        preview, mute: sealed call-line requests, BeingRules.java) and /state (how deep you are, WebGL 2).
    Nothing here reaches the network: the page's CSP allows only the app's own files. */
@@ -366,6 +367,9 @@ function feed(b) {
   if (b.look && PV.look && b.look.hints !== PV.look.hints) PV.being.setHints(b.look.hints);
   if (b.look && PV.look && b.look.rest !== PV.look.rest) PV.being.setRest(b.look.rest);
   PV.look = b.look || PV.look;
+  // Brain's status (0.8.14, calls/views.py "mind": enums, numbers and the uneasy item's title): the same glance as the
+  // dashboard's; a copy without it (Brain off, or an older computer) leaves the being as it was
+  if (PV.being.status) PV.being.status(b.mind ? Object.assign({}, b.mind, { look: { status: !b.look || b.look.status !== false, mood: !b.look || b.look.mood !== false } }) : { on: false });
 }
 
 async function mount(b) {
@@ -427,6 +431,7 @@ function pick(kind, key) { if (organ()) { organ().pick(String(kind || ""), Strin
 function setting(key, value) { if (organ()) organ().setting(String(key), value); return true; }
 function feature(id, on) { if (organ()) organ().feature(String(id), !!on); return true; }
 function mode(m) { if (organ()) organ().mode(String(m)); return true; }
+function uneasy() { const used = !!(organ() && organ().uneasy && organ().uneasy()); report(); return used; } // the status line's tap
 function inset(top, bottom) { // CSS pixels the app's bars cover at the top and bottom: the organ sits centred between them
   S.organ = true; S.inset = Math.round(((+bottom || 0) - (+top || 0)) / 2); TOP = Math.max(0, +top || 0); S.cover = Math.max(0, +top || 0) + Math.max(0, +bottom || 0); kick(); return true;
 }
@@ -469,5 +474,5 @@ async function demoAsk(op, a) {
   return { ok: true, value: a.value };
 }
 
-window.KurootoBeing = { take, back, only, organState, pick, setting, feature, mode, inset };
+window.KurootoBeing = { take, back, only, organState, pick, setting, feature, mode, inset, uneasy };
 })();

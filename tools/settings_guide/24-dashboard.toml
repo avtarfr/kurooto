@@ -60,6 +60,18 @@ what = "While Voice listens and the dashboard is open, the microphone's loudness
 when = "Turn it off if the moving trace distracts you."
 needs = "`look.board` = `being`, Voice listening, and `voice.listen.levels` on."
 
+[s."look.being_status"]
+tip = "The being as a glance: eyes shut in focus or asleep, the held count by the heart, a glow on the deadline it's uneasy about."
+what = "From Brain's status stream (`mind.status.on`). Tap the glow to open that deadline (Today) or promise (the Brain console); on the phone's organ pages the same shows as a line under the organ's name. The phone's whole being and organ pages show it too."
+when = "Turn it off if you'd rather the being didn't show Brain's state."
+needs = "`look.board` = `being`, Brain on."
+
+[s."look.being_mood"]
+tip = "Brain's own mood in the drawing: the fluid's tint and the heart's beat; its pupil and pulse show the three knobs."
+what = "A low mood is only quieter (dimmer, a softer, slower beat), never a sad face. Arousal quickens the pulse; the pupil widens with how much it explores and narrows a little while its beliefs are no better than a guess. It's Brain's mood, not a reading of you."
+when = "Turn it off to keep the being's colours and beat as they were."
+needs = "`look.board` = `being`, Brain on."
+
 [s."look.talk_box"]
 tip = "A small box over the board to talk to Kurooto in plain English (Alt+K)."
 when = "Turn it off if you use the terminal or Telegram instead."

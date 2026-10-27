@@ -480,8 +480,17 @@ region's parts and their switches), `/api/note` and `open-note`, `/api/voice` an
   with no loud level (`> .4`, about -36 dB) since. `liveWave` lets each batch in over the next 100 ms so it scrolls
   smoothly; with `calmEye()` (Remove animations or reduced motion) it sweeps instead. Dashboard only: the phone's copy
   carries no levels, so `UI.lanes` passes no `live`.
-- `look.being_theme`, `look.being_hints` (H), `look.being_resting_sparks`, `look.being_live_waveform`, `look.talk_box` (the talk box, `askKurooto`,
-  shared with the chat tab).
+- **Brain's status (0.8.14, `status(m)`, `look.being_status`, `look.being_mood`):** home.js takes `{t: "mind", kind:
+  "status"}` from the stream (mind/status.py: enums and numbers) and asks `GET /api/mind/status` when the uneasy id
+  changes (the item's title, the look switches, the knobs); being-phone.js passes the being block's `mind`. `ST` holds
+  it. `shutEyes()` shuts every eye (lids `.05`, no blinks) in focus or asleep; `glanceDraw(c)` draws the held count by
+  the heart and the uneasy glow (2D, a slow 1.3 rad/s pulse; still with `STILL`) and moves the `UNEASY` button over it
+  (`opts.openItem(item)`, else the deadlines feature's panel). The mood eases in (`ST.fogK`, `ST.warm` on the fog's
+  colour, `ST.moodK` on the heart's `va`/`vv`); `BPM` gets `-4` at low mood and `+10 x arousal`; `ST.dil` moves the
+  pupil with `knobs.explore` and `-.03` while `knobs.uncertainty >= .25`. Organ pages: `describe()` carries `mind`
+  (`mindLine()`) and `uneasy`; OrganViews.kt shows `MindLine`, whose tap calls `KurootoBeing.uneasy()`.
+- `look.being_theme`, `look.being_hints` (H), `look.being_resting_sparks`, `look.being_live_waveform`, `look.being_status`,
+  `look.being_mood`, `look.talk_box` (the talk box, `askKurooto`, shared with the chat tab).
 - `tools/dash_preview.py`: a worktree's dashboard against the running Kurooto (its key from its page, never printed).
 - Tests: `tests/unit/test_being.py`.
 

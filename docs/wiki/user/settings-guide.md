@@ -42,12 +42,12 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 49 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
-- [Brain](#brain): 91 settings
+- [Brain](#brain): 95 settings
 - [Voice and voice notes](#voice-and-voice-notes): 53 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
-- [Dashboard and terminal](#dashboard-and-terminal): 24 settings
+- [Dashboard and terminal](#dashboard-and-terminal): 26 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 26 settings
 - [Face presence](#face-presence): 33 settings
@@ -175,7 +175,7 @@ anything else goes on as usual.
 
 Which AI answers your requests, what stands in when it can't, how long it may work, how the free limits are kept for
 what you're waiting on, and the small offline helper. Everything an AI does goes through the AI you chose here; a
-request's words go to that AI's service, and nowhere else. More in [AI brains](ai-brains.md).
+request's words go to that AI's service, and nowhere else. More in [AI models](ai-brains.md).
 
 For every setting in this group, unless its entry says otherwise:
 
@@ -5355,6 +5355,61 @@ The Brain console: a dashboard page (Alt+O) and the phone's Brain view showing w
   depends on it.
 - **Depends on:** Brain on.
 
+### `mind.status.on`
+
+One status stream: focus, asleep, messages held, the one thing it's uneasy about, its own mood and arousal.
+
+Enums and numbers only, made again whenever something happens (at most once a second) and pushed to the dashboard's
+being, copied to the phone's Views, and handed to add-ons that listen (an add-on's own face, for example). The mood is
+Brain's own; nothing in it says how you are. It stays on this computer and your phone's sealed copy.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off and the being, the phone and add-ons stop getting it: the glance and the mood in
+  the drawing go neutral.
+- **Depends on:** Brain on.
+
+### `mind.knobs.on`
+
+Three knobs: its mood sets how much it explores, arousal how soon it speaks up, calibration whether it asks first.
+
+Mood: with a low mood the lab and play get half their nightly budget (never more than you set), and an add-on's interest
+bar rises a little. Arousal: how soon unprompted things may go (the arbiter's longest hold is scaled by 0.75 to 1.25).
+Calibration: while its beliefs score no better than a coin flip (a Brier score of 0.25 or worse, after 10), its own acts
+above R0 ask first. Drawn as the being's pupil and pulse. Nothing here touches what you asked for: no confirm step, no
+slower answer. Add-ons read it with `kurooto.mind.status.knobs(app)`.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep the budgets and asking as they were in 0.8.13.
+- **Depends on:** Brain on.
+
+### `mind.register.on`
+
+One temperament: its mood and arousal set how long its unprompted words are, its call openers and Voice's pace.
+
+Quiet (low mood), even or lively (high mood and roused). An AI request Kurooto starts itself is told at most 2, 3 or 4
+sentences for anything that goes to you unasked; a call it places itself opens in one short sentence, a greeting and the
+reason, or two warm sentences; what Voice says unasked (a greeting, an add-on's line) is spoken at `voice.speak.rate`
+scaled within 8% either way. Never for replies to you or calls you asked for.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep every unprompted message, opener and pace as in 0.8.13.
+- **Depends on:** Brain on.
+
+### `mind.context.on`
+
+Every AI request gets Brain's hints: concepts you're shaky on, and what's on its mind.
+
+Read from Brain's own files with no model call (under 50 ms): up to three concepts below solid from your quizzes and
+notes in the last two weeks, and the workspace's winners that aren't about you. Your read, tone, mood and body state
+never go in, so a cloud AI never gets them. Answers use it silently. Off, the workspace's winners go as they did in
+0.8.13.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you'd rather requests carry nothing from Brain beyond its story and feelings.
+- **Costs and what leaves this computer:** The concept names and what's on its mind go with each request to the AI you
+  picked.
+- **Depends on:** Brain on; the hints need the model of you (`mind.tom.on`).
+
 ## Voice and voice notes
 
 Kurooto speaks through this computer's speakers with a voice made here, and, if you turn listening on, hears the room
@@ -6385,6 +6440,31 @@ it still: it sweeps across instead of scrolling. Off, the lane shows only each t
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off if the moving trace distracts you.
 - **Depends on:** `look.board` = `being`, Voice listening, and `voice.listen.levels` on.
+
+### `look.being_status`
+
+The being as a glance: eyes shut in focus or asleep, the held count by the heart, a glow on the deadline it's uneasy
+about.
+
+From Brain's status stream (`mind.status.on`). Tap the glow to open that deadline (Today) or promise (the Brain
+console); on the phone's organ pages the same shows as a line under the organ's name. The phone's whole being and organ
+pages show it too.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you'd rather the being didn't show Brain's state.
+- **Depends on:** `look.board` = `being`, Brain on.
+
+### `look.being_mood`
+
+Brain's own mood in the drawing: the fluid's tint and the heart's beat; its pupil and pulse show the three knobs.
+
+A low mood is only quieter (dimmer, a softer, slower beat), never a sad face. Arousal quickens the pulse; the pupil
+widens with how much it explores and narrows a little while its beliefs are no better than a guess. It's Brain's mood,
+not a reading of you.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep the being's colours and beat as they were.
+- **Depends on:** `look.board` = `being`, Brain on.
 
 ### `look.talk_box`
 

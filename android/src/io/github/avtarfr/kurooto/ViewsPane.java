@@ -157,6 +157,9 @@ public class ViewsPane {
 
     public void feature(String id, boolean on) { js("KurootoBeing.feature(" + JSONObject.quote(id) + "," + on + ")"); }
 
+    /** (0.8.14) The status line's uneasy part tapped: the page focuses where Brain's uneasy glow is. */
+    public void uneasy() { js("(KurootoBeing.uneasy ? KurootoBeing.uneasy() : false)"); }
+
     /** The brain seen solid, cut away or in X-ray ("solid", "cut", "xray"). */
     public void brainMode(String m) { js("KurootoBeing.mode(" + JSONObject.quote(m) + ")"); }
 

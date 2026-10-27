@@ -11,7 +11,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
 - [Install](#install)
 - [The setup wizard](#the-setup-wizard)
 - [About you](#about-you)
-- [Your AI brain](#your-ai-brain)
+- [Your AI model](#your-ai-model)
 - [Features](#features)
   - [Telegram](#telegram) · [Questions and approvals](#questions-and-approvals) ·
     [Chat with your AI](#chat-with-your-ai) · [Reminders](#reminders) · [Check-ins](#check-ins) ·
@@ -184,7 +184,7 @@ you decide whether to send it to whoever is helping you.
 3. **Your computer:** what Kurooto found (processor, memory, graphics card, free space) and what it recommends for
    it, marked ★. You can change any of it later. On a laptop, what to do on battery; and the pages' **Colours**
    (see [Colours](#colours-look)): this computer's own colours are marked ★ when Kurooto finds them.
-4. **AI:** pick the AI that answers you (see [Your AI brain](#your-ai-brain)). ★ marks the recommendation:
+4. **AI:** pick the AI that answers you (see [Your AI model](#your-ai-model)). ★ marks the recommendation:
    Antigravity (agy), Google's agent program, signed in with your Google account. For agy and the other programs,
    press **Install** if it isn't installed and follow the sign-in; for a Gemini API key, make one at Google AI
    Studio, paste it and press **Save and test**. Then press **Test it**: it asks the AI to reply, and tells you if it
@@ -270,7 +270,7 @@ part that would give Kurooto feelings ("say you missed me"), a backstory ("you g
 `calls.persona`. *Leaves:* the card goes to the AI you picked and the call line's voice model, like the In brief.
 *Undo:* `/persona clear`.
 
-## Your AI brain
+## Your AI model
 
 The "brain" is the AI that answers your messages and does tasks. You can change it any time (dashboard → Settings, or
 the setup page), and set a **fallback** that takes over when the first one hits its limit.
@@ -4314,6 +4314,24 @@ whether the note belongs with a new concept, and orders them by the model's own 
 installed (no extra download) and costs no AI requests; where there's none, candidates keep their keyword and
 embedding order.
 
+## What 0.8.14 added to Brain (one being)
+
+- **The status stream** (`mind.status.on`, on with Brain): focus, asleep, held, the uneasy item's id, its own mood band
+  and arousal, enums and numbers only, pushed to the dashboard and copied to the phone's Views; add-ons listen with
+  `kurooto.mind.status.add_listener`. **Undo:** turn it off.
+- **`look.being_status`** (on): the being's eyes shut in focus or asleep, the held count by the heart, a glow on the
+  uneasy deadline (a click opens it). **`look.being_mood`** (on): its mood tints the fluid and sets the beat (low is
+  only quieter). **Undo:** turn either off.
+- **`mind.register.on`** (on): one temperament sets the length of its unprompted words, a call opener it places and
+  Voice's pace for what it says unasked (within 8%); never replies. **`mind.knobs.on`** (on): mood sets the lab's and
+  play's share of their budget (half when low), arousal how soon it speaks up, calibration whether its own acts ask
+  first. **Undo:** turn either off.
+- **`mind.context.on`** (on): each AI request gets the concepts you're shaky on and what's on Brain's mind (never how
+  you are). **Undo:** turn it off.
+- **`/mind measures`:** what each part changed in 30 days and the reply latency, information only.
+- **Setup's Inner life step** (optional, after Features) turns Brain on. **Undo:** Features → Brain off.
+- **Naming:** the AI that answers is the **AI model** (Settings → AI model); Brain is Kurooto's mind.
+
 ## What 0.8.9 changed
 
 - **The being** is the dashboard's board: Kurooto as one body on its live data, every part clickable, focused and
@@ -4564,7 +4582,7 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | The nightly upkeep didn't finish | Search still works. Its log is in the state folder (`gbrain/upkeep-<date>.log`); it tries again the next night. Turn it off with `gbrain.upkeep`. |
 | Notes brain: "can't find your gbrain" or "your brain's folder isn't there" | Your own GBrain: set `gbrain.exe` to the full path of your gbrain program and `gbrain.home` to its `GBRAIN_HOME` (or set `gbrain.managed` back to `true`). |
 | A handwritten PDF isn't written out | PDFs read on this computer wait for the night on the charger (`/handwritten` starts it now; `/handwritten status` says where it is). It also waits while the graphics card is busy. "Can't be drawn": install Poppler's PDF tools. |
-| A handwritten note has no Links section | Linking needs an AI (AI brain) and `handwritten.link` on; if the AI's answer was unusable nothing was written. `/handwritten link` tries every note without one again. |
+| A handwritten note has no Links section | Linking needs an AI (AI model) and `handwritten.link` on; if the AI's answer was unusable nothing was written. `/handwritten link` tries every note without one again. |
 | /notes or /timeline says the brain is busy | The nightly upkeep (or a sync) is using it; try again in a while. |
 | Phone calls: "not connected to your call line" | Is this computer online? It reconnects by itself within a minute. Still not: Features → Phone calls → Set up (redeploys). |
 | Cloudflare sign-in didn't finish | Press Set up again; the sign-in link is also shown in the progress log. |

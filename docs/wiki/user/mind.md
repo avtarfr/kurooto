@@ -13,12 +13,13 @@ act on their own (forecasts, autonomy, the read of how you're doing) start in **
 themselves first and can't change what Kurooto does.
 
 **Contents:** [Turning it on and off](#turning-it-on-and-off) · [The log and the scorekeeper](#the-log-and-the-scorekeeper)
-· [Stopping is fine](#stopping-is-fine) · [Quieter, never louder](#it-gets-quieter-never-louder) · [/mind](#mind) · [What it keeps](#what-it-keeps) · [Hardened mode (optional)](#hardened-mode-optional) ·
+· [Stopping is fine](#stopping-is-fine) · [Quieter, never louder](#it-gets-quieter-never-louder) · [One being](#one-being-its-status-temperament-and-knobs) · [/mind](#mind) · [What it keeps](#what-it-keeps) · [Hardened mode (optional)](#hardened-mode-optional) ·
 [Questions](#questions)
 
 ## Turning it on and off
 
-- **On:** dashboard → **Features** → **Brain** → Turn on. (`/mind` while it's off says where.)
+- **On:** dashboard → **Features** → **Brain** → Turn on. (`/mind` while it's off says where.) The setup page also
+  asks once, in its optional **Inner life** step ("Let it grow an inner life"); Not now leaves it off.
 - **Off:** the same switch. Brain stops at once: its program ends and nothing more goes into its log. Kurooto then
   sends one message, "Brain is off", with two buttons:
   - **Delete Brain's data:** deletes everything Brain kept, for good;
@@ -464,12 +465,55 @@ were kept and broken.
 When this computer is down, your call line says it's offline once, and now adds which things in the next 12 hours (reminders,
 its promises) have no guarantee until it's back. Switches: `mind.promises.on`, `mind.heartbeat.on`.
 
+## One being: its status, temperament and knobs
+
+0.8.14. Brain keeps one **status**: whether focus time is on, whether it's asleep, how many of its messages are held,
+the one deadline or promise it's uneasy about, its own mood (low, mid or high) and arousal. Enums and numbers only, and
+the mood is Brain's own, never a reading of you. Everything that shows Brain reads the same one
+(`mind.status.on`):
+
+- **The being** (dashboard and phone, `look.being_status`): its eyes shut while focus time is on or it's asleep; a
+  small number by the heart says how many messages are held; a slow glow sits on the deadline (or promise) it's uneasy
+  about. Tap the glow to open it: the deadline on Today, a promise in the Brain console. On the phone's organ pages the
+  same shows as a line under the organ's name, and tapping its uneasy part shows where.
+- **Its mood in the drawing** (`look.being_mood`): the fluid round the brain a little dimmer when its mood is low or a
+  little warmer when high, and the heart's beat softer when low. A low mood only looks quieter, never sad. Its pulse
+  quickens with arousal, and its pupil widens with how much it explores and narrows a little while its beliefs are no
+  better than a guess.
+- **Add-ons** can listen for it (`kurooto.mind.status.add_listener`); they get the same enums and numbers.
+
+**One temperament** (`mind.register.on`): its mood and arousal make one register, quiet, even or lively, and it sets
+how much it says when it speaks up by itself, everywhere at once: an AI request it starts itself is told to keep
+anything it writes for you unasked to 2, 3 or 4 sentences; a call it places itself opens in one short sentence, a
+greeting and the reason, or two warm sentences; what Voice says unasked (a greeting) is spoken a little slower or
+quicker, within 8% of `voice.speak.rate`. Never for replies to you or calls you asked for.
+
+**Three honest knobs** (`mind.knobs.on`):
+
+- **Mood sets exploration:** with a low mood the lab and play get half their nightly budget (never more than you set).
+- **Arousal sets responsiveness:** how soon its unprompted messages may go.
+- **Calibration sets ask or act:** while its beliefs score no better than a coin flip, what it does on its own above
+  the safest class asks you first.
+
+Its mood only ever changes how much it does unprompted. It never adds a confirm step, and never slows anything you
+asked for: answers, requested actions, alarms, reminders you set, calls and close deadlines are untouched.
+
+**Its hints in every request** (`mind.context.on`): each AI request also gets the concepts its model of you says you're
+shaky on lately (up to three, from your quizzes and notes) and what's on its mind (the workspace's winners that aren't
+about you). It's read from Brain's files with no model call, in well under 50 ms. Your read, tone, mood and body state
+never go in, so a cloud AI never gets them; answers use it silently, never "since you seem stressed".
+
 ## /mind
 
 - **`/mind`:** whether Brain's scorekeeper is running, how long the log is, whether it checks out, and the last
   anchor.
 - **`/mind gate`:** what the gate held back or removed today, and what it muted.
 - **`/mind verify`:** checks the whole log, record by record, and says the result in one line.
+- **`/mind measures`:** information only (0.8.14): what each part changed outwardly in the last 30 days (a message
+  held, reworded or made quieter, an act it did on its own, a decision it recorded, a promise it made you), with a part
+  that's on and changed nothing marked **decoration**; and the 95th-percentile reply time of your own requests over 7
+  days, with Brain's share of it (building its hints for a request). The Brain console shows the same. Nothing is
+  turned off by these numbers.
 - **`/capabilities`:** how it does on tasks it has never seen, per kind; `/capabilities run` measures now.
 - **`/indicators`:** Functional indicators (not evidence of sentience).
 - **`/story`:** its one life story: the fixed core and what it has lived lately.
@@ -591,7 +635,9 @@ hidden, it isn't even loaded.
 ten tabs and one search box. It's live: it asks your computer again every few seconds while it's in sight.
 
 - **Now:** what's in the spotlight (an item about you shows as "about you: kept private"), the latest decisions, the parts that
-  wrote the most in the last day, today's limits, and the senses as counts.
+  wrote the most in the last day, today's limits, the senses as counts, and (0.8.14) **Measurements**: what each part
+  changed outwardly in 30 days, with "decoration" for a part that's on and changed nothing, and your requests' p95
+  reply time with Brain's share of it. Information only.
 - **Timeline:** every record in the mind log, newest first, grouped by day, each with the part that wrote it (its colour is its
   region's). Filter by part (or **What it saw**: Kurooto's own events mirrored in) and by day; **Older** pages back. Click a row
   for its fields; a decision opens on the right.
