@@ -43,7 +43,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
 - [Brain](#brain): 119 settings
-- [Voice and voice notes](#voice-and-voice-notes): 58 settings
+- [Voice and voice notes](#voice-and-voice-notes): 59 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
@@ -5855,6 +5855,21 @@ Which microphone to use; empty is the system's default.
   empty.
 - **When to change it:** Set it if you have several microphones.
 - **Depends on:** `voice.listen.on`.
+
+### `voice.audio.backend`
+
+How Kurooto plays and records sound: PipeWire's own tools, or the PortAudio library inside Kurooto.
+
+`pipewire`: speech plays through `pw-play` and the microphone is read through `pw-record`, separate programs, so a sound
+driver problem can't take Kurooto down, and the microphone follows your system's default (a source that comes and goes
+is picked up again). `portaudio`: the sounddevice library inside Kurooto, as before 0.8.16. `auto` picks `pipewire` on
+Linux when PipeWire is running and its tools are installed, unless `voice.listen.device` names a microphone (those are
+sounddevice's names); else `portaudio`. Takes effect for speaking at once, for listening the next time it starts
+(`/voice mute`, then `/voice unmute`).
+
+- **Values:** `auto` (default), `pipewire` or `portaudio`. **Default:** `auto`.
+- **When to change it:** Pick `portaudio` if speech or the microphone misbehaves through PipeWire's tools, or to use a
+  sounddevice microphone by name; `pipewire` to pass a PipeWire node name in `voice.listen.device`.
 
 ### `voice.listen.levels`
 

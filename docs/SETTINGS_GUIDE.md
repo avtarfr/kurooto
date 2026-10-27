@@ -1201,6 +1201,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 |---|---|---|
 | `voice.addons.chat` | `true` | Let an add-on have Kurooto chat with someone who isn't you, the guest way: no tools, none of your data. ([guide](wiki/user/settings-guide.md#voiceaddonschat)) |
 | `voice.addons.listen` | `true` | Let an add-on take one stretch of speech at a time through the microphone (written out here, never sent). ([guide](wiki/user/settings-guide.md#voiceaddonslisten)) |
+| `voice.audio.backend` | `"auto"` | How Kurooto plays and records sound: PipeWire's own tools, or the PortAudio library inside Kurooto. ([guide](wiki/user/settings-guide.md#voiceaudiobackend)) |
 | `voice.listen.after_speak_s` | `6` | Seconds after it spoke during which a question counts as an answer to it. ([guide](wiki/user/settings-guide.md#voicelistenafterspeaks)) |
 | `voice.listen.barge_in` | `true` | Talk over Kurooto while it speaks to stop it: "stop", a new question, or anything you want to say. ([guide](wiki/user/settings-guide.md#voicelistenbargein)) |
 | `voice.listen.calls` | `false` | Keep listening while you're on a phone call (off: listening pauses during calls). ([guide](wiki/user/settings-guide.md#voicelistencalls)) |

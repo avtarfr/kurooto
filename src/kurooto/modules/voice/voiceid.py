@@ -439,7 +439,7 @@ class VoiceID:
 
         vad = audio.Silero(self.v.parts.path("silero_vad.onnx")) if self.v.parts.has_model("vad") else audio.Energy()
         lis = audio.Listener(
-            audio.Mic(str(self.v.setting("listen.device") or "")),
+            audio.Mic(str(self.v.setting("listen.device") or ""), str(self.v.setting("audio.backend") or "auto")),
             vad,
             None,
             on_speech=on_speech,

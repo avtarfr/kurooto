@@ -5,15 +5,24 @@ the packages parts.py installed; nothing here is needed for Kurooto to start, an
 Sound from the microphone stays in memory: a rolling pre-roll of under a second, and the stretch of speech being
 cut out, which is handed to the transcriber and then dropped. Nothing is ever written to disk.
 
-Playing: sounddevice when it has an output device; else PipeWire's pw-play, PulseAudio's paplay or ALSA's aplay
-(Linux), afplay (macOS, from a temporary WAV file of the reply, deleted after), winsound (Windows, from memory).
-Recording: sounddevice; else pw-record or parec (Linux)."""
+Two ways in and out (voice.audio.backend): "pipewire" plays through pw-play and records through pw-record, child
+processes, so no audio library runs inside Kurooto; "portaudio" uses sounddevice (PortAudio). "auto", the default,
+picks pipewire on Linux when PipeWire is running and its tools are installed (and no sounddevice microphone was named),
+else portaudio. Playing otherwise falls back to pw-play, PulseAudio's paplay or ALSA's aplay (Linux), afplay (macOS,
+from a temporary WAV file of the reply, deleted after), winsound (Windows, from memory). Recording otherwise falls back
+to pw-record or parec (Linux).
+
+Threads (the 0.8.10-0.8.14 crash): a PortAudio stream is opened, read or written, stopped and closed only by the one
+thread that plays or reads it. stop() and close() from any other thread only set a flag (and end a child process);
+closing a stream under another thread's blocking read freed ALSA's memory while it was in use, and the daemon died
+in snd_pcm_poll_descriptors_revents."""
 
 from __future__ import annotations
 
 import collections
 import io
 import os
+import queue
 import shutil
 import subprocess
 import sys
@@ -28,11 +37,47 @@ RATE = 16000  # the microphone, the VAD, the transcriber and the wake word all w
 FRAME = 512  # samples per VAD frame (32 ms): Silero v5's size at 16 kHz
 WAKE_CHUNK = 1280  # samples per wake-word step (80 ms): openWakeWord's size
 
+BACKENDS = ("auto", "portaudio", "pipewire")
+REOPEN_S = 1.0  # a microphone that went away is opened again after this long, doubling up to REOPEN_MAX_S
+REOPEN_MAX_S = 8.0
+REOPEN_TRIES = 6  # this many tries in a row without sound and the Listener reports it (Voice tries again later)
+STALL_S = 3.0  # an open microphone silent this long has gone (a PipeWire source removed); real silence still flows
+QUEUE_FRAMES = 64  # about 2 s the reader may fall behind PortAudio's callback before the oldest frames are dropped
+JOIN_S = 0.5  # Listener.stop waits this long for its reader to close its own stream
+PLAY_CHUNK_S = 0.05  # written to the output this much at a time, so a stop takes effect within about 50 ms
+
 
 def _np():
     import numpy
 
     return numpy
+
+
+def _sd():
+    """sounddevice, imported when first needed (tests put a fake here)."""
+    import sounddevice
+
+    return sounddevice
+
+
+def pipewire_running() -> bool:
+    """Linux with pw-play and pw-record installed and this user's PipeWire socket present."""
+    if not sys.platform.startswith("linux") or not (shutil.which("pw-play") and shutil.which("pw-record")):
+        return False
+    remote = os.environ.get("PIPEWIRE_REMOTE") or "pipewire-0"
+    if os.path.isabs(remote):
+        return os.path.exists(remote)
+    run = os.environ.get("PIPEWIRE_RUNTIME_DIR") or os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+    return os.path.exists(os.path.join(run, remote))
+
+
+def backend(choice: str = "auto", device: str = "") -> str:
+    """voice.audio.backend made concrete: "portaudio" or "pipewire". auto keeps portaudio when a microphone was named,
+    since voice.listen.device holds sounddevice's names, which PipeWire doesn't know."""
+    c = str(choice or "auto").strip().lower()
+    if c in ("portaudio", "pipewire"):
+        return c
+    return "pipewire" if not device and pipewire_running() else "portaudio"
 
 
 # ------------------------------------------------------------------------------------------------- speaking
@@ -93,16 +138,19 @@ def wav_bytes(pcm: bytes, sr: int) -> bytes:
 class Player:
     """Plays 16-bit mono sound through the default output, by whatever this computer has."""
 
-    def __init__(self):
-        self.how = self.detect()
+    def __init__(self, backend: str = "auto"):
+        self.choice = str(backend or "auto")
+        self.how = self.detect(self.choice)
         self._proc: subprocess.Popen | None = None
         self._stop = threading.Event()
+        self._lock = threading.Lock()  # one sound at a time: its stream belongs to the play() holding this
 
     @staticmethod
-    def detect() -> str:
+    def detect(choice: str = "auto") -> str:
+        if backend(choice) == "pipewire" and shutil.which("pw-play"):
+            return "pw-play"
         try:
-            import sounddevice as sd
-
+            sd = _sd()
             sd.query_devices(kind="output")
             return "sounddevice"
         except Exception:
@@ -118,17 +166,14 @@ class Player:
         return ""
 
     def play(self, pcm: bytes, sr: int) -> None:
-        self._stop.clear()
+        with self._lock:
+            self._stop.clear()
+            self._play(pcm, sr)
+
+    def _play(self, pcm: bytes, sr: int) -> None:
         how = self.how
         if how == "sounddevice":
-            import sounddevice as sd
-
-            np = _np()
-            sd.play(np.frombuffer(pcm, dtype="<i2"), sr)
-            while sd.get_stream().active and not self._stop.is_set():
-                time.sleep(0.05)
-            if self._stop.is_set():
-                sd.stop()
+            self._play_stream(pcm, sr)
             return
         if how == "winsound":
             import winsound  # type: ignore[import-not-found]
@@ -144,8 +189,9 @@ class Player:
             finally:
                 Path(name).unlink(missing_ok=True)
             return
+        pw = ["pw-play", "--raw", "--format", "s16", "--rate", str(sr), "--channels", "1", "--latency", "50ms", "-"]
         args = {
-            "pw-play": ["pw-play", "--format", "s16", "--rate", str(sr), "--channels", "1", "-"],
+            "pw-play": pw,
             "paplay": ["paplay", "--raw", "--format=s16le", f"--rate={sr}", "--channels=1"],
             "aplay": ["aplay", "-q", "-t", "raw", "-f", "S16_LE", "-r", str(sr), "-c", "1", "-"],
         }.get(how)
@@ -153,17 +199,42 @@ class Player:
             raise RuntimeError("no way to play sound on this computer")
         self._run(args, pcm)
 
+    def _play_stream(self, pcm: bytes, sr: int) -> None:
+        """A stream of its own, opened, written and closed on this thread only. sounddevice's play() and stop() share
+        one module-wide stream that any thread could close under another's feet."""
+        sd = _sd()
+        step = max(1, int(sr * PLAY_CHUNK_S)) * 2
+        stream = sd.RawOutputStream(samplerate=sr, channels=1, dtype="int16")
+        try:
+            stream.start()
+            for i in range(0, len(pcm), step):
+                if self._stop.is_set():
+                    break
+                stream.write(pcm[i : i + step])
+            if self._stop.is_set():
+                stream.abort()  # drops what's queued
+            else:
+                stream.stop()  # lets what's queued finish
+        finally:
+            stream.close()
+
     def _run(self, args: list[str], data: bytes) -> None:
         p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self._proc = p
         try:
             if data and p.stdin:
-                try:
-                    p.stdin.write(data)
-                except BrokenPipeError:
+                try:  # a piece at a time: a whole answer would block here, deaf to stop(), until nearly played
+                    for i in range(0, len(data), 4096):
+                        if self._stop.is_set():
+                            break
+                        p.stdin.write(data[i : i + 4096])
+                except (BrokenPipeError, ValueError):
                     pass
             if p.stdin:
-                p.stdin.close()
+                try:
+                    p.stdin.close()
+                except BrokenPipeError:
+                    pass
             while p.poll() is None:
                 if self._stop.is_set():
                     p.terminate()  # its own child, by its exact pid
@@ -174,15 +245,22 @@ class Player:
             self._proc = None
 
     def stop(self) -> None:
+        """From any thread. A PortAudio stream is never touched here: the playing thread sees the flag and aborts and
+        closes its own. A player child is ended at once, by its exact pid (no native code shared, so that's safe)."""
         self._stop.set()
+        p = self._proc
+        if p is not None and p.poll() is None:
+            try:
+                p.terminate()
+            except OSError:
+                pass
 
 
 # ---------------------------------------------------------------------------------------------- microphone
 def microphone() -> tuple[bool | None, str]:
     """Is there a microphone? (True, its name) / (False, why) / (None, "can't tell") without sounddevice or tools."""
     try:
-        import sounddevice as sd
-
+        sd = _sd()
         d = sd.query_devices(kind="input")
         return True, str(d.get("name") or "the default microphone")
     except ImportError:
@@ -202,54 +280,213 @@ def microphone() -> tuple[bool | None, str]:
 
 
 class Mic:
-    """16 kHz mono 16-bit frames of FRAME samples, as bytes, until close()."""
+    """16 kHz mono 16-bit frames of FRAME samples, as bytes, until close(). The thread that iterates frames() alone
+    opens, reads and closes the stream or the recorder; close() from another thread only asks it to stop (and ends a
+    recorder child, which wakes its read). A microphone that goes away is opened again after a pause."""
 
-    def __init__(self, device: str = ""):
+    def __init__(self, device: str = "", backend: str = "auto"):
         self.device = device or None
+        self.choice = str(backend or "auto")
         self._proc: subprocess.Popen | None = None
-        self._stream = None
         self._closed = threading.Event()
+        self.reopened = 0  # times it was opened again after going away
+
+    def how(self) -> str:
+        return backend(self.choice, self.device or "")
 
     def frames(self) -> Iterator[bytes]:
+        src = None
+        if self.how() == "portaudio":
+            try:
+                src = self._portaudio(_sd())
+            except ImportError:
+                src = None
+        if src is None:
+            src = self._recorder()
+        size = FRAME * 2
+        buf = bytearray()
         try:
-            import sounddevice as sd
+            for data in src:
+                buf += data
+                while len(buf) >= size:
+                    yield bytes(buf[:size])
+                    del buf[:size]
+        finally:
+            src.close()  # this thread: the stream or recorder is closed by the one that read it
 
-            self._stream = sd.RawInputStream(
-                samplerate=RATE, channels=1, dtype="int16", blocksize=FRAME, device=self.device
-            )
-            self._stream.start()
-            while not self._closed.is_set():
-                data, _overflowed = self._stream.read(FRAME)
-                yield bytes(data)
-            return
-        except ImportError:
-            pass
-        args = None
-        if sys.platform.startswith("linux"):
-            if shutil.which("pw-record"):
-                args = ["pw-record", "--format", "s16", "--rate", str(RATE), "--channels", "1", "-"]
-            elif shutil.which("parec"):
-                args = ["parec", "--raw", "--format=s16le", f"--rate={RATE}", "--channels=1"]
+    def _sd_device(self):
+        d = self.device
+        return int(d) if isinstance(d, str) and d.strip().isdigit() else d  # "3": sounddevice's device number 3
+
+    def _portaudio(self, sd) -> Iterator[bytes]:
+        """Callback mode: PortAudio's own thread fills a queue and this thread never sits inside a blocking PortAudio
+        call, so its stop and close (here, in finally) never race a read."""
+        fails, heard = 0, False
+        while not self._closed.is_set():
+            q: queue.Queue[bytes] = queue.Queue(maxsize=QUEUE_FRAMES)
+            stream = None
+            try:
+                stream = sd.RawInputStream(
+                    samplerate=RATE,
+                    channels=1,
+                    dtype="int16",
+                    blocksize=FRAME,
+                    device=self._sd_device(),
+                    callback=_queue_callback(q),
+                )
+                stream.start()
+            except Exception:
+                _shut(stream)
+                if not heard:
+                    raise  # never worked: the Listener reports it and Voice tries again later
+                fails += 1
+                if fails >= REOPEN_TRIES:
+                    raise
+                self._closed.wait(min(REOPEN_MAX_S, REOPEN_S * 2 ** (fails - 1)))
+                continue
+            got = False
+            try:
+                last = time.monotonic()
+                while not self._closed.is_set():
+                    try:
+                        data = q.get(timeout=0.1)
+                    except queue.Empty:
+                        if not stream.active or time.monotonic() - last > STALL_S:
+                            break  # it went away: closed below, opened again after a pause
+                        continue
+                    last = time.monotonic()
+                    if not got and heard:
+                        self.reopened += 1
+                    got = heard = True
+                    fails = 0
+                    yield data
+            finally:
+                _shut(stream)
+            if self._closed.is_set():
+                return
+            if not got:
+                fails += 1
+                if not heard or fails >= REOPEN_TRIES:
+                    raise RuntimeError("the microphone stopped sending sound")
+            self._closed.wait(min(REOPEN_MAX_S, REOPEN_S * 2 ** max(0, fails - 1)))
+
+    def record_args(self) -> list[str] | None:
+        """The recorder's command line: pw-record, else parec (Linux). A device is passed on only when PipeWire was
+        chosen by name, since voice.listen.device otherwise holds sounddevice's names."""
+        if not sys.platform.startswith("linux"):
+            return None
+        target = str(self.device) if self.device and self.choice.strip().lower() == "pipewire" else ""
+        if shutil.which("pw-record"):
+            args = [
+                "pw-record",
+                "--raw",
+                "--format",
+                "s16",
+                "--rate",
+                str(RATE),
+                "--channels",
+                "1",
+                "--latency",
+                "32ms",
+            ]
+            if target:
+                args += ["--target", target]
+            return args + ["-"]
+        if shutil.which("parec"):
+            args = ["parec", "--raw", "--format=s16le", f"--rate={RATE}", "--channels=1", "--latency-msec=32"]
+            if target:
+                args.append(f"--device={target}")
+            return args
+        return None
+
+    def _recorder(self) -> Iterator[bytes]:
+        """A recorder child read on this thread; when it ends by itself (PipeWire restarted, the source went), a new
+        one is started after a pause."""
+        args = self.record_args()
         if not args:
             raise RuntimeError("no way to record sound: sounddevice isn't installed and no pw-record or parec")
-        self._proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        size = FRAME * 2
-        while not self._closed.is_set() and self._proc.stdout:
-            data = self._proc.stdout.read(size)
-            if not data:
-                break
-            yield data
+        fails, heard = 0, False
+        while not self._closed.is_set():
+            p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            self._proc = p
+            got = False
+            try:
+                while not self._closed.is_set() and p.stdout:
+                    data = p.stdout.read(FRAME * 2)
+                    if not data:
+                        break
+                    if not got and heard:
+                        self.reopened += 1
+                    got = heard = True
+                    fails = 0
+                    yield data
+            finally:
+                self._proc = None
+                _end(p)
+            if self._closed.is_set():
+                return
+            if not got:
+                fails += 1
+                if not heard or fails >= REOPEN_TRIES:
+                    raise RuntimeError(f"{args[0]} stopped without sound (exit {p.returncode})")
+            self._closed.wait(min(REOPEN_MAX_S, REOPEN_S * 2 ** max(0, fails - 1)))
 
     def close(self) -> None:
+        """From any thread: asks the reader to stop. A PortAudio stream is never touched here (the reader closes it
+        within 0.1 s); a recorder child is ended, by its exact pid, so its blocked read returns."""
         self._closed.set()
-        if self._stream is not None:
+        p = self._proc
+        if p is not None and p.poll() is None:
             try:
-                self._stream.stop()
-                self._stream.close()
-            except Exception:
+                p.terminate()
+            except OSError:
                 pass
-        if self._proc is not None and self._proc.poll() is None:
-            self._proc.terminate()  # its own child, by its exact pid
+
+
+def _queue_callback(q: queue.Queue):
+    """PortAudio's callback (its own thread): the frame into the queue, the oldest dropped when the reader is behind."""
+
+    def cb(indata, _frames, _time, _status) -> None:
+        data = bytes(indata)
+        try:
+            q.put_nowait(data)
+        except queue.Full:
+            try:
+                q.get_nowait()
+                q.put_nowait(data)
+            except (queue.Empty, queue.Full):
+                pass
+
+    return cb
+
+
+def _shut(stream) -> None:
+    """Stops and closes a stream, on the thread that owns it."""
+    if stream is None:
+        return
+    for step in ("abort", "close"):
+        try:
+            getattr(stream, step)()
+        except Exception:
+            pass
+
+
+def _end(p: subprocess.Popen) -> None:
+    """Ends a child of ours by its exact pid, and reaps it."""
+    if p.poll() is None:
+        try:
+            p.terminate()
+            p.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            p.wait(timeout=2)
+        except OSError:
+            pass
+    if p.stdout:
+        try:
+            p.stdout.close()
+        except OSError:
+            pass
 
 
 # ---------------------------------------------------------------------------------------- voice activity
@@ -399,8 +636,13 @@ class Listener:
         return self.thread is not None and self.thread.is_alive()
 
     def stop(self) -> None:
+        """From another thread: asks the reader to stop, then waits briefly for it to close its own stream, so a new
+        Listener doesn't open the device while this one still holds it."""
         self._stop.set()
         self.mic.close()
+        t = self.thread
+        if t is not None and t is not threading.current_thread() and t.is_alive():
+            t.join(JOIN_S)
 
     def _run(self) -> None:
         frame_ms = FRAME * 1000 / RATE
@@ -411,8 +653,10 @@ class Listener:
         wake_buf = bytearray()
         woke_at = 0.0
         barging = False
+        frames = None
         try:
-            for frame in self.mic.frames():
+            frames = self.mic.frames()
+            for frame in frames:
                 if self._stop.is_set():
                     break
                 if self.on_level is not None:
@@ -473,3 +717,9 @@ class Listener:
             self.error = f"{type(e).__name__}: {e}"[:300]
         finally:
             self.mic.close()
+            close = getattr(frames, "close", None)  # here, on the reading thread: the stream is closed by its reader
+            if close is not None:
+                try:
+                    close()
+                except Exception:
+                    pass
