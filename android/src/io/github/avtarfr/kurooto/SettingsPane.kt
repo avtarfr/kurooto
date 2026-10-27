@@ -1,5 +1,6 @@
 package io.github.avtarfr.kurooto
 
+import androidx.compose.runtime.CompositionLocalProvider
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
@@ -336,6 +337,10 @@ private fun GroupPage(a: MainActivity, ui: HomeState, room: PaddingValues, g: Se
                 Spacer(Modifier.width(16.dp))
                 Text(g.title, style = MaterialTheme.typography.displaySmallEmphasized, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+            // a long press on a setting opens its entry in the settings guide (SettingHelp, 0.8.10)
+            val guide = rememberSettingHelp()
+            var open by remember { mutableStateOf<String?>(null) }
+            CompositionLocalProvider(LocalHelp provides { k: String -> open = k }) {
             when (g) {
                 SetGroup.LOOK -> Look(a)
                 SetGroup.NOTIFICATIONS -> Notifications(a)
@@ -349,6 +354,9 @@ private fun GroupPage(a: MainActivity, ui: HomeState, room: PaddingValues, g: Se
                 SetGroup.BEDSIDE -> BedsideGroup(a, ui)
                 SetGroup.PHONE -> ThisPhone(a, ui)
             }
+            }
+            val entry = open?.let { k -> guide?.helpFor(k) }
+            if (guide != null && entry != null) SettingHelpSheet(guide, entry) { open = null }
         }
     }
 }
@@ -380,9 +388,9 @@ private fun ColumnScope.Look(a: MainActivity) {
     Heading("Switches")
     Group(
         listOf(
-            Item("Vivid colours", "Off (Calm): quieter colours and plain cards", checked = Prefs.vivid(a), onClick = { a.toggleVivid() }),
-            Item("Floating bar", "Off: the bar sits on the bottom edge", checked = Prefs.floatingBar(a), onClick = { a.toggleFloatingBar() }),
-            Item("Moving background", "Off: a still picture", checked = Prefs.moving(a), onClick = { a.toggleMoving() }),
+            Item("Vivid colours", "Off (Calm): quieter colours and plain cards", checked = Prefs.vivid(a), onClick = { a.toggleVivid() }, help = "app.vivid"),
+            Item("Floating bar", "Off: the bar sits on the bottom edge", checked = Prefs.floatingBar(a), onClick = { a.toggleFloatingBar() }, help = "app.floatingBar"),
+            Item("Moving background", "Off: a still picture", checked = Prefs.moving(a), onClick = { a.toggleMoving() }, help = "app.moving"),
         ),
     )
 }
@@ -436,12 +444,13 @@ private fun ColumnScope.Calls(a: MainActivity, ui: HomeState) {
     Heading("Calls")
     Group(
         listOf(
-            Item("New call screen", "Off: the call screen from before 0.8.7", checked = Prefs.newCallScreen(a), onClick = { a.toggleNewCallScreen() }),
+            Item("New call screen", "Off: the call screen from before 0.8.7", checked = Prefs.newCallScreen(a), onClick = { a.toggleNewCallScreen() }, help = "app.newCallScreen"),
             Item(
                 "Connect straight to your call line",
                 "Off: calls and messages come through ntfy.sh only",
                 checked = Prefs.direct(a),
                 onClick = { a.toggleDirect() },
+                help = "app.direct",
             ),
         ),
     )
@@ -463,6 +472,7 @@ private fun ColumnScope.PlacesGroup(a: MainActivity) {
                 if (Places.on(a)) "On: " + Places.places(a).length() + " saved" else "Off",
                 onClick = { a.startActivity(Intent(a, PlacesActivity::class.java)) },
                 trailing = { Chevron() },
+                help = "app.places.on",
             ),
         ),
     )
@@ -472,7 +482,7 @@ private fun ColumnScope.PlacesGroup(a: MainActivity) {
 @Composable
 private fun ColumnScope.SensesGroup(a: MainActivity) {
     Heading("What the phone tells Kurooto")
-    Group(SensesList.map { s -> Item(Senses.label(s), Senses.note(s).ifEmpty { null }, checked = Senses.on(a, s), onClick = { a.toggleSense(s) }) })
+    Group(SensesList.map { s -> Item(Senses.label(s), Senses.note(s).ifEmpty { null }, checked = Senses.on(a, s), onClick = { a.toggleSense(s) }, help = "app.senses.$s") })
     Footnote(
         "Off until you switch one on. Each reading is worked out on this phone, sealed with this phone's key and sent to your " +
             "computer through your call line, which can't read it; if your computer is off it waits there. The microphone is never used.",
@@ -494,8 +504,9 @@ private fun ColumnScope.BedsideGroup(a: MainActivity, ui: HomeState) {
                 "Open by itself while charging",
                 if (Prefs.bedsideAuto(a)) Prefs.bedsideFrom(a) + " to " + Prefs.bedsideTo(a) else "Off",
                 onClick = { a.bedsideHours() },
+                help = "app.bedsideAuto",
             ),
-            Item("Keep the screen on while charging", null, checked = Prefs.bedsideKeepOn(a), onClick = { a.toggleKeepOn() }),
+            Item("Keep the screen on while charging", null, checked = Prefs.bedsideKeepOn(a), onClick = { a.toggleKeepOn() }, help = "app.bedsideKeepOn"),
         ),
     )
     Footnote(

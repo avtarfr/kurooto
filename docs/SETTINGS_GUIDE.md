@@ -657,7 +657,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.backfill.study` | `true` | Read the study tracker's time per day, for your real pace in week plans. ([guide](wiki/user/settings-guide.md#mindbackfillstudy)) |
 | `mind.beliefs.on` | `true` | Keep where each belief came from (said, saw, inferred, imagined) and how sure it is. ([guide](wiki/user/settings-guide.md#mindbeliefson)) |
 | `mind.budget.on` | `true` | The body budget: a few things about Kurooto's own state it tries to keep level, and its drive. ([guide](wiki/user/settings-guide.md#mindbudgeton)) |
-| `mind.console.on` | `true` | The Brain console: a dashboard page (Alt+O) and the phone's Brain view that show what the Brain decided and why, its timeline, plans, beliefs and switches. ([guide](wiki/user/settings-guide.md#mindconsoleon)) |
+| `mind.console.on` | `true` | The Brain console: a dashboard page (Alt+O) and the phone's Brain view showing what the Brain decided and why. ([guide](wiki/user/settings-guide.md#mindconsoleon)) |
 | `mind.feelings.empathy` | `true` | Concern for what it looks after (deadlines, projects, its machine): it notices sooner, speaks more gently. ([guide](wiki/user/settings-guide.md#mindfeelingsempathy)) |
 | `mind.feelings.express` | `true` | Brain may say a feeling about something open, through the gate, at most 3 times a week unasked. ([guide](wiki/user/settings-guide.md#mindfeelingsexpress)) |
 | `mind.feelings.mood` | `true` | Its mood shapes it: low, it does less unasked, asks first, says less; high, a little bolder. ([guide](wiki/user/settings-guide.md#mindfeelingsmood)) |

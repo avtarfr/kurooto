@@ -7,6 +7,9 @@ delete what it kept. Brain's data stays in the mind folder on this computer and 
 cost = "Nothing leaves this computer: no cloud AI ever gets Brain's read of you, its journal facts or its numbers."
 needs = "Brain (Features → Brain)."
 
+[parent."mind.console"]
+tip = "The Brain console: what the Brain decided and why, on the dashboard (Alt+O) and in the phone's Views."
+
 [parent."mind.attention"]
 tip = "A model of Brain's own attention, for \"what are you thinking about?\"."
 [parent."mind.beliefs"]
@@ -507,7 +510,7 @@ needs = "`mind.backfill.on`."
 when = "Turn it off to leave this source out."
 
 [s."mind.console.on"]
-tip = "The Brain console: a dashboard page (Alt+O) and the phone's Brain view that show what the Brain decided and why, its timeline, plans, beliefs and switches."
+tip = "The Brain console: a dashboard page (Alt+O) and the phone's Brain view showing what the Brain decided and why."
 values = "`true` (the page and the view read what the Brain keeps), `false` (both say the console is off; the Brain itself runs as before)."
 when = "Turn it off if you don't want its reasoning on screen. It only reads; nothing the Brain does depends on it."
 needs = "Brain on."

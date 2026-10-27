@@ -74,7 +74,12 @@ QUOTE_MAX = 200  # a reply shows this much of the message it answers
 FID = re.compile(r"[\w-]{1,40}")  # a shared file's id (the upload's own)
 SESSION_OPS = ("session.new", "session.rename", "session.delete", "session.pin", "read", "sync")
 MSG_OPS = ("msg.edit", "msg.delete", "msg.pin")
-BEING_OPS = ("settings.set", "module", "note.get")  # the being on the phone (Views): only sealed, only now
+BEING_OPS = (
+    "settings.set",
+    "module",
+    "note.get",
+    "voice.mute",
+)  # the being on the phone (Views): only sealed, only now
 OFF_NOW = "Your computer was off when you sent that, so it wasn't done. Try again now that it's on."
 WORKING_S = 3 * 3600  # a chat shows "working" at most this long without hearing the request ended
 
@@ -582,6 +587,13 @@ class PhoneChat:
                     r = out
                 res = {"ok": code == 200 and bool(r.get("ok")), "id": mid, "on": self.app.is_on(mid),
                        "note": str(r.get("message") or r.get("error") or "")}  # fmt: skip
+        elif op == "voice.mute":  # the being's Mute: through the dashboard's own POST /api/voice/mute (flips it)
+            code, out = api.post("voice/mute", {} if a.get("on") is None else {"on": bool(a.get("on"))})
+            res = (
+                {"ok": True, "muted": bool(out.get("muted")), "note": str(out.get("message") or "")}
+                if code == 200
+                else {"ok": False, "note": "Voice isn't on this computer (Features: Voice: talk and listen)."}
+            )
         else:  # note.get
             nid = str(a.get("id") or a.get("note") or "")
             code, out = api.get("note", {"id": nid})

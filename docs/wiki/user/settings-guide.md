@@ -5327,8 +5327,7 @@ Read the study tracker's time per day, for your real pace in week plans.
 
 ### `mind.console.on`
 
-The Brain console: a dashboard page (Alt+O) and the phone's Brain view that show what the Brain decided and why, its
-timeline, plans, beliefs and switches.
+The Brain console: a dashboard page (Alt+O) and the phone's Brain view showing what the Brain decided and why.
 
 - **Values:** `true` (the page and the view read what the Brain keeps), `false` (both say the console is off; the Brain
   itself runs as before). **Default:** on.

@@ -1,5 +1,8 @@
 package io.github.avtarfr.kurooto
 
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -76,7 +79,20 @@ class Item(
     val extra: (@Composable () -> Unit)? = null,
     val titleColor: Color = Color.Unspecified,
     val subLines: Int = Int.MAX_VALUE,
+    /** The settings guide's key for this row (SettingHelp, e.g. "app.vivid"): a long press opens its entry. */
+    val help: String? = null,
 )
+
+/** Opens a setting's guide entry (Settings provides it; a long press on a row with `help` calls it). */
+val LocalHelp = staticCompositionLocalOf<((String) -> Unit)?> { null }
+
+/** A long press on a row with a guide entry opens it; a tap still does what the row does. */
+@Composable
+private fun Modifier.helpPress(key: String?): Modifier {
+    val open = LocalHelp.current
+    if (key == null || open == null) return this
+    return this.pointerInput(key) { detectTapGestures(onLongPress = { open(key) }) }
+}
 
 /** A section's name over its group, in the accent colour, emphasized. */
 @Composable
@@ -115,7 +131,7 @@ private fun SegRow(r: Item, shapes: ListItemShapes) {
     }
     val onClick = r.onClick
     if (onClick == null) {
-        Surface(shape = shapes.shape, color = bg, contentColor = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxWidth()) {
+        Surface(shape = shapes.shape, color = bg, contentColor = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxWidth().helpPress(r.help)) {
             ListItem(
                 headlineContent = headline,
                 supportingContent = supporting,
@@ -144,7 +160,7 @@ private fun SegRow(r: Item, shapes: ListItemShapes) {
         leadingContent = r.leading,
         supportingContent = supporting,
         trailingContent = trailing,
-        modifier = if (r.checked == null) Modifier else Modifier.toggleState(r.checked),
+        modifier = (if (r.checked == null) Modifier else Modifier.toggleState(r.checked)).helpPress(r.help),
         content = headline,
     )
 }

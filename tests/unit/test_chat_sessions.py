@@ -322,6 +322,23 @@ def test_the_beings_requests(chat):
     assert status == 409 and note == OFF_NOW and not app.is_on("reminders")
 
 
+def test_the_beings_mute_goes_through_the_dashboards_voice_mute(chat, monkeypatch):
+    """0.8.10: the being's Mute on the phone (op voice.mute) is the dashboard's POST /api/voice/mute."""
+    from kurooto.web.api import Api
+
+    calls = []
+
+    def fake_post(self, path, b):
+        calls.append((path, b))
+        return (200, {"ok": True, "message": "Muted.", "muted": True}) if path == "voice/mute" else (404, {})
+
+    monkeypatch.setattr(Api, "post", fake_post)
+    got = opened(chat, send(chat, op="voice.mute", args={})[1])
+    assert got == {"ok": True, "op": "voice.mute", "muted": True, "note": "Muted."} and calls == [("voice/mute", {})]
+    code, out, _ = send(chat, sealed=False, op="voice.mute", args={})
+    assert code == 403 and len(calls) == 1  # only the paired phone, sealed
+
+
 def test_session_turns_are_forgotten_with_the_rest(chat):
     from kurooto.core import retention
 
