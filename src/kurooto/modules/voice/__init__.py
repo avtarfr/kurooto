@@ -178,6 +178,7 @@ class Speaker:
                     pcm, sr = fut.result()
                     if i + 1 < len(out):
                         fut = pool.submit(tts.synth, out[i + 1])
+                        pcm += pause_after(tts, out[i], sr)
                     if self._cancel.is_set():
                         break
                     self.v.publish("voice_speak", samples=shape_mod.from_pcm(pcm, sr), rate=shape_mod.RATE)
@@ -503,9 +504,10 @@ class Voice(Module):
                     parts = shape_mod.sentences(text, numbers=words)
                     if self.setting("speak.join_sentences"):
                         parts = shape_mod.join(parts)
-                    for part in parts or [text]:
+                    parts = parts or [text]
+                    for i, part in enumerate(parts):
                         got, sr = tts.synth(part)
-                        pcm += got
+                        pcm += got + (pause_after(tts, part, sr) if i + 1 < len(parts) else b"")
                     if pcm:
                         return shape_mod.payload(shape_mod.from_pcm(pcm, sr), "tts")
                 except Exception:
@@ -1144,6 +1146,16 @@ class Voice(Module):
             "two are never kept)."
             + "\n/voice mute, /voice unmute, /voice stop, /voice say <text>; /voice id (Voice ID), /voice enrol"
         )  # fmt: skip
+
+
+def pause_after(tts, part: str, sr: int) -> bytes:
+    """The silence after a piece when another follows (16-bit, at the piece's rate). kokoro-onnx trims the silence at
+    both ends of what it makes and puts a pause back only between the batches it joins itself (0.25 s after a
+    sentence, 0.1 s after a clause), so pieces made one at a time ran into each other with no breath between; this is
+    its own pause, put back. Piper keeps its silence, so it gets none."""
+    if getattr(tts, "name", "") != "kokoro":
+        return b""
+    return bytes(2 * int(sr * (0.25 if part.rstrip()[-1:] in ".!?" else 0.1)))
 
 
 def _edges(pcm: bytes, seconds: float = 2.0) -> bytes:

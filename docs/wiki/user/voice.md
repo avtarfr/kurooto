@@ -39,7 +39,8 @@ Turn listening on with `voice.listen.on` in Settings, then **Set up** again: it 
 
 Kurooto reads its answers aloud, a few sentences at a time (the first piece plays while the next is being made, so
 it starts quickly). Short sentences are spoken together, up to about 200 characters, because a few words read on their
-own sound hurried and flat (0.8.13; `voice.speak.join_sentences` off reads one sentence at a time). By default it reads the answers to what you said aloud; `voice.speak.what` = `all` reads every
+own sound hurried and flat (0.8.13; `voice.speak.join_sentences` off reads one sentence at a time). Between pieces it
+leaves the short pause Kokoro itself makes between sentences. By default it reads the answers to what you said aloud; `voice.speak.what` = `all` reads every
 answer from your AI (Telegram and the phone app ones too), and `off` keeps it silent unless asked.
 
 - Pick a voice with `voice.speak.voice` (Kokoro: `af_heart`, the default, `af_bella`, `af_nicole`, `af_sarah`,

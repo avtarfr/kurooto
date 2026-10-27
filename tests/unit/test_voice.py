@@ -702,6 +702,23 @@ def test_short_sentences_are_spoken_together_unless_switched_off(voice, speakers
     assert engine.said == ["Done.", "It's on your list."]
 
 
+def test_kokoros_pause_is_put_back_between_pieces(voice, speakers, monkeypatch):
+    class Kokoro(Tts):
+        name = "kokoro"  # kokoro-onnx trims the silence off both ends of what it makes
+
+    monkeypatch.setattr(voice, "tts", lambda: (Kokoro(), ""))
+    voice.say("One, and then. Two.", wait=True)
+    voice.say("Three, four", wait=True)
+    first, last, alone = speakers.got
+    assert first == Kokoro().synth("One, and then.")[0] + bytes(2 * 4000)  # 0.25 s after a sentence, at 16 kHz
+    assert last == Kokoro().synth("Two.")[0]  # nothing after the last piece: the microphone's tail covers it
+    assert alone == Kokoro().synth("Three, four")[0]
+    from kurooto.modules.voice import pause_after
+
+    assert pause_after(Kokoro(), "a clause,", 24000) == bytes(2 * 2400)  # 0.1 s after a clause
+    assert pause_after(Tts(), "Piper keeps its own.", 24000) == b""
+
+
 def test_joining_keeps_the_first_piece_short_and_long_sentences_whole():
     long = "This sentence is a fairly long one, made to be more than half of the limit on its own here."
     assert len(long) > 60

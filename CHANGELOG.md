@@ -12,6 +12,9 @@
   hurried, flat tune ("Done." "Sure."). Short sentences are now joined into pieces of up to about 200 characters (the
   first kept short, so speech starts as soon as before) and Kokoro pauses at each full stop inside them
   (`voice.speak.join_sentences`).
+- **Sentences no longer run into each other.** The speech engine trims the silence off both ends of what it makes and
+  puts a pause back only between parts it joins itself, so sentences made one at a time followed each other with no
+  breath. Kokoro's own pause (a quarter of a second after a sentence, a tenth after a clause) is put back between them.
 - **A backup could freeze Voice and Face.** A backup ran on Kurooto's main loop, so while it worked, the parts that
   share it waited; and one that met a named pipe in Kurooto's folders (an add-on's stream left behind by a hard stop)
   read it forever, so listening and Face presence never started. Backups now leave out anything that isn't a plain

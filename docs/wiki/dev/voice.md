@@ -223,6 +223,17 @@ gets a full stop so a list item still ends. Inside a piece the model makes its o
 same way. Outputs (`add_output`) get a piece per call instead of a sentence; the sample rate is unchanged. Sentences
 longer than 220 characters are still split at commas by `sentences()`; `join()` never cuts.
 
+Between pieces, `pause_after(tts, piece, sr)` appends silence to every piece but the last (and in `Voice.shape()`'s
+engine path): kokoro-onnx's `create()` trims leading and trailing silence (`trim=True`, librosa's 60 dB trim) and adds
+`sentence_pause` 0.25 s or `clause_pause` 0.1 s only between batches of one call, so separate calls ran together. The
+same values are used: 0.25 s after `. ! ?`, else 0.1 s. Piper keeps its silence and gets none. The pause is part of
+the PCM, so outputs, `voice_speak`'s shape and `holding()` all include it.
+
+The sample rate is Kokoro's own (`kokoro_onnx.config.SAMPLE_RATE`, 24000) from `Kokoro.create()`, passed unchanged
+from `Kokoro.synth` through `_play` to each output and the `Player` (pw-play `--rate`, paplay, aplay, sounddevice,
+WAV headers); nothing resamples it on the way out. (Voice ID's synthetic impostors resample a copy to 16 kHz for the
+embedder only.)
+
 ### Numbers as words (0.8.13)
 
 Kokoro's pronunciation comes from espeak-ng, which reads digits literally ("21:31" → "twenty one : thirty one",
