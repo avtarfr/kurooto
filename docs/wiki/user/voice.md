@@ -191,7 +191,8 @@ against your voice print, on this computer, and gets one of three answers: **you
 ### Turning it on and enrolling
 
 1. Dashboard → Features → Voice: tick **Voice ID** on the card, then **Set up** (it fetches a 28 MB speaker model and a
-   small package, once; after that it works with no internet). No internet on that computer? **Manage → Install from a
+   small package, once, plus listening's parts if they aren't there yet; after that it works with no internet). The
+   switch alone doesn't download anything: the Your voice page says so and has its own **Set up now** button. No internet on that computer? **Manage → Install from a
    file** on the page, or `kurooto voice parts add FILE`: the file is checked against its pinned checksum.
 2. Open **Your voice (Voice ID) →** on the Voice card (the page `/voice-id`), or type `/voice enrol`.
 3. **Capture**, about five minutes at the computer, through the microphone Kurooto listens with (never the

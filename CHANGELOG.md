@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.11 (unreleased)
+
+- **Voice ID: Set up from its own page.** With Voice ID on but its files not downloaded yet, the Your voice page
+  said to go to the dashboard; it now has a **Set up now** button that downloads them there and shows the progress.
+
 ## 0.8.10 (2026-10-27)
 
 The phone app, rebuilt around chat (the Rail design), and the remaining requested features.

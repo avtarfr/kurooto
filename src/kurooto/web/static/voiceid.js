@@ -24,11 +24,13 @@ function topBox() {
   const on = S.on;
   let h = `<label class="sw"><input type="checkbox" id="vidon"${on ? " checked" : ""}${S.voice_on ? "" : " disabled"}> Voice ID: only your voice can make Kurooto act; anyone else can only chat</label>`;
   if (!S.voice_on) h += `<p class="warn">Voice is off: turn it on in the dashboard (Features → Voice) first.</p>`;
-  if (S.missing && S.missing.length) h += `<p class="warn">Voice ID needs setting up (about ${esc(S.missing_gb)} GB): dashboard → Features → Voice → Set up, with Voice ID on. Or install the files below (Manage).</p>`;
+  if (S.missing && S.missing.length) h += `<p class="warn">Voice ID needs its files first (about ${esc(S.missing_gb)} GB); the switch alone doesn't download them. <button id="setupnow">Set up now</button> <span id="setupmsg"></span><br>Or download the model yourself and install it below (Manage).</p>`;
   if (S.bank !== "ok") h += `<p class="warn">${esc(S.bank)}.</p>`;
   if (S.locked) h += `<p class="warn">Its key can't be read, so every voice can only chat. Forget it (Manage) and enrol again.</p>`;
   if (S.mic && S.mic.enrolled && S.mic.now && S.mic.enrolled !== S.mic.now) h += `<p class="warn">Enrolled with ${esc(S.mic.enrolled)}, listening with ${esc(S.mic.now)}: add a few samples with this microphone.</p>`;
   $("#top").innerHTML = h;
+  const su = $("#setupnow");
+  if (su) su.onclick = setupNow;
   const box = $("#vidon");
   if (box) box.onchange = async () => { const r = await api("modules/card", { id: "voice", act: "speaker_id.on", value: box.checked }); $("#line").textContent = r.message || r.error || ""; load(); };
 }
@@ -109,6 +111,23 @@ function manage() {
     <tr><th>Since Kurooto started</th><td>${S.who.owner} you, ${S.who.guest} someone else, ${S.who.unsure} unsure · ${S.guest_turns} guest turns answered</td></tr></table>` : `<p class="note">No voice print yet.</p>`;
   $("#addc").innerHTML = [...S.conditions.map((c) => [c.cond, c.label]), ["other", "This microphone, or a cold"]].map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join("");
   $("#model").innerHTML = S.models.map((m) => `<option${m === S.model ? " selected" : ""}>${esc(m)}</option>`).join("");
+}
+
+async function setupNow() { // Voice's own Set up (what its switches need, Voice ID's files among them), here instead of the dashboard
+  const btn = $("#setupnow"), say = (t) => { const m = $("#setupmsg"); if (m) m.textContent = t; };
+  if (btn) btn.disabled = true;
+  const r = await api("modules/setup", { id: "voice" });
+  if (r.started === false || r.error) { say(r.message || r.error || ""); if (btn) btn.disabled = false; return; }
+  say("Starting…");
+  for (;;) {
+    await new Promise((ok) => setTimeout(ok, 1000));
+    let p;
+    try { p = await api("progress"); } catch { continue; }
+    const last = (p.lines || []).slice(-1)[0];
+    if (last) say(last.line);
+    if (!p.installing) break;
+  }
+  load();
 }
 
 async function load() {
