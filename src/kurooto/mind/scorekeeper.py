@@ -40,6 +40,7 @@ import signal
 import sys
 import threading
 import time
+from math import isfinite
 from multiprocessing.connection import Listener
 from pathlib import Path
 
@@ -433,6 +434,14 @@ class Keeper:
                         "why": int(b.get("why") or 0),
                     },
                 )
+                return {"ok": True, "seq": seq}
+            if kind == "decision_outcome":  # 0.8.14: the daemon saw what came of an expectation; written as `outcome`
+                did, res = str(b.get("decision") or ""), str(b.get("result") or "")
+                if not records.ID.match(did) or res not in records.RESULTS:
+                    return {"error": "not an outcome"}
+                v = b.get("value")
+                val = float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) and isfinite(v) else None
+                seq = records.outcome(self.log, did, res, None if val is None else max(-1.0, min(1.0, val)))
                 return {"ok": True, "seq": seq}
             if kind == "forget_event":  # that a forget happened: a hash and a count, never what
                 seq = self.log.append(
