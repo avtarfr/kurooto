@@ -84,6 +84,15 @@ def pose(face: Face, mirror: bool = True) -> Pose:
     return Pose(yaw, roll, pitch)
 
 
+# pose()'s yaw is the nose's offset over the eyes' distance, about k * tan(angle): 0.3 at 25 degrees gives k
+YAW_K = 0.3 / math.tan(math.radians(25))
+
+
+def yaw_degrees(yaw: float) -> float:
+    """pose()'s yaw as degrees away from facing the camera (0 to 90, the side doesn't matter); an estimate."""
+    return math.degrees(math.atan(abs(float(yaw)) / YAW_K))
+
+
 def moved(a: Face | None, b: Face | None) -> float:
     """How far the landmarks moved between two sightings, in pixels (the largest of the five)."""
     if a is None or b is None:

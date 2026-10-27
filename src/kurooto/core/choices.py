@@ -67,6 +67,10 @@ CHOICES: dict[str, list[list[str]]] = {
     "skills.auto_pack": [["ask", "ask: a button"], ["auto", "auto: build it"], ["off", "off"]],
     "terminal.default_opens": [["shell", "shell: one tab"], ["layout", "layout: all tabs"]],
     "terminal.top": [["left", "left: a column beside the first tab"], ["tab", "tab: a tab of its own"], ["off", "off"]],
+    "voice.listen.need_face_fallback": [
+        ["voice", "voice: its voice rules alone"],
+        ["none", "none: nothing by voice until the camera sees"],
+    ],
     "voice.speaker_id.mode": [  # (voice id)
         ["owner_only_acts", "owner_only_acts: others may chat"],
         ["owner_only_at_all", "owner_only_at_all: others get one line, nothing else"],

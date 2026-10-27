@@ -119,7 +119,7 @@ the room in view holds it. All on `Face` (`app.modules["face"]`):
 | Call | What |
 |---|---|
 | `watch_people(cb) -> unsubscribe()` | `cb(faces)` for every frame the watcher looks at, while `face.addons.watch` is on: a list (empty when nobody's in view) of `{h_px, h, w, x, y, yaw, det, who, score, e}`. `h_px` the box's height in pixels at the capture size, `h`/`w` shares of the frame, `x`/`y` the box's centre in -1..1 (the camera's own picture, not mirrored), `yaw` from `vision.pose` (mirrored: negative = turned to their left), `det` the detector's score. `who` (`owner`, `unsure`, `stranger`), `score` (the template's cosine) and `e` (SFace's 128 floats, a copy) only for faces big and clear enough to judge (score ≥ 0.8, ≥ `recognise.min_face_px`, sharp, lit), else None. Called on the `face-watch` thread between frames: keep it quick; an exception is a `face_failed {part: "an add-on watching"}` event and the next subscriber still runs. Each subscriber gets its own copies |
-| `hold_watch(reason, seconds=600) -> bool` | keeps the camera wanted (`Watcher.held`) for at most `HOLD_MAX_S` = 600 s, renewed by calling again, until `release_watch(reason)`; holds are keyed by `reason` (60 chars). Every pause reason comes first, so a hold never overrides a switch, /face pause, Kurooto paused, battery, a lock, a call, focus, the night, an enrolment or a camera problem. False (nothing held) when `face.addons.hold` is off. `holds()` lists the live ones; `line()` then says "camera on: an add-on is looking (reason)" and `status()["holds"]` has them |
+| `hold_watch(reason, seconds=600, core=False) -> bool` | keeps the camera wanted (`Watcher.held`) for at most `HOLD_MAX_S` = 600 s, renewed by calling again, until `release_watch(reason)`; holds are keyed by `reason` (60 chars). Every pause reason comes first, so a hold never overrides a switch, /face pause, Kurooto paused, battery, a lock, a call, focus, the night, an enrolment or a camera problem. False (nothing held) when `face.addons.hold` is off, unless `core=True` (Kurooto's own hold: Voice's `voice.listen.need_face`; kept in `_core_holds`, listed by `holds()` whatever the add-on switch). `holds()` lists the live ones; `line()` then says "camera on: an add-on is looking (reason)" for add-ons' and the reason itself for core ones ("camera on: voice: who's talking"), and `status()["holds"]` has them |
 | `watch_faces(cb) -> unsubscribe()` | `cb(faces)` with the tracker's list (below: `{id, x, y, h, owner, m}`, no identity beyond the owner flag, no numbers) for every frame tracked, and `[]` once when the last face goes or the camera closes; while `face.track.on` and `face.addons.watch` are on. A subscriber alone asks for faces at the recognition rate (`TRACK_SLOW`); a hold whose reason contains "track" (`hold_watch("eye tracking")`) asks for `face.track.fps` (`TRACK_FAST`) and opens the camera as any hold does. Same thread, copies and failure rule (`face_failed {part: "an add-on following faces"}`) as `watch_people` |
 | `owner_desk_height() -> {px, h, n, from} or None` | your face's usual height at the desk: the median of your sightings (the `seen` emit, at most one per 5 s, last 240, in memory; trusted from 10, `from: "seen"`), else the enrolment's front-step median (`baseline.height` over `face.camera.height`, `from: "enrolment"`), else None. Cleared by forget |
 
@@ -128,6 +128,18 @@ Off (no subscriber, no hold) nothing is built: `people()` is false, so `_look` m
 (`test_people_events_never_reach_the_event_log_or_the_pages`). The numbers are the add-on's to look after: Kurooto keeps
 none of them. While a hold keeps the camera open, a video call can't take it on Linux; the hold's 10-minute cap and its
 reason on the card are there for that.
+
+## Close and facing, for Voice (0.8.13)
+
+`voice.listen.need_face` (Voice's switch; [voice.md](voice.md)). The watcher's `view` emit gained `sizes`: for each
+face at `SCORE_OTHER` or more, `(height_px, yaw)` (`watch._yaw`: `vision.pose`'s yaw, None when the landmarks can't
+give one). `Face._on_watch("view")` calls `nearby.set_facing(app, faces, close_facing(sizes))` and drops the list.
+`close_facing` counts faces with `height_px >= voice.listen.face_near * owner_desk_height()["px"]` (no desk height:
+`face.recognise.min_face_px`) and `vision.yaw_degrees(yaw) <= voice.listen.face_yaw_deg`; `yaw_degrees` is
+`atan(|yaw| / YAW_K)` with `YAW_K = 0.3 / tan(25 deg)`, the scale `Pose.yaw` documents (an estimate from five
+landmarks). `core/nearby.py` keeps `(time, faces, facing)` per frame for `FACING_KEEP_S` (60 s, at most 600 rows) and
+the last sighting time: times and counts only, never boxes, pictures, numbers or identity. A covered frame emits no
+`view`, so it counts as the camera not looking.
 
 ## Tracking every face (0.8.12)
 

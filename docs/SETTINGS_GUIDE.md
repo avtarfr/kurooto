@@ -1180,12 +1180,16 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.conversation_mode` | `true` | While another voice is here, Kurooto stays out of people talking: only its name said to it opens a talk. ([guide](wiki/user/settings-guide.md#voicelistenconversationmode)) |
 | `voice.listen.conversation_s` | `60` | Seconds after the other person last spoke before Kurooto stops staying out of the conversation. ([guide](wiki/user/settings-guide.md#voicelistenconversations)) |
 | `voice.listen.device` | `""` | Which microphone to use; empty is the system's default. ([guide](wiki/user/settings-guide.md#voicelistendevice)) |
+| `voice.listen.face_near` | `0.5` | How close counts: a face at least this share of your usual face height at the desk (0.5 is about twice as far). ([guide](wiki/user/settings-guide.md#voicelistenfacenear)) |
+| `voice.listen.face_yaw_deg` | `35` | How directly someone must face the camera: turned at most this many degrees away (an estimate). ([guide](wiki/user/settings-guide.md#voicelistenfaceyawdeg)) |
 | `voice.listen.follow_s` | `20` | After Kurooto answers, what the same voice says this many seconds after counts as said to it, statements too. ([guide](wiki/user/settings-guide.md#voicelistenfollows)) |
 | `voice.listen.language` | `""` | The language you speak, e.g. `en` or `hi`; empty works it out each time. ([guide](wiki/user/settings-guide.md#voicelistenlanguage)) |
 | `voice.listen.learn_nightly` | `true` | Every night Kurooto learns from how its voice turns went: ones you carried on with, and ones you told off. ([guide](wiki/user/settings-guide.md#voicelistenlearnnightly)) |
 | `voice.listen.levels` | `true` | Show the microphone's loudness as a waveform on the dashboard (numbers only). ([guide](wiki/user/settings-guide.md#voicelistenlevels)) |
 | `voice.listen.model_judge` | `true` | When the rules can't tell whether you're talking to it, the model on this computer judges. ([guide](wiki/user/settings-guide.md#voicelistenmodeljudge)) |
 | `voice.listen.name_variants` | `[]` | More spellings of its name to accept (the common mishearings of Kurooto are built in). ([guide](wiki/user/settings-guide.md#voicelistennamevariants)) |
+| `voice.listen.need_face` | `true` | Answer only someone in front of it: a face close to the camera and facing it while they speak. ([guide](wiki/user/settings-guide.md#voicelistenneedface)) |
+| `voice.listen.need_face_fallback` | `"voice"` | What happens when the camera can't see (paused, covered, busy, no camera): the voice rules alone, or nothing. ([guide](wiki/user/settings-guide.md#voicelistenneedfacefallback)) |
 | `voice.listen.night` | `true` | Keep listening during the night hours. ([guide](wiki/user/settings-guide.md#voicelistennight)) |
 | `voice.listen.on` | `false` | Listen through the microphone, all on this computer; only what's said to Kurooto leaves it. ([guide](wiki/user/settings-guide.md#voicelistenon)) |
 | `voice.listen.stt_model` | `"base"` | How big the speech-to-text model is: tiny (75 MB), base (145 MB) or small (484 MB, more accurate). ([guide](wiki/user/settings-guide.md#voicelistensttmodel)) |

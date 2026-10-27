@@ -99,9 +99,38 @@ In this order, first match wins:
 | a question or request within 6 seconds of it speaking (a yes or no too, if it asked something) | talking to it |
 | anything else | the model on your computer decides |
 
+Then, with Face presence on: anything above that counts as talking to it, except your wake word, needs a face close
+to the camera and facing it (below, "It only answers someone in front of it"); else it's chatter.
+
 The model on your computer (Ollama, the one Local AI models set up, or the offline helper's) reads the words and
 answers noise, chatter or talking to it, with how sure it is. Below `voice.listen.threshold` (0.7) it counts as not
 talking to it. With no local model, only its name, your wake word and the rules above open a conversation.
+
+### It only answers someone in front of it
+
+With [Face presence](face.md) on and enrolled, Kurooto answers only someone **close to the camera and facing it**. Any
+turn that would count as talking to it (its name, a follow-up, the model's judgement, cutting in) also needs the camera
+to have seen, while it was said or within about a second and a half after, a face:
+
+- **close:** at least half as tall as your face usually is at your desk (`voice.listen.face_near`, 0.5; about twice
+  your desk distance), and
+- **facing it:** turned at most about 35 degrees away from the camera (`voice.listen.face_yaw_deg`).
+
+Otherwise it's chatter ("no one facing it nearby") and nothing is sent: your roommate on a phone call across the room,
+the TV, someone talking to you from the door. **Your wake word and "stop" / "never mind" work without a face**, so
+stopping it always works; typed `/voice` commands are never affected.
+
+While it listens, Voice keeps Face presence's camera looking, even while you type (the Face card says "camera on:
+voice: who's talking"). Face presence's own pauses still come first: a call, a locked screen, `/face pause`, focus, the
+night, another program using the camera, a covered camera. **When the camera can't see**,
+`voice.listen.need_face_fallback` decides: `voice` (default) answers by the voice rules alone, as before; `none`
+answers nothing by voice until the camera is back. `/voice` says which applies now, e.g. "needs a face: camera paused
+(screen locked), using voice rules".
+
+Only the time of each look and how many faces were close and facing are kept, in memory; no picture, no face numbers.
+`voice.listen.need_face` (on) turns it off. With Face presence off or not enrolled it does nothing. Two things to know:
+the camera's light stays on while Voice listens, and on Linux a video call app can't use the camera then (`/voice
+mute` or `/face pause` frees it).
 
 ### When someone else may be talking: its name has to be a call
 
@@ -252,6 +281,10 @@ downloaded to your computer as separate programs, not part of Kurooto.
 | `voice.listen.chatter_s` | 60 | other talk this recent makes it careful with its name |
 | `voice.listen.told_off` | on | "stop", "not you", "never mind" right after it opened or spoke: it stops and closes |
 | `voice.listen.learn_nightly` | on | learn at night from turns that went well or were told off (numbers only) |
+| `voice.listen.need_face` | on | with Face presence on: answer only someone close to the camera and facing it |
+| `voice.listen.face_near` | 0.5 | close: at least this share of your usual face height at the desk |
+| `voice.listen.face_yaw_deg` | 35 | facing: turned at most this many degrees away |
+| `voice.listen.need_face_fallback` | `voice` | the camera can't see: `voice` (the voice rules) or `none` (nothing by voice) |
 | `voice.listen.night` | on | keep listening during the night hours |
 | `voice.listen.calls` | off | keep listening during calls |
 | `voice.listen.stt_model` | `base` | `tiny`, `base` or `small` |

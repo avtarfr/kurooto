@@ -125,6 +125,7 @@ class Heard:
     voices: int | None = None  # how many voices, when the listener can tell (None: it can't)
     seconds: float = 0.0
     speech_s: float = 0.0  # (voice id) seconds the VAD called speech, without the pre-roll and the tail
+    ended_at: float | None = None  # (need_face) when it ended (time.monotonic()); None: when it's judged
 
 
 @dataclass

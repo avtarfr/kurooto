@@ -25,6 +25,12 @@ yaw, identity, score and its numbers, in memory only), hold_watch(reason) / rele
 looking while you type (never past a pause reason), owner_desk_height() says how big your face usually is at the desk.
 Switches face.addons.watch and face.addons.hold; with no add-on using them, nothing changes and nothing runs.
 
+Who's talking (0.8.13, voice.listen.need_face): each frame's faces are counted as close (at least
+voice.listen.face_near of owner_desk_height()) and facing the camera (yaw within voice.listen.face_yaw_deg) or not;
+only the time and the counts go to core/nearby.py, so Voice answers only someone in front of it. While Voice listens it
+holds the camera with hold_watch(..., core=True): a hold of Kurooto's own, not an add-on's, so face.addons.hold doesn't
+turn it off; every pause reason still applies first.
+
 Tracking (0.8.12, face.track.on): while the camera is open and a dashboard is in sight or an add-on holds the camera,
 every face in view goes out as {"t": "face", "kind": "faces", "faces": [{id, x, y, h, owner, m}]} (at most 10 a
 second; watch.py's tracking), so the being's eye can follow anyone; watch_faces(cb) hands the same to an add-on. A
@@ -49,6 +55,7 @@ from kurooto.modules.base import Answer, Command, Incoming, Intent, Module
 from kurooto.modules.face import parts as face_parts
 from kurooto.modules.face.enrol import MINIMUM, PLAN, TARGET, TARGETS, Enrolment, Session, Vision
 from kurooto.modules.face.model import FLOOR, MODEL, STRICTNESS, Template
+from kurooto.modules.face.vision import yaw_degrees
 from kurooto.modules.face.watch import PAUSES, TRACK_FAST, TRACK_OFF, TRACK_SLOW, Watcher
 
 if TYPE_CHECKING:
@@ -207,6 +214,7 @@ class Face(Module):
         self._faces: list = []  # add-ons following every face's place (watch_faces)
         self._faces_at = 0.0
         self._holds: dict[str, float] = {}  # an add-on's reason -> until (monotonic): hold_watch
+        self._core_holds: set[str] = set()  # the reasons among them that are Kurooto's own (Voice): hold_watch(core)
         self._hooks_lock = threading.Lock()
         self._desk: deque = deque(maxlen=240)  # (pixels, share) of your face's height, sightings 5 s apart
         self._desk_at = 0.0
@@ -564,6 +572,7 @@ class Face(Module):
             nearby.set_others(self.app, "face", bool(f.get("on")))
         elif kind == "view":  # (0.8.13) how many faces, and whether the only one is yours: memory only, never an event
             nearby.set_view(self.app, int(f.get("faces") or 0), bool(f.get("owner_alone")))
+            nearby.set_facing(self.app, int(f.get("faces") or 0), self.close_facing(f.get("sizes") or []))
         elif kind == "learn":
             self.learn(f.get("e"))
         elif kind == "failed":
@@ -666,31 +675,62 @@ class Face(Module):
             except Exception as e:
                 self._failed("an add-on watching", e)
 
-    def hold_watch(self, reason: str, seconds: float = HOLD_MAX_S) -> bool:
+    def hold_watch(self, reason: str, seconds: float = HOLD_MAX_S, core: bool = False) -> bool:
         """Keep the camera looking (while you type too) for `seconds` (at most HOLD_MAX_S; call again to renew),
         until release_watch(reason). Every pause reason still applies first: off, not enrolled, /face pause, Kurooto
         paused, battery, a locked screen, a call, focus, night, an enrolment, a camera problem. False when
-        face.addons.hold is off (nothing held)."""
-        if not self.setting("addons.hold"):
+        face.addons.hold is off (nothing held). core=True: Kurooto's own hold (Voice's need_face), which that add-on
+        switch doesn't cover; its own switch does."""
+        if not core and not self.setting("addons.hold"):
             return False
         why = (str(reason or "").strip() or "an add-on")[:60]
         with self._hooks_lock:
             self._holds[why] = time.monotonic() + max(1.0, min(float(seconds or HOLD_MAX_S), HOLD_MAX_S))
+            if core:
+                self._core_holds.add(why)
+            else:
+                self._core_holds.discard(why)
         return True
 
     def release_watch(self, reason: str) -> None:
+        why = (str(reason or "").strip() or "an add-on")[:60]
         with self._hooks_lock:
-            self._holds.pop((str(reason or "").strip() or "an add-on")[:60], None)
+            self._holds.pop(why, None)
+            self._core_holds.discard(why)
 
     def holds(self) -> list[str]:
-        """The reasons add-ons hold the camera for now (shown on the card and in /face)."""
-        if not self.setting("addons.hold"):
-            return []
+        """The reasons the camera is held for now, add-ons' and Kurooto's own (shown on the card and in /face)."""
+        on = bool(self.setting("addons.hold"))
         now = time.monotonic()
         with self._hooks_lock:
             for k in [k for k, until in self._holds.items() if until <= now]:
                 del self._holds[k]
-            return sorted(self._holds)
+                self._core_holds.discard(k)
+            return sorted(k for k in self._holds if on or k in self._core_holds)
+
+    def close_facing(self, sizes: list) -> int:
+        """(voice.listen.need_face) How many of a frame's faces, given as (height in pixels, pose yaw), are close (at
+        least voice.listen.face_near of your usual desk face height, the same idea as Curiosity's distance) and facing
+        the camera (|yaw| within voice.listen.face_yaw_deg). Without a desk height yet, face.recognise.min_face_px
+        stands in. A face without a yaw doesn't count."""
+        if not sizes:
+            return 0
+        get = self.app.settings.get
+        try:
+            near = float(get("voice.listen.face_near", 0.5))
+            limit = float(get("voice.listen.face_yaw_deg", 35))
+        except (TypeError, ValueError):
+            near, limit = 0.5, 35.0
+        desk = self.owner_desk_height()
+        if desk and desk.get("px"):
+            base = float(desk["px"]) * near
+        else:
+            base = float(self.setting("recognise.min_face_px") or 60)
+        n = 0
+        for h_px, yaw in sizes:
+            if yaw is not None and float(h_px) >= base and yaw_degrees(yaw) <= limit:
+                n += 1
+        return n
 
     def _held_now(self) -> bool:
         return bool(self.holds())
@@ -1130,7 +1170,12 @@ class Face(Module):
             return "starting"
         if w.state == "watching":
             held = self.holds()
-            return f"camera on: an add-on is looking ({', '.join(held)})" if held else "camera on: looking for you"
+            if not held:
+                return "camera on: looking for you"
+            addon = [h for h in held if h not in self._core_holds]
+            own = [h for h in held if h in self._core_holds]
+            parts = ([f"an add-on is looking ({', '.join(addon)})"] if addon else []) + own
+            return "camera on: " + "; ".join(parts)
         if w.state == "away":
             return "you've stepped away" + (" (camera on)" if w.camera_open else "")
         return "resting: camera off while you use the computer"
