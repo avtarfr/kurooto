@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.8.11",
+  "notes": "Fixes from the first real use of Voice ID and Face presence",
+  "created": 1793104197.6303713,
+  "files": {
+   "kurooto-0.8.11.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.8.11/kurooto-0.8.11.tar.gz",
+    "sha256": "134abd033814e02f2b44ff4b6508317a5d4333184b392e1d067e8ee5053ecec9",
+    "size": 11955797
+   }
+  }
+ },
+ "sig": "0tA6ns2fj+IVkrFwokQh0ES/v/u5Pb2egmJrbGGtR3Dq9YeRgSAX3wN8wnZF8a7f2w1sB1+gSng9FuFpylyNAw=="
+}
