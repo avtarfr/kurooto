@@ -4317,6 +4317,8 @@ embedding order.
   editable (Dashboard → The being). **Undo:** `look.board` back to `three` (or `classic`), or the panes menu → board.
 - **`look.being_hints`** (on): the hints on the being; H toggles them. **Undo:** set it back.
 - **`look.being_theme`** (`void`): `theme` uses the page's palette. **Undo:** set it back.
+- **`look.being_resting_sparks`** (on): a low trickle of sparks in the being's brain from what Kurooto does all the time
+  (its body's readings, its own processor use, timers firing, notes changing, sound heard). **Undo:** turn it off.
 - **The talk box** (`look.talk_box`, on; Alt+K): talk to Kurooto from any board. **Undo:** turn `look.talk_box` off.
 
 ## What 0.8.7 added to Brain

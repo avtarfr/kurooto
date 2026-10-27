@@ -298,6 +298,7 @@ class PhoneViews:
             "look": {
                 "theme": str(app.settings.get("look.being_theme") or "void"),
                 "hints": app.settings.get("look.being_hints") is not False,
+                "rest": app.settings.get("look.being_resting_sparks") is not False,
             },
         }
         out.update(self._being_settings())

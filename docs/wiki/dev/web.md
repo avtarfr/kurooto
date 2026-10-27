@@ -424,7 +424,7 @@ the pre-0.8.3 board) and `look.brain_monitor` (`shown` pins the side panel, `.b3
 
 `static/being.js` exposes `beingMount(host, {api, hoodOf, pal, theme, hints, talkWidth, talkRoom})` (async: it fetches
 `body/anatomy.bin` and `body/cerebrum.vol`, made once by `tools/gen_body_meshes.py`) and returns
-`{update(body), event(ev), graph(g), voice(m), body(b), typed(text, who), setHints(on), stop()}`. `home.js` mounts it in
+`{update(body), event(ev), graph(g), voice(m), body(b), typed(text, who), setHints(on), setRest(on), stop()}`. `home.js` mounts it in
 `#pane-being` when `beingBoard()` (dense, `look.board` "being", not Study mode, no pane filled); it loads three.js and the
 named bloom passes from `vendor/three/` (allow-listed one by one in `web/server.static`) and feeds it the stream's `graph`,
 `body`, `event` and `voice` messages. Everything it shows comes from the stream or the API: `/api/settings` (the panel's
@@ -445,7 +445,30 @@ region's parts and their switches), `/api/note` and `open-note`, `/api/voice` an
   the 3D force layout runs in `static/being-layout.js` (a Worker: grid repulsion capped at 40 neighbours, springs per link,
   via links at half strength, a pull to each neighbourhood's centre), posting positions every 12 steps; positions are kept
   by id so a new graph settles from where it was.
-- `look.being_theme`, `look.being_hints` (H), `look.talk_box` (the talk box, `askKurooto`, shared with the chat tab).
+- **Sparks (0.8.11):** `mind.fire` puts points on tract fibres near a process's region; they're inside the brain, so the
+  material has `depthTest: false` and normal blending (additive onto the pale cortex turned them white), fading those
+  behind the brain's middle (`cz`). Before 0.8.11 the solid cortex hid every one. **Resting sparks**
+  (`look.being_resting_sparks`, `opts.restSparks`, `setRest(on)`; off when `STILL` or `prefers-reduced-motion`):
+  `resting(m)` on each `body` message fires one `feel` spark plus one per quarter of `sys.cpu`, sets the thalamus rate
+  from `procs[].own` processor use (× cores; 3 a second at a whole core), and fires the region of a `schedule` entry's
+  `module` (`procOfFeature`) when its `when` moved on (it ran); `graph()` fires `memory`, `voice_level` fires `hear`.
+- **Joined ends (0.8.11):** `end(obj, p, local)` keeps a point in an organ's frame; one tick sets each end's world offset
+  `d`. Vessels, nerve fibres and their cells share `BEND` (a vertex shader function: `d0`/`d1` faded over `rc` by arc
+  length `s` from each end) and `bendAt` does the same for `FLOW` (which now samples `getPointAt`). No geometry is made
+  per frame. The brain's vessels end at the front of the pons (`mind.b` local, on the turning axis), the spinal cord at
+  the brainstem's lower end.
+- **Nerves (0.8.11):** `nerve(name, organEnd, stemEnd, via)`: a centripetal Catmull-Rom from the organ through a plexus
+  behind the heart up the cord; 7 fibres (tubes, merged into one mesh, radius flaring at the organ) and ~13 cell bodies
+  (`Points`, a child of the fibres so `LINKS` hides them). `sg`/`sc` uniforms (up to 4) light the fibres and cells near
+  each `FLOW` entry on that nerve in its colour. `NERVES[name]` is the curve `FLOW` uses (organ → brainstem).
+- **Colours (0.8.11):** `HOOD_COLS` are clear hues (`hoodCols`: leaned to a theme's accent, darker on a light page); the
+  notes dim by alpha, not by darkening. `P.blood` tints the vessels, `P.fog` the cerebrospinal fog (a tick used to reset
+  it to grey), `P.muscle` is fainter. `LIGHT` (a light page background) switches glowing materials to normal blending
+  (`BL`) and turns bloom off.
+- **Voice lanes:** `voice_heard` (`samples`, the loudness of speech that wasn't a turn) fills `LANES.you` with
+  `heard: true`, drawn at 45% and captioned "heard, not to Kurooto"; a `voice_text` replaces it.
+- `look.being_theme`, `look.being_hints` (H), `look.being_resting_sparks`, `look.talk_box` (the talk box, `askKurooto`,
+  shared with the chat tab).
 - `tools/dash_preview.py`: a worktree's dashboard against the running Kurooto (its key from its page, never printed).
 - Tests: `tests/unit/test_being.py`.
 

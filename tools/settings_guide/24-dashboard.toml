@@ -48,6 +48,12 @@ tip = "The being's hints: what to click and what each part is (H on the board to
 when = "Turn them off once you know your way around."
 needs = "`look.board` = `being`."
 
+[s."look.being_resting_sparks"]
+tip = "The being's resting sparks: a low trickle in the brain from what Kurooto does all the time."
+what = "Each reading of its body (every 2 seconds) is a spark in the insula, one more for each quarter of the processor in use; its own processor use keeps the thalamus going in proportion; a timer of the scheduler that fires lights its feature's region; changed notes light the hippocampus, sound heard the auditory cortex. Events (AI requests, messages, syncs) spark either way."
+when = "Turn it off if you'd rather the brain sparked only for events. Remove animations and the system's reduced motion turn it off too."
+needs = "`look.board` = `being`."
+
 [s."look.talk_box"]
 tip = "A small box over the board to talk to Kurooto in plain English (Alt+K)."
 when = "Turn it off if you use the terminal or Telegram instead."

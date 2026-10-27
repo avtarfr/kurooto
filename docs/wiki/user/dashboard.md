@@ -84,14 +84,23 @@ The board shows Kurooto as one body, drawn from what it's really doing; the pane
 - **The mind** (the brain): each kind of work sparks in its own region: AI requests in the prefrontal cortex, plans
   beside it, what may reach you in the orbitofrontal cortex, speaking in Broca's area, memory in the hippocampus, and so on
   (the colours' key is top left). Click the brain to open it; click a region for its Brain parts (each with its switch)
-  and the features that live there.
+  and the features that live there. The sparks show through the brain, in their own colours.
+  **At rest** the brain keeps a low trickle of sparks, each from something Kurooto really does all the time: every
+  reading of its body (every 2 seconds, more the busier your processor) in the insula, its own processor use in the
+  thalamus, a scheduler timer that fired in its feature's region, notes that changed in the hippocampus, sound heard in
+  the auditory cortex. Turn it off with `look.being_resting_sparks`; Remove animations and your system's reduced
+  motion turn it off too. The fluid round the brain is a pale aqua.
 - **The heart** beats faster the busier Kurooto has been in the last ten minutes. Its parts: the pacemaker (what runs
   next), the ventricles (AI requests running), the atria (answers), the aorta (the call line), the coronaries (upkeep:
-  backups, updates, sync). Blood carries work out to the organ doing it and back when it reports.
+  backups, updates, sync). Blood (tinted red) carries work out to the organ doing it and back when it reports.
+  The vessels stay joined to their organs however you turn them; the brain's enter at its base, by the brainstem.
+- **The nerves** leave the brainstem as the spinal cord, run down behind the heart and split into three: to the heart,
+  the senses and memory. Each is a bundle of fibres with nerve cells along it; a signal (something heard, notes synced,
+  an answer) lights its own fibres in its colour as it passes.
 - **The senses**: the eye (your screen and activity), the coil (this computer: click it for every core, memory, swap,
   graphics, disks, battery and temperatures, live), the cilia (your phone in your hand), the cochlea (hearing: the call
   line and Voice), the canals (your phone's motion).
-- **Memory** is your notes, in the NOTES map's neighbourhoods and colours, laid out by their links (the ones through a
+- **Memory** is your notes, in the NOTES map's neighbourhoods, each in a clear colour of its own, laid out by their links (the ones through a
   "Seen in" or a reading list too, a little fainter). Point at a note for its title; click it for a preview and **open it**.
 - **Points of light** are the features, on the organ that does their work; they flare when the feature does something.
   Click one for its switch and all its settings, editable right there.
@@ -103,7 +112,11 @@ glass so nothing hides it; Esc (or a click on empty space) goes back one level. 
 while the brain is open): **Solid** (the default), **Cutaway** (the top lifts off to show the inside) and **X-ray** (the
 cortex as glass, the thalamus, hippocampus, caudate and corpus callosum inside). **H** (or **hints** top right)
 hides the hints: the lines under each name, the help line and the colours' key (`look.being_hints`). **Mute** stops Voice
-hearing and speaking. `look.being_theme`: `void` (white light on black) or `theme` (the page's palette).
+hearing and speaking. `look.being_theme`: `void` (white light on black) or `theme` (the page's palette; on a light
+palette nothing glows, so the being stays visible).
+
+**The voice lanes** at the bottom: YOU shows the shape of what you said to Kurooto; speech it heard that wasn't to it
+(chatter, a call in the room) shows too, fainter, as "heard, not to Kurooto": only its loudness, never words.
 
 **The talk box** (bottom right, on every board; **Alt+K**): type to Kurooto as on Telegram; the answer prints in it.
 Turn it off with `look.talk_box`.

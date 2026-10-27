@@ -245,7 +245,7 @@ window.beingPhone = {
     },
     // the voice's two lanes, lower and thinner than the dashboard's; no talk box here
     lanes(c, lane, L, W, H) {
-      lane(c, H - 60, 20, L.you, "YOU", L.you ? (L.you.typed ? "typed to Kurooto" : "heard, and said to Kurooto") : "what you say to it at your computer");
+      lane(c, H - 60, 20, L.you, "YOU", L.you ? (L.you.typed ? "typed to Kurooto" : L.you.heard ? "heard, not to Kurooto" : "heard, and said to Kurooto") : "what you say to it at your computer");
       lane(c, H - 22, 26, L.me, "KUROOTO", L.me ? (L.me.typed ? "answered" : "speaking") : "");
     },
   },
@@ -363,6 +363,7 @@ function feed(b) {
   if (JSON.stringify(PV.voice) !== vWas) PV.being.voice({ kind: "voice_state" });
   feedEvents(b.events);
   if (b.look && PV.look && b.look.hints !== PV.look.hints) PV.being.setHints(b.look.hints);
+  if (b.look && PV.look && b.look.rest !== PV.look.rest) PV.being.setRest(b.look.rest);
   PV.look = b.look || PV.look;
 }
 
@@ -374,7 +375,7 @@ async function mount(b) {
     const host = $("#being"), look = b.look || {}, pal = PV.palette || {};
     PV.look = look;
     PV.being = await window.beingMount(host, { api, mode: "phone", only: PV.only || undefined, still: PV.still, hoodOf: (id) => (PV.graph ? PV.graph.hoodOf(id) : null),
-      theme: look.theme === "theme" ? "theme" : "void", pal: { bg: pal.bg, fg: pal.fg, accent: pal.accent, rose: pal.rose, bad: pal.bad, dim: pal.dim }, hints: look.hints !== false });
+      theme: look.theme === "theme" ? "theme" : "void", pal: { bg: pal.bg, fg: pal.fg, accent: pal.accent, rose: pal.rose, bad: pal.bad, dim: pal.dim }, hints: look.hints !== false, restSparks: look.rest !== false });
     message("");
     if (PV.graph) PV.being.graph(PV.graph.g);
     feed(b);
@@ -443,7 +444,7 @@ function demoBeing(s) {
     link: { connected: true, beat: 2.4 },
     sys: { cpu: .21, cores: [.3, .12, .18, .4, .08, .22, .1, .15], mem: .52, mem_used: 8.3e9, mem_total: 16e9, swap: .04, gpu: { util: .12, temp: 51, mem_used: 1.1e9, mem_total: 8e9 }, disks: [{ mount: "/", pct: .61, free: 120e9 }], battery: { percent: 78, ac: true }, temps: { cpu: 58 }, cpu_name: "A made-up 8-core processor", load: [1.2, .9, .8] },
     events: [], voice: { on: true, state: "listening", listening: true, why: "", portal: false, muted: DEMO.muted, line: "listens for its name", speak: { engine: "kokoro", voice: "af_heart" } },
-    look: { theme: "void", hints: true },
+    look: { theme: "void", hints: true, rest: true },
     settings: { sections: [
       sec("reminders", "Reminders", { snooze_min: 10, morning: "08:00", repeat: true }),
       sec("checkins", "Check-ins", { evening: true, at: "21:30", effort: "low" }, { effort: [["low", "low"], ["medium", "medium"], ["high", "high"]] }),
