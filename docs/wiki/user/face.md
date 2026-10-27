@@ -50,7 +50,9 @@ so it never competes with a local AI model for it).
 Files whose fingerprint doesn't match are skipped and named; it then says what's still missing.
 
 **The camera:** the first ordinary webcam is used (infrared ones are skipped). `face.camera.device` picks another, by
-number or part of its name. On macOS and Windows, the program that runs Kurooto needs the system's camera permission
+number or part of its name; a change takes effect within a few seconds, without a restart. A virtual camera (an
+add-on's phone camera, OBS's) can be used while another program feeds it, and with no camera chosen, one that's in use
+leaves the next one free. On macOS and Windows, the program that runs Kurooto needs the system's camera permission
 (see [Troubleshooting](#troubleshooting)); `kurooto face test-camera` checks the camera for 3 seconds and prints its
 size, speed and light, never a picture.
 
@@ -321,7 +323,7 @@ All of them: [the settings guide](../../SETTINGS_GUIDE.md).
 | Problem | What to do |
 |---|---|
 | "no camera" | plug one in; on a laptop, check the privacy shutter or a hardware switch; `face.camera.device` if it picked the wrong one |
-| "camera in use by another program" | close the video call or app using it; Kurooto tries again every minute and never forces it |
+| "camera in use by another program" | close the video call or app using it; Kurooto tries again every minute and never forces it (Kurooto's own programs, such as an add-on feeding a phone's camera, never count) |
 | "camera blocked by the system" | macOS: System Settings → Privacy & Security → Camera, allow Terminal (or Kurooto's launcher), or run `kurooto face test-camera` in a terminal once to get the question. Windows: Settings → Privacy & security → Camera → "Let desktop apps access your camera" |
 | "camera covered" | open the shutter or the lid; it checks again every 5 minutes |
 | It picked an infrared camera (grey picture, never recognises you) | set `face.camera.device` to your ordinary camera's number or name |

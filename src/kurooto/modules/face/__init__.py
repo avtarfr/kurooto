@@ -482,8 +482,19 @@ class Face(Module):
                 self._failed("loading the models", e)
                 self._halt.wait(30)
                 return
+        elif self._camera_changed():  # face.camera.* changed: the new camera from the next look, no restart
+            self.watcher.release()
+            self.watcher.camera, self.watcher.problem = self.make_camera(), None
         self.watcher.tick()
         self.why = self.watcher.why
+
+    def _camera_changed(self) -> bool:
+        cam = getattr(self.watcher, "camera", None)
+        if not hasattr(cam, "want"):  # not a real camera (tests)
+            return False
+        s = self.setting
+        want = (str(s("camera.device") or ""), int(s("camera.width") or 640), int(s("camera.height") or 480))
+        return (cam.want, cam.width, cam.height) != want
 
     def _run(self) -> None:
         # a full tick (pause reasons, input, the camera's rules) every TICK_S; between them, while tracking fast, only

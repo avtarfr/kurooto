@@ -1752,3 +1752,63 @@ def test_the_watch_thread_sleeps_between_frames_while_tracking(app, trained, mon
     assert f.watcher.camera_open is False and f.cam.closed >= 1  # stopping closes it
     assert 7 <= det.n <= 16 and passes[0] <= 1.2 * (10 + 4) + 6
     assert cpu[0] < 0.3  # the loop's own cost with free fakes (the real cost is YuNet's: docs/wiki/dev/face.md)
+
+
+def _cams(tmp_path, holders_of: dict[str, list[int]], loopback=("video42",)):
+    """A fake /sys/class/video4linux and /proc: cameras by name, which processes hold which node."""
+    sysfs, proc = tmp_path / "sys", tmp_path / "proc"
+    for node, name in (("video0", "Integrated Camera"), ("video42", "Kurooto body cam")):
+        (sysfs / node).mkdir(parents=True)
+        (sysfs / node / "name").write_text(name)
+        if node in loopback:
+            (sysfs / node / "max_openers").write_text("10")
+    for node, pids in holders_of.items():
+        for pid in pids:
+            fd = proc / str(pid) / "fd"
+            fd.mkdir(parents=True, exist_ok=True)
+            (fd / "3").symlink_to(f"/dev/{node}")
+    return sysfs, proc
+
+
+def test_a_virtual_camera_another_program_feeds_isnt_busy(tmp_path):
+    """The body phone's camera (v4l2loopback) is open in scrcpy, which writes it: Face presence may still read it, and
+    with no camera chosen, the laptop's camera isn't held up by it either."""
+    from kurooto.modules.face import camera as cam
+
+    sysfs, proc = _cams(tmp_path, {"video42": [999001]})
+    devs = cam.devices("linux", sysfs)
+    assert cam.holders("/dev/video42", proc, me=1) == [999001]  # someone has it open...
+    assert [d.node for d in cam.free(devs, sysfs, proc)] == ["/dev/video0", "/dev/video42"]  # ...and it's shared
+    sysfs2, proc2 = _cams(tmp_path / "b", {"video0": [999002]}, loopback=())
+    devs2 = cam.devices("linux", sysfs2)
+    assert [d.node for d in cam.free(devs2, sysfs2, proc2)] == ["/dev/video42"]  # one in use leaves the other
+    assert cam.free(cam.pick(devs2, "Integrated"), sysfs2, proc2) == []  # the one you chose is busy
+
+
+def test_kurootos_own_processes_never_make_a_camera_busy(tmp_path):
+    from kurooto.modules.face import camera as cam
+
+    _, proc = _cams(tmp_path, {"video0": [999003]}, loopback=())
+    assert cam.holders("/dev/video0", proc, me=999003) == []
+
+
+def test_a_new_camera_setting_takes_effect_without_a_restart(app):
+    from kurooto.modules.face.camera import Camera
+
+    face = app.modules["face"]
+
+    class W:
+        problem = ("camera in use by another program", 1e18)
+        released = False
+
+        def release(self):
+            self.released = True
+
+    w = W()
+    w.camera = Camera("Kurooto body cam", 640, 480, platform="linux")
+    face.watcher = w
+    app.settings.set("face.camera.device", "Kurooto body cam")
+    assert not face._camera_changed()
+    app.settings.set("face.camera.device", "Integrated Camera")
+    assert face._camera_changed()
+    face.watcher = None

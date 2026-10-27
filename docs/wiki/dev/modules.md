@@ -830,7 +830,10 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   helper model into `brain.models.ollama` and `brain.classify`; `rest()` unloads models on battery.
 - **backups** (`modules/backups.py`): a daily zip of config, data and state (notes, secrets, the GBrain index optional)
   to a folder the user picks; SQLite copied with the backup API; `kurooto restore`. The memory ledger (`LEDGER`) only
-  with `backups.memory` (`sources(memory=)`); it opens only with its key, which `backups.secrets` carries.
+  with `backups.memory` (`sources(memory=)`); it opens only with its key, which `backups.secrets` carries. Only
+  regular files go in (`_plain`: a named pipe, socket or device is skipped; reading an add-on's pipe never ends), and
+  the scheduled `run` and `catchup` are `thread=True` (0.8.13: before, a backup held the daemon's loop for its whole
+  length, and a pipe in state froze Voice and Face).
 - **profile** (`modules/profile.py`, crypto in `core/profile.py`): the setup, encrypted with the user's passphrase, on
   a branch of a private repository; restore on a new computer.
 - **space** (`modules/space.py`): the Space keeper (see [core.md](core.md#space-keeper)).

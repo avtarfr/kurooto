@@ -19,6 +19,7 @@ import platform
 import re
 import shutil
 import sqlite3
+import stat
 import sys
 import tempfile
 import threading
@@ -141,6 +142,8 @@ def sources(
                 parts = (*rel, f)
                 if ".tmp" in f or f.endswith((".part", "-wal", "-shm", "-journal")) or not keep_file(parts):
                     continue
+                if not _plain(d / f):  # a pipe (an add-on's stream), socket or device: reading one may never end
+                    continue
                 yield "/".join((top, *parts)), d / f
 
     # settings: settings.json and the other files beside it; never the secrets file (they go in separately, if at
@@ -179,6 +182,14 @@ def sources(
             keep_dir=lambda parts: parts[-1] not in SKIP_NOTES_DIRS,
             keep_file=lambda parts: parts[-1] not in (".DS_Store", "Thumbs.db", "desktop.ini"),
         )
+
+
+def _plain(f: Path) -> bool:
+    """A regular file (a link to one counts), never a pipe, socket or device."""
+    try:
+        return stat.S_ISREG(f.stat().st_mode)
+    except OSError:
+        return False
 
 
 def _sqlite_copy(src: Path, dst: Path) -> None:
@@ -607,8 +618,9 @@ class Backups(Module):
         return True, ""
 
     def start(self):
-        self.every("run", self.setting("when") or "daily 03:30", lambda p: self.backup("scheduled"))
-        self.every("catchup", "hourly", lambda p: self.catch_up())
+        # on a thread: zipping takes minutes, and the schedule shares Kurooto's loop with Voice, Face and the rest
+        self.every("run", self.setting("when") or "daily 03:30", lambda p: self.backup("scheduled"), thread=True)
+        self.every("catchup", "hourly", lambda p: self.catch_up(), thread=True)
 
     def catch_up(self) -> tuple[bool, str] | None:
         """A day without a backup (the drive was unplugged, the laptop was off): make one as soon as it can."""

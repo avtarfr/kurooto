@@ -15,7 +15,7 @@ checks that `core/tap.py`, `core/ask.py` and `core/tools.py` never read the face
 |---|---|
 | `modules/face/__init__.py` | `Face(Module)`: settings (`register_defaults("face", ...)`), parts, the template cache, `pause_checks()`/`pause_reason()`, the watcher's thread (`_run`, `tick`, `background`), `_on_watch` (events), the greeting (`greet`), learning, the sessions (`enrol_start`, `train`, `test_start`, ...), `forget`, `turned_off`, `status()`/`card()`/`/face`/intents; `button()` for the core `fce` prefix |
 | `modules/face/parts.py` | `FACE_PACKAGES` (`vision`: opencv-python-headless, numpy; module `cv2`), `face_models()` (pinned URLs and sha256), `parts(app)`: Voice's `Parts` with `root=<app>/voice` (one shared `py-X.Y`) and `models_dir=<app>/face/models` |
-| `modules/face/camera.py` | `Camera` (open/read/close, per-OS backends), `devices()`, `pick()`, `holders()` (Linux busy), `windows_busy()`, `CameraError(why)` |
+| `modules/face/camera.py` | `Camera` (open/read/close, per-OS backends), `devices()`, `pick()`, `holders()` (Linux busy; Kurooto's own process tree, `own()`, left out), `shared()` (v4l2loopback: a `max_openers` file, never busy), `free()`, `windows_busy()`, `CameraError(why)` |
 | `modules/face/vision.py` | `Face(box, landmarks, score)`, `Stats`, `Pose`, the `Detector`/`Embedder`/`Frames` protocols, `pose()`, `moved()`, `opencv_detector()`, `opencv_embedder()`, `opencv_frames()` (cv2 imported only inside) |
 | `modules/face/enrol.py` | `PLAN`, `Step`, the quality limits, `Enrolment` (pure: progress, `act()`, `judge()`), `shape()`, `Session` (camera, preview, timeouts, test marks) |
 | `modules/face/model.py` | `Sample`, `centroids()`, `score()`, `folds()`, `held_out()`, `train()`, `Template` (payload, `classify()`, `retrain()`, `learn()`, `undo_learn()`, `forget_learned()`) |
@@ -92,7 +92,9 @@ States: `off`, `paused(why)`, `resting` (camera closed, input is presence), `wat
    Emits `arrived {away_min, others}`; `others` = a second face (score ≥ 0.6) in any of those frames.
 
 Camera problems back off: busy 60 s (Linux `/proc/*/fd` holders, Windows' CapabilityAccessManager record), no camera
-60 s, blocked 300 s, covered 300 s. `Camera.open()` raises `CameraError("busy" | "no camera" | "blocked")`.
+60 s, blocked 300 s, covered 300 s. `Camera.open()` raises `CameraError("busy" | "no camera" | "blocked")`; on Linux it
+tries only `free()` cameras, so "busy" means every candidate is held. A `face.camera.*` change swaps the watcher's
+`Camera` on the next tick (`Face._camera_changed`); before 0.8.13 it took a restart.
 
 **Pause reasons, in order** (`watch.py:PAUSES`, `Face.pause_checks()` evaluates them lazily in that order): feature
 off · not enrolled (or "re-enrol needed (the recognition model changed)") · not set up yet · paused by you · Kurooto is

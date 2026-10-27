@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.13 (unreleased)
+
+- **A backup could freeze Voice and Face.** A backup ran on Kurooto's main loop, so while it worked, the parts that
+  share it waited; and one that met a named pipe in Kurooto's folders (an add-on's stream left behind by a hard stop)
+  read it forever, so listening and Face presence never started. Backups now leave out anything that isn't a plain
+  file and run on a thread of their own.
+- **Face presence: a phone's camera fed in by an add-on works.** Kurooto's own programs no longer count as "another
+  program using the camera", a virtual camera can be read while it's fed, and with no camera chosen, one in use
+  leaves the next free. A new `face.camera.device` takes effect within seconds instead of after a restart.
+
 ## 0.8.12 (2026-10-27)
 
 The being made visible, and what add-ons can do with Face presence, Voice and Brain.

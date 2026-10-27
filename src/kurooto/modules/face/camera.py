@@ -5,7 +5,9 @@ and no picture; every capture error closes and releases it.
     Linux    cv2.VideoCapture(i, CAP_V4L2). Cameras come from /sys/class/video4linux/video*/name; infrared ones
              ("IR", "Infrared") are skipped, and so are metadata nodes (a node that gives no frame). face.camera.device
              takes a number or part of a name. Busy: another process has /dev/videoN open (/proc/*/fd); V4L2 streams to
-             one program at a time, which is why Face presence keeps the camera closed while you type.
+             one program at a time, which is why Face presence keeps the camera closed while you type. Kurooto's own
+             processes don't count, nor does a virtual camera (v4l2loopback, which any number read: an add-on's phone
+             camera, OBS's), and with several cameras one in use leaves the others.
     Windows  CAP_MSMF, then CAP_DSHOW; by number. Busy: the system's camera-use record (CapabilityAccessManager's
              webcam keys) shows an app still using it. Blocked: Settings → Privacy & security → Camera → "Let desktop
              apps access your camera" off shows up as a camera that opens but gives no frames.
@@ -81,13 +83,30 @@ def pick(devs: list[Device], want: str) -> list[Device]:
     return [d for d in devs if want.lower() in d.name.lower()]
 
 
-def holders(node: str, proc: Path = Path("/proc"), me: int | None = None) -> list[int]:
-    """Linux: the processes (not this one) with this camera node open."""
+def shared(node: str, root: Path = V4L) -> bool:
+    """A virtual camera (v4l2loopback: an add-on's phone camera, OBS's): another program writes it and any number
+    read, so one holding it open isn't using it up."""
+    return (root / Path(node).name / "max_openers").exists()
+
+
+def own(me: int | None = None) -> set[int]:
+    """Kurooto's process and everything it started (an add-on's stream feeding a camera is Kurooto's own)."""
     me = os.getpid() if me is None else me
+    try:
+        import psutil
+
+        return {me, *(c.pid for c in psutil.Process(me).children(recursive=True))}
+    except Exception:
+        return {me}
+
+
+def holders(node: str, proc: Path = Path("/proc"), me: int | None = None) -> list[int]:
+    """Linux: the processes (not Kurooto's own) with this camera node open."""
+    mine = own(me)
     real = os.path.realpath(node)
     out = []
     for p in proc.iterdir() if proc.is_dir() else []:
-        if not p.name.isdigit() or int(p.name) == me:
+        if not p.name.isdigit() or int(p.name) in mine:
             continue
         try:
             for fd in (p / "fd").iterdir():
@@ -136,6 +155,11 @@ def windows_busy() -> bool:
     return scan(base + r"\NonPackaged") or scan(base)
 
 
+def free(devs: list[Device], root: Path = V4L, proc: Path = Path("/proc")) -> list[Device]:
+    """Linux: the cameras no other program is using (a shared virtual one always counts as free)."""
+    return [d for d in devs if not d.node or shared(d.node, root) or not holders(d.node, proc)]
+
+
 class Camera:
     """One open camera. open() raises CameraError; read() gives a fresh frame or None; close() always releases."""
 
@@ -150,7 +174,8 @@ class Camera:
         """Is another program using it? (Linux: an open handle; Windows: the system's record; macOS: can't tell.)"""
         try:
             if self.platform.startswith("linux"):
-                return any(holders(d.node) for d in pick(devices(self.platform), self.want) if d.node)
+                devs = pick(devices(self.platform), self.want)
+                return bool(devs) and not free(devs)
             if self.platform == "win32":
                 return windows_busy()
         except Exception:
@@ -164,7 +189,8 @@ class Camera:
         if not devs:
             raise CameraError("no camera")
         if self.platform.startswith("linux"):
-            if any(holders(d.node) for d in devs if d.node):
+            devs = free(devs)  # one in use leaves the others (with no device set: every camera, in order)
+            if not devs:
                 raise CameraError("busy")
             backends = [cv2.CAP_V4L2]
         elif self.platform == "win32":

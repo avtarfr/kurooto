@@ -92,6 +92,34 @@ def test_the_zip_holds_settings_data_and_state_but_not_secrets(env, tmp_path):
     assert "sign in again" in z.read("README.txt").decode()
 
 
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="pipes in folders are a Unix thing")
+def test_a_pipe_in_state_is_left_out_and_never_read(env, tmp_path):
+    """An add-on's stream (a named pipe) in state: reading it would never end, and the backup with it."""
+    app = env.app
+    b = _fill(app)
+    (app.paths.state / "body").mkdir()
+    os.mkfifo(app.paths.state / "body" / "pcm")
+    out = tmp_path / "drive"
+    out.mkdir()
+    dest, _ = b.make_zip(app.paths, out, app.workspace)  # would hang here, reading the pipe
+    names = set(zipfile.ZipFile(dest).namelist())
+    assert "state/body/pcm" not in names and "state/notes.json" in names
+
+
+def test_scheduled_backups_never_hold_up_the_main_loop(env, tmp_path):
+    """The schedule shares Kurooto's loop with Voice, Face and the rest: backups run on a thread (every(thread=True)
+    makes the action a coroutine that waits on one)."""
+    import inspect
+
+    app = env.app
+    drive = tmp_path / "drive"
+    drive.mkdir()
+    assert app.modules["backups"].configure({"folder": str(drive)})["ok"]
+    env.on("backups")
+    for name in ("backups.run", "backups.catchup"):
+        assert inspect.iscoroutinefunction(app.scheduler.actions[name]), name
+
+
 def test_notes_and_secrets_only_when_asked(env, tmp_path):
     app = env.app
     b = _fill(app)
