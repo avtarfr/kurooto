@@ -12,7 +12,8 @@ against a centroid.
     Embedder     fbank (kaldi-native-fbank, 80 bins) + the ONNX model on the processor, read from its metadata
     calibrate()  outliers out, the template, held-out genuine scores, impostor scores, thresholds for long and short
                  turns, a grade, the manual override
-    decide()     owner / unsure / guest from a score (and a short reply right after the owner's turn: carry)
+    decide()     owner / unsure / guest from a score (and a short reply right after the owner's turn: carry; 0.8.13:
+                 a "not sure" voice in a conversation the owner opened, or with only his face in view, counts as him)
     Verifier     holds the template in memory; check(pcm) -> Verdict
     Adapter      improving over time (voice.speaker_id.adapt, off by default): only very confident long turns, a
                  quarter of the weight at most, a drift guard, undo
@@ -48,6 +49,8 @@ NEED_CONDS = ("normal", "calls")
 KIND_FULL, KIND_3S, KIND_15 = 0, 1, 2
 ADAPT_ABOVE = 0.08  # adapt takes a turn only this far above accept_long
 ADAPT_WEIGHT = 0.25
+FACE_WHY = "your voice, with your face in view"  # 0.8.13 face assist: a "not sure" score, only your face in view
+TALK_WHY = "the voice that started this talk"  # 0.8.13: a "not sure" turn in a conversation the owner opened
 DRIFT_MIN = 0.95
 BANK_MAGIC = b"KUROOTO-VOICEID-BANK 1\n"
 
@@ -384,6 +387,7 @@ class Verdict:
     speech_s: float = 0.0
     short: bool = False
     carried: bool = False
+    assisted: bool = False  # (0.8.13) Face presence saw only the owner's face: a "not sure" score counted as him
 
     @property
     def word(self) -> str:
@@ -401,6 +405,8 @@ class Ctx:
     last_owner_session: int = -1
     now: float = 0.0
     voices: int | None = None
+    portal_open: bool = False  # (0.8.13) a conversation is open (the talk carry needs one)
+    face_owner: bool = False  # (0.8.13) Face presence sees exactly one face just now, and it's the owner's
 
 
 def decide(
@@ -414,8 +420,15 @@ def decide(
     carry_s: float = 15,
     strict: bool = False,
     missing: str = "",
+    face_assist: bool = False,
+    carry_talk: bool = False,
+    carry_talk_s: float = 20,
 ) -> Verdict:
-    """missing: why there's nothing to score against ("no voice print", "locked", "model failed"): unsure."""
+    """missing: why there's nothing to score against ("no voice print", "locked", "model failed"): unsure.
+
+    0.8.13, never with strict: a score in the "not sure" band (unsure..accept, the margin) counts as the owner when
+    face_assist and Face presence sees only his face (ctx.face_owner), or when carry_talk and the conversation that's
+    open was the owner's, his last recognised turn in it within carry_talk_s (measured from the end of the answer)."""
     ctx = ctx or Ctx()
     if missing or t is None or score is None:
         return Verdict(UNSURE, missing or "no voice print", None, speech_s)
@@ -437,6 +450,17 @@ def decide(
     if score >= b.accept:
         return Verdict(OWNER, "your voice", score, speech_s, short)
     if score >= b.unsure:
+        if face_assist and not strict and ctx.face_owner:
+            return Verdict(OWNER, FACE_WHY, score, speech_s, short, assisted=True)
+        if (
+            carry_talk
+            and not strict
+            and ctx.portal_open
+            and ctx.last_owner_at is not None
+            and ctx.last_owner_session == ctx.portal_session
+            and ctx.now - ctx.last_owner_at <= carry_talk_s
+        ):
+            return Verdict(OWNER, TALK_WHY, score, speech_s, short, carried=True)
         return Verdict(UNSURE, "not sure it was you", score, speech_s, short)
     return Verdict(GUEST, "someone else", score, speech_s, short)
 
@@ -545,12 +569,25 @@ class Adapter:
         self.bank, self.strictness, self.margin, self.threshold = bank, strictness, margin, threshold
 
     def consider(
-        self, tpl: dict, e: Vec, v: Verdict, voices: int | None, today: str, per_day: int = 10, cap: int = 40
+        self,
+        tpl: dict,
+        e: Vec,
+        v: Verdict,
+        voices: int | None,
+        today: str,
+        per_day: int = 10,
+        cap: int = 40,
+        face: bool = False,
     ) -> tuple[bool, str]:
+        """face (0.8.13): a turn Face presence confirmed (only the owner's face in view) that went well afterwards;
+        its score was in the "not sure" band, so it's taken from there instead of well above accept."""
         t = Thresholds.from_dict(tpl.get("thresholds") or {})
-        if v.decision != OWNER or v.carried or v.why != "your voice":
+        if face:
+            if v.decision != OWNER or not v.assisted or v.score is None or v.score < t.long.unsure:
+                return False, "not a face-confirmed turn"
+        elif v.decision != OWNER or v.carried or v.why != "your voice":
             return False, "not a sure turn"
-        if v.score is None or v.score < t.long.accept + ADAPT_ABOVE:
+        elif v.score is None or v.score < t.long.accept + ADAPT_ABOVE:
             return False, "not sure enough"
         if v.speech_s < 2:
             return False, "too short"
@@ -559,7 +596,8 @@ class Adapter:
         adapted = list(tpl.get("adapted") or [])
         if sum(1 for a in adapted if a.get("day") == today) >= per_day:
             return False, "enough for today"
-        new = [*adapted, {"e": to_b64(normalize(e)), "day": today}][-max(1, int(cap)) :]
+        entry = {"e": to_b64(normalize(e)), "day": today, **({"face": True} if face else {})}
+        new = [*adapted, entry][-max(1, int(cap)) :]
         trial = {**tpl, "adapted": new}
         c_new = template_centroid(trial)
         c_enrolled = normalize(from_b64(tpl["centroid_enrolled"]))

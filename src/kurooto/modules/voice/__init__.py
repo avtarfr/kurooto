@@ -24,7 +24,13 @@ enrol are typed only, never by voice.
 Hooks for add-ons (0.8.12): listen_once(timeout_s) takes the next stretch of speech, any voice, through this listener,
 written out here and handed to the add-on only (never the gate, the portal or the AI); guest_reply(text, name) is one
 chat turn through the guest path (core/guest.py: no tools, none of the owner's data). Switches voice.addons.listen and
-voice.addons.chat."""
+voice.addons.chat.
+
+Listening better (0.8.13): careful calls when someone else may be talking (voice.listen.careful_name, chatter_s), the
+conversation going on without its name (voice.listen.follow_s), being told off (voice.listen.told_off: it stops,
+closes the conversation, notes a misfire), and the gate learning at night from how its turns went
+(voice.listen.learn_nightly, learn.py). Voice ID gets Face presence's help (voice.speaker_id.face_assist) and keeps a
+"not sure" voice the owner's in a conversation he opened (voice.speaker_id.carry_talk)."""
 
 from __future__ import annotations
 
@@ -37,11 +43,13 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from kurooto.core import nearby
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Module
 from kurooto.modules.voice import shape as shape_mod
-from kurooto.modules.voice.gate import ADDRESSED, CHATTER, NOISE, Gate, Heard
+from kurooto.modules.voice.gate import ADDRESSED, CHATTER, NOISE, TOLD_OFF, Context, Decision, Gate, Heard
+from kurooto.modules.voice.learn import NIGHT_AT, Learner
 from kurooto.modules.voice.parts import KOKORO_VOICES, STT_MODELS, Parts
 from kurooto.modules.voice.portal import Portal
 from kurooto.modules.voice.voiceid import NO_VOICE, VoiceID
@@ -82,6 +90,11 @@ register_defaults(
             "conversation_mode": True,  # with Voice ID: while another voice is here, only its name opens a talk
             "conversation_s": 60,  # conversation mode lasts this many seconds after the last other voice
             "conversation_follow_s": 4,  # in conversation mode, a reply to what it said counts only this soon after
+            "careful_name": True,  # someone else may be talking: its name counts only said first, as a call
+            "chatter_s": 60,  # speech not to it this recent (any voice) makes it careful with its name
+            "follow_s": 20,  # after it answers, what the same voice says this soon counts, statements too (0: off)
+            "told_off": True,  # "stop", "not you", "never mind" right after it opened or spoke: it stops and closes
+            "learn_nightly": True,  # learn at night from turns that went well or were told off (numbers only)
         },
         "speaker_id": {
             "on": False,  # Voice ID: only your voice can make Kurooto act; others can only chat (enrol first)
@@ -101,6 +114,8 @@ register_defaults(
             "adapt_max": 40,  # at most this many learned turns are kept (oldest replaced)
             "adapt_per_day": 10,  # at most this many learned turns a day
             "spoken_enrol": True,  # during enrolment Kurooto says each step aloud (off: the page shows it only)
+            "face_assist": True,  # a "not sure" voice counts as you while Face presence sees only your face
+            "carry_talk": True,  # a "not sure" voice stays you in a conversation you opened (with carry)
         },
         "addons": {
             "listen": True,  # an add-on may take one stretch of speech at a time (written out here, never sent)
@@ -256,6 +271,9 @@ class Voice(Module):
             listening=lambda: self.listener is not None and self.listener.running(),
         )
         self.listener = None
+        self.learner = Learner(app.paths.state / "voice")  # (0.8.13) the gate's learned veto: learn.py
+        self._pending: dict | None = None  # the last addressed turn, until it's known how it went (memory only)
+        self.misfires = 0  # told off since start (a count)
         self.heard = {NOISE: 0, CHATTER: 0, ADDRESSED: 0}  # counts since Kurooto started; never what was said
         self.last_state: dict = {"state": "off", "portal": False, "listening": False, "why": ""}
         self.blocked_why = "off"
@@ -341,12 +359,26 @@ class Voice(Module):
         speak = f"speaks with {engine.capitalize()}" if self.setting("speak.on") and engine != "off" else "silent"
         vid = self.voiceid.line()  # (voice id) its state, on the being's ear too
         tail = f"; {vid}" if vid else ""
+        learned = self.learned_line()
+        if learned:
+            tail += f"; {learned}"
         if not self.setting("listen.on"):
             return f"{speak}; not listening (voice.listen.on is off){tail}"
         if self.blocked_why:
             return f"{speak}; not listening: {self.blocked_why}{tail}"
         own = " or your wake word" if str(self.setting("listen.wake_word") or "").strip() else ""
         return f"{speak}; listening here (its name{own} wakes it){tail}"
+
+    def learned_line(self) -> str:
+        """(0.8.13) What the gate learned, numbers only ("" with nothing learned or learn_nightly off)."""
+        if not self.setting("listen.learn_nightly"):
+            return ""
+        st = self.learner.status()
+        if not st["rows"] and not self.misfires:
+            return ""
+        acting = "acting" if st["active"] else "not acting yet"
+        return (f"learned from {st['rows']} turns ({st['misfires']} misfires), {acting}; "
+                f"{self.misfires} told off and {st['vetoes']} held back since start")  # fmt: skip
 
     def microphone(self) -> tuple:
         at, res = self._mic
@@ -483,7 +515,9 @@ class Voice(Module):
                 "enrolled": self.voiceid.enrolled(),
                 "who": dict(self.voiceid.who),
                 "last": self.voiceid.last_word,
+                "face_learned": self.voiceid.face_learned,
             },
+            "learned": {**self.learner.status(), "on": bool(s("listen.learn_nightly")), "misfires_now": self.misfires},
         }
 
     def shape(self, text: str) -> dict:
@@ -574,6 +608,7 @@ class Voice(Module):
             after_speak_s=float(self.setting("listen.after_speak_s") or 6),
             use_model=bool(self.setting("listen.model_judge")),
             variants=list(self.setting("listen.name_variants") or []),
+            veto=self.learner.veto if self.setting("listen.learn_nightly") else None,
         )
 
     def judge(self, prompt: str) -> str | None:
@@ -633,8 +668,6 @@ class Voice(Module):
                     self._heard_wave(audio)
                     del audio
                     self.heard[CHATTER] = self.heard.get(CHATTER, 0) + 1
-                    from kurooto.modules.voice.gate import Decision
-
                     self.portal.take(h, Decision(CHATTER, 0.9, "someone else, not to it"))
                     self.portal.state("listening", CHATTER)
                     return None
@@ -647,7 +680,11 @@ class Voice(Module):
             guests_here = who is not None and who.decision == "guest" and vid.others_lately() >= 3
             ctx.conversation = vid.conversation() or guests_here
             ctx.follow_s = float(self.setting("listen.conversation_follow_s") or 4)
+        self._moment(ctx, who)
         d = g.decide(h, ctx)
+        if d.why == TOLD_OFF:
+            self._told_off(h, audio)
+            return None
         self.heard[d.klass] = self.heard.get(d.klass, 0) + 1
         if not d.addressed:
             self._heard_wave(audio)
@@ -657,6 +694,9 @@ class Voice(Module):
             self.portal.take(h, d)
             if not was_open:
                 self.portal.state("listening", d.klass)
+            if not self.portal.open:  # how that turn went stays unknown: not learned from
+                self._pending = None
+                vid.take_face()
             return None
         said = g.matcher.uncall(h.text) if h.wake or d.why == "its name" else h.text  # the call itself isn't sent
         if on and who is None and said and audio is not None:  # (voice id) the gate first is off: addressed only
@@ -668,7 +708,89 @@ class Voice(Module):
             who = Verdict(UNSURE, "no sound to check")
         if who is not None:
             self.publish("voice_state", state="addressed", portal=True, listening=True, why=d.why, who=who.word)
-        return self.portal.take(h, d, text=said, who=who)
+        self._went_well(who)
+        row = {**d.feats}
+        if who is not None:  # checked after the decision: the row gets the verdict all the same
+            row["speaker"], row["score"] = who.decision, who.score
+        face = vid.take_face() if on else None
+        reply = self.portal.take(h, d, text=said, who=who)
+        if self.portal.open:
+            self._pending = {"row": row, "session": self.portal.session, "who": who.decision if who else "",
+                             "face": face}  # fmt: skip
+        return reply
+
+    # ----------------------------------------------------------------------------- 0.8.13: the moment, told off
+    def _moment(self, ctx: Context, who) -> None:
+        """What the gate needs to know of the moment beyond the portal: the switches, Kurooto speaking, the faces in
+        view (Face presence, core/nearby.py) and, with Voice ID, whose voice this is."""
+        s = self.setting
+        ctx.careful = bool(s("listen.careful_name"))
+        ctx.chatter_s = float(s("listen.chatter_s") or 60)
+        ctx.follow_window_s = float(s("listen.follow_s") or 0)
+        ctx.told_off = bool(s("listen.told_off"))
+        self.portal.follow_s = ctx.follow_window_s
+        ctx.speaking = self.speaker.holding()
+        if ctx.speaking:  # an output (a phone) may still be playing it: it hasn't finished speaking yet
+            ctx.since_spoke_s = 0.0
+        try:
+            got = nearby.view(self.app)
+        except Exception:
+            got = None
+        ctx.faces = got[0] if got is not None else None
+        if who is not None:
+            ctx.speaker, ctx.speaker_score = who.decision, who.score
+            p = self.portal
+            if p.open and p.last_who:  # the voice it answered last, and that opened the talk
+                ctx.same_speaker = who.decision == p.last_who and who.decision == p.opener
+
+    def _went_well(self, who) -> None:
+        """An addressed turn in the same conversation, from the same voice: the turn before it went well (a row
+        labelled 1), and a face-confirmed one may now refine the voice print (voiceid.learn_face)."""
+        pend, self._pending = self._pending, None
+        if pend is None or not self.portal.open or pend["session"] != self.portal.session:
+            return
+        if pend["who"] != (who.decision if who is not None else ""):
+            return
+        if self.setting("listen.learn_nightly"):
+            try:
+                self.learner.record(pend["row"], 1)
+            except OSError as e:
+                self.app.events.emit("voice_failed", part="learning", error=f"{type(e).__name__}"[:100])
+        if pend["face"] is not None:
+            self.voiceid.learn_face(pend["face"])
+
+    def _told_off(self, h: Heard, audio: bytes | None) -> None:
+        """Told off ("stop", "not you" ...) right after it opened or spoke: stop speaking at once, close the talk, no
+        reply; a misfire event (the rules, never words) and, with learn_nightly, a training row labelled 0."""
+        self.speaker.stop()
+        self._heard_wave(audio)
+        h.text = ""
+        p = self.portal
+        pend, self._pending = self._pending, None
+        if pend is not None and pend["session"] != p.session:
+            pend = None
+        turn = pend["row"].get("rule") if pend is not None else ""
+        self.misfires += 1
+        self.heard[CHATTER] = self.heard.get(CHATTER, 0) + 1
+        self.app.events.emit("voice_misfire", rule=(p.opened_why if p.open else "") or turn or "speaking", turn=turn)
+        if pend is not None and self.setting("listen.learn_nightly"):
+            try:
+                self.learner.record(pend["row"], 0)
+            except OSError as e:
+                self.app.events.emit("voice_failed", part="learning", error=f"{type(e).__name__}"[:100])
+        self.voiceid.take_face()  # a face-assisted turn that was told off is never learned from
+        if not p.close("told off"):
+            p.state("listening", "told off")
+
+    def learn_nightly(self, payload=None) -> dict | None:
+        """The nightly fit (learn.py), on a thread of its own: numbers only into the event."""
+        if not self.setting("listen.learn_nightly"):
+            return None
+        out = self.learner.train()
+        self.app.events.emit(
+            "voice_learned", rows=out["rows"], good=out["good"], misfires=out["misfires"], active=out["active"]
+        )
+        return out
 
     def ask_brain(self, text: str, who=None) -> str:
         """An addressed turn to your AI, like a chat message (spoken style); its answer as text. who: Voice ID's
@@ -798,6 +920,7 @@ class Voice(Module):
 
     # ---------------------------------------------------------------------------------------- running
     def start(self) -> None:
+        self.every("learn", NIGHT_AT, self.learn_nightly, thread=True)  # (0.8.13) while you sleep: learn.py
         if not self._watching:
             self.app.jobs.watchers.append(self._job_done)
             self._watching = True
@@ -1133,6 +1256,7 @@ class Voice(Module):
             f"Voice: {self.line()}" + ("" if ok else f"\n{why}") + ("\nMuted." if self.muted() else "")
             + f"\nHeard since start: {h[ADDRESSED]} to me, {h[CHATTER]} chatter, {h[NOISE]} noise (words of the last "
             "two are never kept)."
+            + (f"\nLearned: {self.learned_line()}." if self.learned_line() else "")
             + "\n/voice mute, /voice unmute, /voice stop, /voice say <text>; /voice id (Voice ID), /voice enrol"
         )  # fmt: skip
 

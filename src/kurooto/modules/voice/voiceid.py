@@ -11,7 +11,14 @@ Enrolment (enrol.py) runs here, on the computer's own microphone, started only b
 the Your voice page at /voice-id); never by voice, the AI or a schedule. Training is a template and calibrated
 thresholds over a pretrained model, not a network trained here. The template is sealed (core/biometric.py,
 state/voiceid/template.bin, key biometric.voice.key) and forgotten with /voice id forget, the page, `kurooto voice id
-forget` or /forget all. Sound is never written to disk; a score is never logged or put on the live stream."""
+forget` or /forget all. Sound is never written to disk; a score is never logged or put on the live stream.
+
+Face assist (0.8.13, voice.speaker_id.face_assist): when Face presence sees exactly one face just now and it's the
+owner's (core/nearby.py's view, set by Face presence each frame), a "not sure" score (inside the margin) counts as the
+owner. A score below the margin stays someone else, two voices stay unsure, and strict turns it off. With "improve
+over time" on (adapt), such a turn that went well (the owner carried on talking, nothing told off) may be added to the
+voice print like a very sure turn, its embedding only, under the same caps, drift guard and undo (learn_face()).
+The talk carry (voice.speaker_id.carry_talk) keeps a "not sure" voice the owner's in a conversation he opened."""
 
 from __future__ import annotations
 
@@ -23,7 +30,7 @@ from collections import deque
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
-from kurooto.core import biometric
+from kurooto.core import biometric, nearby
 from kurooto.core.biometric import BioStore, Locked
 from kurooto.modules.voice import enrol
 from kurooto.modules.voice import speakerid as sid
@@ -73,6 +80,8 @@ class VoiceID:
         self.previous: dict | None = None  # the template before the last build (Undo, within the session)
         self.last_result: dict = {}  # the last build's report (numbers only)
         self.last_test: dict | None = None
+        self._face_last: tuple | None = None  # (vector, verdict, voices) of the last face-assisted turn, memory only
+        self.face_learned = 0  # face-confirmed turns added to the voice print since start (a count)
 
     # ------------------------------------------------------------------------------------------- settings
     def s(self, key: str, default: Any = None) -> Any:
@@ -95,12 +104,25 @@ class VoiceID:
 
     def rules(self) -> dict:
         strict = self.s("strictness") == "strict"
+        carry = bool(self.s("carry", True)) and not strict
         return {
             "min_speech_s": float(self.s("min_speech_s", 1.0)),
-            "carry": bool(self.s("carry", True)) and not strict,
+            "carry": carry,
             "carry_s": float(self.s("carry_s", 15)),
             "strict": strict,
+            "face_assist": bool(self.s("face_assist", True)) and not strict,
+            "carry_talk": carry and bool(self.s("carry_talk", True)),
+            # the talk carry lasts as long as the conversation window, at least carry_s
+            "carry_talk_s": max(float(self.s("carry_s", 15)), float(self.v.setting("listen.follow_s") or 0)),
         }
+
+    def face_owner(self) -> bool:
+        """Face presence sees exactly one face just now, and it's the owner's (core/nearby.py)."""
+        try:
+            got = nearby.view(self.app)
+        except Exception:
+            return False
+        return got is not None and got[0] == 1 and got[1]
 
     def mode(self) -> str:
         m = str(self.s("mode") or MODES[0])
@@ -200,6 +222,8 @@ class VoiceID:
             last_owner_session=p.last_owner_session,
             now=p.clock(),
             voices=voices,
+            portal_open=p.open,
+            face_owner=bool(self.s("face_assist", True)) and self.face_owner(),
         )
         missing = self.problem()
         t = self.template() if not missing else None
@@ -217,8 +241,39 @@ class VoiceID:
                 biometric.note_others(self.app, float(self.v.setting("listen.conversation_s") or 60))
         if t is not None and ver.last is not None and self.s("adapt"):
             self._adapt(t, ver.last, v, voices)
+        self._face_last = (list(ver.last), v, voices) if v.assisted and ver.last is not None else None
         ver.last = None
         return v
+
+    def take_face(self) -> tuple | None:
+        """The last turn's face-assisted vector (and its verdict), once: Voice holds it until the turn went well."""
+        got, self._face_last = self._face_last, None
+        return got
+
+    def learn_face(self, got: tuple | None) -> bool:
+        """A face-confirmed turn went well: with adapt and face_assist on, it may refine the voice print (Adapter's
+        caps, drift guard and undo apply; the entry is marked face)."""
+        if not got or not self.on() or not self.s("adapt") or not self.s("face_assist", True):
+            return False
+        e, v, voices = got
+        with self.lock:
+            t = self.template()
+            if not t or self.problem():
+                return False
+            a = sid.Adapter(self.bank(), str(self.s("strictness") or "normal"), float(self.s("margin", 0.05)),
+                            float(self.s("threshold", 0.0) or 0.0))  # fmt: skip
+            work = dict(t)
+            took, why = a.consider(
+                work, e, v, voices, today(), int(self.s("adapt_per_day", 10)), int(self.s("adapt_max", 40)), face=True
+            )
+            if why == "drift" and not t.get("drift_stopped"):
+                self._save(work)
+                self.app.events.emit("voiceid_adapt_stopped")
+            if took:
+                self._save(work)
+                self.face_learned += 1
+                self.app.events.emit("voiceid_adapted", count=len(work.get("adapted") or []), face=True)
+            return took
 
     def others_lately(self) -> int:
         now = time.monotonic()
@@ -345,7 +400,9 @@ class VoiceID:
                 "today": sum(1 for a in adapted if a.get("day") == today()),
                 "last": max((a.get("day") or "" for a in adapted), default=None),
                 "drift_stopped": bool(t.get("drift_stopped")),
+                "face": sum(1 for a in adapted if a.get("face")),  # (0.8.13) of them, face-confirmed turns
             },
+            "face_assist": bool(self.s("face_assist", True)),
             "mic": {"enrolled": t.get("mic") or "", "now": self.mic_now() if self.app.is_on("voice") else ""},
             "ready": not missing,
             "missing": missing,
@@ -785,7 +842,11 @@ class VoiceID:
             had = self.store.forget()
             self._tpl, self._loaded, self.locked_why = None, True, ""
             self.guest_turns.clear()
+            self._face_last = None
             self.drop_model()
+        learner = getattr(self.v, "learner", None)  # (0.8.13) the gate's learned turns hold Voice ID's scores too
+        if learner is not None:
+            learner.forget()
         self.app.events.emit("voiceid_forgotten")
         return (
             "Forgot your voice: the voice print and its key are deleted. Nothing of it was ever sent anywhere."

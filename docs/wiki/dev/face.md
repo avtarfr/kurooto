@@ -6,8 +6,12 @@ computer only, and greets him by voice when he sits down after an absence, then 
 [../user/face.md](../user/face.md). Design: `build-specs/0.8.10/face.md` (outside the repo).
 
 **The rule above all others: a face match never authorises anything.** It isn't one of `core/tap.py:WAYS`, never
-answers an approval, unlocks anything or widens a voice turn. `tests/unit/test_face.py:test_a_face_never_authorises_anything`
-checks that `core/tap.py`, `core/ask.py` and `core/tools.py` never read the face module.
+answers an approval or unlocks anything. `tests/unit/test_face.py:test_a_face_never_authorises_anything`
+checks that `core/tap.py`, `core/ask.py` and `core/tools.py` never read the face module. One narrow exception, its own
+switch (0.8.13, `voice.speaker_id.face_assist`, on): a voice Voice ID already scored inside its "not sure" margin counts
+as the owner while the watcher's last frame (at most `core/nearby.py:VIEW_S` old) shows exactly one face and it's his
+(the watcher's `view` emit -> `nearby.set_view`). A face alone, a voice below the margin, two voices or strict
+strictness never do; see [voice.md](voice.md).
 
 ## Files
 

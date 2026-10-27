@@ -9,7 +9,14 @@ read without depending on each other's code.
 
 Voice (and Voice ID's conversation mode) can read it: while others are present, Kurooto stays out of a conversation
 between people unless it's named. An event "nearby_others {on, source}" says when it changes (no other fields).
-Nothing here authorises anything: a face never makes Kurooto act.
+
+    set_view(app, faces, owner_alone)   (0.8.13) Face presence, each frame it looks at: how many faces are in view
+                                  and whether the only one is the owner's. In memory, never an event.
+    view(app) -> (faces, owner_alone) | None   that, when it's at most VIEW_S old (the camera may not be looking)
+
+Nothing here authorises anything by itself. The one narrow use of the view (Voice ID's face assist, 0.8.13,
+voice.speaker_id.face_assist): a voice already scored inside its "not sure" margin counts as the owner while his face
+is the only one in view. A face alone never makes Kurooto act.
 """
 
 from __future__ import annotations
@@ -22,6 +29,7 @@ if TYPE_CHECKING:
     from kurooto.app import App
 
 STALE_S = 120  # a signal not refreshed for this long no longer counts (a camera that closed without saying so)
+VIEW_S = 5.0  # the view counts this long after the frame (Face presence looks about once a second, 3 s on battery)
 _lock = threading.Lock()
 
 
@@ -57,3 +65,21 @@ def sources(app: App) -> list[str]:
 
 def others(app: App) -> bool:
     return bool(sources(app))
+
+
+def set_view(app: App, faces: int, owner_alone: bool) -> None:
+    with _lock:
+        app._nearby_view = (int(faces), bool(owner_alone), time.monotonic())  # type: ignore[attr-defined]
+
+
+def clear_view(app: App) -> None:
+    with _lock:
+        app._nearby_view = None  # type: ignore[attr-defined]
+
+
+def view(app: App) -> tuple[int, bool] | None:
+    with _lock:
+        v = getattr(app, "_nearby_view", None)
+    if v is None or time.monotonic() - v[2] > VIEW_S:
+        return None
+    return v[0], v[1]
