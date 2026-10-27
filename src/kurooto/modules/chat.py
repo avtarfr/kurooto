@@ -1,5 +1,11 @@
 """Chat: anything you type that isn't a command or an instant request goes to the AI you picked, and the answer
-comes back as a reply. Start a message with "high:" (or "low:") to choose how hard it thinks."""
+comes back as a reply. Start a message with "high:" (or "low:") to choose how hard it thinks.
+
+The conversation's context: Telegram and the phone app's chat with Kurooto itself ("main") share one history
+(chat/history.json) of which the last 6 turns from the last 2 hours go with each request. Each other chat in the phone
+app (a session, 0.8.10: calls/sessions.py) has its own history (chat/sessions/<id>.json) that carries over for as long
+as the chat lives, like an AI web app: its latest turns, up to SESSION_CHARS, go with each request. A reply in the app
+brings the quoted message along (Incoming.quote), and a file sent in a session is named in that session's context."""
 
 from __future__ import annotations
 
@@ -11,6 +17,10 @@ from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Module
 
 SHARED_S = 2 * 3600  # files shared from the phone this recently are mentioned to the AI when you talk of a file
+SESSION_KEEP = 40  # turns kept per phone app chat (session)
+SESSION_CHARS = 16000  # of them, the latest that fit in this many characters go with each request
+JOBS_KEEP = 200  # which session each recent request was asked in (its answer becomes that session's turn)
+MAIN = "main"
 SHARED_NOTE = "\n\n[Shared from their phone lately"
 REFERS = re.compile(r"\b(files?|pdfs?|photos?|pictures?|images?|docs?|documents?|screenshots?|attachments?|sent|shared|"
                     r"uploaded)\b", re.I)  # fmt: skip
@@ -30,6 +40,29 @@ class Chat(Module):
     def owns(self, jid: str) -> bool:
         return jid in self.mine
 
+    # ------------------------------------------------------------------------------ sessions (0.8.10)
+    def session_file(self, sid: str):
+        return self.dir / "sessions" / f"{sid}.json"
+
+    def _jobs_file(self):
+        return self.dir / "session-jobs.json"
+
+    def _job_session(self, jid: str, sid: str | None = None) -> str:
+        """Which session a request was asked in (set with sid; read without). Kept on disk: an answer can come
+        after a restart."""
+        f = self._jobs_file()
+        rows = jload(f, {}) or {}
+        if sid is None:
+            return str(rows.get(jid) or "")
+        rows[jid] = sid
+        jsave(f, dict(list(rows.items())[-JOBS_KEEP:]))
+        return sid
+
+    def forget_session(self, sid: str) -> None:
+        """A phone app chat was deleted: its context goes too."""
+        if sid and sid != MAIN:
+            self.session_file(sid).unlink(missing_ok=True)
+
     def own(self, jid: str) -> None:
         """A request made for you elsewhere (a file shared from the phone) becomes part of the conversation."""
         self.mine = {*list(self.mine)[-50:], jid}
@@ -48,23 +81,35 @@ class Chat(Module):
 
     def ask(self, msg: Incoming) -> str:
         text = msg.text.strip()
+        sid = str(getattr(msg, "session", "") or "")
+        sid = "" if sid == MAIN else sid  # a phone app chat of its own, or "" (Telegram, main: as before)
         if text.lower() in ("/new", "/clear", "new", "clear") and not msg.files:
-            return self.clear_history()
+            return self.clear_history(sid)
+        quote = getattr(msg, "quote", None)
+        if quote and quote.get("text"):  # a reply in the phone app: the message it answers comes along
+            whose = "your" if quote.get("from") == "kurooto" else "their own"
+            text = f'[They are replying to {whose} earlier message: "{quote["text"]}"]\n\n{text}'
         if msg.files:  # a photo or file sent with it (or alone): the AI is told where it is, to open it
             sent = ", ".join(str(f) for f in msg.files)
             text = (
                 f"{text}\n\n" if text else "They sent this with no words: say what it is, or answer what it asks.\n\n"
             ) + f"Files they sent with it (on this computer; open them to read them): {sent}"
         elif REFERS.search(text):  # "summarise the PDF I just sent" from the phone app (calls/chat.py:shared)
-            text += self._shared_note()
+            text += self._shared_note(sid)
 
         terminal = msg.via in ("terminal", "setup")
         quiet = terminal or msg.via == "voice"  # spoken (modules/voice): the answer comes back aloud, not on Telegram
-        history = jload(self.history_file, []) or []
-
-        # Only inject history if there is recent conversation within 2 hours
         now_ts = time.time()
-        recent = [h for h in history if now_ts - h.get("at", 0) < 7200][-6:]
+        if sid:  # a session's context carries over for as long as it lives, as much of it as fits
+            recent, size = [], 0
+            for h in reversed(jload(self.session_file(sid), []) or []):
+                size += len(str(h.get("user") or "")) + len(str(h.get("assistant") or ""))
+                if size > SESSION_CHARS:
+                    break
+                recent.insert(0, h)
+        else:  # Only inject history if there is recent conversation within 2 hours
+            history = jload(self.history_file, []) or []
+            recent = [h for h in history if now_ts - h.get("at", 0) < 7200][-6:]
 
         if recent and not terminal:
             conv = ["Previous conversation:"]
@@ -99,6 +144,8 @@ class Chat(Module):
         )
         msg.job = jid
         self.mine = {*list(self.mine)[-50:], jid}
+        if sid:
+            self._job_session(jid, sid)
         return helper.waiting_line() if waits else "On it."
 
     def _main(self):
@@ -106,9 +153,15 @@ class Chat(Module):
 
         return providers.build(self.app, self.app.settings.get("brain.main") or "")
 
-    def _shared_note(self) -> str:
-        rows = jload(self.app.paths.state / "calls" / "shared.json", []) or []
-        recent = [r for r in rows if isinstance(r, dict) and time.time() - r.get("at", 0) < SHARED_S][-5:]
+    def _shared_note(self, sid: str = "") -> str:
+        """Files shared from the phone: in a session, the ones sent in it (however long ago); elsewhere, the last 2
+        hours' that weren't sent in a session."""
+        rows = [r for r in jload(self.app.paths.state / "calls" / "shared.json", []) or [] if isinstance(r, dict)]
+        if sid:
+            recent = [r for r in rows if r.get("session") == sid][-5:]
+        else:
+            t = time.time()
+            recent = [r for r in rows if r.get("session", MAIN) == MAIN and t - r.get("at", 0) < SHARED_S][-5:]
         if not recent:
             return ""
         files = "; ".join(f"{r.get('name')} at {r.get('path')}" + (f" (note: {r['note']})" if r.get("note") else "")
@@ -118,10 +171,12 @@ class Chat(Module):
             f"their notes under a similar name): {files}]"
         )
 
-    def record_turn(self, prompt: str, reply: str) -> None:
-        """Record a completed turn into chat history for context continuity."""
+    def record_turn(self, prompt: str, reply: str, jid: str = "") -> None:
+        """Record a completed turn into chat history for context continuity (jid: the request's id, so a phone app
+        chat's answer goes into that chat's own history)."""
         if not reply or reply.startswith("I couldn't "):
             return
+        sid = self._job_session(jid) if jid else ""
         # Extract the user's actual prompt if wrapped in history
         from kurooto.core.persona import strip_register
 
@@ -129,6 +184,21 @@ class Chat(Module):
         if "Current request:\n" in prompt:
             user_text = prompt.split("Current request:\n", 1)[1].strip()
         user_text = user_text.split(SHARED_NOTE, 1)[0]
+        if sid:
+            if not self._session_lives(sid):  # deleted while the AI was answering
+                return
+            f = self.session_file(sid)
+            history = jload(f, []) or []
+            history.append({"user": user_text[:4000], "assistant": reply[:4000].strip(), "at": time.time()})
+            jsave(f, history[-SESSION_KEEP:])
+            if len(history) == 1:  # the first answer in it: maybe an AI title (calls.chat_titles)
+                calls = self.app.modules.get("calls")
+                if calls is not None and hasattr(calls, "sessions"):
+                    try:
+                        calls.sessions.first_answer(sid, user_text, reply)
+                    except Exception as e:
+                        self.app.events.emit("chat_title_failed", error=f"{type(e).__name__}: {e}"[:200])
+            return
         history = jload(self.history_file, []) or []
         history.append(
             {
@@ -139,7 +209,14 @@ class Chat(Module):
         )
         jsave(self.history_file, history[-10:])
 
-    def clear_history(self) -> str:
+    def _session_lives(self, sid: str) -> bool:
+        calls = self.app.modules.get("calls")
+        return calls is None or not hasattr(calls, "sessions") or calls.sessions.get(sid) is not None
+
+    def clear_history(self, sid: str = "") -> str:
+        if sid:
+            jsave(self.session_file(sid), [])
+            return "Started this chat over: what was said in it before is forgotten."
         jsave(self.history_file, [])
         return "Started a new conversation. Previous context cleared."
 
@@ -154,7 +231,8 @@ class Chat(Module):
         ]
 
     def _cmd_new(self, msg: Incoming, arg: str) -> str:
-        return self.clear_history()
+        sid = str(getattr(msg, "session", "") or "")  # in a phone app chat: that chat starts over
+        return self.clear_history("" if sid == MAIN else sid)
 
     def _brain(self, msg: Incoming, arg: str) -> str:
         s = self.app.settings
@@ -191,6 +269,12 @@ class Chat(Module):
             + ("\n" + "\n".join(waiting) if waiting else "")
             + reading(self.app)
         )
+
+
+def history_files(app) -> list:
+    """Every file of chat turns: Telegram's and main's, then each phone app chat's (core/retention.py, gists.py)."""
+    d = app.paths.state / "chat"
+    return [d / "history.json", *sorted((d / "sessions").glob("*.json"))]
 
 
 def limit_lines(app) -> list[str]:

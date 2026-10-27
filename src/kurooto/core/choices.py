@@ -36,6 +36,10 @@ CHOICES: dict[str, list[list[str]]] = {
         ["all", "all: every timed event holds calls"],
         ["tagged", "tagged: #nocall ones and no-call calendars"],
     ],
+    "calls.chat_titles": [
+        ["first words", "first words: of the chat's first message"],
+        ["ai", "ai: a short title the AI writes"],
+    ],
     "calls.review_effort": LEVELS,
     "calls.turn_brain": [["gemini", "gemini: your key"], ["local", "local: Local AI models"]],
     "dreaming.consolidate_ai": AI3,

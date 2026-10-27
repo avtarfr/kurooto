@@ -207,9 +207,9 @@ def _requests(app: App, lo: float, hi: float) -> list[dict]:
 
 def _chats(app: App, lo: float, hi: float) -> list[dict]:
     from kurooto.core.retention import _in
+    from kurooto.modules.chat import history_files  # each phone app chat's too (0.8.10)
 
-    f = Path(app.paths.state) / "chat" / "history.json"
-    turns = (jload(f, []) or []) if f.exists() else []
+    turns = [t for f in history_files(app) if f.exists() for t in jload(f, []) or []]
     out = []
     for t in turns:
         if isinstance(t, dict) and _in(float(t.get("at") or 0), lo, hi):

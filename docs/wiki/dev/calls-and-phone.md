@@ -446,6 +446,139 @@ phone went through: `{"tags": ["stop", "outbox"], "dev": <device id>, "done": [{
 Kurooto's; answers `{ok, seq, android, web}`. `outbox {done?}`: drop `done.seq` and tell its phone; answer the next
 item `{"item": {seq, kind, at, ..., body | body_b64}, "left"}` or `{"item": null}`.
 
+## The chat's protocol (0.8.10: sessions, replies, files, changes, the being)
+
+The authoritative description the phone app follows. Code: `modules/calls/chat.py` (`PhoneChat.take`, `_op`,
+`_session_op`, `_msg_op`, `_being`, `say`, `status`), `modules/calls/sessions.py` (`Sessions`), `modules/chat.py`
+(each session's AI context), `data/worker/src/worker.js` (`chat`, `chatSay`, `chatAll`, `chatSessionsPut`,
+`chatStatusPut`, `toLinked`). Everything from 0.5.16 above keeps working unchanged: a message without `session`
+belongs to `main`, `to` still works, `GET /chat` without `sessions=1` returns `main` only, and new fields are extra.
+
+**Switches** (Settings → calls; each on by default, invisible until used): `calls.chat_sessions` (off: every message
+is `main`, session ops are refused, the list holds `main` only; sessions and their context stay until it's back on),
+`calls.chat_files_inline` (off: files from the computer come as the Open button only, files from the phone are
+refused, a `chat=` upload is handled as an ordinary share), `calls.chat_edit` (off: `msg.*` ops refused),
+`calls.chat_titles` (`"first words"` or `"ai"`). The `sessions` message carries `switches: {chat_sessions,
+chat_files_inline, chat_edit}` so the app can hide what's off.
+
+### Phone → computer
+
+`POST /chat`, sealed (Android: `{"id", "k1"}`, the fields below sealed with the ntfy key, `id` repeated inside) or
+plain (web: the fields beside `id`). Every body has `id` (16 hex, single use), `ts` (ms) and `n` (16-64 hex nonce),
+as before. The Worker passes a plain body's `text`, `to`, `button`, `msg`, `ts`, `n`, `session`, `reply`, `file`,
+`voice`, `op`, `args`, `title`, `target`, `on`, `upto`, `key`, `value` on; anything else is dropped.
+
+A **message**:
+
+| Field | |
+|---|---|
+| `session` | the chat: 16 hex, or `"main"`; missing means `main`. An id the computer hasn't seen makes that chat (titled from this message). Anything else: 400. |
+| `text` | at most 4000 characters; may be empty when `file` is given |
+| `reply` | the id of any message (yours or Kurooto's) this one replies to. Its text (200 characters) goes to the AI as context; if it's a feature's message that takes replies (a reminder, a check-in), it goes to that feature instead, as on Telegram |
+| `to` | the 0.5.16 name for `reply`; same handling |
+| `file` | `{"fid", "name", "mime", "size"}`: a file already sent with `POST /upload?…&id=<fid>&chat=<session>` (below). 404 `{"ok": false, "note"}` if it never arrived; 403 with `chat_files_inline` off |
+| `voice` | `true`: `file` is a voice note; with Voice notes on it's transcribed and "Heard: …" is said first, else the chat says Voice notes is off |
+
+Answer (as before): `200 {"ok": true, "id", "said": [message…]}`; offline `200 {"ok": true, "queued": true, "note"}`.
+While an AI request it started runs, the chat gets `status` working, then idle.
+
+**Files from the phone.** Upload first, the way Share does: `POST /upload?name=&note=&id=<fid>&part=&parts=&chat=<session>`
+(`fid`: up to 40 of `[A-Za-z0-9_-]`, made by the phone). With `chat` the computer saves it to the inbox, records it in
+`<state>/calls/shared.json` with `fid` and `session`, starts no filing job, and answers `{"ok": true, "saved", "fid"}`.
+Offline it waits in the outbox like any upload, and the chat message after it waits behind it, so order holds. The
+message then names it in `file`; the AI gets the path, and the session's later requests that talk of a file list the
+files sent in that session (main lists main's, last 2 hours, as before).
+
+An **op** (instead of `text`): `"op": "<name>"` and `"args": {…}`. Arguments may also sit beside `op` at the top
+level, except `id` (that's the message's own), so `module` and `note.get` need `args`. Answers are JSON over HTTP;
+a refusal is `{"ok": false, "op", "note"}` with 400 (bad), 403 (not allowed / off), 404 (no such message), 409.
+
+| op | args | answer |
+|---|---|---|
+| `session.new` | `session` (16 hex, made by the phone), `title`? | `{"ok", "op", "session", "note", "sessions": [row…]}`; again with the same id: ok, the same chat |
+| `session.rename` | `session`, `title` (≤ 80) | same; `main` can't be renamed |
+| `session.delete` | `session` | same; `main` can't be deleted. The chat's AI context and its messages here and on the line go; files sent in it stay where they were saved |
+| `session.pin` | `session`, `on` | same |
+| `read` | `session`, `upto` (a message id) | same; the list goes to the line quietly (no notification) |
+| `sync` | — | `{"ok", "op", "kind": "sessions", "srev", "sessions", "commands", "switches"}`, and the line gets the list too |
+| `msg.edit` | `target`, `text` | `{"ok", "op", "msg": message}`; yours only, within 15 minutes, not deleted. The AI isn't asked again |
+| `msg.delete` | `target` | `{"ok", "op", "msg"}`: yours only; text emptied, `file`, `quote`, `buttons` dropped, `deleted: true`. Kurooto's: delete it on the phone alone |
+| `msg.pin` | `target`, `on` | `{"ok", "op", "msg"}` with `pinned`; any message |
+| `settings.set` | `key`, `value` | sealed (below): `{"ok", "op", "key", "value", "note"}` |
+| `module` | `id`, `on` | sealed: `{"ok", "op", "id", "on", "note"}` |
+| `note.get` | `id` (a note's path in the notes folder without `.md`) | sealed: `{"ok", "op", "id", "text", "mtime"}` (front matter cut, 4000 characters, as `GET /api/note`) or `{"ok": false, "op", "id", "note"}` |
+
+**The being's requests** (`settings.set`, `module`, `note.get`): only from the paired Android app (a `k1` body;
+plain: 403), only now. Send them with the outer, unsealed `"live": true`: the Worker relays them even when the outbox
+holds things, and with the computer off answers at once `503 {"ok": false, "offline": true, "note": "Your computer
+is off, try again when it's on."}` instead of keeping them. One that still came from the outbox (an app that left out
+`live`) is refused with 409 and `OFF_NOW`, never done late. They go through the dashboard's own handlers (`web/api.py`:
+`POST /api/settings` → `_set`, `modules/enable`, `modules/disable`, `GET /api/note`), so the same checks apply ("not a
+setting you can change here", "notify.app_chat takes a bool"...). One extra rule: `module` can't turn `calls` off from
+the phone (it's what connects it). The answer is `200 {"ok", "op", "s1"}`, sealed for the phone that asked with the
+key it gave the line (`Seal.java` opens it; the line can't), or `{"ok", "op", "k1"}` with the chat's key when that
+phone gave none. Open it for the fields above.
+
+### Computer → phone
+
+A **chat message** (in `POST /chat`'s `said`, `GET /chat`, and the pushes) is the 0.5.16 one plus:
+
+| Field | |
+|---|---|
+| `session` | always (`"main"` for Kurooto's own messages and everything from before 0.8.10) |
+| `quote` | `{"id", "from", "text"}` (first 200 characters) on a message that replies to another: yours with `reply`/`to`. Kurooto's answers carry `re` (the message they answer), not `quote` |
+| `file` | Kurooto's: `{"name", "size", "mime", "url"}`, `url` the sealed call-line link (`<line>/file#i=<fid>&k=<key>&n=<name>`, line.py f1): fetch `/sealed/<i>`, open with the key from the fragment (AES-256-GCM, `nonce ‖ ciphertext+tag`). The message keeps its Open button with the same `url` for older apps: hide a button whose `url` equals `file.url`. Yours: `{"name", "size", "mime"}` (no url: the phone has it) |
+| `edited`, `deleted` | `true` once changed |
+| `pinned` | `true`/`false` once pinned or unpinned |
+
+Answers go to the chat of the message they answer (`reply_to "app:<id>"`); an answer for a chat deleted meanwhile
+lands in `main`. Kurooto's own messages (`notify`) go to `main`.
+
+**`kind: "status"`**: `{"kind": "status", "session", "state": "working"|"idle", "job"}`. Not kept, never through ntfy:
+only to Android phones connected straight to the line (a `{k1}` frame without `seq`; sealed fields also have `title:
+"stop"`, `tags: ["stop", "status"]`), and as `status` in `GET /chat?sessions=1` (`{<session>: {"state", "job"}}`, working
+ones only, forgotten after 3 hours). Working is sent when a message started an AI request, idle when it ended
+(`job_done`, `job_ended`, `job_cancelled`).
+
+**`kind: "sessions"`**: `{"kind": "sessions", "srev", "sessions": [{"id", "title", "created", "updated", "pinned",
+"last", "read"}], "commands": [{"name", "help"}], "switches"}`. `main` first, then pinned, then latest. `commands` are
+Telegram's "/" menu (`/help`, each feature's commands that's on, the core ones, skills), at most 100. Sent to the line
+after every session change (`chat-sessions`); the line pushes `{"kind": "sessions", "srev", "sessions"?, "tags":
+["stop", "sessions"]}` (the list inline when it's small; never `commands`: fetch `GET /chat?sessions=1`). A `read`
+change goes only to the phones connected straight to the line. The line updates `last` and `updated` itself with each
+message, so the computer doesn't push the list per message. Titles: the first message's first 6 words (40
+characters; a file's name when there are none); with `calls.chat_titles` = `"ai"`, after the first answer a quiet,
+text-only, low-effort request writes one (`then` action `calls.chat_title`). A title you set (`session.new` with
+`title`, `session.rename`) is never replaced.
+
+**Changes** (`msg.*`): the line changes the message in place and gives it a new `seq`; it goes only to phones
+connected straight to the line, tagged `["stop", "chat-update"]` (older apps ignore it); the others see it on their
+next `GET /chat?…&after=<seq>`. Merge by `id`.
+
+### Call line
+
+`GET /chat?after=<seq>&sessions=1` → `{"seq", "msgs": [every chat's messages with seq > after, in seq order],
+"sessions", "commands", "switches", "srev", "status", "waiting", "done", "computer", "assistant"}`. Without
+`sessions=1`: `main` only, as 0.5.16 (older apps). One `seq` counts across all chats.
+
+Storage: `chat` (`{seq, msgs}`: main's messages and the shared seq), `chat:<id>` (`{msgs}` of each other chat),
+`chatIdx` (the chats with a log), `chatSessions` (`{rev, sessions, commands, switches}`). Each chat keeps its last
+50 messages, each at most 3 days; the list stays until the chat is deleted (a chat missing from a pushed list loses
+its log). Admin ops: `chat-say {msg, assistant, update}` (`update`: change the one with that id, or add it if it
+isn't there), `chat-sessions {rev, sessions, commands, switches, quiet}`, `chat-status {session, state, job}`.
+
+### On the computer
+
+`<state>/calls/sessions.json` (`Sessions`): `{rev, sessions: {id: {id, title, created, updated, pinned, last, read,
+named}}}`, at most 100 chats; `named`: `fixed` (main), `you`, `words`, `ai`. `<state>/calls/chat.json` keeps the last
+100 messages of each chat (7 days) for buttons, replies and changes. `modules/chat.py`: `main` and Telegram share
+`chat/history.json` (6 turns from the last 2 hours, as before); each other chat has `chat/sessions/<id>.json` (40
+turns, each side 4000 characters), and its newest turns up to 16 000 characters go with every request, however old.
+`chat/session-jobs.json` remembers which chat a request was asked in, so its answer becomes that chat's turn after a
+restart too (`core/jobs.py` passes `jid` to `record_turn`). `/new` in a chat starts that chat over. Retention
+(`privacy.keep_days`, `/forget`) and gists cover the sessions' turns (`modules/chat.py:history_files`).
+`Incoming` has `session` and `quote` for this.
+
 ## Today and the phone's own alarm (0.6.0)
 
 **The list.** `modules/calls/today.py:PhoneToday.snapshot()` builds it from `core/actions.py:today` (the dashboard's
@@ -890,7 +1023,8 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
 - `tests/integration/` runs the real Worker under `wrangler dev` with fakes for Google, ntfy and Web Push
   (`tests/fakes/cloud.py:FakeCloud`) and the real `Connector`: `test_call_line.py` (auth, pairing, tokens, tool relay,
   ringing with VAPID signature checks, uploads, transcripts, the offline queue and cron), `test_lidsafe_line.py`,
-  `test_livefallback_line.py`, `test_phone_line.py`, `test_phone_chat_line.py` (the chat and the phone outbox),
+  `test_livefallback_line.py`, `test_phone_line.py`, `test_phone_chat_line.py` (the chat and the phone outbox), `test_chat_sessions_line.py` (0.8.10: each chat kept
+  on the line, the list, changes, status, deleted chats, `live`),
   `test_presence_line.py`, `test_rotate_line.py`, `test_phone_today_line.py` (Today sealed per phone, kept while the
   computer is away, Done from the outbox, off), `test_shortcut_line.py` (Tell Kurooto links: made, scoped, revoked,
   ended by unpairing, queued offline; and `/upcoming`), `test_phone_direct_line.py` (the app's own connection: who may connect, messages down it and not on
@@ -898,7 +1032,8 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   closes it), `test_phone_views_line.py` (the notes map sealed per phone and
   kept while the computer is away, watching Systems, parts in order and the newest only, off). `test_phone_chat_line.py` also covers a sealed file put and
   fetched. They need Node; CI's `call-line` job installs the Worker's packages and bundles the page first.
-- Unit: `tests/unit/test_calls.py`, `test_phone.py`, `test_phone_chat.py`, `test_phone_cards.py`,
+- Unit: `tests/unit/test_calls.py`, `test_phone.py`, `test_phone_chat.py`, `test_chat_sessions.py` (0.8.10: sessions and their context, replies, files,
+  changes, the being's requests and refusals, old-format messages), `test_phone_cards.py`,
   `test_place_reminders.py`, `test_phone_direct.py` (`send_phones` through `/send` and its ntfy fallback, `_ring_fallback` with
   `phones`, `connected` on the Phone tab), `test_phone_today.py` (the Today list, its hand-over, Done / +1, reminder and deadline
   buttons), `test_views.py` (the views' copies, sealing, parts, watching, off; the shared drawing code against

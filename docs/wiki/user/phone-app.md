@@ -446,6 +446,29 @@ line>/talk`). It works like the Android chat: buttons, **Reply**, and "Waiting f
 notification for a chat message opens the chat. The page keeps its own copy of the chat in the browser and looks for
 new messages every few seconds while it's open.
 
+**Separate chats (0.8.10).** Besides the chat with Kurooto itself (always there, first in the list, where its
+reminders and results land), you can start as many chats as you like, as in an AI chat app: each is its own
+conversation with your AI and remembers everything said in it for as long as it exists (Kurooto's own chat and
+Telegram keep the old short memory: the last few turns from the last two hours). A new chat is named after the first
+words you write in it; set `calls.chat_titles` to `ai` (Dashboard → Settings → calls) to have your AI give it a short
+title after its first answer. Rename, pin or delete a chat by long-pressing it; deleting it forgets what was said in
+it (files you sent in it stay in your notes' inbox). `/new` in a chat starts just that chat over. Typing `/` lists
+the commands, the same ones as Telegram's menu. While your AI works on something for a chat, it says
+"Kurooto is working…".
+
+**Replies, edits and pins.** Swipe a message right (or long-press → Reply) to reply to it: your AI gets the message
+you replied to along with yours, so "why the second one?" makes sense. A reply to a reminder or a check-in still
+answers it, as before. Long-press one of your messages to edit it (for 15 minutes; Kurooto isn't asked again) or delete
+it everywhere; pin any message to keep it at the top of the chat.
+
+**Files both ways.** Attach a photo, a file or a voice note to a message: it goes up to your computer first (into
+your notes' inbox), then the message names it, so "what's in this?" works in the chat you sent it in. A voice note is
+written out when Voice notes is on. Files from your computer show in the chat itself (a photo as a picture, other files
+as a card you can open), see [Files from your computer](#files-from-your-computer).
+
+**Turn these off:** Dashboard → Settings → calls: `chat_sessions` (one chat again; your chats come back when you turn
+it on), `chat_files_inline`, `chat_edit`. Each stops at once and leaves the rest of the chat as it was.
+
 **Kurooto's own messages in the chat.** With `notify.app_chat` on (Dashboard → Settings → notify), reminders,
 results and other messages also show in the chat, besides Telegram. Without Telegram they always do. Questions and
 approvals stay under **Waiting for you**, with their answer buttons.
@@ -485,14 +508,16 @@ Kurooto's own messages only with `notify.app_chat` on.
 
 ## Files from your computer
 
-The chat doesn't carry files, so where Telegram would get a document, the chat gets a button that opens a link:
+Where Telegram would get a document, the chat gets the file (0.8.10: the app shows it in place and opens it itself;
+older app versions get a button that opens a link):
 
 1. **Google Drive**, with [Drive upload](google.md) on: the file goes to the Kurooto folder in your Drive and **Open
    in Drive** opens it. It's deleted from your Drive after `drive_upload.temp_days` (7) days; move it out of the folder
    to keep it.
-2. Otherwise **your call line** keeps a sealed copy for a day (files up to 10 MB). **Open** shows it in the phone's
-   browser, with **Save** (and the text itself for a text file). The key that opens it is made on your computer and is
-   only in the link, never stored on its own; after a day the copy is deleted and the link says "This file is gone".
+2. Otherwise **your call line** keeps a sealed copy for a day (files up to 10 MB). The app downloads and opens it
+   itself; with `calls.chat_files_inline` off, or in an older app, **Open** shows it in the phone's browser, with
+   **Save** (and the text itself for a text file). The key that opens it is made on your computer and is only in the
+   link, never stored on its own; after a day the copy is deleted and the link says "This file is gone".
 3. If neither works (the call line isn't connected, or the file is bigger), the chat says the file stays on your
    computer, with its path.
 
@@ -598,7 +623,12 @@ There's no undo: the old keys are gone. A phone you don't pair again can't call 
 - The chat: what you type goes from the phone through your call line to your computer, sealed on Android with the key
   your phones, your computer and your call line hold, and over an encrypted connection from an iPhone. Kurooto's
   answers go back like questions do. Your call line keeps the chat's last 50 messages, each for at most 3 days, so a
-  phone can catch up while the computer is off.
+  phone can catch up while the computer is off. With separate chats (0.8.10) it keeps the last 50 of each chat, and
+  the list of your chats (each one's name, its last line and when it changed) with the list of commands, until you
+  delete the chat. "Kurooto is working…" goes only to a phone connected to your call line and isn't kept.
+- The Views tab's being (0.8.10): changing a setting, turning a feature on or off and reading a note's text go from
+  the Android app to your computer sealed, and only while the computer is on (nothing waits on the call line). The
+  answer, a note's text included, comes back sealed for that phone alone, so your call line can't read it.
 - Files you share and quick notes go from the phone through your call line to your computer.
 - The 2x1 widget asks your call line what's waiting (as the app's Inbox tab does); nothing else leaves the phone for
   the widgets or the tile.

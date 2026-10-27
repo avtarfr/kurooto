@@ -40,6 +40,7 @@ from kurooto.modules.calls.chat import PhoneChat
 from kurooto.modules.calls.connector import Connector
 from kurooto.modules.calls.fallback import LiveHealth, TextCall, VoiceTurns, live_profile
 from kurooto.modules.calls.phone import PhoneApp
+from kurooto.modules.calls.sessions import MAIN, Sessions
 from kurooto.modules.calls.today import PhoneToday
 from kurooto.modules.calls.tools import Tool, arg, clip, keyword_search, notes_index, read_note
 from kurooto.modules.calls.views import PhoneViews
@@ -78,6 +79,11 @@ register_defaults(
         "views": False,  # Systems and the Notes map on the Android app (notes' titles, features' health; views.py)
         "views_notes": 5000,  # most notes on the phone's Notes map (best linked first); lower it on a slow phone
         "views_links": 20000,  # the most links on it (a book's "Seen in" links go first)
+        # the phone app's chat (0.8.10; chat.py, sessions.py): each part on until you turn it off, unseen until used
+        "chat_sessions": True,  # separate chats in the phone app, each its own AI conversation that keeps its context
+        "chat_files_inline": True,  # files in the phone app's chat both ways, shown in place (photos, documents, audio)
+        "chat_edit": True,  # edit (15 minutes), delete and pin your messages in the phone app's chat
+        "chat_titles": "first words",  # a new chat's name: "first words" of its first message, or "ai" (a short title)
     },
 )
 
@@ -142,7 +148,9 @@ class Calls(Module):
         self.connector = Connector(self)
         self.finished: dict[str, dict] = {}  # call tasks done but not yet told on the call
         self.phone = PhoneApp(self)  # messages to the phone app, and the answers that come back
+        self.sessions = Sessions(self)  # the phone app's separate chats (sessions.py)
         self.chat = PhoneChat(self)  # the phone app as a chat, beside Telegram (chat.py)
+        self._unsub_chat = None
         self.today = PhoneToday(self)  # the app's Today screen and its copy of the alarm (today.py)
         self._unsub_today = None
         self.views = PhoneViews(self)  # Systems and the Notes map on the app (views.py, calls.views)
@@ -250,6 +258,11 @@ class Calls(Module):
         )
         self.app.notifier.register("app", self.phone.send, self.phone.retract)  # questions etc. (phone.py)
         self.app.notifier.register("chat", self.chat.send)  # answers to what you typed in the app (chat.py)
+        self.app.jobs.then_actions["calls.chat_title"] = self.sessions.titled  # calls.chat_titles = "ai"
+        if self._unsub_chat is None:  # an AI request for a chat ended: "idle" (chat.py)
+            from kurooto.core.events import subscribe
+
+            self._unsub_chat = subscribe(self.chat.on_event)
         if self._unsub_today is None:  # what the Today list shows changed: the phones get it soon (today.py)
             from kurooto.core.events import subscribe
 
@@ -274,6 +287,9 @@ class Calls(Module):
         if self._unsub_today is not None:
             self._unsub_today()
             self._unsub_today = None
+        if self._unsub_chat is not None:
+            self._unsub_chat()
+            self._unsub_chat = None
         if self._unsub_views is not None:
             self._unsub_views()
             self._unsub_views = None
@@ -1179,8 +1195,8 @@ class Calls(Module):
                 if status == 200 and out.get("note"):
                     self.app.notify(f"Your answer from the phone: {out['note']}", kind="info", why="asked")
                 return status, str(out.get("note") or "")
-            elif kind == "chat":  # typed in the app's chat (chat.py)
-                status, out = self.chat.take(it.get("body") or {})
+            elif kind == "chat":  # typed in the app's chat (chat.py); the being's requests aren't done late
+                status, out = self.chat.take(it.get("body") or {}, queued=True)
                 return status, str(out.get("note") or "")
             elif kind == "upload":  # a part of a file shared from the phone
                 q = urllib.parse.parse_qs(urllib.parse.urlsplit(str(it.get("search") or "")).query)
@@ -1303,6 +1319,11 @@ class Calls(Module):
             tmp.replace(dest)
         rel = layout.shown(self.app, dest)
         self.app.events.emit("files_shared", via="phone", bytes=dest.stat().st_size)
+        chat = (q.get("chat") or [""])[0]  # sent into a chat (0.8.10): saved, then a chat message names it (its fid)
+        if chat and self.setting("chat_files_inline"):
+            fid = uid or uuid.uuid4().hex[:16]
+            self.chat.shared(dest, note, fid=fid, session=self.sessions.norm(chat) or MAIN)
+            return 200, {"ok": True, "saved": rel, "fid": fid}
         self.chat.shared(dest, note)  # "summarise the PDF I just sent" finds it (chat.py, modules/chat.py)
         from kurooto.modules import photodates  # a photo shared with "dates" as its note: its dates as buttons
 

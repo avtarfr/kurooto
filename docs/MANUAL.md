@@ -1917,6 +1917,15 @@ with working buttons. Where Telegram is blocked, also turn on `notify.app_chat` 
 messages (reminders, results, info) then show in the chat too; questions and approvals stay under Waiting for you.
 *Undo:* `notify.app_chat` back to `false`; the chat itself is only there when you use it.
 
+**Chats, replies, files and edits (0.8.10).** Besides Kurooto's own chat, start separate chats: each keeps its whole
+conversation with your AI for as long as it exists (Kurooto's own chat and Telegram keep the last few turns from two
+hours). A chat is named from its first words (`calls.chat_titles` = `ai`: your AI names it). A reply brings the
+quoted message to your AI; files go both ways and show in the chat; your messages can be edited for 15 minutes or
+deleted, any message pinned; "Kurooto is working…" shows while your AI answers. From the Views tab's being, settings,
+features and notes are changed and read through the same checks as the dashboard, only while the computer is on.
+*Undo:* Settings → calls → `chat_sessions`, `chat_files_inline`, `chat_edit` to `false` (each stops at once; your
+chats come back when it's on again); delete a chat to forget what was said in it.
+
 **When the computer is off:** chat messages, button taps, answers and files you share from a paired phone wait on your
 call line (at most 100 things and 20 MB of files) and reach the computer when it's back, in order, each once. The app
 shows "Waiting for your computer" until then, and says "Reached your computer" for an answer or a file.

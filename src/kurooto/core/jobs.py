@@ -1097,7 +1097,7 @@ class Jobs:
         chat = self.app.modules.get("chat")
         if chat is not None and result.ok and result.text and getattr(chat, "owns", lambda _j: True)(job.id):
             try:  # only chat's own requests: a digest's or a research run's prompt isn't something you said
-                chat.record_turn(job.prompt, result.text)
+                chat.record_turn(job.prompt, result.text, jid=job.id)  # a phone app chat keeps its own
             except Exception:
                 pass
 
