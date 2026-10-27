@@ -201,8 +201,7 @@ fun ChatRail(cu: ChatUi, modifier: Modifier) {
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 itemsIndexed(shown, key = { _, s -> s.id }, contentType = { _, _ -> "avatar" }) { i, s ->
-                    // paneStagger(i) from Nav.kt goes here at merge (the avatars leave with a 20 ms stagger)
-                    RailItem(cu, s, s.id == current)
+                    Box(Modifier.paneStagger(i)) { RailItem(cu, s, s.id == current) } // they leave with a 20 ms stagger
                 }
             }
             // one navigation at a time: the drawer shows its own (a row) once it's more than half open

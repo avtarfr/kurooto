@@ -65,7 +65,8 @@ def test_features_start_off():
 
 def test_the_phone_apps_switches():
     prefs = (ROOT / "android" / "src" / "io" / "github" / "avtarfr" / "kurooto" / "Prefs.java").read_text()
-    tab = (ROOT / "android" / "src" / "io" / "github" / "avtarfr" / "kurooto" / "PhoneTab.kt").read_text()
+    # every phone switch lives in Settings (0.8.10: SettingsPane.kt; the Phone tab before)
+    tab = (ROOT / "android" / "src" / "io" / "github" / "avtarfr" / "kurooto" / "SettingsPane.kt").read_text()
     for pref, label in (
         ("direct", "Connect straight to your call line"),
         ("moving", "Moving background"),

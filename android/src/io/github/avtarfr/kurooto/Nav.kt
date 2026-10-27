@@ -138,12 +138,12 @@ private fun RailNav(
     val vivid = Prefs.vivid(a)
     Column(
         modifier.capsule().clip(CircleShape).background(if (vivid) cs.primaryContainer else cs.surfaceContainerHigh)
-            .padding(vertical = 6.dp).width(RAIL_W),
+            .padding(vertical = 6.dp).width(NAV_RAIL_W),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Pane.entries.forEach { p ->
             val on = p == Pane.CHAT // this form only shows on Chat (also while it leaves, when ui.pane is already the next)
-            Box(Modifier.size(RAIL_W, 48.dp).navItem(p, on) { go(ui, p) }, contentAlignment = Alignment.Center) {
+            Box(Modifier.size(NAV_RAIL_W, 48.dp).navItem(p, on) { go(ui, p) }, contentAlignment = Alignment.Center) {
                 if (on) Box(Modifier.shared("knav-pill", 2f).size(44.dp, 36.dp).clip(CircleShape).background(cs.primary))
                 NavIcon(p, on, badge, Modifier.shared("knav-" + p.name, 3f), vivid)
             }
@@ -263,7 +263,7 @@ private fun go(ui: HomeState, p: Pane) {
 }
 
 /** The upright form's width (the rail's). */
-val RAIL_W: Dp = 56.dp
+val NAV_RAIL_W: Dp = 56.dp
 
 /**
  * For Chat's rail (app-chat): row `index` (0 at the top) of the rail slides out to the left when you leave Chat, 20 ms
