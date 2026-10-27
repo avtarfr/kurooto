@@ -234,6 +234,9 @@ class Server:
                     from urllib.parse import parse_qs
 
                     q = {k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()}
+                    if path == "/api/face/frame":  # Face presence's preview: made in memory, never kept (no-store)
+                        jpg = server.api.face_frame(q) if self._authed() else None
+                        return self._send(200, jpg, "image/jpeg") if jpg else self._send(404, {"error": "no session"})
                     code, out = server.api.get(path[5:], q)
                     return self._send(code, out)
                 return self._send(404, {"error": "not found"})

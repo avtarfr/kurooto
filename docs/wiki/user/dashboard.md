@@ -356,6 +356,7 @@ back to the board. In the roomy layout they're tabs under the panes.
 | Research | Alt+R | paper sources, the digest, project repositories |
 | About you | Alt+Y | your persona card and your profile, to read and edit |
 | Settings | Alt+S | every setting you can change here |
+| Face | Alt+E | Face presence: set up, enrol your face, the report, the live test, manage and forget ([Face presence](face.md)) |
 
 A link to `/#about` (what `/aboutme` on Telegram sends) opens the About you page directly; any page name works the
 same way (`/#settings`).
@@ -622,6 +623,7 @@ a page.
 | **Alt+R** | Research | |
 | **Alt+Y** | About you | |
 | **Alt+S** | Settings | |
+| **Alt+E** | Face (Face presence) | |
 | the same Alt key again | closes that page | dense layout |
 | **Esc** | closes the panes menu, then the open page, then gives back the panes when one fills the board | dense layout |
 | **Alt+M** | Study mode on or off | anywhere outside a terminal |

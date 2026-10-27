@@ -162,6 +162,12 @@ downloaded to your computer as separate programs, not part of Kurooto.
 
 All of them: [the settings guide](../../SETTINGS_GUIDE.md).
 
+## Greeting you at your desk
+
+With [Face presence](face.md) on, Kurooto can greet you through Voice when you sit down after a while, then open the
+conversation so you can answer without saying its name ("what's next?", "yes"). It opens it like after a reply, not like
+after its name alone, so people talking nearby close it instead of reaching your AI.
+
 ## What it can't do yet
 
 - It can't be interrupted while it speaks: it doesn't listen while speaking (so it doesn't hear itself). `/voice stop`

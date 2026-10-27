@@ -374,6 +374,40 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `exam_season.revision_days` | `14` | the revision plan starts this many days before each exam |
 | `exam_season.revision_share` | `50` | % of your free time (Start-by's, less commitments) revision blocks may take |
 
+### `face`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `face.away.after_min` | `5` | no sign of you (face or keyboard) this long = you've left (minutes) |
+| `face.away.hold_calls` | `false` | while you're away, calls Kurooto starts itself wait (at most hold_max_min) |
+| `face.away.hold_desktop` | `false` | while you're away, desktop pop-ups wait and answers aren't read aloud |
+| `face.away.hold_max_min` | `60` | the longest a call waits while you're away (minutes) |
+| `face.away.on` | `false` | notice when you leave the desk (events "left" and "back") |
+| `face.camera.device` | `""` | the camera: empty = the first ordinary one (infrared skipped); a number or part of its name |
+| `face.camera.height` | `480` | capture height asked of the camera |
+| `face.camera.width` | `640` | capture size asked of the camera (it may give another) |
+| `face.greet.after_absent_min` | `20` | only after you've been away at least this long (minutes) |
+| `face.greet.gap_min` | `60` | at most one greeting in this many minutes |
+| `face.greet.listen_s` | `12` | how long that conversation stays open with nothing said (seconds) |
+| `face.greet.on` | `true` | greet you by voice when you arrive (needs Voice speaking) |
+| `face.greet.per_day` | `3` | at most this many greetings a day |
+| `face.greet.say` | `["next", "waiting", "deadline"]` | what it says: next (today), waiting, deadline (24 h), held |
+| `face.greet.talk` | `true` | then open the conversation: answer without saying its name (needs Voice listening) |
+| `face.greet.with_others` | `"skip"` | someone else in view too: skip (no greeting), short ("Welcome back." only) or full |
+| `face.learn.every_h` | `6` | at most one new sample this often (hours) |
+| `face.learn.margin` | `0.08` | a frame must beat your threshold by this much to be learned from |
+| `face.learn.max` | `30` | at most this many learned samples (the oldest goes first); enrolled samples are never replaced |
+| `face.learn.on` | `false` | refine your template slowly from confident recognitions (never unsure ones), with Undo |
+| `face.recognise.frames` | `3` | recognised in this many of the last 4 frames = you're here |
+| `face.recognise.min_face_px` | `60` | faces smaller than this (pixels, at the capture size) are ignored: too far to judge |
+| `face.recognise.strictness` | `"normal"` | false accepts per frame: loose 1 in 100, normal 1 in 1,000, strict 1 in 10,000 |
+| `face.recognise.threshold` | `0.0` | 0 = the calibrated one; otherwise this cosine score (0 to 1) overrides it |
+| `face.watch.fps` | `1.0` | frames a second it looks at while watching for you (0.2 to 2) |
+| `face.watch.fps_battery` | `0.33` | frames a second on battery |
+| `face.watch.idle_s` | `60` | seconds with no keyboard or mouse before the camera looks (while you type, it doesn't) |
+| `face.watch.night` | `false` | also look during the night hours (availability.night); off: paused at night |
+| `face.watch.when_locked` | `false` | also look while the screen is locked (off: paused while locked) |
+
 ### `files`
 
 | Setting | Default | What it does |

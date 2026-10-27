@@ -124,6 +124,12 @@ Standing plans, never struck through.
   are ready in `addons/` with manifests, tests and READMEs, to add by link; 0.6.1: each published as its own
   repository and offered as an official add-on, pinned to its commit: Features → Official add-ons → Add,
   `/addons official`, `kurooto addons add <name>`)
+- ~~**Face presence: know my face and greet me at my desk** (asked 2026-10-27: "an OpenCV model that detects my face
+  and then uses that to identify me and greet me when I get on my desk and talk to me automatically"; "both should be
+  local"; "an entire enrolment and training process for my face").~~ (0.8.10: Face presence: OpenCV's YuNet and SFace
+  on this computer's processor, a guided enrolment page with a quality check per frame, honest training (centroids and
+  a threshold calibrated on held-out samples), a live test, learning with Undo, `/face forget`; a spoken greeting
+  through Calm's rules, then Voice's conversation; never a lock)
 
 ## Done
 - ~~**Set up from what it sees, not from settings**: one pass over chat and the journal creates projects with whoever

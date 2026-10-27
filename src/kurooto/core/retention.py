@@ -306,6 +306,9 @@ def command(app: App, arg: str) -> tuple[str, list | None]:
             "answered questions, cases, the words of messages I sent, the search index, your open threads and the "
             "logs? Your notes stay. This can't be undone."
         )
+        face = app.modules.get("face")
+        if face is not None and face.store.exists():
+            text = text.replace(" Your notes stay.", " Your face model (Face presence) goes too. Your notes stay.")
         asked = int(time.time())
         if gists.on(app) or gists.load(app):  # one line of what each decided (core/gists.py): keep those?
             text += " The gists (one line of what each call or request decided, /gists) can stay or go too."
@@ -341,6 +344,13 @@ def button(app: App, ref: str, act: str) -> str:
     if time.time() - asked > CONFIRM_S:
         return "That button has run out; send /forget all again."
     out = summary(forget(app, 0, gist=act == "all"))
+    face = app.modules.get("face")  # your face model too, if you enrolled one (modules/face: the key first)
+    if face is not None and face.store.exists():
+        try:
+            face.forget()
+            out = f"{out[:-1]}, and your face model." if out.startswith("Forgot") else f"{out} Your face model too."
+        except Exception as e:
+            app.events.emit("retention_failed", what="face", error=f"{type(e).__name__}"[:100])
     if act == "gists":
         n = gists.clear(app)
         if n:

@@ -203,6 +203,14 @@ class App:
         self.events.emit("module_disabled", module=module_id)
         return True, f"{m.title if m else module_id} is off"
 
+    def away_from_desk(self) -> bool:
+        """Face presence is on and says you've stepped away (face.away.on); False otherwise."""
+        m = self.modules.get("face")
+        try:
+            return bool(m is not None and self.is_on("face") and m.away_now())
+        except Exception:
+            return False
+
     def need_title(self, need: str, m: Module | None = None) -> str:
         """A requirement in words: "Telegram or the phone app (Phone calls)" when either does."""
         title = self.modules[need].title if need in self.modules else need
@@ -777,6 +785,10 @@ class App:
             from kurooto.modules import mind as brain
 
             return brain.button(self, ref, act)
+        if prefix == "fce":  # Forget / Delete my face data / Keep it (modules/face; it may be off by then)
+            from kurooto.modules import face
+
+            return face.button(self, ref, act)
         if prefix == "dof":  # Add / Add all / None under dates from a photo, a mail or a class calendar
             from kurooto.core import dateoffers
 

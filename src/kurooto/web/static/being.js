@@ -32,6 +32,7 @@ const KIND = {
   night_performance_on: "feel", night_performance_left: "feel", local_models_rest: "feel", helper_online: "feel", helper_offline: "feel",
   mind_gate_held: "conscience", mind_program: "conscience", study_timer: "attend", study_session_start: "attend", study_session_end: "attend",
   action: "act", setting_changed: "act",
+  face_arrived: "see", face_left: "see", face_watch: "see", face_greeted: "see",
 };
 const RETURNS = new Set(["job_done", "calendar_synced", "gbrain_sync", "notes_synced", "message_in", "profile_saved", "hw_pull", "phone_views_pushed"]);
 const EV_FEATURE = {
@@ -43,6 +44,7 @@ const EV_FEATURE = {
   local_models_rest: "local_models", helper_online: "local_models", helper_offline: "local_models", mind_gate_held: "mind",
   mind_program: "mind", study_timer: "study", study_session_start: "study", study_session_end: "study", deadline_added: "deadlines",
   deadline_done: "deadlines", reminder_fired: "reminders", integrate_batch: "integrate", sorter_moved: "sorter",
+  face_arrived: "face", face_left: "face", face_watch: "face", face_greeted: "face",
 };
 /* the brain's regions, each with the parts of Brain that live there (core/brainview.py ids) and the features homed there */
 const REGIONS = {
@@ -68,7 +70,7 @@ const HEART_PARTS = {
   coronaries: { name: "Coronaries", sub: "its upkeep: backups, updates, sync", at: [-.05, -.1, .45], sections: ["updates", "backups", "profile"], feats: ["backups", "restic", "profile", "repo_sync", "space"] },
 };
 const SENSES = {
-  sight: { name: "Sight", sub: "the screen, light, what you're working on", parts: ["activity"], feats: ["study", "research", "research_addon"], sections: ["study"] },
+  sight: { name: "Sight", sub: "the screen, light, what you're working on", parts: ["activity"], feats: ["study", "research", "research_addon", "face"], sections: ["study"] },
   hearing: { name: "Hearing", sub: "calls, voice, messages in", parts: [], feats: ["calls", "voice", "google", "google_mail", "google_confidential", "mailin", "mail_digest", "voice_notes"], sections: ["voice", "calls"], panel: "ear" },
   touch: { name: "Touch", sub: "your phone in your hand", parts: ["phone"], feats: ["lidsafe"], sections: [] },
   balance: { name: "Balance", sub: "your phone's motion and steps", parts: ["phone"], feats: ["campus", "awake"], sections: [] },
@@ -371,7 +373,7 @@ window.beingMount = async function (host, opts) {
     for (const [k, o] of Object.entries(O)) { const px = new THREE.Mesh(new THREE.SphereGeometry(sizes[k], 12, 8), new THREE.MeshBasicMaterial({ visible: false })); px.userData.pick = { organ: "senses", part: k }; o.add(px); }
     ticks.push((t, dt) => {
       rings[0].rotation.y += dt * .3; rings[1].rotation.x += dt * .22; const mot = Math.min(1, (SENSE.motion || 0) / 15), scr = Math.min(1, (SENSE.screen || 0) / 15);
-      for (const e of eyes) { const u = e.userData; if (Math.abs(t - (hit.sight ?? -9)) < .02 || rnd() < .002) u.blink = t; const bk = Math.max(0, 1 - Math.abs(t - u.blink) / .12); u.set(Math.max(.05, (OPEN.senses ? 1 : .82) - bk)); e.lookAt(cam.position); u.ball.material.uniforms.dil.value = SENSE.light == null ? .32 : [.42, .32, .2][Math.min(2, Math.max(0, SENSE.light | 0))]; }
+      for (const e of eyes) { const u = e.userData; if (Math.abs(t - (hit.sight ?? -9)) < .02 || rnd() < .002) u.blink = t; const bk = Math.max(0, 1 - Math.abs(t - u.blink) / .12); u.set(Math.max(.05, (OPEN.senses ? 1 : .82) - bk)); e.lookAt(cam.position); u.ball.material.uniforms.dil.value = (SENSE.light == null ? .32 : [.42, .32, .2][Math.min(2, Math.max(0, SENSE.light | 0))]) + (SENSE.face ? .06 : 0); }
       senses.level = (senses.level || 0) * Math.exp(-dt * 3); const hh = Math.max(Math.min(1, senses.level * 1.5), 1 - (t - (hit.hearing ?? -9)) / 1.2); for (let i = 0; i < hcN; i++) hca[i] = .15 + hh * Math.max(0, Math.sin(i / hcN * 30 - t * 14)); hcg.attributes.a.needsUpdate = true; cm.uniforms.k.value = hh;
       const th = Math.max(scr * .5, 1 - (t - (hit.touch ?? -9)) / 1.4); for (let i = 0; i < cil.length; i++) { const [x, z, ph] = cil[i], bend = .05 * Math.sin(t * 2 + ph * 6) + th * .18 * Math.sin(t * 9 - Math.hypot(x, z) * 20); cpos.set([x, 0, z, x + bend, .22 + ph * .08, z + bend * .4], i * 6); tipP.set([x + bend, .22 + ph * .08, z + bend * .4], i * 3); }
       tipA.fill(.04 + th * .7); cgeo.attributes.position.needsUpdate = tipG.attributes.position.needsUpdate = tipG.attributes.a.needsUpdate = true;
@@ -744,9 +746,11 @@ window.beingMount = async function (host, opts) {
       if (k === "memory") { FLOW.push([PATHS.memory.cu, t, 1.1, col, 0], [PATHS.memory.cu, t + 1.2, 1.1, ven, 1], [NERVES.memory, t + .2, .5, col, 1], [NERVES.memory, t + .9, .5, col, 0]); if (memory.a) { const n = memory.a.length, c = (rnd() * n) | 0; for (let i = 0; i < 28; i++) fires.push([(c + ((gauss() * 30) | 0) + n * 4) % n, t + rnd() * .35]); } }
       if (k === "hear" || k === "touch") { FLOW.push([NERVES.senses, t, .5, col, 0], [PATHS.senses.cu, t + .4, 1, ven, 1]); senses.hit[k === "hear" ? "hearing" : "touch"] = t; }
       if (k === "feel") { FLOW.push([PATHS.s_heat.cu, t, 1, col, 0]); senses.hit.heat = t; }
-      if (k === "attend" || k === "act") senses.hit.sight = t;
+      if (k === "attend" || k === "act" || k === "see") senses.hit.sight = t;
+      if (k === "see") FLOW.push([NERVES.senses, t, .5, col, 0], [PATHS.senses.cu, t + .4, 1, ven, 1]); // Face presence: sight's nerve
       if (e.kind === "job_done") FLOW.push([PATHS.mind.cu, t + .2, 1.1, ven, 1], [NERVES.heart, t, .45, col, 1]);
     }
+    if (e.kind === "face_watch") SENSE.face = !!e.on; // the camera open: the eye's pupil a little wider
     if (e.kind === "senses_phone" && e.sensor) SENSE[String(e.sensor).replace("phone:", "")] = e.value;
     const id = EV_FEATURE[e.kind], o = id && ORG[id];
     if (o) { o.flash = t; const w = o.g.getWorldPosition(V(0, 0, 0)), mid = HEART_C.clone().lerp(w, .5).add(V(gauss() * .3, .3, .2)), cv = new THREE.CatmullRomCurve3([HEART_C.clone(), mid, w]); FLOW.push([cv, t, .9, new THREE.Color(o.col), 0]); if (RETURNS.has(e.kind)) FLOW.push([cv, t + 1.1, .9, new THREE.Color(o.col).multiplyScalar(.55), 1]); }

@@ -32,6 +32,7 @@ CORE |= {"lh", "dof"}  # the offline helper's question; dates offered with a but
 CORE |= {"oad"}  # an official add-on's Add / Update and the answer to its card (core/official.py)
 CORE |= {"rpo"}  # Set it up / Not now under "set up my project from <repository>" (core/repoproject.py)
 CORE |= {"prop"}  # Apply / Change / Discard / Undo under a proposal (core/proposals.py)
+CORE |= {"fce"}  # Forget / Delete my face data / Keep it (modules/face: a core button, the feature may be off by then)
 NOT_BUTTONS = {
     "model",  # voice/parts.py: part keys ("model:vad"), not buttons
     "attention",  # scorekeeper table keys and the senses' daily total keys, not buttons

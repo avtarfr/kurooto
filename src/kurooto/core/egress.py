@@ -71,6 +71,7 @@ HOSTS = {  # host (".domain": any host under it) -> what reaches it; docs/PRIVAC
     "api.github.com": "Notes sync and Profile sync; gh reading a project's issues (Projects from repositories)",
     "github.com": "Notes sync; Projects from repos (git); downloading Git, Tectonic, kitty, fish; Voice's models",
     "huggingface.co": "Voice: downloading the speech-to-text model and the Piper voice",
+    "media.githubusercontent.com": "Face presence: downloading its two models (OpenCV's model zoo)",
     "api.cloudflare.com": "Phone calls: setting up your call line",
     ".workers.dev": "Phone calls: your call line",
     "ntfy.sh": "Phone calls: ringing your phone",

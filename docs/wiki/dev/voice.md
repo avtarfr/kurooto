@@ -18,6 +18,23 @@ with listening a second switch. User page: [../user/voice.md](../user/voice.md).
 | `modules/voice/shape.py` | the waveform outline: `estimate()`, `from_pcm()`, `levels()`, `clean()`, `sentences()` |
 | `tests/unit/test_voice.py` | everything above with fakes (no device, no model) |
 
+## Used by Face presence (0.8.10)
+
+- `Voice.greet(text, listen_s, talk=True) -> (spoken, "talk" | why)`: publishes `voice_text`, speaks (waiting), then,
+  with `talk`, listening on and not `blocked()`, calls `Portal.invite(text, listen_s)`. `(False, why)` when Voice is
+  off, muted or has no speech engine.
+- `Portal.invite(text, hold_s)`: opens the portal with `awaiting = False` (gate rule 5 would take any speech, including
+  what's said to someone nearby), `last = spoke_at = now`, `last_reply = text`, and `close_s = hold_s` until it closes
+  (then the earlier value is put back). Rules 7 and 8 and the local model decide what's addressed; anything else closes
+  it.
+- `Parts(root, app_dir, packages=None, table=None, models_dir=None, feature="Voice")`: Face presence passes its own
+  packages, model table, models folder and name and shares `root` (one `py-X.Y`, one numpy). `ModelFile.sha256` is
+  checked after a download when set (a mismatch deletes the `.part`); `Parts.install_from(folder, keys, progress)`
+  copies matching model files and installs wheels with `--no-index --find-links`. Voice's own behaviour is unchanged.
+- `_job_done` doesn't read an answer aloud while `app.away_from_desk()` with `face.away.hold_desktop` on.
+
+Details: [face.md](face.md).
+
 ## The flow
 
 ```

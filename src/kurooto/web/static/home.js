@@ -49,7 +49,7 @@ const denseFits = () => WANT() === "dense" && window.innerWidth >= 1280 && windo
 // browsers. The pages (activity … settings) open over the whole board, Alt and the underlined letter opens one, and
 // Esc goes back. Roomy (narrow windows) shows every pane, with the pages in its tabs.
 const PANES = { status: "#pane-status", systems: "#pane-systems", brain: "#pane-brain", notes: "#pane-vault", terminal: "#pane-tabs" };
-const PKEY = { brain: "b", today: "t", activity: "a", jobs: "j", schedule: "c", features: "f", phone: "p", research: "r", about: "y", settings: "s" };
+const PKEY = { brain: "b", today: "t", activity: "a", jobs: "j", schedule: "c", features: "f", phone: "p", research: "r", about: "y", settings: "s", face: "e" };
 let HIDE = new Set(), MAX = null, PAGE = null; // hidden panes, the pane filling the board, the page over the board
 let STUDY = false; // Study mode: the NOTES map and the STUDY pane only (look.study_mode); HIDE and MAX wait untouched
 let HIDDEN_F = new Set(); // features taken off the Features page (look.hidden_features; only ones that are off)
@@ -788,8 +788,8 @@ function renderBoard(m) {
 
 const feed = [];
 const SEEN = new WeakMap(); // when each live event arrived (fresh ones are bright in SYSTEMS)
-const TABS = { brain: "Brain", today: "Today", activity: "Activity", jobs: "AI jobs", schedule: "Schedule", features: "Features", phone: "Phone", research: "Research", about: "About you", settings: "Settings" };
-const DLABEL = { brain: "brain", today: "today", activity: "activity", jobs: "jobs", schedule: "schedule", features: "features", phone: "phone", research: "research", about: "you", settings: "settings" };
+const TABS = { brain: "Brain", today: "Today", activity: "Activity", jobs: "AI jobs", schedule: "Schedule", features: "Features", phone: "Phone", research: "Research", about: "About you", settings: "Settings", face: "Face" };
+const DLABEL = { brain: "brain", today: "today", activity: "activity", jobs: "jobs", schedule: "schedule", features: "features", phone: "phone", research: "research", about: "you", settings: "settings", face: "face" };
 let tab = "activity"; // roomy: the tab below the panes
 let dtab = "kurooto"; // dense: the terminal pane shows "kurooto" (the chat) or a terminal; the pages open over the board
 const current = () => (DENSE ? PAGE || dtab : tab);
@@ -859,6 +859,12 @@ function renderPage(name, body) {
   else if (name === "settings") renderSettings(body);
   else if (name === "terminals") renderTerminals(body);
   else if (name === "brain") renderBrain(body);
+  else if (name === "face") renderFace(body);
+}
+// Face presence's page (modules/face, 0.8.10): face.js, loaded the first time it opens
+async function renderFace(body) {
+  try { if (!window.FACE) await loadScript("/static/face.js?v=1"); } catch { body.innerHTML = '<p class="d">The Face page could not load.</p>'; return; }
+  window.FACE.mount(body, api, { token: TOKEN, cid: () => TERM.cid, open: openPage, has: (k) => !!DLABEL[k] });
 }
 // Brain (Alt+B): the whole Brain as a 3D model in its dashboard pane (Alt+B to fill the board).
 // (brain3d.js, three.js; core/brainview.py gives the islands and their switches).
@@ -1897,6 +1903,10 @@ function connect() {
     let m; try { m = JSON.parse(ev.data); } catch { return; }
     if (m.t === "graph") { mind.update(m); GRAPH = m; if (BEING) try { BEING.graph(m); } catch (e) { console.error(e); } }
     else if (m.t === "voice") { if (BEING) BEING.voice(m); }
+    else if (m.t === "face") { // Face presence: the camera's dot here; the rest is the Face page's (face.js)
+      if (m.kind === "camera") { let d = $("#camera-dot"); if (!d) { d = document.createElement("span"); d.id = "camera-dot"; d.className = "badge hidden"; d.textContent = "● camera"; d.title = "Kurooto is using the camera (Face presence)"; $(".bar .right").prepend(d); } d.classList.toggle("hidden", !m.on); }
+      if (window.FACE) window.FACE.live(m);
+    }
     else if (m.t === "body") {
       const first = !last; last = m; LIGHT = m.sys.profile === "light" || matchMedia("(prefers-reduced-motion: reduce)").matches;
       body.update(m); renderStatus(m); if (BEING) BEING.update(m);

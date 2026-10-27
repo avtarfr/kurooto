@@ -14,3 +14,9 @@ Public Sans (variable, weights 100-900; the Latin and Latin Extended cuts from @
 5.1.0), SIL Open Font License 1.1, copyright 2015 The Public Sans Project Authors
 (https://github.com/uswds/public-sans); the dashboard's typeface. Unmodified copies, with the licence text, are in
 src/kurooto/web/static/fonts/.
+
+Downloaded when you set a feature up, not included in Kurooto:
+
+Face presence: YuNet (face_detection_yunet_2023mar.onnx), MIT licence, copyright 2020 Shiqi Yu; SFace
+(face_recognition_sface_2021dec.onnx), Apache-2.0; both from OpenCV's model zoo (https://github.com/opencv/opencv_zoo).
+opencv-python-headless (Apache-2.0, with the third-party libraries its wheel lists) and numpy (BSD-3), from PyPI.

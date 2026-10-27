@@ -49,6 +49,7 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | Chat with your AI | what you ask; notes it reads to answer; what its tools return; your profile's "In brief" part, your how-to-help-me note and your persona card (empty unless you write one) | the AI you picked |
 | Setup page: Try it now | what you type that isn't an instant request, like a Chat message; nothing goes to Telegram or your phone | the AI you picked |
 | Voice notes | the recordings | Google (Gemini, your key) |
+| Face presence (off; nothing watches until you enrol) | nothing: the camera's frames are looked at in memory on this computer and dropped; someone else's face is only counted; only your template (numbers, never a picture) is kept, encrypted, and never in backups, Profile sync or diagnostics. Never a lock. See [Face presence](face.md#privacy) | nowhere |
 | Voice: talk and listen (off; listening off too) | nothing while the portal is closed: what the microphone hears is written out and judged on this computer, and noise and people talking to each other are dropped at once, their words never stored, logged or sent; only what the gate decides you said to Kurooto goes out, as text, like a chat message. Sound is never saved. See [Voice](voice.md#privacy) | the AI you picked (only turns said to Kurooto) |
 | Notes sorter (off until you turn it on) | only for a note its rules can't place, with `sorter.ai` on: the note's first lines and the names of your folders, as one short request; with it off, nothing | the AI you picked |
 | Files into notes | with Chat on, the files you send, so the AI can file them | the AI you picked |
@@ -240,14 +241,14 @@ kept (`egress.json` in the state folder, 30 days), never what was sent.
 
 Each host is checked against Kurooto's list, which is the "Where requests go" table in `docs/PRIVACY.md`: Telegram,
 Google's APIs (Gemini, sign-in, Classroom, Gmail, Drive and Calendar), GitHub, Cloudflare and your call line
-(`.workers.dev`), ntfy.sh, Node.js and Ollama downloads, Voice's models (GitHub, Hugging Face), arXiv, bioRxiv and PubMed, and Kurooto's release site.
+(`.workers.dev`), ntfy.sh, Node.js and Ollama downloads, Voice's models (GitHub, Hugging Face), Face presence's models (media.githubusercontent.com, OpenCV's model zoo), arXiv, bioRxiv and PubMed, and Kurooto's release site.
 Addresses you gave are yours and always allowed: your calendar's link, class calendars you subscribed to, your Research feeds, your own AI service, your
 call line, your ntfy server, and pages your AI reads for a request. This computer (`127.0.0.1`) is never counted.
 
 Programs that go online by themselves show as **handed to** them, with the feature: git (Notes sync, Profile sync, add-ons by link,
 projects from repositories), gh (a project's issues and milestones),
 npm and wrangler (setting up the call line), agy and Claude Code, Ollama (a model download), GBrain, Tectonic, uv or
-pip (Voice's Python packages) and installers. Kurooto doesn't see what they send; the tables above say where it goes.
+pip (Voice's and Face presence's Python packages) and installers. Kurooto doesn't see what they send; the tables above say where it goes.
 
 **`privacy.egress`** decides what happens to a host that isn't on the list:
 - `record` (the default): it's counted and marked "not on the list", and the request goes ahead. It's the default
@@ -335,6 +336,7 @@ default, keeps it until you `/forget` it:
 | The search index of past requests (Learns from its own work) | `learning/history.db` |
 | Threads you were in the middle of (by when each opened) | `ledger.db` (encrypted) |
 | Log lines | the logs folder |
+| Face template (Face presence): until you forget it (`/face forget`, `/forget all`); frames and other people's faces: never kept | `face/` (encrypted) |
 
 **`/forget 7d`** forgets the last 7 days of all that now (also `/forget 12h`, `/forget 2w`), and says how many of each
 kind went. **`/forget all`** forgets everything, after a confirm button. `privacy.keep_days` = `0` keeps everything
@@ -437,6 +439,11 @@ More on each: [updates-and-backups.md](updates-and-backups.md). Before you share
 - **Events** (the activity log) record counts and request names, never what you typed or answered.
 - **Voice** never keeps sound (only a rolling buffer of under a second, in memory) and never keeps the words of noise
   or of people talking to each other: they're dropped as soon as the gate decides. Only counts are kept, in memory.
+- **Face presence** never keeps a picture: frames and the enrolment preview stay in memory; a stranger's face is
+  dropped with the frame (a count since start is all that's kept). Your template is sealed under `face.key`; forgetting
+  deletes the key first, so an old copy of it anywhere can't be read. Licences: YuNet (MIT), SFace (Apache-2.0),
+  opencv-python-headless (Apache-2.0; it bundles FFmpeg's libraries, LGPL-2.1+), numpy (BSD-3). See
+  [Face presence](face.md#licences).
 
 ## What the AI may read and write on your computer
 

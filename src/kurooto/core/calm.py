@@ -248,6 +248,7 @@ REASONS: dict[str, Reason] = {
         R("calls.own", "a call you asked for", exempt="own", stop=None, later=False),
         R("mind.off", "you turned Brain off: what it kept, and whether to delete it", exempt="own", stop=None),
         R("mood.off", "you turned Brain's read off: whether to delete what it kept", exempt="own", stop=None),
+        R("face.off", "you turned Face presence off: whether to delete your face model", exempt="own", stop=None),
         R(
             "mind.skill_learned",
             "a new skill it learned from a task that worked out (it asks before it runs)",
@@ -746,6 +747,15 @@ REASONS: dict[str, Reason] = {
             stop=to(False, "no more of these (Features and /addons still offer Update)"),
         ),
         R("calls.line_update", "your call line couldn't be updated", setting="updates.mode"),
+        R(
+            "face.greet",
+            "a spoken greeting when you sat down at your desk after a while",
+            setting="face.greet.on",
+            stop=to(False, "No more greetings"),
+            later=False,
+            counted=False,
+            feature="face",
+        ),
         R("calls.rang_offline", "a call your call line placed while this computer was off"),
         R("calls.held", "a call that waits for a better time"),
         R("calls.review", "what Kurooto fixed and learned looking back at a call", setting="calls.review"),
@@ -1180,6 +1190,45 @@ class Calm:
             return not over
         except Exception as e:
             self.app.events.emit("calm_failed", error=f"call: {type(e).__name__}: {e}"[:200])
+            return True
+
+    def speak_ok(self, why: str, about: str = "") -> bool:
+        """Before Kurooto says something aloud by itself (Face presence's greeting): True to speak now. The same rules
+        as a message (on, the stopped list, exam season, a quiet week, Fewer, a window), except that what would wait
+        for the evening is simply not said: a greeting at 20:00 is no use. Recorded (kind 'spoken', state 'spoken' or
+        'skipped', held = why) for Why? and the monthly look; never the words. Anything going wrong: True (the
+        availability rules already ran)."""
+        if not self.on():
+            return True
+        try:
+            t = now()
+            r = self.reason(why)
+            feature = r.owner if r else why.split(".")[0]
+            rec = {
+                "id": "s" + uuid.uuid4().hex[:10],
+                "ts": t.timestamp(),
+                "day": t.date().isoformat(),
+                "why": why,
+                "setting": (r.setting if r else "") or "",
+                "feature": feature,
+                "about": (about or "")[:200],
+                "kind": "spoken",
+                "text": "",
+                "buttons": "[]",
+                "budgeted": 0,
+            }
+            if why in (self.s("stopped") or []):
+                self._insert({**rec, "state": "skipped", "held": "stopped"})
+                self.app.events.emit("calm_stopped", why=why)
+                return False
+            wait = self._wait(why, feature, t, counted=r.counted if r else True)
+            if wait:
+                self._insert({**rec, "state": "skipped", "held": wait})
+                return False
+            self._insert({**rec, "state": "spoken"})
+            return True
+        except Exception as e:
+            self.app.events.emit("calm_failed", error=f"spoken: {type(e).__name__}: {e}"[:200])
             return True
 
     def hold(self, text: str, why: str | None, **kw) -> None:

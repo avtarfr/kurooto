@@ -40,6 +40,7 @@ class Portal:
         self.spoke_at: float | None = None
         self.last_reply = ""
         self._unaddressed: deque[float] = deque(maxlen=50)  # times only, never words
+        self._close_s_before: float | None = None  # an invite's own hold, put back when it closes
 
     # ---------------------------------------------------------------------------------------------- state
     def context(self) -> Context:
@@ -62,6 +63,8 @@ class Portal:
         self.open = is_open
         if not is_open:
             self.awaiting = False
+            if self._close_s_before is not None:
+                self.close_s, self._close_s_before = self._close_s_before, None
         if self.on_change:
             self.on_change(is_open, why)
 
@@ -73,6 +76,21 @@ class Portal:
         self.last_reply = ""
         self.state("closed", why)
         return True
+
+    def invite(self, text: str, hold_s: float) -> None:
+        """Open it after Kurooto spoke first (Face presence's greeting, 0.8.10), for `hold_s` seconds. Deliberately not
+        awaiting: an awaiting portal takes any speech (gate rule 5), which would send what you say to someone next to
+        you to the AI. Instead the open portal's rules apply: a question or a request within close_s (rule 7), a yes or
+        no when what it said ended in "?" (rule 8), the local model as usual; anything not to it closes it at once."""
+        if not self.open:
+            self._set(True, "greeting")
+        self.awaiting = False
+        if self._close_s_before is None:
+            self._close_s_before = self.close_s
+        self.close_s = float(hold_s)
+        self.last = self.spoke_at = self.clock()
+        self.last_reply = text
+        self.state("addressed", "greeting")
 
     def tick(self) -> None:
         """Called every second or so: close_s of nothing said to it closes it."""

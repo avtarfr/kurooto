@@ -288,6 +288,13 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | `kurooto ask`, `call`, `send`, `ask-me` or `ask-approval` say Kurooto isn't running | `kurooto on`, then try again. `--timeout` is in minutes. |
 | A low-disk warning | `/space clean` removes Kurooto's own old files; free space elsewhere too. |
 | "Kurooto didn't connect to <host> ... it isn't on the list" | `privacy.egress` is `enforce` and that host isn't on Kurooto's list (an address changed in settings, an add-on). If you trust it, add it to `privacy.allow_hosts` in Settings (`["feeds.example.org"]`), or set `privacy.egress` back to `record`. `/egress` shows what was blocked. |
+| Face presence: "no camera" | Plug one in; check a laptop's privacy shutter or camera switch. `face.camera.device` picks another camera by number or part of its name (also when it picked an infrared one: a grey picture that never recognises you). `kurooto face test-camera` checks it. |
+| Face presence: "camera in use by another program" | Close the video call or app using it; Kurooto checks again every minute and never forces it. |
+| Face presence: "camera blocked by the system" | macOS: System Settings → Privacy & Security → Camera, allow the app that started Kurooto (or run `kurooto face test-camera` in a terminal once to get the question). Windows: Settings → Privacy & security → Camera → "Let desktop apps access your camera". |
+| Face presence: "camera covered" | Open the shutter or the lid; it checks again every 5 minutes. |
+| Face presence: "weak model", or greetings miss you | The Face page → Add samples (the steps the advice names, often other light), then Retrain. More light on your face helps most. |
+| Face presence took someone else for you | Strictness → strict on the Face page (it retrains), and add samples. A lookalike or a photo of you can pass: it's never a lock. |
+| Face presence: "re-enrol needed" or "template locked" | A new release changed the recognition model: enrol again. "Template locked": the keychain isn't open yet (often right after boot); it waits and never makes a new key over your model. |
 
 ## Updates, backups and moving
 

@@ -30,6 +30,7 @@ again next time.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import sys
@@ -73,6 +74,7 @@ class ModelFile:
     name: str
     url: str
     mb: float
+    sha256: str = ""  # checked after the download when set (Face presence pins its models)
 
 
 PACKAGES = {
@@ -132,16 +134,21 @@ def models() -> dict[str, list[ModelFile]]:
 
 
 class Parts:
-    def __init__(self, root: Path, app_dir: Path):
+    """Voice's parts by default; another feature (Face presence) passes its own packages, model table, models folder
+    and name, and shares the packages' folder (one numpy)."""
+
+    def __init__(self, root: Path, app_dir: Path, packages=None, table=None, models_dir=None, feature: str = "Voice"):
         self.root = Path(root)
         self.app_dir = Path(app_dir)
         self.py = self.root / f"py-{sys.version_info.major}.{sys.version_info.minor}"
-        self.models_dir = self.root / "models"
-        self.table = models()
+        self.models_dir = Path(models_dir) if models_dir else self.root / "models"
+        self.table = models() if table is None else table
+        self.packages = PACKAGES if packages is None else packages
+        self.feature = feature
 
     # -------------------------------------------------------------------------------------------- checking
     def has_package(self, key: str) -> bool:
-        m = PACKAGES[key].module
+        m = self.packages[key].module
         return (self.py / m).is_dir() or (self.py / f"{m}.py").is_file()
 
     def has_model(self, key: str) -> bool:
@@ -164,7 +171,7 @@ class Parts:
         for k in keys:
             kind, _, name = k.partition(":")
             if kind == "pkg":
-                total += PACKAGES[name].size_gb
+                total += self.packages[name].size_gb
             else:
                 total += sum(f.mb for f in self.table.get(name, [])) / 1024
         return round(total, 2)
@@ -187,12 +194,12 @@ class Parts:
         return None
 
     def install_package(self, key: str, progress: Progress) -> tuple[bool, str]:
-        pkg = PACKAGES[key]
+        pkg = self.packages[key]
         cmd = self.installer()
         if cmd is None:
             return False, "neither uv nor pip is available to install Python packages"
         progress(f"Installing {pkg.what} ({', '.join(pkg.specs + pkg.no_deps)}, about {pkg.size_gb:g} GB)…")
-        egress.handed("uv" if "uv" in Path(cmd[0]).name else "pip", "Voice")
+        egress.handed("uv" if "uv" in Path(cmd[0]).name else "pip", self.feature)
         self.py.mkdir(parents=True, exist_ok=True)
         res = proc.run([*cmd, "--target", str(self.py), *pkg.specs], timeout=1800)
         if res.ok and pkg.no_deps:
@@ -210,16 +217,21 @@ class Parts:
             part = dest.with_name(dest.name + ".part")
             progress(f"Downloading {f.name} ({f.mb:g} MB)…")
             try:
-                with egress.urlopen(f.url, "Voice", timeout=60) as r, open(part, "wb") as out:
+                digest = hashlib.sha256()
+                with egress.urlopen(f.url, self.feature, timeout=60) as r, open(part, "wb") as out:
                     total = int(r.headers.get("Content-Length") or 0)
                     done, last = 0, -1
                     while chunk := r.read(1 << 20):
                         out.write(chunk)
+                        digest.update(chunk)
                         done += len(chunk)
                         pct = int(done * 100 / total) if total else -1
                         if total and pct // 25 != last:
                             last = pct // 25
                             progress(f"{f.name}: {pct}%")
+                if f.sha256 and digest.hexdigest() != f.sha256:
+                    part.unlink(missing_ok=True)
+                    return False, f"Couldn't download {f.name}: the file didn't match its checksum"
                 os.replace(part, dest)
             except Exception as e:
                 part.unlink(missing_ok=True)
@@ -231,16 +243,17 @@ class Parts:
     ) -> tuple[bool, str]:
         need = self.missing(keys)
         if not need:
-            return True, "Everything Voice needs is here."
+            return True, f"Everything {self.feature} needs is here."
         gb = self.size_gb(need)
         if free_gb is not None:
             free = free_gb()
             if free - gb < 2:
                 return (
                     False,
-                    f"Not enough space: Voice needs about {gb:g} GB and {free:g} GB is free (2 GB kept spare).",
+                    f"Not enough space: {self.feature} needs about {gb:g} GB and {free:g} GB is free "
+                    "(2 GB kept spare).",
                 )
-        progress(f"Voice needs {len(need)} part{'s' if len(need) != 1 else ''}, about {gb:g} GB in all.")
+        progress(f"{self.feature} needs {len(need)} part{'s' if len(need) != 1 else ''}, about {gb:g} GB in all.")
         for i, k in enumerate(need, 1):
             kind, _, name = k.partition(":")
             progress(f"[{i}/{len(need)}] {k}")
@@ -249,4 +262,55 @@ class Parts:
             if not ok:
                 return False, msg
         self.importable()
-        return True, "Voice is set up."
+        return True, f"{self.feature} is set up."
+
+    def install_from(self, folder: Path, keys: list[str], progress: Progress) -> tuple[bool, str]:
+        """For a computer without internet: model files found by name in `folder` are copied in when their checksum
+        matches (or they have none), and packages are installed from the wheels there (uv or pip, --no-index). Then
+        what's still missing is said."""
+        folder = Path(folder).expanduser()
+        if not folder.is_dir():
+            return False, f"There's no folder at {folder}."
+        for k in keys:
+            kind, _, name = k.partition(":")
+            if kind == "model":
+                for f in self.table.get(name, []):
+                    dest = self.models_dir / f.name
+                    if dest.is_file():
+                        continue
+                    src = folder / Path(f.name).name
+                    if not src.is_file():
+                        progress(f"✗ {f.name}: not in the folder")
+                        continue
+                    if f.sha256 and _sha256(src) != f.sha256:
+                        progress(f"✗ {f.name}: the file didn't match its checksum")
+                        continue
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    part = dest.with_name(dest.name + ".part")
+                    shutil.copyfile(src, part)
+                    os.replace(part, dest)
+                    progress(f"✓ {f.name}: copied")
+            elif kind == "pkg" and not self.has_package(name):
+                pkg, cmd = self.packages[name], self.installer()
+                if cmd is None:
+                    progress("✗ neither uv nor pip is available to install Python packages")
+                    continue
+                self.py.mkdir(parents=True, exist_ok=True)
+                res = proc.run(
+                    [*cmd, "--no-index", "--find-links", str(folder), "--target", str(self.py), *pkg.specs],
+                    timeout=1800,
+                )
+                progress(("✓ " if res.ok and self.has_package(name) else "✗ ") + f"{pkg.what}")
+        missing = self.missing(keys)
+        if missing:
+            return False, f"Still missing: {', '.join(missing)}."
+        self.importable()
+        return True, f"{self.feature} is set up from {folder}."
+
+
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(1 << 20):
+            h.update(chunk)
+    return h.hexdigest()

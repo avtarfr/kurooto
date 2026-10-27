@@ -17,6 +17,7 @@ from kurooto.modules.doubts import Doubts
 from kurooto.modules.drafts import Drafts
 from kurooto.modules.dreaming import Dreaming
 from kurooto.modules.exam_season import ExamSeason
+from kurooto.modules.face import Face
 from kurooto.modules.files import Files
 from kurooto.modules.finder import Finder
 from kurooto.modules.gbrain import GBrain
@@ -95,6 +96,7 @@ CATALOG = [
     LidSafe,
     VoiceNotes,
     Voice,
+    Face,
     Awake,
     Calendar,
     NotesSync,

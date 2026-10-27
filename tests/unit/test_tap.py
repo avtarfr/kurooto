@@ -119,7 +119,9 @@ def test_the_table_names_each_action_and_how_it_is_approved():
         "addon.install",
         "data.delete",
         "proposal.apply",
+        "camera.open",  # Face presence's Start and Test buttons (0.8.10)
     }
+    assert tap.GUARDED["camera.open"].ways == ("button",)  # never the AI, a request, the phone or a schedule
     for action, g in tap.GUARDED.items():
         assert g.what and g.where and g.ways, action
         assert set(g.ways) <= set(tap.WAYS), action

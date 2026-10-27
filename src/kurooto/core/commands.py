@@ -119,6 +119,7 @@ GROUPS: tuple[Group, ...] = (
         ("q", "jobs", "threads", "help"),
     ),
     Group("voice", "Voice", "voice", ("voice",)),
+    Group("face", "Face presence", "face", ("face",)),
     Group("reminders", "Reminders and deadlines", "reminders-and-deadlines", ("reminders", "deadlines", "startby")),
     Group(
         "classes",
