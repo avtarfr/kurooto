@@ -20,7 +20,11 @@ for, the setting that controls it, and what it was about (the deadline, the clas
 - **Why?** (a button on Telegram) answers from that record, for example: "Why: Deadlines, a reminder before something
   on your deadline list is due. About: Report on groups. Setting: deadlines.ping_h = 24 (Settings → Deadlines)." It
   also says when it was sent, how many have come today, and whether it waited for the evening bundle and why. A message
-  with no reason recorded came from an add-on or a script: "No reason recorded"; Kurooto never guesses.
+  with no reason recorded came from an add-on or a script: "No reason recorded"; Kurooto never guesses. With Brain on
+  (0.8.14), it also says what Brain's gate and the door did with it, what it expected (a reply, or that you'd act on it)
+  and what came of it, and the phone app chat's copy gets a **Why this?** button that answers the same way
+  ([Brain: one door](mind.md#one-door-at-a-natural-break-0814)). A message that kept losing at Brain's door for hours
+  waits for the evening bundle, which says so.
 - **Less of this** offers up to three choices. Each changes **one** setting and is followed by an **Undo** button:
   - **Stop**: that kind stops. Where the feature has its own setting, that's what changes (practice offers:
     `quiz.offer_at` emptied; a check-in: its time cleared; after-class questions: After-class notes turned off).

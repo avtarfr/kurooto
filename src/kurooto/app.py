@@ -403,6 +403,9 @@ class App:
         from kurooto.mind import pest  # (Brain, 0.8.8) an answer to its unprompted message, and the talk reward's fact
 
         pest.heard(self, msg.text)
+        from kurooto.mind import records  # (Brain, 0.8.14) a reply closes what its own message expected
+
+        records.heard(self, msg.reply_to)
         if msg.reply_to:  # (calm) you answered one of its messages (core/calm.py)
             self.calm.touched(map_kind=msg.reply_to.get("kind"), map_ref=msg.reply_to.get("ref"))
         if msg.reply_to and msg.reply_to.get("kind") == "ask":  # an answer to a question (core/ask.py)
@@ -729,6 +732,9 @@ class App:
         from kurooto.mind import pest  # (Brain, 0.8.8) acting on one of its messages, or Less of this on it
 
         pest.tapped(self, data)
+        from kurooto.mind import records  # (Brain, 0.8.14) acting on one of its messages closes what it expected
+
+        records.tapped(self, data)
         self.events.emit("button_tapped", prefix=prefix)  # you're around (core/rhythm.py)
         if prefix == "calm":  # Why? / Less of this / Undo / the monthly suggestion (core/calm.py)
             return self.calm.button(ref, act)

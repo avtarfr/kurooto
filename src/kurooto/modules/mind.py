@@ -32,6 +32,7 @@ from kurooto.mind import (
     act,
     attention,
     beliefs,
+    breaks,
     feelings,
     gate,
     improve,
@@ -139,7 +140,7 @@ class Mind(Module):
         )
         self.every("story_night", "daily 23:50", self._story_night)
         # stage 10: the workspace's cycle (and on an alarm or call, at once), then the beliefs from today's read
-        self.every("workspace", "every 1m", lambda p: workspace.cycle(self.app) and None)
+        self.every("workspace", "every 1m", lambda p: workspace.tick(self.app) and None)  # 0.8.14: and the door
         self.every("beliefs", "hourly", lambda p: beliefs.sync(self.app) if mind.on(self.app) else 0)
         # stage 11: the overnight lab (on the charger, lid open) and its morning note
         workspace.register_bidder("lab", lab_report.bid)
@@ -193,6 +194,10 @@ class Mind(Module):
 
     def turned_off(self) -> None:
         """Brain was just turned off: say what it kept, and offer to delete it."""
+        try:  # 0.8.14: whatever waited at the workspace's door goes now, as it would have without Brain
+            workspace.flush(self.app)
+        except Exception as e:
+            self.app.events.emit("mind_door_failed", error=f"flush: {type(e).__name__}"[:60])
         if not self.dir.exists():
             return
         n = mlog.MindLog(self.dir / "log.db").count()
@@ -212,6 +217,7 @@ class Mind(Module):
             workspace.poke(self.app, f"event:{kind}", "event", kind.replace("_", " "))
         if mlog.mirrored(kind) and mind.on(self.app):
             mind.connect(self.app).report(kind, rec)
+        breaks.on_event(self.app, rec)  # 0.8.14: a session ending or you coming back is a natural break
 
     # ------------------------------------------------------------------------------------------ the process
     def hardened(self) -> bool:

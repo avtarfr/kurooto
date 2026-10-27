@@ -75,6 +75,7 @@ def test_not_a_bottleneck(app):
 
 
 def test_unprompted_needs_winner(app):
+    app.settings.set("mind.workspace.arbiter", False)  # 0.8.13's rule; with the door on it bids (test_mind_door)
     workspace.cycle(app, bids(("deadline:win", 0.9, 0.9, 0)), force=True)
     assert workspace.allows(app, Message("x", why="mind.nudge", item="deadline:win"))
     assert not workspace.allows(app, Message("x", why="mind.nudge", item="deadline:lost"))
@@ -84,9 +85,12 @@ def test_unprompted_needs_winner(app):
 
 
 def test_gate_blocks_message_for_item_that_did_not_win(app):
+    app.settings.set("mind.workspace.arbiter", False)
     workspace.cycle(app, bids(("deadline:win", 0.9, 0.9, 0)), force=True)
     m = Message("About that", why="mind.nudge", item="promise:gone")
     assert gate.check(app, m)[0] == "block"
+    app.settings.set("mind.workspace.arbiter", True)  # 0.8.14: not blocked at the gate; it bids at the door
+    assert gate.check(app, m)[0] == "send"
 
 
 def test_pin_mute_veto(app):

@@ -15,12 +15,23 @@ be checked later against what happened.
 decide() is what the rest of Kurooto calls: with Brain off it does nothing and returns "". With it on, the record goes
 to the scorekeeper through the mind client (never written here: invariant I-1). outcome() is the scorekeeper's: it
 writes what came of a decision, later.
+
+decide / expect / outcome (0.8.14, `mind.expect.on`): every message Kurooto starts by itself records what it expects
+to come of it, `"expect": {"what": "reply" | "done", "within_h": n}`: a reply for a question or check-in (3 h), done
+within 2 h for a nudge. core/notify.py calls expectation() and track(); a reply from you (heard), a tap on one of its
+buttons (tapped) or the time running out (sweep, every minute) closes it with outcome(app, ...): the daemon keeps the
+row in `<state>/mind-records.json` (ids, reasons and numbers, never the message's words) and the scorekeeper writes the
+`outcome` record (a `decision_outcome` fact).
+why(app, ref) (`mind.why.on`) answers "Why this?" under a message: the plain reason, what Brain's gate and the
+workspace's door did, what it expected and what came of it, and how many it has sent by itself today.
 """
 
 from __future__ import annotations
 
 import re
+import time
 import uuid
+from dataclasses import replace
 from math import isfinite
 from typing import TYPE_CHECKING
 
@@ -48,8 +59,10 @@ def make(
     source: str = "rules",
     risk_class: str = "",
     id: str | None = None,  # noqa: A002 (the record's field name)
+    expect: dict | None = None,
 ) -> dict:
-    """A decision record, checked: the shape above, every string cut to size, a bad source or claim refused."""
+    """A decision record, checked: the shape above, every string cut to size, a bad source or claim refused. An
+    expectation that isn't one of EXPECTS is dropped (the record stands without it)."""
     if not SOURCES.match(source or ""):
         raise ValueError(f"bad source: {source!r}")
     if claim is not None:
@@ -72,7 +85,23 @@ def make(
         "stated_reason": _clip(stated_reason, TEXT_MAX),
         "source": source,
         "risk_class": _clip(risk_class, 20),
+        **({"expect": clean_expect(expect)} if clean_expect(expect) else {}),
     }
+
+
+EXPECTS = ("reply", "done")
+EXPECT_MAX_H = 48.0
+
+
+def clean_expect(e) -> dict | None:
+    """{"what": "reply" | "done", "within_h": 0 < n <= 48}, or None."""
+    if not isinstance(e, dict) or e.get("what") not in EXPECTS:
+        return None
+    try:
+        h = float(e.get("within_h"))
+    except (TypeError, ValueError):
+        return None
+    return {"what": e["what"], "within_h": round(h, 2)} if isfinite(h) and 0 < h <= EXPECT_MAX_H else None
 
 
 def decide(app: App, action: str, **kw) -> str:
@@ -89,12 +118,16 @@ def decide(app: App, action: str, **kw) -> str:
     return rec["id"]
 
 
-def outcome(log: MindLog, decision_id: str, result: str, value: float | None = None) -> int:
-    """What came of a decision: written by the scorekeeper only (the log refuses anyone else)."""
+def outcome(target: MindLog | App, decision_id: str, result: str, value: float | None = None) -> int:
+    """What came of a decision. Given the mind log, the scorekeeper writes the `outcome` record (the log refuses anyone
+    else). Given the app (0.8.14), the daemon closes its open expectation (a reply came, it was done, or the time ran
+    out) and hands the scorekeeper a `decision_outcome` fact to write; 1 when something was closed."""
+    if hasattr(target, "paths"):
+        return _close(target, decision_id, result, value)
     body = {"decision": _clip(decision_id, 40), "result": _clip(result, 40)}
     if value is not None:
         body["value"] = round(float(value), 6)
-    return log.append("outcome", body)
+    return target.append("outcome", body)
 
 
 # ---------------------------------------------------------------------------------------- facts from the daemon
@@ -145,6 +178,7 @@ def clean_fact(kind: str, body: dict) -> dict:
                 source=b.get("source") or "rules",
                 risk_class=b.get("risk_class", ""),
                 id=b.get("id") if isinstance(b.get("id"), str) and ID.match(b["id"]) else None,
+                expect=b.get("expect"),
             )
         except ValueError:
             return {}
@@ -262,3 +296,271 @@ def clean_past(source: str, kind: str, body: dict) -> dict:
         elif isinstance(v, str) and (v in PAST_WORDS.get(k, ()) or (k in PAST_PATTERNS and PAST_PATTERNS[k].match(v))):
             out[k] = v
     return out
+
+
+# ------------------------------------------------------------------------- decide / expect / outcome (0.8.14)
+# The daemon's side: these run in Kurooto, never in the scorekeeper, so they import what they need when called.
+FILE = "mind-records.json"  # in the state folder (not state/mind: that's the scorekeeper's)
+ROWS_MAX = 300
+KEEP_S = 7 * 86400
+REPLY_H = 3.0  # a question or check-in expects a reply within this many hours (Calm calls one ignored at 3 h too)
+DONE_H = 2.0  # a nudge expects to be acted on within this many hours
+RESULTS = frozenset({"replied", "done", "acted", "missed", "less"})
+REF = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
+
+
+def expect_on(app: App) -> bool:
+    from kurooto import mind
+
+    return mind.part_on(app, "expect")
+
+
+def why_on(app: App) -> bool:
+    from kurooto import mind
+
+    return mind.part_on(app, "why")
+
+
+def _load(app: App) -> dict:
+    from kurooto.core.state import jload
+
+    d = jload(app.paths.state / FILE, {}) or {}
+    d.setdefault("rows", [])
+    return d
+
+
+def _save(app: App, d: dict) -> None:
+    from kurooto.core.state import jsave
+
+    t = time.time()
+    d["rows"] = [r for r in d["rows"] if t - float(r.get("at") or 0) < KEEP_S][-ROWS_MAX:]
+    jsave(app.paths.state / FILE, d)
+
+
+def _lock(app: App):
+    from kurooto.core.lock import Lock
+
+    return Lock(app.paths.state, "mind-records")
+
+
+def expectation(app: App, msg) -> dict | None:
+    """What a message Kurooto starts by itself expects: a reply for a question or check-in, done within 2 h for a
+    nudge (one that asks for your effort), nothing for a plain notice. None with `mind.expect.on` off."""
+    try:
+        if not expect_on(app):
+            return None
+        from kurooto.mind import gate, pest
+
+        why = str(getattr(msg, "why", "") or "")
+        kind = pest.kind_of(why)
+        if msg.kind == "question" or msg.map_kind == "ask" or kind == "check-in" or why.startswith("checkins."):
+            return {"what": "reply", "within_h": REPLY_H}
+        if kind == "nudge" or gate.asks_effort(msg.text, msg.buttons):
+            return {"what": "done", "within_h": DONE_H}
+    except Exception:
+        pass
+    return None
+
+
+def _gate_said(msg) -> str:
+    if str(getattr(msg, "tail", "") or "").startswith("Quieter because"):
+        return "Brain's gate made it quieter (the line under it says why)"
+    return "it passed Brain's gate as it was"
+
+
+def track(app: App, decision_id: str, msg, expect: dict | None, door: str = "") -> None:
+    """Keep what "Why this?" and the outcomes need about a message that just went out: its record ids, reason, what
+    the gate and the door did, its buttons' data and what it expects. Never its words. Never raises."""
+    try:
+        if not decision_id:
+            return
+        data = [str(b[1]) for row in (msg.buttons or []) for b in (row or [])
+                if isinstance(b, (list, tuple)) and len(b) > 1 and isinstance(b[1], str)][:12]  # fmt: skip
+        t = time.time()
+        exp = clean_expect(expect)
+        row = {
+            "id": decision_id,
+            "ref": str(getattr(msg, "rid", "") or decision_id),
+            "why": str(msg.why or "")[:60],
+            "kind": str(msg.kind or "")[:20],
+            "at": round(t, 1),
+            "expect": exp,
+            "by": round(t + exp["within_h"] * 3600, 1) if exp else None,
+            "door": str(door or "")[:160],
+            "gate": _gate_said(msg),
+            "buttons": data,
+            "map": [str(msg.map_kind or "")[:20], str(msg.map_ref or "")[:64]] if msg.map_kind else None,
+            "outcome": None,
+        }
+        with _lock(app):
+            d = _load(app)
+            d["rows"].append(row)
+            _save(app, d)
+    except Exception as e:
+        app.events.emit("mind_records_failed", error=type(e).__name__)
+
+
+def _close(app: App, decision_id: str, result: str, value: float | None) -> int:
+    from kurooto import mind
+
+    if result not in RESULTS or not expect_on(app):
+        return 0
+    with _lock(app):
+        d = _load(app)
+        row = next((r for r in d["rows"] if r["id"] == decision_id), None)
+        if row is None or row.get("outcome"):
+            return 0
+        row["outcome"] = {"result": result, "at": round(time.time(), 1)}
+        _save(app, d)
+    body: dict = {"decision": decision_id, "result": result}
+    if value is not None:
+        body["value"] = round(float(value), 4)
+    mind.connect(app).report("decision_outcome", body)
+    return 1
+
+
+def _open(d: dict, t: float) -> list[dict]:
+    return [r for r in d["rows"] if r.get("expect") and not r.get("outcome") and t <= float(r.get("by") or 0)]
+
+
+def heard(app: App, reply_to: dict | None = None) -> None:
+    """A message from you (App.handle): it answers the question it replies to, else the newest open one that expects
+    a reply. Never raises."""
+    try:
+        if not expect_on(app):
+            return
+        t = time.time()
+        rows = [r for r in _open(_load(app), t) if r["expect"]["what"] == "reply"]
+        if not rows:
+            return
+        pick = None
+        if isinstance(reply_to, dict) and reply_to.get("ref") is not None:
+            want = [str(reply_to.get("kind") or ""), str(reply_to.get("ref"))]
+            pick = next((r for r in reversed(rows) if r.get("map") == want), None)
+        outcome(app, (pick or rows[-1])["id"], "replied", 1.0)
+    except Exception as e:
+        app.events.emit("mind_records_failed", error=type(e).__name__)
+
+
+def tapped(app: App, data: str) -> None:
+    """A button you tapped (App.callback): Less of this under one of its messages closes it as unwelcome; one of the
+    message's own buttons closes it as done (or as a reply, for a question). Why? closes nothing. Never raises."""
+    try:
+        if not expect_on(app) or not data:
+            return
+        prefix, ref, act = (str(data).split(":", 2) + ["", ""])[:3]
+        t = time.time()
+        rows = _open(_load(app), t)
+        if prefix == "calm":
+            r = next((r for r in rows if act == "less" and r["ref"] == ref), None)
+            if r is not None:
+                outcome(app, r["id"], "less", 0.0)
+            return
+        r = next((r for r in reversed(rows) if data in (r.get("buttons") or [])), None)
+        if r is not None:
+            outcome(app, r["id"], "done" if r["expect"]["what"] == "done" else "replied", 1.0)
+    except Exception as e:
+        app.events.emit("mind_records_failed", error=type(e).__name__)
+
+
+def sweep(app: App) -> int:
+    """Every minute: expectations whose time ran out close as missed. How many."""
+    if not expect_on(app):
+        return 0
+    t = time.time()
+    late = [r["id"] for r in _load(app)["rows"] if r.get("expect") and not r.get("outcome") and t > float(r["by"])]
+    return sum(outcome(app, i, "missed", 0.0) for i in late)
+
+
+# ------------------------------------------------------------------------------------------------ Why this?
+SAID = {
+    "replied": "you answered it",
+    "done": "you acted on it",
+    "acted": "you acted on it",
+    "missed": "nothing came of it in time",
+    "less": "you asked for less of these",
+}
+
+
+def _row(app: App, ref: str) -> dict | None:
+    return next((r for r in reversed(_load(app)["rows"]) if ref in (r["ref"], r["id"])), None)
+
+
+def sent_today(app: App) -> int:
+    """Messages it has sent by itself today: Brain's gate's count, or Calm's when the gate is off."""
+    from kurooto.core.clock import now
+    from kurooto.mind import gate
+
+    try:
+        if gate.on(app):
+            return int(gate._load(app)["days"].get(now().date().isoformat(), 0))  # noqa: SLF001
+        calm = getattr(app, "calm", None)
+        return int(calm.today()["messages"]) if calm is not None else 0
+    except Exception:
+        return 0
+
+
+def why(app: App, message_ref: str) -> dict:
+    """The long-press "Why this?" of a message Kurooto started: {"ref", "decision", "reason" (plain words), "gate"
+    (what Brain's gate did), "door" (what the workspace's door did), "expect", "outcome", "sent_today", "text" (all of
+    it, as lines)}. Unknown or too old: found False and a line that says so."""
+    ref = str(message_ref or "")
+    row = _row(app, ref) if REF.match(ref) else None
+    n = sent_today(app)
+    if row is None:
+        text = f"Brain has no record of that message (it keeps them 7 days). It has sent {n} by itself today."
+        return {"ref": ref, "found": False, "sent_today": n, "text": text}
+    reason = row["why"]
+    calm = getattr(app, "calm", None)
+    try:
+        r = calm.reason(row["why"]) if calm is not None else None
+        if r is not None:
+            reason = f"{calm.title_of(r.owner)}: {r.what}"
+    except Exception:
+        pass
+    exp = row.get("expect")
+    expect = ""
+    if exp:
+        what = "a reply" if exp["what"] == "reply" else "that you'd act on it"
+        expect = f"{what} within {exp['within_h']:g} h"
+    oc = (row.get("outcome") or {}).get("result")
+    outcome_said = SAID.get(oc or "", "still open" if exp else "")
+    door = row.get("door") or "it didn't go through the door (it was exempt, or the door was off)"
+    lines = [f"Why: {reason}.", f"The gate: {row['gate']}.", f"The door: {door}."]
+    if expect:
+        lines.append(f"It expected {expect}: {outcome_said}.")
+    lines.append(f"It has sent {n} by itself today.")
+    return {"ref": row["ref"], "found": True, "decision": row["id"], "reason": reason, "gate": row["gate"],
+            "door": door, "expect": expect, "outcome": oc or "", "sent_today": n, "text": "\n".join(lines)}  # fmt: skip
+
+
+def why_lines(app: App, message_ref: str) -> list[str]:
+    """What Brain adds to Calm's Why? answer (core/calm.py): the gate, the door and the expectation. Empty with Brain
+    or `mind.why.on` off, or when it has no record of the message."""
+    try:
+        if not why_on(app):
+            return []
+        w = why(app, message_ref)
+        if not w.get("found"):
+            return []
+        out = [f"Brain's gate: {w['gate']}.", f"The door: {w['door']}."]
+        if w["expect"]:
+            out.append(f"It expected {w['expect']}: {SAID.get(w['outcome'], 'still open')}.")
+        return out
+    except Exception:
+        return []
+
+
+def with_why(app: App, msg):
+    """The phone app chat's copy of a message it started gets a "Why this?" button (Calm's Why?, which Telegram has
+    already). Unchanged when there's no Calm record, the message is an answer to you, or `mind.why.on` is off."""
+    try:
+        rid = getattr(msg, "rid", None)
+        if not rid or not msg.why or msg.why == "asked" or not why_on(app):
+            return msg
+        data = f"calm:{rid}:why"
+        if any(isinstance(b, (list, tuple)) and len(b) > 1 and b[1] == data for row in msg.buttons or [] for b in row):
+            return msg
+        return replace(msg, buttons=[*(msg.buttons or []), [("Why this?", data)]])
+    except Exception:
+        return msg

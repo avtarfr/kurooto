@@ -13,6 +13,9 @@ core/notify.py:Notifier.send calls check() before Calm, and sent() once Calm let
   - Messages Calm itself exempts (reminders you set, the alarm, calls you asked for, urgent and close deadlines) skip
     the caps and the pool, never the lints.
 check_call() does the same for a call Kurooto places on its own: ring, later or no.
+Since 0.8.14 a message the gate lets through then bids at the workspace's door (mind/workspace.py) before Calm; one the
+gate held to a later time was timed already, so when release() sends it on it goes past the door. /mind gate shows
+both.
 
 Lints (every text):
   - a feeling about the relationship ("I missed you", "I need you") is removed, always;
@@ -546,7 +549,8 @@ def _with_receipt_line(app: App, st: dict, msg: Message) -> Message:
     return out
 
 
-DUMPED = ("text", "title", "buttons", "kind", "urgent", "why", "setting", "about", "item", "due", "map_kind", "map_ref")
+DUMPED = ("text", "title", "buttons", "kind", "urgent", "why", "setting", "about", "item", "due", "map_kind", "map_ref",
+          "bid")  # fmt: skip
 
 
 def _dump(msg: Message) -> dict:
@@ -602,13 +606,17 @@ def release(app: App) -> int:
         due = [h for h in st["held"] if float(h.get("until", 0)) <= t]
         st["held"] = [h for h in st["held"] if float(h.get("until", 0)) > t]
         _save(app, st)
+    from kurooto.mind import workspace
+
     n = 0
     for h in due:
         try:
             m = Message(**{k: v for k, v in h["msg"].items() if k in Message.__dataclass_fields__})
         except TypeError:
             continue
-        app.notifier.send(m.text, **{k: v for k, v in m.__dict__.items() if k != "text"})
+        until = dt.datetime.fromtimestamp(float(h.get("until") or t))
+        with workspace.passing(f"held by Brain's gate until {until:%H:%M} ({h.get('why') or 'its limits'})"):
+            app.notifier.send(m.text, **{k: v for k, v in m.__dict__.items() if k != "text"})  # timed already: no door
         n += 1
     return n
 
@@ -679,6 +687,12 @@ def status(app: App) -> tuple[str, list]:
     for s in st["seen"][-8:]:
         lines.append(f"- {dt.datetime.fromtimestamp(s['at']).strftime('%a %H:%M')} {s['what']}: {s['why']}"
                      + (f" ({s['text']})" if s.get("text") else ""))  # fmt: skip
+    try:  # 0.8.14: the workspace's door, after the gate
+        from kurooto.mind import workspace
+
+        lines += workspace.door_lines(app)
+    except Exception:
+        pass
     buttons = []
     for kind, m in st["mutes"].items():
         if float(m.get("until", 0)) > time.time():

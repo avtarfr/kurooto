@@ -682,6 +682,77 @@ inferred belief), `lint` (a sentence matching an unsettled belief by two or more
 fields already, so passing `source=` works; nothing sets it yet), the forecast and Dreaming outputs as beliefs, and the dashboard "On its mind" panel
 (`/thinking` carries the same content).
 
+## 0.8.14: one door (the workspace arbiter, natural breaks, decide/expect/outcome)
+
+Code: `mind/workspace.py` (the door section), the new `mind/breaks.py`, `mind/records.py` (the daemon's half at the end),
+`core/notify.py` (`Notifier.send` calls `workspace.door` after `gate.check` and before Calm; `records.expectation` /
+`decide(expect=)` / `track` after Calm; `_deliver` gives the chat's copy `records.with_why`), `core/calm.py` (`hold(held=)`,
+the `workspace` held reason, `why_text` adds `records.why_lines`), `mind/gate.py` (`release` sends inside
+`workspace.passing`, `status` adds `workspace.door_lines`, `allows` defers to the door when it's on), `mind/log.py`
+(`decision_outcome` in `BUDGET_KINDS`), `mind/scorekeeper.py` (writes it as an `outcome` record), `app.py`
+(`records.heard` beside `pest.heard`, `records.tapped` beside `pest.tapped`), `modules/mind.py` (the `workspace` job runs
+`workspace.tick`; `_mirror` passes every event to `breaks.on_event`; `turned_off` flushes the door). Tests:
+`test_mind_door.py`. Switches: `mind.workspace.arbiter|breaks|max_hold_min|break_after_min|fold_h`, `mind.expect.on`,
+`mind.why.on` (registered in `workspace.py`: `records.py` is also the scorekeeper's and imports nothing of the daemon).
+
+### The door
+
+- `door(app, msg) -> (go, note)`. Straight past (`exempt`): `why` empty or "asked", a `reply_to`, kinds `call` and
+  `approval`, `urgent`, and `calm.exempt(...)` (alarm, own reminders, a deadline under 12 h, security, the bundle, the
+  limit notice). Inside `passing(note)` the first non-exempt message goes and takes the note (a winner being let out, or
+  a message the gate already timed). Else the message joins `pending` in `<state>/mind-door.json` (one per `_key`: the
+  reason plus its item, question or words; a repeat replaces the words and keeps the first `at`), everything is ranked,
+  and it goes now only if it's among the top `capacity` and `_may_go` doesn't say "wait". Any exception lets it through.
+- The bid (`_score`): `DEFAULT_BIDS[bid_kind(why, kind)]` (stake, urgency), overridden per field by `Message.bid`; a due
+  time raises urgency to `1 - h/72`; the stake is multiplied by `welcome_p` (the pest model's expected welcome, read
+  only); waiting adds up to `AGE_WEIGHT` (0.5) urgency by `max_hold_min`, so losers aren't starved; fatigue by the item's
+  mentions; a message whose `item` is a stage winner counts `ON_MIND` (2) times. `urgent` means urgency 0.9 or more before
+  ageing.
+- Add-on bids (`add_bidder(name, fn)`): `fn(app, now)` returns dicts; only `id` and `kind` matching `ID_RE`, numbers in
+  0..1 and a callable `send` pass. Their first-seen time is kept under `addons` (keys only) for ageing and the max hold;
+  `send()` runs inside `passing`, so the message it sends goes past the door.
+- The stage (`cycle`) and the door are two lanes on purpose: the stage's items (deadlines, promises, goals) aren't
+  messages, and letting them take the door's places would starve every check-in. The link between them is `ON_MIND`.
+- `release(app)` (every minute from `tick`, and at once from `breaks.signal` / `breaks.on_event`): drops what's no longer
+  relevant (an `ask` that isn't open, a due time that passed), noted; ranks; each of the top `capacity` goes if `_may_go`
+  allows (urgent; no wait needed; a break open now; waited `max_hold_min`), never while `asleep()` (B's
+  `mind.sleep.state`, imported defensively); losers get `lost += 1`, and past `fold_h` go to `calm.hold(held="workspace")`
+  (with Calm off, sent). More than `PENDING_MAX` (100) waiting: the oldest fold. With the arbiter off, `release` is
+  `flush`: everything waiting goes.
+- `held_count(app)`: pending messages plus add-on bids waiting (D's status reads it).
+
+### Breaks (`mind/breaks.py`)
+
+`signal(app, kind)` for `KINDS` (pickup, stood, left, window_switch, session_end, looked, back): marks it (the same kind
+within 10 s is one), runs `workspace.cycle(force=True)` (the orienting jolt) and `workspace.release`. `on_event`:
+`study_session_end` and `focus_ended` are `session_end`, `face_back` and `face_arrived` are `back`,
+`study_session_start` sets `session` (a break is coming). `detect(app)` (each minute): activity `window` events in the
+senses store where the gap to the previous one is at least `break_after_min`, and phone `screen`/`unlocks` bins with a
+count, each first seen within 15 minutes. `open_now` is a break in the last 5 minutes. `sensing` is true with the
+activity or phone screen sense, Face presence, an add-on signal within a day, or a session running; without it
+`wait_needed` is false and winners go at once (waiting for a break nothing can see would only be a delay). State:
+`<state>/mind-breaks.json`, kinds and times only.
+
+### decide / expect / outcome, and Why this?
+
+- `records.make(..., expect=)` keeps `{"what": "reply"|"done", "within_h": 0 < n <= 48}` (anything else is dropped, the
+  record stands); `clean_fact("decision")` passes it on. `expectation(app, msg)`: a reply in 3 h for `kind` question, a
+  `map_kind` ask, a pest check-in or `checkins.*`; done in 2 h for a pest nudge or a text or button that asks effort
+  (`gate.asks_effort`); else none.
+- `track` keeps a row in `<state>/mind-records.json` (7 days, 300 rows): ids, the reason id, the gate and door notes, the
+  buttons' data, `map`, the expectation and its deadline. Never the words.
+- `outcome(target, decision_id, result, value)`: given the mind log, the scorekeeper's write (as before); given the app,
+  the daemon closes the row and reports `decision_outcome`, which the scorekeeper checks (`ID`, `RESULTS`, value clipped
+  to -1..1) and writes as an `outcome` record (the console's decision rows show it). `heard` (a reply: the question it
+  answers by `reply_to`, else the newest open reply row), `tapped` (Less of this: "less"; one of its own buttons: "done"
+  or "replied"), `sweep` (past its time: "missed").
+- `why(app, ref)` (ref: Calm's record id or the decision id) returns `found`, `reason` (Calm's reason in words), `gate`,
+  `door`, `expect`, `outcome`, `sent_today` (the gate's count, else Calm's) and `text`. `why_lines` is what Calm's Why?
+  adds; `with_why` puts `("Why this?", "calm:<rid>:why")` on the chat's copy (Telegram has Calm's Why? already).
+
+**Deviation:** the gate's own holds (the hour's limit, the touches, deep work) are released past the door: the gate
+already chose their time, and sending them back to the door would make them wait twice.
+
 ## Stage 11: the research lab and the self-improvement pipeline (I-6, I-12)
 
 Code: `mind/lab/` (`protocol.py`, `prereg.py`, `scoring.py`, `sandbox.py`, `runner.py`, `report.py`), `mind/improve.py`; fact kinds `lab_prereg`,
