@@ -194,6 +194,8 @@ against your voice print, on this computer, and gets one of three answers: **you
    small package, once, plus listening's parts if they aren't there yet; after that it works with no internet). The
    switch alone doesn't download anything: the Your voice page says so and has its own **Set up now** button. No internet on that computer? **Manage → Install from a
    file** on the page, or `kurooto voice parts add FILE`: the file is checked against its pinned checksum.
+   Voice ID only checks what Kurooto hears, so listening (`voice.listen.on`) must be on too; the Your voice page says
+   when it's off and has a **Turn listening on** button.
 2. Open **Your voice (Voice ID) →** on the Voice card (the page `/voice-id`), or type `/voice enrol`.
 3. **Capture**, about five minutes at the computer, through the microphone Kurooto listens with (never the
    browser's). It asks, aloud and on the page, for about twenty short sentences in six ways:

@@ -315,6 +315,7 @@ class VoiceID:
         return {
             "on": self.on(),
             "voice_on": self.app.is_on("voice"),
+            "listen_on": bool(self.v.setting("listen.on")),
             "mode": self.mode(),
             "model": self.model(),
             "models": list(VOICEID_MODELS),

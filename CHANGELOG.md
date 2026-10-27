@@ -13,6 +13,9 @@
   it even when you were mid-sentence, then said it heard nothing; speech that starts in time is now heard to its
   end. A microphone that evens out loudness (automatic gain, EasyEffects) lifted a quiet voice back up, so the quiet
   step never passed; quiet and far now also count when your voice stands less far above the room's noise.
+- **Voice ID: the page says when listening is off.** Enrolled with listening off, Kurooto didn't hear you, showed
+  no waveform and spoke no replies, with nothing saying why; the Your voice page now does, with a **Turn listening
+  on** button.
 
 ## 0.8.10 (2026-10-27)
 

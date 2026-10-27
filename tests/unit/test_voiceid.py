@@ -838,6 +838,13 @@ def test_a_sentence_still_going_at_the_timeout_is_waited_for(vid, monkeypatch):
     assert cut is not None and cut.speech_s > 1.0
 
 
+def test_the_page_knows_when_listening_is_off(vid):
+    """Reported: no waveform and no spoken replies after enrolling; listening was off. The page now says so."""
+    assert vid.status()["listen_on"] is True
+    vid.app.settings.set("voice.listen.on", False)
+    assert vid.status()["listen_on"] is False
+
+
 def test_the_test_step_scores_me_and_someone_else(vid):
     enrol_owner(vid)
     vid.capture_with = lambda t, c: pcm(1, 900, seconds=3.0)

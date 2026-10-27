@@ -25,10 +25,13 @@ function topBox() {
   let h = `<label class="sw"><input type="checkbox" id="vidon"${on ? " checked" : ""}${S.voice_on ? "" : " disabled"}> Voice ID: only your voice can make Kurooto act; anyone else can only chat</label>`;
   if (!S.voice_on) h += `<p class="warn">Voice is off: turn it on in the dashboard (Features → Voice) first.</p>`;
   if (S.missing && S.missing.length) h += `<p class="warn">Voice ID needs its files first (about ${esc(S.missing_gb)} GB); the switch alone doesn't download them. <button id="setupnow">Set up now</button> <span id="setupmsg"></span><br>Or download the model yourself and install it below (Manage).</p>`;
+  if (S.voice_on && !S.listen_on) h += `<p class="warn">Listening is off, so Kurooto doesn't hear you: nothing reaches Voice ID, there's no waveform and no spoken reply. <button id="listenon">Turn listening on</button></p>`;
   if (S.bank !== "ok") h += `<p class="warn">${esc(S.bank)}.</p>`;
   if (S.locked) h += `<p class="warn">Its key can't be read, so every voice can only chat. Forget it (Manage) and enrol again.</p>`;
   if (S.mic && S.mic.enrolled && S.mic.now && S.mic.enrolled !== S.mic.now) h += `<p class="warn">Enrolled with ${esc(S.mic.enrolled)}, listening with ${esc(S.mic.now)}: add a few samples with this microphone.</p>`;
   $("#top").innerHTML = h;
+  const lo = $("#listenon");
+  if (lo) lo.onclick = async () => { const r = await api("settings", { key: "voice.listen.on", value: true }); $("#line").textContent = r.ok === false ? (r.error || "") : "Listening is on."; load(); };
   const su = $("#setupnow");
   if (su) su.onclick = setupNow;
   const box = $("#vidon");
