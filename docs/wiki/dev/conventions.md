@@ -90,7 +90,7 @@ in `tools/settings_guide/`, then `tools/gen_settings_guide.py`), tests.
 ## The privacy scanner (`tools/privacy_scan.py`)
 
 Three layers, run on staged changes (pre-commit), on commits being pushed (pre-push), and on the whole tree and history
-in CI:
+in CI (a merge's combined diff is read with one marker column per parent, so the markers never join the text):
 
 1. Patterns: Telegram bot tokens, Google, OpenAI, Anthropic, GitHub, Slack, Hugging Face and NVIDIA keys, private
    keys, JWTs, secret assignments, **email addresses**, **phone numbers**, private IPs, `*.workers.dev` hosts,

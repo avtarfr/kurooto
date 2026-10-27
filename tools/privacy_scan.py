@@ -209,16 +209,18 @@ def git(*args: str) -> str:
 
 
 def added_lines(diff: str):
-    """(path, line number, text) for every added line in a unified diff made with -U0."""
-    path, n = None, 0
+    """(path, line number, text) for every added line in a unified diff made with -U0, or a merge's combined diff
+    (`@@@`: one marker column per parent; left on the line, a marker before a decorator read as an email address)."""
+    path, n, cols = None, 0, 1
     for line in diff.splitlines():
         if line.startswith("+++ "):
             path = line[6:] if line.startswith("+++ b/") else None
         elif line.startswith("@@"):
+            cols = len(line) - len(line.lstrip("@")) - 1
             m = re.search(r"\+(\d+)", line)
             n = int(m.group(1)) if m else 0
-        elif line.startswith("+") and path:
-            yield path, n, line[1:]
+        elif path and "+" in line[:cols] and "-" not in line[:cols]:
+            yield path, n, line[cols:]
             n += 1
 
 

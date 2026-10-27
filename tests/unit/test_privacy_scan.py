@@ -87,6 +87,12 @@ def test_added_lines_from_a_diff():
     assert list(ps.added_lines(diff)) == [("a.py", 3, "one"), ("a.py", 4, "two")]
 
 
+def test_added_lines_from_a_merge_keep_no_marker():
+    diff = "+++ b/t.py\n@@@ -1,0 -1,2 +1,3 @@@\n++" + "@pytest.fixture(autouse=True)\n+ def f():\n +    pass\n"
+    assert list(ps.added_lines(diff)) == [("t.py", 1, "@pytest.fixture(autouse=True)"), ("t.py", 2, "def f():"),
+                                          ("t.py", 3, "    pass")]  # fmt: skip
+
+
 def test_commit_identity_must_be_noreply(tmp_path):
     def git(*a):
         return subprocess.run(["git", *a], cwd=tmp_path, capture_output=True, text=True, check=True).stdout
