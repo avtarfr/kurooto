@@ -485,6 +485,12 @@ jid = app.jobs.submit(
   (`core/mcp.py:ENV_JOB`, put into `Task.mcp_env` by `_run`) as `job` in `POST /api/tools/call`. When a brain's
   `Result.usage` has no `tool_calls`, the log's count is used, so `attempts.tool_calls` and `/usage` count agy and
   Claude Code too. The log is dropped when the request ends.
+- **Turn options** (0.8.16, Voice): `with app.jobs.turn_options(brain=, text_only=, effort=, on_text=, on_start=) as
+  got:` around `app.handle(msg)`: the first `submit()` on that thread takes `brain`, `text_only` and `effort` (only in
+  place of `"auto"`; a typed prefix still wins) and puts `got["jid"]`; `on_text`/`on_start` go to `Jobs.hooks[jid]`
+  (memory, dropped in `_run_safe`). `_run` calls `on_start(brain.id)` before each try and sets `task.on_text` per try
+  (`_streamer`: the key is `("<i>:<brain>", message key)`, so a stand-in's answer is a new message). A hook that
+  raises never costs the request.
 - **Watchers** (0.5.8): `app.jobs.watchers` holds `fn(job, result, info)` called by `_after` for every finished request,
   after delivery and the then-action, success or not, with `info = {"steps", "then", "payload"}`; a failure emits
   `job_watcher_failed`. Learns from its own work (`modules/learning.py`) is the one user. `finished_since(t)` lists

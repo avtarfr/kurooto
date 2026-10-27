@@ -67,6 +67,16 @@ CHOICES: dict[str, list[list[str]]] = {
     "skills.auto_pack": [["ask", "ask: a button"], ["auto", "auto: build it"], ["off", "off"]],
     "terminal.default_opens": [["shell", "shell: one tab"], ["layout", "layout: all tabs"]],
     "terminal.top": [["left", "left: a column beside the first tab"], ["tab", "tab: a tab of its own"], ["off", "off"]],
+    "voice.speak.ack": [
+        ["tone", "tone: a short soft note"],
+        ["word", 'word: "Hmm." in its own voice'],
+        ["off", "off"],
+    ],
+    "voice.listen.fast_brain": [
+        ["same", "same: your AI, as always"],
+        ["local", "local: plain chat to this computer's model"],
+        ["fastest", "fastest: plain chat to the quickest AI set up"],
+    ],
     "voice.listen.need_face_fallback": [
         ["voice", "voice: its voice rules alone"],
         ["none", "none: nothing by voice until the camera sees"],

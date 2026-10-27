@@ -21,6 +21,8 @@ with listening a second switch. User page: [../user/voice.md](../user/voice.md).
 | `tests/unit/test_voice.py` | everything above with fakes (no device, no model) |
 | `tests/unit/test_voice_numbers.py` | `numbers.say()` case by case, and the switch |
 | `tests/unit/test_voice_listening.py` | (0.8.13) careful calls, the conversation window, told off, the learner, face assist, the talk carry |
+| `modules/voice/fast.py` | (0.8.16) speed: `stamp()`, `numbers()`, `medians()`, `line()` (turn timing), `tone()` and `ACK_WORD` (the acknowledgement), `Stream` (speaking an answer as it's written), `chat_only()` and `FastPick` (`voice.listen.fast_brain`) |
+| `tests/unit/test_voice_fast.py` | (0.8.16) timing, streaming (through the portal, Claude Code's stream-json with a fake program, an API's SSE through the queue), the acknowledgement, the fast brain, warm-up |
 | `modules/voice/barge.py` | (0.8.13) barge-in: `Barge` (the listener's frames while it speaks, the echo's expected level, the voice and loudness-and-words checks on the `voice-barge` thread, its own voice print); `Voice.barge_turn()` handles what was said |
 | `tests/unit/test_voice_barge.py` | (0.8.13) barge-in with synthetic voices, a fake clock, VAD and transcriber: own echo never stops it, the owner's voice does, told off, listen, loudness, the switch, an output's stop |
 
@@ -301,7 +303,57 @@ Example: `{"t":"voice","kind":"voice_state","state":"thinking","portal":true,"li
 Logged events (`app.events.emit`, so also in the feed with `cell: "voice"` via `web/live.py:EVENT_CELL`), with no
 words: `voice_portal {open, why}`, `voice_listening {on, why}`, `voice_mute {on}`, `voice_failed {part, error}`,
 (0.8.13) `voice_misfire {rule, turn}`, `voice_learned {rows, good, misfires, active}` and `voice_barge {how,
-outcome}`.
+outcome}`; (0.8.16) `voice_timing {text_ms, gate_ms, face_ms, sent_ms, start_ms, first_text_ms, answer_ms, ack_ms,
+audio_ms, play_ms, streamed, fast}` (only those that happened) and `voice_warm {part, ms}`.
+
+## Speed (`fast.py`, 0.8.16)
+
+The owner's measured turn before this: last word to first sound about 7 to 8 s (Whisper base 0.7 s, gate and Voice
+ID 0.6 s, Claude Code at low effort 4 s, then Kokoro and an add-on output on a phone). What changed:
+
+- **Timing** (`voice.listen.timing`). `hear()` and `barge_turn()` make a turn dict `{"end": h.ended_at}`; `stamp()`
+  records the first time of each step: `text` (written out), `gate` (decided, after `face_check`; `face_ms` is the
+  face check's own time), `sent` (after `app.handle` returned: queued), `start` (the queue's `on_start` hook, before
+  `brain.run`), `first_text` (the first finished sentence from a stream, else the answer), `answer`, `ack`, `audio`
+  (the first piece synthesised: `Speaker._speak` or `Stream._run`) and `play` (`Speaker._play`, just before an output's
+  fn or the `Player` gets the piece). `Voice._take()` wraps `portal.take` (it sets `_turn_t` for `ask_brain` and
+  `_portal_speak`, which hands it to `Speaker.turn`), then `_timed()` emits `voice_timing` (ms from `end`) and keeps the
+  row in `timings` (20, memory). `speed()` / `fast.medians()` give the medians: `status()["speed"]` and the `/voice`
+  line. `face_check` already returns at once when a qualifying frame is in the window (during the stretch included);
+  it waits (at most FACE_AFTER_S, FACE_SLOW_S with no frame at all) only when none is there yet, and `face_ms` shows it.
+- **Acknowledgement** (`voice.speak.ack`: `tone`, `word`, `off`). `ask_brain` calls `_ack(turn)`; only while a
+  listener runs (a heard turn), with speaking on. A `voice-ack` thread waits `ACK_WAIT_S` (0.25 s), skips when the
+  turn has `first_text`/`answer` or the speaker is holding, then `Speaker.ack(pcm, sr, turn)`: a non-blocking take of
+  the speaker's lock, `busy` while it plays through `_play` (outputs first, the `Player` last; `barge.played` sees it),
+  the 0.4 s tail after. `tone()`: 0.24 s at 24 kHz, a G4 gliding up a fourth with a sub-octave at a quarter level,
+  sin² attack over 12% and a (1-t)^1.6 fall, peak about -20 dBFS, zero at both ends. `word`: `ACK_WORD` ("Hmm.")
+  synthesised once per `_tts_key` (kept in `_ack_sounds`), the tone when the engine can't. The tone is the default:
+  Kokoro reads a word alone with a hurried, flat tune (the reason for `join_sentences`), and the tone needs no engine.
+- **Streaming** (`voice.speak.stream`). `_turn_opts()` makes a `fast.Stream` and passes `on_text=stream.feed` and
+  `on_start` through `app.jobs.turn_options()` around `app.handle(msg)` (core/jobs.py; the first `submit()` on the
+  thread). If no request was queued, or not the one `msg.job` names, the stream is cancelled. `feed(key, text so far)`
+  queues everything up to the last sentence end (`BOUNDARY`: `. ! ?` and whitespace, or a line break) that isn't
+  inside a code fence, as `shape.sentences()` pieces, within `max_chars` (then "The rest is on screen."). A new key is
+  a new message (the words before a tool call, or a stand-in AI's try). The `voice-stream` thread holds the speaker's
+  lock and plays piece by piece, synthesising the next while one plays; it joins what's waiting (120 characters for
+  the first piece, 200 after, with `join_sentences`) and is `busy` only while it has something to say, so while it
+  waits for more words the microphone stays held by `portal.busy` as before (no barge-in into silence).
+  `_portal_speak(answer)` calls `finish(answer)`: `left()` is the answer after the streamed prefix of the last
+  message, else its sentences not said yet; it waits for the thread. `_wait_job` stops waiting when the stream was cut
+  (stop, mute, barge-in) and the answer shown is what was said. With streaming on, every owner answer is spoken by
+  `Stream` (a brain that can't stream fills it at the end); guests and greetings use `Speaker.say` as before.
+- **Fast brain** (`voice.listen.fast_brain`: `same`, `local`, `fastest`). `_fast_choice()`: only when
+  `fast.chat_only()` (no `/`, at most 240 characters, none of `NEEDS`' words, and `core/guest.py:kind()` finds no
+  request of Kurooto's) the turn options get `brain`, `text_only=True`, `effort="low"`. `local`: `providers.local()`.
+  `fastest`: `FastPick.pick()`: candidates (the main AI if it's an API, a ready Gemini key, the local model, the main
+  agent program held to text: no tools and no MCP servers), each tried once, then the lowest median of `first_text -
+  sent` over its last 5 turns (memory). The request still goes through the queue (receipt, history, fallbacks).
+- **Warm-up** (`voice.listen.warm_up`, `voice.listen.warm_brain`). `_start_listening()` ends with `_warm()`: a `WARM`
+  item on the hearing queue (`_work_loop` runs `_warm_stt()`: 0.5 s of silence written out, so never beside a turn),
+  `_warm_voice()` on a thread (one word synthesised under the speaker's lock, never played; the ack word too), and,
+  at most every `WARM_BRAIN_S`, `_warm_brain()`: `claude --version` for Claude Code (its files into the page cache;
+  no request), or one local completion with `fast_brain` `local`. Each engine key is warmed once (`_warmed`).
+  `tts()` loads under `_tts_lock` so the warm-up and a turn never load it twice.
 
 ## Learning at night (`learn.py`, 0.8.13)
 

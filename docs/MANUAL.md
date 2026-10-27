@@ -2141,13 +2141,19 @@ that. Packages go into Kurooto's own folder, never your system.
 - **Cutting in** (`voice.listen.barge_in`, on): talk over it while it speaks. Your voice (Voice ID, checked against
   its own voice print, made once in memory) or speech clearly louder than its own echo stops it at once; "stop" just
   stops it, a question or a request is the next turn, anything else and it listens. Its own echo never stops it.
+- **Speed** (0.8.16): a soft note the moment your turn goes to your AI (`voice.speak.ack`: `tone`, `word`, `off`);
+  the answer spoken a sentence at a time as your AI writes it, when it can stream (`voice.speak.stream`); plain chat
+  to a quicker AI if you choose (`voice.listen.fast_brain`: `same` by default, `local`, `fastest`); the engines and
+  Claude Code's program warmed when listening starts (`voice.listen.warm_up`, `voice.listen.warm_brain`); and each
+  turn timed from your last word, with the medians at the end of `/voice` (`voice.listen.timing`, numbers only).
 - `/voice` says what it's doing and counts what it heard (`/health` has a line too).
 
 *Leaves:* nothing while no conversation is open; then only the turns said to Kurooto, as text, to your AI (and kept
 in the chat history like typed ones). Sound is never saved; the words of noise and chatter are dropped at once and
 never stored, logged or sent. Setting up downloads from PyPI, GitHub and Hugging Face.
 *Undo:* `/voice mute` stops listening and speaking at once; `voice.listen.barge_in` off drops the microphone while it
-speaks, as before; `voice.listen.on` off stops listening; turning Voice off
+speaks, as before; `voice.speak.ack` `off`, `voice.speak.stream` off and `voice.listen.fast_brain` `same` put a turn
+back as in 0.8.15; `voice.listen.on` off stops listening; turning Voice off
 (Features) stops both. To free the space, delete the `voice` folder in Kurooto's app folder (`kurooto paths`, `app`).
 
 ### Voice ID: only your voice can make it act

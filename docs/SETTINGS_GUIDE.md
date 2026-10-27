@@ -1213,6 +1213,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.device` | `""` | Which microphone to use; empty is the system's default. ([guide](wiki/user/settings-guide.md#voicelistendevice)) |
 | `voice.listen.face_near` | `0.5` | How close counts: a face at least this share of your usual face height at the desk (0.5 is about twice as far). ([guide](wiki/user/settings-guide.md#voicelistenfacenear)) |
 | `voice.listen.face_yaw_deg` | `35` | How directly someone must face the camera: turned at most this many degrees away (an estimate). ([guide](wiki/user/settings-guide.md#voicelistenfaceyawdeg)) |
+| `voice.listen.fast_brain` | `"same"` | Which AI answers plain chat said aloud: your AI as usual, the model on this computer, or the quickest. ([guide](wiki/user/settings-guide.md#voicelistenfastbrain)) |
 | `voice.listen.follow_s` | `20` | After Kurooto answers, what the same voice says this many seconds after counts as said to it, statements too. ([guide](wiki/user/settings-guide.md#voicelistenfollows)) |
 | `voice.listen.language` | `""` | The language you speak, e.g. `en` or `hi`; empty works it out each time. ([guide](wiki/user/settings-guide.md#voicelistenlanguage)) |
 | `voice.listen.learn_nightly` | `true` | Every night Kurooto learns from how its voice turns went: ones you carried on with, and ones you told off. ([guide](wiki/user/settings-guide.md#voicelistenlearnnightly)) |
@@ -1225,15 +1226,20 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.on` | `false` | Listen through the microphone, all on this computer; only what's said to Kurooto leaves it. ([guide](wiki/user/settings-guide.md#voicelistenon)) |
 | `voice.listen.stt_model` | `"base"` | How big the speech-to-text model is: tiny (75 MB), base (145 MB) or small (484 MB, more accurate). ([guide](wiki/user/settings-guide.md#voicelistensttmodel)) |
 | `voice.listen.threshold` | `0.7` | How sure the local model must be (0 to 1) that speech is said to Kurooto. ([guide](wiki/user/settings-guide.md#voicelistenthreshold)) |
+| `voice.listen.timing` | `true` | Time each spoken turn from your last word to Kurooto's first sound, as numbers only. ([guide](wiki/user/settings-guide.md#voicelistentiming)) |
 | `voice.listen.told_off` | `true` | "Stop", "not you", "never mind" and the like, right after it woke or spoke, stop it at once and close the talk. ([guide](wiki/user/settings-guide.md#voicelistentoldoff)) |
 | `voice.listen.wake_threshold` | `0.5` | How sure the wake-word model must be (0 to 1). ([guide](wiki/user/settings-guide.md#voicelistenwakethreshold)) |
 | `voice.listen.wake_word` | `""` | A wake-word model of your own (an openWakeWord `.onnx` path); empty: its name wakes it. ([guide](wiki/user/settings-guide.md#voicelistenwakeword)) |
+| `voice.listen.warm_brain` | `true` | When listening starts, get your AI's program ready on this computer. ([guide](wiki/user/settings-guide.md#voicelistenwarmbrain)) |
+| `voice.listen.warm_up` | `true` | When listening starts, warm the transcriber and the voice, so your first turn isn't the slow one. ([guide](wiki/user/settings-guide.md#voicelistenwarmup)) |
+| `voice.speak.ack` | `"tone"` | While your AI thinks, a short soft sound says Kurooto heard you. ([guide](wiki/user/settings-guide.md#voicespeakack)) |
 | `voice.speak.engine` | `"kokoro"` | The voice made on this computer: Kokoro (natural, about 0.55 GB), Piper (lighter) or off. ([guide](wiki/user/settings-guide.md#voicespeakengine)) |
 | `voice.speak.join_sentences` | `true` | Speak short sentences together, up to about 200 characters at a time, instead of each on its own. ([guide](wiki/user/settings-guide.md#voicespeakjoinsentences)) |
 | `voice.speak.max_chars` | `800` | How much of a long answer is read aloud before it says "the rest is on screen". ([guide](wiki/user/settings-guide.md#voicespeakmaxchars)) |
 | `voice.speak.numbers_as_words` | `true` | Say numbers as a person would: 21:31 as "nine thirty-one PM", ₹3,000 as "three thousand rupees". ([guide](wiki/user/settings-guide.md#voicespeaknumbersaswords)) |
 | `voice.speak.on` | `true` | Kurooto speaks through this computer's speakers. ([guide](wiki/user/settings-guide.md#voicespeakon)) |
 | `voice.speak.rate` | `1.0` | How fast it speaks: 1.0 is normal, 0.8 slower, 1.2 faster. ([guide](wiki/user/settings-guide.md#voicespeakrate)) |
+| `voice.speak.stream` | `true` | Speak the answer a sentence at a time while your AI is still writing it. ([guide](wiki/user/settings-guide.md#voicespeakstream)) |
 | `voice.speak.voice` | `""` | Which Kokoro voice it speaks in; empty is `af_heart`. ([guide](wiki/user/settings-guide.md#voicespeakvoice)) |
 | `voice.speak.what` | `"voice"` | What's read aloud: answers to what you said aloud, every AI answer, or nothing. ([guide](wiki/user/settings-guide.md#voicespeakwhat)) |
 | `voice.speaker_id.adapt` | `false` | Improve over time: turns it was very sure were you refine your voice print, slowly and with undo. ([guide](wiki/user/settings-guide.md#voicespeakeridadapt)) |
