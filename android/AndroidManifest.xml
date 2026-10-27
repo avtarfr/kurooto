@@ -62,6 +62,7 @@
 
         <!-- kurooto://pair?c=CODE&u=https://your-line : the pairing page's "Pair the app" button -->
         <activity android:name=".PairActivity"
+            android:enableOnBackInvokedCallback="true"
             android:exported="true"
             android:excludeFromRecents="true"
             android:theme="@style/Kurooto.Sheet">
@@ -91,6 +92,7 @@
 
         <!-- a question, approval or message, with every way to answer it (tapping its notification) -->
         <activity android:name=".AnswerActivity"
+            android:enableOnBackInvokedCallback="true"
             android:exported="false"
             android:excludeFromRecents="true"
             android:taskAffinity=""
@@ -108,6 +110,7 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity android:name=".ShareActivity"
+            android:enableOnBackInvokedCallback="true"
             android:exported="true"
             android:label="${appLabel}"
             android:excludeFromRecents="true"
@@ -127,6 +130,7 @@
         <!-- Quick note: a small box whose note goes to your notes inbox (the launcher shortcut and the tile). Exported
              only so every launcher can open the shortcut; it sends nothing unless you type a note and tap Save. -->
         <activity android:name=".QuickNoteActivity"
+            android:enableOnBackInvokedCallback="true"
             android:exported="true"
             android:label="@string/note_short"
             android:excludeFromRecents="true"
@@ -174,6 +178,7 @@
 
         <!-- location reminders: your saved places, and Android's alert when you reach one -->
         <activity android:name=".PlacesActivity"
+            android:enableOnBackInvokedCallback="true"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
         <receiver android:name=".PlaceReceiver" android:exported="false" />

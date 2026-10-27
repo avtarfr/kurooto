@@ -4,14 +4,19 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.ListItemShapes
@@ -19,8 +24,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,7 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.graphics.shapes.RoundedPolygon
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -39,6 +48,7 @@ import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /**
  * The Compose screens' building blocks (0.7.0), the Compose side of Ui.java, all from Material 3 Expressive: section
@@ -49,6 +59,9 @@ import androidx.compose.ui.unit.dp
  *   Heading("Ringtones")
  *   Group(listOf(Item("Call ringtone", "phone default", onClick = { ... }), Item("Ring here too", checked = on, onClick = { ... })))
  *   Footnote("The alarm tone plays on the alarm stream ...")
+ * And the Rail design's pieces (0.8.10): [toneOf] (a tonal pair for a shaped badge or tile), [IconBadge] (an icon in a
+ * MaterialShapes polygon), [Overline] (a card's small label), [KField] (a rounded, filled text field) and [RoundAction]
+ * (a round filled icon button that morphs as it's pressed: send, add).
  */
 
 /** One row of a Group: a title, a line under it, and what happens on a tap. With `checked` it's an on/off row (a
@@ -148,7 +161,7 @@ private fun Modifier.toggleState(on: Boolean): Modifier = semantics {
 @Composable
 fun rowColor(accent: Int = 0): Color {
     val cs = MaterialTheme.colorScheme
-    val vivid = Prefs.vivid(LocalContext.current)
+    val vivid = LocalVivid.current
     val tint = when (accent % 3) { 0 -> cs.primaryContainer; 1 -> cs.secondaryContainer; else -> cs.tertiaryContainer }
     return (if (vivid) lerp(cs.surfaceContainer, tint, 0.55f) else cs.surfaceContainer).copy(alpha = 0.9f)
 }
@@ -209,11 +222,104 @@ fun SaidLine(s: Said?, modifier: Modifier = Modifier) {
 }
 
 /** A card: a rounded container (Material's extra-large shape) with padding: the check-in and quiz cards, This phone,
- *  the pairing help. */
+ *  the pairing help. `container` (0.8.10): a hero card in one of the scheme's colours (its content colour follows). */
 @Composable
-fun KCard(modifier: Modifier = Modifier, accent: Int = 0, content: @Composable ColumnScope.() -> Unit) {
+fun KCard(modifier: Modifier = Modifier, accent: Int = 0, container: Color = Color.Unspecified, content: @Composable ColumnScope.() -> Unit) {
     // (a translucent colour has no matching "on" colour, so the text's colour is set here)
-    Surface(shape = MaterialTheme.shapes.extraLarge, color = rowColor(accent), contentColor = MaterialTheme.colorScheme.onSurface, modifier = modifier.fillMaxWidth()) {
+    val bg = if (container == Color.Unspecified) rowColor(accent) else container
+    val fg = if (container == Color.Unspecified) MaterialTheme.colorScheme.onSurface else contentColorFor(container)
+    Surface(shape = MaterialTheme.shapes.extraLarge, color = bg, contentColor = fg, modifier = modifier.fillMaxWidth()) {
         Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 20.dp)) { content() }
     }
+}
+
+/** The i-th tonal pair (container, content) for a shaped badge or a tile: the palette's own (Apricot: the Rail mockup's
+ *  apricot, plum, leaf, sky...), or the scheme's primary, secondary and tertiary containers (Material You, Kuro). */
+@Composable
+fun toneOf(i: Int): Pair<Color, Color> {
+    val tones = LocalKurooto.current.tones
+    if (tones.isNotEmpty()) return tones[Math.floorMod(i, tones.size)]
+    val cs = MaterialTheme.colorScheme
+    return when (Math.floorMod(i, 3)) {
+        0 -> cs.primaryContainer to cs.onPrimaryContainer
+        1 -> cs.secondaryContainer to cs.onSecondaryContainer
+        else -> cs.tertiaryContainer to cs.onTertiaryContainer
+    }
+}
+
+/** An icon inside one of Material's expressive shapes, in the i-th tone ([toneOf]): a place, a shared file, a sheet's
+ *  mark. `size` in dp; the icon is a little under half of it. */
+@Composable
+fun IconBadge(shape: RoundedPolygon, icon: Int, tone: Int, modifier: Modifier = Modifier, size: Int = 44) {
+    val (bg, fg) = toneOf(tone)
+    ShapeBadge(shape, bg, modifier, size) {
+        Icon(painterResource(icon), contentDescription = null, tint = fg, modifier = Modifier.size((size * 0.48f).dp))
+    }
+}
+
+/** A card's small label over its content ("SAVE WHERE YOU ARE", "WAITING FOR A PLACE"), with an optional icon. */
+@Composable
+fun Overline(text: String, modifier: Modifier = Modifier, icon: Int? = null, color: Color = Color.Unspecified) {
+    val c = if (color == Color.Unspecified) MaterialTheme.colorScheme.onSurfaceVariant else color
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        if (icon != null) Icon(painterResource(icon), contentDescription = null, tint = c, modifier = Modifier.padding(end = 6.dp).size(16.dp))
+        Text(text.uppercase(), color = c, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp))
+    }
+}
+
+/** A text field in the Rail look: filled, fully rounded, no underline, a placeholder instead of a floating label, and
+ *  room for a [RoundAction] at its end. */
+@Composable
+fun KField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    singleLine: Boolean = false,
+    minLines: Int = 1,
+    maxLines: Int = if (singleLine) 1 else 8,
+    container: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    keyboardOptions: KeyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    trailing: (@Composable () -> Unit)? = null,
+) {
+    val cs = MaterialTheme.colorScheme
+    TextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier.fillMaxWidth(),
+        enabled = enabled,
+        singleLine = singleLine,
+        minLines = minLines,
+        maxLines = maxLines,
+        placeholder = { Text(placeholder) },
+        trailingIcon = trailing,
+        shape = RoundedCornerShape(if (singleLine || maxLines == 1) 28.dp else 24.dp),
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = container,
+            unfocusedContainerColor = container,
+            disabledContainerColor = container.copy(alpha = 0.6f),
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent,
+            focusedTextColor = cs.onSurface,
+            unfocusedTextColor = cs.onSurface,
+            focusedPlaceholderColor = cs.onSurfaceVariant,
+            unfocusedPlaceholderColor = cs.onSurfaceVariant,
+        ),
+    )
+}
+
+/** A round, filled icon button in the primary colour (it squares off a little as it's pressed): send, add. */
+@Composable
+fun RoundAction(icon: Int, description: String, enabled: Boolean = true, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    FilledIconButton(
+        onClick = onClick,
+        enabled = enabled,
+        shapes = IconButtonDefaults.shapes(),
+        modifier = modifier.padding(end = 4.dp).size(48.dp),
+    ) { Icon(painterResource(icon), contentDescription = description, modifier = Modifier.size(22.dp)) }
 }

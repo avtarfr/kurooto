@@ -15,15 +15,16 @@ import com.materialkolor.scheme.SchemeExpressive
  * the cards are really coloured instead of a pale tint of the wallpaper. Android's own Material You scheme ("tonal spot") is
  * the quietest of Material's styles; this uses the Expressive one, which keeps the hue and lifts the chroma.
  *
+ * Used when Look's palette is Material You (0.8.10; the named palettes, Apricot and Kuro, have their own fixed schemes).
  * The seed is the wallpaper's colour (the system's own scheme's primary, Android 12+). A wallpaper with almost no colour (a
- * grey or snowy one) would give a grey scheme, so below [MIN_CHROMA] Kurooto's own olive is the seed. "Calm" in the Phone
- * tab turns all of this off and brings back the wallpaper's quiet scheme.
+ * grey or snowy one) would give a grey scheme, so below [MIN_CHROMA] Kurooto's own apricot is the seed (0.8.10; before,
+ * the olive). "Calm" turns all of this off and brings back the wallpaper's quiet scheme.
  */
 object Vivid {
     const val MIN_CHROMA = 16.0
-    val BRAND = Color(0xFF3F5626) // kuro's olive: Palettes.kuro's primary
+    val BRAND = Color(0xFFFFB870) // Kurooto's apricot: Palettes.apricot's dark primary
 
-    /** The seed: `wallpaper` (a colour of the system's scheme) if it has colour, else Kurooto's olive. */
+    /** The seed: `wallpaper` (a colour of the system's scheme) if it has colour, else Kurooto's apricot. */
     fun seed(wallpaper: Color?): Color {
         if (wallpaper == null) return BRAND
         val hct = Hct.fromInt(wallpaper.toArgb())

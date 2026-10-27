@@ -768,6 +768,20 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `QuickNoteActivity`, `ShareActivity` and `PairActivity` (small floating sheets: `Sheets.kt`'s `SheetActivity` and `Sheet` over a
   dimmed screen, window theme `Kurooto.Sheet`: translucent, tap outside to close), and `PlacesActivity` and `ChatActivity` (full pages
   over the sky: `PageActivity` / `Page`, and the chat's own `LazyColumn` of bubbles, with links via `LinkAnnotation`;
+  0.8.10, the Rail look: `Sheet` floats at the bottom (12dp margins, `shapes.extraLargeIncreased`, a drag handle), springs in
+  and out with `motionScheme.defaultSpatialSpec`/`fastSpatialSpec` (an `Animatable` read in `graphicsLayer`, the scrim in
+  `drawBehind`), follows a drag on the handle or an overscroll of its content (`NestedScrollConnection`) and settles or
+  closes past 120dp or a fling, and shrinks with the predictive back gesture (`PredictiveBackHandler`; the five activities
+  have `enableOnBackInvokedCallback`). `SheetActivity.finish()` plays the closing slide first (straight away when not
+  resumed; a 900ms fallback) and turns the window animations off (`overrideActivityTransition` / `overridePendingTransition`).
+  Pieces: `SheetHeader` (mark, title, line), `SheetBubble` (Kurooto's message as a chat bubble), `SheetButton`/`SheetTonal`
+  (56dp, `ButtonDefaults.MediumContainerHeight`), `SheetFoot` (the status line beside the buttons when short, above when
+  long, so the sheet doesn't jump). `Page` is a `LazyColumn` (`LazyListScope` content, a round back button, the title):
+  Places keys its cards (place id, `w:<name>` for waiting ones) and moves them with `animateItem` and the motion scheme, and
+  reads and writes `Places` on a single-thread executor (`load()` → `Snap`). `ShareActivity` sends through a `ShareSink`
+  (`NotesInbox` = `Line.upload`; `sink(intent)` is the one place to add a chat-session sink later) and lists each item
+  (name and size from `OpenableColumns`, off the main thread) with its state. Dev builds: `demo` on Quick note and Share
+  sends nothing (Share shows made-up files when nothing was shared); an Inbox item with a `demo-` id answers "Demo: nothing was sent.";
   `ChatActivity.visible` and `ID_NOTE` stay static for `ListenService`). Since 0.8.7 so are bedside mode and the call screen,
   each keeping its Java activity as the entry point with every rule, intent extra and lifecycle hook (`ViewsActivity` is a thin
   wrapper too, see Views below), and everything else (services, receivers, calls, alarms, crypto, notifications, widgets) stays
@@ -822,17 +836,28 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   - `Kit.kt`: `Heading`, `Group` of `Item`s (Material 3 Expressive's `SegmentedListItem`: 2dp gaps, small inner
     corners and large ones at the group's ends, a pressed row morphs; an on/off `Item` has a `ToggleButton` and switch
     semantics), `ShapeBadge` (something inside a `MaterialShapes` polygon), `Footnote`, `Dim`, `Said` + `SaidLine`,
-    `KCard`, `rowColor()` (the surface, a little translucent over the sky). Containers with a translucent colour set
-    their `contentColor` themselves: such a colour has no matching "on" colour, and text would fall back to black.
+    `KCard` (0.8.10: `container` makes a hero card in a scheme colour), `rowColor()` (the surface, a little translucent over
+    the sky; Vivid from `LocalVivid`). Containers with a translucent colour set their `contentColor` themselves: such a colour
+    has no matching "on" colour, and text would fall back to black. 0.8.10: `toneOf(i)` (the palette's tonal pairs, or the
+    scheme's three containers), `IconBadge(shape, icon, tone)`, `Overline` (a card's small capital label), `KField` (a filled,
+    fully rounded `TextField` with a placeholder and room for a trailing action) and `RoundAction` (a round `FilledIconButton`
+    with `IconButtonDefaults.shapes()`). New icons are `ic_sheet_*` and `ic_place_*` (Material icons' paths).
   - `Vivid.kt` (0.7.5, `Prefs.vivid`, default on): a Material colour scheme from `com.materialkolor`'s `SchemeExpressive` made
-    from the wallpaper's primary (`Vivid.seed`; below `MIN_CHROMA` 16 Kurooto's olive), used by `KurootoTheme` on the dynamic
-    path and on Android 11 and older; off: the system's own tonal scheme. `rowColor(accent)` and `KCard(accent)` stain
-    the surfaces with the primary, secondary or tertiary container. `Sky.kt`'s nerves and rim are about twice as strong.
-  - `Theme.kt`: `KurootoTheme(palette, dynamic)` is `MaterialExpressiveTheme` with `MotionScheme.expressive()` and the
-    expressive type scale (its emphasized display and headline styles a step bolder, semibold, as the phone's Roboto
-    reads medium as regular at display sizes). Material You on Android 12+, else a named palette from `Palettes.all`
-    ("kuro" now, with `colors.xml`'s values; another palette is one more entry). `LocalKurooto` adds Kurooto's ok and
-    bad colours.
+    from the wallpaper's primary (`Vivid.seed`; below `MIN_CHROMA` 16 Kurooto's apricot, 0.8.10; before, the olive), used by
+    `KurootoTheme` for the Material You palette on Android 12+ and on Android 11 and older; off: the system's own tonal
+    scheme. `rowColor(accent)` and `KCard(accent)` stain the surfaces with the primary, secondary or tertiary container.
+    `Sky.kt`'s nerves and rim are about twice as strong.
+  - `Theme.kt`: `KurootoTheme(palette, dynamic, forceDark)` is `MaterialExpressiveTheme` with the expressive type scale
+    (its emphasized display and headline styles a step bolder, semibold, as the phone's Roboto reads medium as regular at
+    display sizes, and 0.8.10 a little tighter), 0.8.10's shape scale (8/12/16/24/32dp, `largeIncreased` 28,
+    `extraLargeIncreased` 36, `extraExtraLarge` 48) and `MotionScheme.expressive()`, or a scheme of `snap()`s with "Remove
+    animations" (so anything that takes its motion from `MaterialTheme.motionScheme` stops by itself; `LocalReducedMotion`
+    stays for the rest). `dynamic` (default): the palette chosen in Look, `Palettes.chosen(c)` (`palette` in the app's
+    preferences: `apricot`, the default, `you` for Material You, or `kuro`; `Palettes.choose(c, name)` sets it,
+    `Palettes.choices` lists them for a Settings row); `dynamic = false`: the named `palette` (the dev builds' `palette`
+    extra). `Palettes.apricot` is the Rail mockup's dark values (`build-specs/0.8.10/mockups/rail.py`) and, for light mode,
+    the same hues' tones (primary 40, containers 90, on-containers 30). `LocalKurooto` adds Kurooto's ok, bad, hot (unread
+    badges) and tonal pairs; `LocalVivid` the Vivid switch, read once per screen.
   - `Sky.kt`: the background behind the tabs and pairing, in the SYSTEMS view's language (`home.js`): the sky tinted by
     the hour (keyframes, light and dark), two deep soft forms, a mesh of specks, the core as a membrane (three wobbling
     rims and a nucleus, `home.js` `blob()`'s formula, breathing about every nine seconds) that crosses the top right
