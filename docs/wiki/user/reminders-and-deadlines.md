@@ -212,6 +212,10 @@ For things you hand in (not exams):
 - **Done** ticks the `- [ ]` box in your notes when the deadline came from one (only that box changes; turn it off
   with `deadlines.tick_notes`). If the line changed since Kurooto read it, nothing is ticked: tick it yourself.
 - Settled deadlines older than 90 days are forgotten.
+- **With Brain on** (0.8.14, `mind.study_push.on`): the subject Brain is most uneasy about gets one morning line
+  instead ("Uneasy about Measure Theory: due Fri, 0 min logged this week, 9 cards due. 25 min at 16:00?", Yes / Later),
+  and that day its day-before reminder and Start-by's "Time to start" don't come separately. The six-hour reminder
+  and "Overdue?" always do ([mind.md](mind.md#one-worry-not-five-nudges-0814)).
 
 ### Problem-set progress
 
@@ -496,6 +500,7 @@ Each of these has **Why?** and **Less of this** buttons on Telegram ([messages-i
 | "Overdue?" | a deadline passed (`deadlines.overdue_check`) | no more Overdue? questions |
 | "Exam mode for ..." | exam mode starting (`deadlines.exam_mode_days`) | |
 | "Time to start: ..." | a start-by date (`startby.tell`) | no more start-by messages (`/startby` still works) |
+| "Uneasy about ...: due ..., ... min logged this week, ... cards due. 25 min at 16:00?" (Yes / Later) | Brain's one morning line about the subject it's most uneasy about (`mind.study_push.on`) | its separate reminders come back |
 | "... 1 h now, 1 h tomorrow?" (Do that / Not today) | a reminder that would repeat for a slipping deadline (`startby.negotiate`) | no more reshaped plans; reminders come as before |
 | "...: the 1 h you moved to today" | you tapped Do that | never held or stopped (you agreed to it) |
 | "How long do you usually need to prepare for a ... exam?" | `startby.ask_exams` | no more of these questions |

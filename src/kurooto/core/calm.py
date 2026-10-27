@@ -266,6 +266,13 @@ REASONS: dict[str, Reason] = {
             stop=None,
         ),
         R(
+            "mind.study_push",
+            "the morning line about the subject Brain is most uneasy about, in place of its separate nudges",
+            many="morning lines about a subject",
+            setting="mind.study_push.on",
+            stop=to(False, "no more morning lines about a subject (its separate reminders come back)"),
+        ),
+        R(
             "mind.precedent",
             "a question when two of your values pull against each other and no earlier ruling of yours covers it",
             stop=None,

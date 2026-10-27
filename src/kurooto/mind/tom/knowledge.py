@@ -100,7 +100,8 @@ def from_quiz(app: App) -> int:
         return 0
     notes, done = concepts(app), 0
     seen = model._state(app).get("quiz_seen") or {}  # noqa: SLF001
-    for subj in list(quiz.sources()):
+    cards = getattr(quiz, "card_subjects", list)()  # 0.8.14: the cards Kurooto wrote count as evidence too
+    for subj in list(dict.fromkeys([*quiz.sources(), *cards])):
         for iid, it in quiz.state(subj)["items"].items():
             hist = it.get("history") or []
             k = f"{subj}:{iid}"

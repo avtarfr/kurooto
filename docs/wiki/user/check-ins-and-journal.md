@@ -28,6 +28,11 @@ Reply to the message (Telegram's Reply) and your answer goes into today's journa
 or tap its buttons; with the computer asleep the answer waits on your call line
 ([phone-app.md](phone-app.md#check-in-and-quiz-cards)).
 
+**Early, on a surprise** (0.8.14, with Brain: `mind.checkins.surprise`). When the day departs strongly from Brain's
+forecast (no sign of you two hours past the wake time it expected while your phone shows you up, or a deadline moved
+twice today), the next check-in planned today comes now, once a day, starting "A bit earlier than usual." Never in a
+class or while you're asleep ([mind.md](mind.md#check-ins-that-come-early-0814)).
+
 **The day's reflection** (`checkins.reflect`, on). The evening check-in message also lists up to three things the
 day's records show you did, and asks one thing about tomorrow:
 

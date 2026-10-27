@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.14 (unreleased)
+
+- **Brain dreams about the day.** Each night it offers, in the morning message, 1 to 3 quiz cards for concepts you
+  studied that day and are ready for next (written by the model on your computer from your own note), 1 to 3 lines for
+  your how-to-help-me note from the day's outcomes (what you undid, what went unanswered, when you told Voice off), and
+  one line on what Voice's nightly learning saw ("it woke to your name at the end of a sentence 3 times"). Nothing is
+  added until you tap Keep; `/mind` compares your recall on its cards with your own. `mind.dream.cards`,
+  `mind.dream.lessons`, `mind.dream.voice`.
+- **One worry, not five nudges.** With Brain on, the subject it's most uneasy about gets one morning line ("Uneasy
+  about Measure Theory: due Fri, 0 min logged this week, 9 cards due. 25 min at 16:00?", Yes / Later) and that day its
+  day-before reminder, "Time to start" and exam mode's practice check-in are folded into it. `mind.study_push.on`.
+- **Check-ins that come early.** When the day departs strongly from Brain's forecast (no sign of you two hours past the
+  expected wake time while your phone shows you up, or a deadline moved twice), the next check-in comes now, once a
+  day, never in a class or while you're asleep. `mind.checkins.surprise`. Add-ons can weigh what's on screen by
+  `kurooto.mind.frontier.score`.
+
 ## 0.8.13 (unreleased)
 
 - **Kurooto says numbers as a person would.** The speech engine read digits literally: "21:31" with a pause in the

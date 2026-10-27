@@ -72,6 +72,12 @@ tip = "What Brain expects of tomorrow, scored the next evening."
 tip = "The life story every part of Kurooto starts from."
 [parent."mind.values"]
 tip = "What Brain learns to value, in shadow first."
+[parent."mind.dream"]
+tip = "Brain dreaming about the day: quiz cards, how-to-help lines and a voice line in the morning message."
+[parent."mind.study_push"]
+tip = "One morning line about the subject Brain is most uneasy about, in place of its separate nudges."
+[parent."mind.checkins"]
+tip = "Check-ins that come early when the day departs from Brain's forecast."
 
 [s."mind.anchor_every"]
 tip = "How often (in records) Brain notes where its log has got to, besides once a day."
@@ -525,3 +531,53 @@ tip = "The Brain console: a dashboard page (Alt+O) and the phone's Brain view sh
 values = "`true` (the page and the view read what the Brain keeps), `false` (both say the console is off; the Brain itself runs as before)."
 when = "Turn it off if you don't want its reasoning on screen. It only reads; nothing the Brain does depends on it."
 needs = "Brain on."
+
+[s."mind.dream.cards"]
+tip = "Each night, 1 to 3 quiz cards for concepts you studied that day that are on your frontier, kept by a tap."
+what = "Concepts you changed notes on, answered quiz cards about or logged study time for, that Brain's model of what you know puts on your frontier (not mastered, prerequisites solid). The model on this computer writes each card from your note; without one it's a plain \"what is ...?\" card. They wait in the morning message with Keep and Drop; a kept card goes into Quiz, first due about a day after it was written. /mind shows your recall on them next to your own cards."
+when = "Turn it off if you'd rather write every card yourself."
+cost = "Nothing leaves: the local model or a fixed card. A card you keep is graded like any other (by your AI with Chat on)."
+needs = "`mind.tom.on` and Quiz."
+
+[s."mind.dream.cards_max"]
+tip = "The most dream cards a night (1 to 3)."
+when = "Lower it for fewer cards to look at in the morning."
+needs = "`mind.dream.cards`."
+
+[s."mind.dream.lessons"]
+tip = "Each night, 1 to 3 lines for your how-to-help-me note from the day's outcomes, written only when you tap Keep."
+what = "It replays what you undid, the messages left unanswered or given Less of this, the times you told Voice off and its guesses about you marked wrong; clear patterns become lines like \"Fewer nudges in the evening\". Keep writes the line (with Undo); Not that drops it for good."
+when = "Turn it off if you'd rather write that note yourself."
+
+[s."mind.dream.voice"]
+tip = "One morning line on what the nightly voice learning saw: turns it learned from and any misfire pattern."
+when = "Turn it off if you don't need it. Counts and flags only, never words."
+needs = "Voice with `voice.listen.learn_nightly`."
+
+[s."mind.study_push.on"]
+tip = "One morning line about the subject Brain is most uneasy about (due date, minutes logged, cards due), with Yes and Later."
+what = "That day the subject's day-before deadline reminder, Start-by's \"Time to start\" and exam mode's daily practice check-in are folded into it. Yes sets a reminder at the time it offers (or counts the deadline as started). The six-hour reminder, \"Overdue?\" and the evening-before practice offer still come."
+when = "Turn it off to get the separate reminders back."
+needs = "Deadlines (a deadline with a subject); Study and Quiz add their numbers when on."
+
+[s."mind.study_push.when"]
+tip = "When the morning line comes."
+values = "A schedule like `daily 07:55`."
+when = "Keep it before Start-by's morning pass (`startby.when`), so its message is folded."
+needs = "`mind.study_push.on`."
+
+[s."mind.study_push.minutes"]
+tip = "How long a study stretch the morning line offers."
+when = "Change it to the length you'd actually start with."
+needs = "`mind.study_push.on`."
+
+[s."mind.study_push.horizon_days"]
+tip = "How far ahead a deadline can be for Brain to be uneasy about it."
+when = "Lower it to hear only about what's close."
+needs = "`mind.study_push.on`."
+
+[s."mind.checkins.surprise"]
+tip = "The next check-in comes early when the day departs strongly from Brain's forecast."
+what = "Two hours past the predicted wake time with no sign of you while your phone shows you up, or a deadline moved twice in a day: the next check-in planned today comes now instead of at its time, once a day. Never in a class or while you're asleep."
+when = "Turn it off to have check-ins only at their times."
+needs = "`mind.forecast.on` and Check-ins (the phone's screen sense for the wake case)."

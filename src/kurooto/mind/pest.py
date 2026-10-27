@@ -64,6 +64,7 @@ KINDS = {
         "remember.recheck",
         "mind.skill_offer",
         "mind.plan",
+        "mind.study_push",
     ),  # fmt: skip
     "excitement": ("mind.excited", "mind.worried", "mind.feeling"),
     "check-in": ("mood.ask", "mind.checkin"),

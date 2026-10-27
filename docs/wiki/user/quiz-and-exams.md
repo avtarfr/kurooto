@@ -92,6 +92,13 @@ held back). See [Messages it sends](messages-it-sends.md).
 **Turn it off / undo.** Features → Quiz → Turn off; your progress stays in Kurooto's state folder (`quiz/`).
 `quiz.by_call` off brings back **Here or by call?**.
 
+**Kurooto's cards** (0.8.14, with Brain). Brain's dreaming offers 1 to 3 cards a night for concepts you studied that
+day and are ready for next; the ones you **Keep** in the morning message join your quiz under "Kurooto's cards", first
+due about a day after they were written, and are asked like your own (with the answer it wrote, for grading). A card
+whose concept belongs to none of your subjects goes under `kurooto-cards`. `/mind` compares your recall on them with
+your own cards ([mind.md](mind.md#dreaming-about-the-day-0814)). In exam mode, the daily practice check-in for the
+subject Brain's morning line is about is folded into that line.
+
 ## Link recall cards
 
 **What it does.** The links between your concept notes become questions. Each link the

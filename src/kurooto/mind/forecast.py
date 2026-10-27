@@ -14,18 +14,45 @@ planned action does is only ever measured, against days when it was withheld on 
     score            both, per channel, with the channels a Kurooto action touched left without a skill score (I-14)
 
 Pure functions over plain data; the scorekeeper scores from its own copy of the frozen record and the signals it stored.
+
+Surprise check-ins (0.8.14, `mind.checkins.surprise`, on with Brain and Check-ins): every 15 minutes the live day is
+held against the forecast frozen for it. When it departs strongly, the next check-in still planned today comes now
+instead of at its time (once a day, through the gate and the workspace like any check-in):
+    late_wake     no sign of you with Kurooto two hours past the predicted wake time, while your phone shows you up
+                  (its screen sense, when it's on)
+    moved_twice   a deadline moved twice today
+Never during a class on the timetable, and never while you're asleep (Brain's sleep, else the night hours).
+
+    surprise(app, t)        which of those holds now, or None
+    surprise_tick(app)      the 15-minute check that fires the check-in
 """
 
 from __future__ import annotations
 
+import datetime as dt
 import hashlib
 import json
 import math
+from collections import Counter
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
+from kurooto import mind
+from kurooto.core.config import register_defaults
 from kurooto.mind import read, stats
 
+if TYPE_CHECKING:
+    from kurooto.app import App
+
 PART = "forecast"  # its switch: mind.forecast.on
+
+register_defaults(
+    "mind",
+    {"checkins": {"surprise": True}},  # a check-in comes early when the day departs strongly from the forecast
+)
+SURPRISE_FILE = "mind-surprise.json"
+LATE_MIN = 120  # this long past the predicted wake time with no sign of you
+MOVES = 2  # one deadline moved this many times in a day
 
 CHANNELS = {
     "wake_min": "gauss",
@@ -166,3 +193,108 @@ def score(
 def mean_surprise(scores: dict) -> float | None:
     v = [c["surprise"] for c in scores.values() if math.isfinite(c["surprise"])]
     return round(sum(v) / len(v), 4) if v else None
+
+
+# --------------------------------------------------------------------------------------- surprise check-ins (0.8.14)
+def surprise_on(app: App) -> bool:
+    return mind.on(app) and bool(app.settings.get("mind.checkins.surprise")) and app.is_on("checkins")
+
+
+def frozen(app: App, day: str) -> dict | None:
+    """The forecast frozen for `day` (21:00 the evening before), from the scorekeeper's tables (read-only)."""
+    row = next(iter(mind.connect(app).mood_rows(f"forecast:{day}")), None)
+    return (row or {}).get("meta") or None
+
+
+def _phone_up(app: App, since: float) -> bool:
+    try:
+        from kurooto.mind.senses import phone, store
+
+        if not phone.enabled(app, "screen"):
+            return False
+        return any(float(r["n"]) > 0 for r in store.events(app, "phone:screen", since))
+    except Exception:
+        return False
+
+
+def surprise(app: App, t: dt.datetime | None = None) -> str | None:
+    """What departs strongly from the forecast right now: "moved_twice", "late_wake", or None."""
+    from kurooto.core.clock import now
+    from kurooto.mind import signals
+
+    t = t or now()
+    lo = dt.datetime.combine(t.date(), dt.time(0)).timestamp()
+    moved: Counter = Counter()
+    for rec in app.events.tail(5000, {"deadline_moved"}):
+        try:
+            ts = dt.datetime.fromisoformat(str(rec["ts"])).timestamp()
+        except (KeyError, ValueError):
+            continue
+        if lo <= ts <= t.timestamp():
+            moved[str(rec.get("id") or "")] += 1
+    if any(n >= MOVES for k, n in moved.items() if k) or moved.get("", 0) >= MOVES:
+        return "moved_twice"
+    params = ((frozen(app, t.date().isoformat()) or {}).get("params") or {}).get("wake_min")
+    if params:
+        late = (t.timestamp() - lo) / 60.0 > float(params[0]) + LATE_MIN
+        if late and not signals._events(app, lo, t.timestamp(), signals.ACTIVE) and _phone_up(app, lo):  # noqa: SLF001
+            return "late_wake"
+    return None
+
+
+def _asleep(app: App, t: dt.datetime) -> bool:
+    try:
+        from kurooto.mind import sleep as msleep
+
+        if getattr(msleep, "on", lambda a: True)(app):
+            return msleep.state(app) == "asleep"
+    except Exception:  # noqa: S110 (no sleep yet: the night hours say it)
+        pass
+    try:
+        return bool(app.availability.night(t))
+    except Exception:
+        return False
+
+
+def _in_class(app: App, t: dt.datetime) -> bool:
+    block = getattr(app.availability, "blockers", {}).get("subjects:class")
+    try:
+        return bool(block and block(t))
+    except Exception:
+        return False
+
+
+def surprise_tick(app: App, payload: dict | None = None) -> str | None:
+    """Every 15 minutes: on a strong surprise, the next check-in planned today comes now instead (once a day). Returns
+    the surprise that fired one, else None."""
+    if not surprise_on(app):
+        return None
+    from kurooto.core.clock import now
+    from kurooto.core.state import jload, jsave
+
+    t = now()
+    f = app.paths.state / SURPRISE_FILE
+    if (jload(f, {}) or {}).get("day") == t.date().isoformat():
+        return None
+    if _asleep(app, t) or _in_class(app, t):
+        return None
+    why = surprise(app, t)
+    if why is None:
+        return None
+    ck = app.modules.get("checkins")
+    day = ck.day_of(t)
+    plan = ck.today(day)
+    ahead = [
+        (ck.at(day, c["time"]), name)
+        for name, c in plan.items()
+        if isinstance(c, dict) and c.get("status") == "planned" and c.get("time")
+    ]
+    ahead = [x for x in ahead if x[0] > t]
+    if not ahead:
+        return None
+    _, name = min(ahead)
+    jsave(f, {"day": t.date().isoformat(), "why": why, "name": name})
+    app.scheduler.cancel(f"checkins:{name}")  # it comes now in place of its timer
+    ck._fire({"name": name, "day": day.isoformat(), "early": True})  # noqa: SLF001
+    app.events.emit("mind_surprise_checkin", why=why, name=name)
+    return why

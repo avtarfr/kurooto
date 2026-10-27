@@ -943,7 +943,19 @@ class Deadlines(Module):
             self._chase(what, i, items[i], h, again=i in again)
         self._exam_mode_news()
 
+    def _folded(self, it: dict) -> bool:
+        """Brain's morning line about the subject it's most uneasy about took this nudge's place today (0.8.14,
+        mind/study_push.py; mind.study_push.on)."""
+        try:
+            from kurooto.mind import study_push
+
+            return study_push.folded(self.app, it.get("subject"), "deadline")
+        except Exception:
+            return False
+
     def _chase(self, what: str, i: str, it: dict, h: float, again: bool = False) -> None:
+        if what == "ping" and self._folded(it):
+            return  # said in the morning line instead; the six-hour one and "Overdue?" still come
         if what == "urgent" and self._calls_ok() and self._call(i, it, h):
             return
         if what != "overdue" and self._negotiate(i, again):
@@ -1147,7 +1159,7 @@ class Deadlines(Module):
             it.pop("snooze_until", None)
             jsave(self.file, items)
         self.app.scheduler.cancel(f"calls:ring:deadlines:{j}")
-        self.app.events.emit("deadline_moved")
+        self.app.events.emit("deadline_moved", id=j)  # the id: a deadline moved twice in a day is a surprise (Brain)
         return f"Moved: {it['title']}, now due {when_text(it['due'])} ({human(hours_left(it['due']))})."
 
     # --------------------------------------------------------------------- copies of one thing (the look back)
