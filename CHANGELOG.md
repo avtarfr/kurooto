@@ -1,8 +1,6 @@
 # Changelog
 
-## 0.8.11 (2026-10-27)
-
-Fixes from the first real use of Voice ID and Face presence.
+## 0.8.12 (unreleased)
 
 - **The being: sparks you can see, nerves, joined vessels, colour.** The brain showed no sparks at all: they run
   inside it and the solid cortex hid every one; they now show through it in their own colours, and at rest a low
@@ -11,6 +9,11 @@ Fixes from the first real use of Voice ID and Face presence.
   organs as they turn; the nerves leave the brainstem as a spinal cord and split into fibre bundles with nerve cells,
   lit in a signal's colour. The blood is tinted red, the fluid round the brain pale aqua, the notes each in a clear
   colour, the heart a little fainter, and speech heard that wasn't to Kurooto shows faintly in the YOU lane.
+
+## 0.8.11 (2026-10-27)
+
+Fixes from the first real use of Voice ID and Face presence.
+
 - **Voice ID: Set up from its own page.** With Voice ID on but its files not downloaded yet, the Your voice page
   said to go to the dashboard; it now has a **Set up now** button that downloads them there and shows the progress.
 - **Face presence: the near step can be finished.** Sitting close to a laptop's camera, leaning in pushed your chin
