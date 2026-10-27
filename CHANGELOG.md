@@ -12,6 +12,12 @@
 - **The phone app's Memory page shows your notes properly.** It framed a fixed ring of feature lights, so the notes
   sat small in the middle and a feature's name ran off the edge; it now frames the notes as they lie, between the
   app's bars, a little larger, with the lights on a ring just round them.
+- **The being's YOU lane moves as you speak.** It drew your turn only once the turn was over; while Voice listens it now
+  shows the microphone's loudness live, the last six seconds scrolling, and settles into the turn's outline when it
+  ends (`look.being_live_waveform`; still, as a sweep, with Remove animations or reduced motion).
+- **The voice lanes are smooth waveforms, not blocks.** Both lanes, on the dashboard and the phone, draw a soft
+  mirrored shape through the samples instead of a row of bars, so a short utterance no longer turns into a few wide
+  blocks.
 
 ## 0.8.12 (2026-10-27)
 

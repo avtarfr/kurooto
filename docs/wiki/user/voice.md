@@ -106,7 +106,8 @@ conversation. It closes:
 
 The dashboard shows each step (listening, hearing, talking to it, thinking, speaking, closed) and a waveform.
 Speech that wasn't for Kurooto (people talking to each other, noise) moves the waveform too: only its loudness
-reaches the page, never its words. `voice.listen.levels` off stops both.
+reaches the page, never its words. `voice.listen.levels` off stops both. On the being board the YOU lane is live while
+it listens: the microphone's loudness scrolls through it as you speak (`look.being_live_waveform`).
 
 ## When it doesn't listen
 

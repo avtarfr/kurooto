@@ -373,6 +373,7 @@
 "local_helper.on": "A small model on this computer (about 1 GB) for quick decisions and as a stand-in while the internet is down.",
 "local_helper.timeout_s": "Seconds a quick decision waits for the helper before the rules decide instead.",
 "look.being_hints": "The being's hints: what to click and what each part is (H on the board toggles them).",
+"look.being_live_waveform": "The being's YOU lane live: a trace of the microphone's loudness as you speak, the last six seconds.",
 "look.being_resting_sparks": "The being's resting sparks: a low trickle in the brain from what Kurooto does all the time.",
 "look.being_theme": "The being's colours: white light on black, or the page's palette.",
 "look.board": "The board: Kurooto as one living body (being), three panes on top (three), or STATUS on the left (classic).",

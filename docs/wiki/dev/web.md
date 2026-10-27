@@ -425,7 +425,7 @@ the pre-0.8.3 board) and `look.brain_monitor` (`shown` pins the side panel, `.b3
 
 `static/being.js` exposes `beingMount(host, {api, hoodOf, pal, theme, hints, talkWidth, talkRoom})` (async: it fetches
 `body/anatomy.bin` and `body/cerebrum.vol`, made once by `tools/gen_body_meshes.py`) and returns
-`{update(body), event(ev), graph(g), voice(m), body(b), typed(text, who), setHints(on), setRest(on), stop()}`. `home.js` mounts it in
+`{update(body), event(ev), graph(g), voice(m), body(b), typed(text, who), setHints(on), setRest(on), setLive(on), stop()}`. `home.js` mounts it in
 `#pane-being` when `beingBoard()` (dense, `look.board` "being", not Study mode, no pane filled); it loads three.js and the
 named bloom passes from `vendor/three/` (allow-listed one by one in `web/server.static`) and feeds it the stream's `graph`,
 `body`, `event` and `voice` messages. Everything it shows comes from the stream or the API: `/api/settings` (the panel's
@@ -468,7 +468,19 @@ region's parts and their switches), `/api/note` and `open-note`, `/api/voice` an
   (`BL`) and turns bloom off.
 - **Voice lanes:** `voice_heard` (`samples`, the loudness of speech that wasn't a turn) fills `LANES.you` with
   `heard: true`, drawn at 45% and captioned "heard, not to Kurooto"; a `voice_text` replaces it.
-- `look.being_theme`, `look.being_hints` (H), `look.being_resting_sparks`, `look.talk_box` (the talk box, `askKurooto`,
+- **Lane drawing (0.8.13):** `lane()` draws the samples through `wave()`: a Catmull-Rom curve (`cr`) through them,
+  taken every 2 px (the loudest sample per step when they're denser than that) into the reused `WX`/`WY` Float32Arrays,
+  filled as a mirrored path and its top edge stroked; the older-is-dimmer alpha is a linear gradient (`.3` to `1` of the
+  lane's alpha, the bars' old ramp), in `INK` (the ink's rgb). No per-sample `fillRect`. The phone's `UI.lanes` calls the
+  same `lane()` with smaller heights.
+- **Live YOU lane (0.8.13, `look.being_live_waveform`, `opts.liveWave`, `setLive(on)`):** `voice_level` (five levels
+  every 100 ms, `rate` 50) goes into `LIVE.ring` (`Float32Array(320)`, the last 300 drawn, 6 s) via `liveIn`; nothing
+  on the server changed. `liveShow()` is the trace's alpha: 0 with the switch off, after 1.5 s without a level (fading
+  over the last 0.5 s), or once a turn settled (`LIVE.settled`, set by `voice_text` from you, `voice_heard` and typing)
+  with no loud level (`> .4`, about -36 dB) since. `liveWave` lets each batch in over the next 100 ms so it scrolls
+  smoothly; with `calmEye()` (Remove animations or reduced motion) it sweeps instead. Dashboard only: the phone's copy
+  carries no levels, so `UI.lanes` passes no `live`.
+- `look.being_theme`, `look.being_hints` (H), `look.being_resting_sparks`, `look.being_live_waveform`, `look.talk_box` (the talk box, `askKurooto`,
   shared with the chat tab).
 - `tools/dash_preview.py`: a worktree's dashboard against the running Kurooto (its key from its page, never printed).
 - Tests: `tests/unit/test_being.py`.

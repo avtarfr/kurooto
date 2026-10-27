@@ -47,7 +47,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
-- [Dashboard and terminal](#dashboard-and-terminal): 23 settings
+- [Dashboard and terminal](#dashboard-and-terminal): 24 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 26 settings
 - [Face presence](#face-presence): 33 settings
@@ -6261,6 +6261,19 @@ spark either way.
 - **When to change it:** Turn it off if you'd rather the brain sparked only for events. Remove animations and the
   system's reduced motion turn it off too.
 - **Depends on:** `look.board` = `being`.
+
+### `look.being_live_waveform`
+
+The being's YOU lane live: a trace of the microphone's loudness as you speak, the last six seconds.
+
+While Voice listens and the dashboard is open, the microphone's loudness (five numbers every 100 ms, never sound or
+words) scrolls through the YOU lane, newest at the right; when your turn ends it settles into that turn's outline, and
+with nothing heard for a moment and a half the trace fades out. Remove animations and the system's reduced motion keep
+it still: it sweeps across instead of scrolling. Off, the lane shows only each turn's outline once it's over.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if the moving trace distracts you.
+- **Depends on:** `look.board` = `being`, Voice listening, and `voice.listen.levels` on.
 
 ### `look.talk_box`
 
