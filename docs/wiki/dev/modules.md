@@ -859,10 +859,18 @@ to +kurooto only from `me` or `mail_in_senders` (others aren't even fetched; `ma
 `blocked()` and the confidentiality check, and submits one text-only `lane="bg"` job per mail (`PER_CHECK` 10,
 `then="mail_digest.mail_in_done"`); `done()` writes a new `note`-kind note (summary, Gmail link, the text; never
 over another) and offers the dates via `core/dateoffers.py`, Calm reason `mail_digest.mail_in`; state
-`mail-digest/mail-in.json` (`since`, `seen`); `/mail in [on|off|label|from|unfrom]`), **agent_plan** (`google_plan.py`, its own calendar of time blocks; `reschedule(start, by)` deletes today's blocks
-not done and plans them again from `start` (or each `by` later), keeping order, lengths and gaps up to `GAP_MAX`,
-dropping a repeated title, stopping at `LATEST_H`; `undo` in `agent-plan.json`; intent `reschedule_day`, call tool
-`reschedule_day`), **google_calendar**
+`mail-digest/mail-in.json` (`since`, `seen`); `/mail in [on|off|label|from|unfrom]`), **agent_plan** (`google_plan.py`, its own calendar of time blocks; each event's
+`extendedProperties.private` carries `item` (the deadline id it's for, given or found by `source()`: `similar()` on the
+full title, same subject, due from the day before on) and `due` (that one's due date then); `plan_block(..., item,
+due=, shift=, check=)` refuses a block whose item `_over()` says is done, dropped or an exam that's over, and with
+`shift` (the call tool and `/blocks add`) moves an overlapping one to the first free time before `LATEST_H` or
+refuses, saying which; `reschedule(start, by, order)` takes today's blocks and tonight's past midnight
+(`_tonight`), drops the ones `_over()` (also a due moved past `deadlines.plan_h` since planning), orders the rest with
+`_arrange` (`order`'s parts first, matched by `words()`, then blocks with an item soonest due in the slots they held;
+not for a `by` push), keeps lengths and gaps up to `GAP_MAX`, deletes what doesn't fit before `LATEST_H` and names it
+and `_unplanned` items due within a day; `remove_blocks(what, after)`; `undo` (with `uid`, for the `apl:<uid>:undo`
+button) in `agent-plan.json`, used by `/blocks undo` and the `undo_plan` tool; intent `reschedule_day`, call tools
+`plan_block`, `reschedule_day`, `remove_blocks`, `undo_plan`), **google_calendar**
 (`google_calendar.py`, read-only), **drive_upload** (`google_drive.py`, resumable uploads; temporary uploads expire
 after `drive_upload.temp_days`: `expire` deletes each as the account recorded with it, and only while the file's
 `parents` still hold the Kurooto folder it went into; a moved, trashed or unknown-folder one is forgotten, not deleted). `google_confidential.py` is a helper for summarising confidential mail with a local

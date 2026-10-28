@@ -16,6 +16,21 @@
   tool call per class. The call screen also stops repeating itself: the same note again shows once with "×3", and
   classes skipped one after another show as one line, "skipping Linear Algebra, Probability" or "skipping today's
   classes".
+- **Rescheduling plans what's actually due.** Rescheduling the day moved every block blindly: revision for a quiz that
+  was that morning, and a lab journal whose deadline had just moved a week out, went first while homework and a quiz
+  due the next morning didn't fit. Now each Agent plan block remembers the deadline, quiz or exam it's for; a
+  reschedule drops (and names) blocks for something done, over, or moved past "due soon" since it was planned, puts
+  what's due soonest first, takes tonight's blocks past midnight into account, and names what's due within a day with
+  no block yet. A block for something over or done isn't planned at all.
+- **Your order on a call wins.** "Homework first, then quiz prep": reschedule_day takes that order and puts those
+  blocks first, and says which part named no block.
+- **No more overlapping blocks.** A block planned on a call or with /blocks add that would overlap another goes in
+  the first free time after it and the call says the time it got; with no room before 03:00 it isn't planned and the
+  call says so.
+- **Remove planned blocks** on a call ("remove those", "clear everything after 10") or with /blocks remove, with Undo
+  (a button, /blocks undo, or "put them back" on the call).
+- **A call only says what it did.** Its instructions now say never to claim something was done unless a tool's answer
+  says so; one said "I'm removing those study sessions" with no tool that could.
 - **Claude Code stays running for a conversation** (`brain.claude.session`, on): your chat's and voice's turns go to
   one Claude Code kept running for that conversation instead of starting the program for every message, so answers
   start sooner. Same permissions, tools and folders as before; it closes after 10 idle minutes

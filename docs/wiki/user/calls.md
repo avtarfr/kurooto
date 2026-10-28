@@ -185,6 +185,8 @@ meanwhile.
 - **Long jobs:** ask for something that needs real work ("write up a plan for the lab report") and it hands it to the
   AI on your computer (`run_task`, needs Chat). It says it's started and keeps talking; the result is told on the call
   when it's ready, or sent to Telegram as "From your call: ..." if the call ended.
+- **It only says what it did.** The call is told never to say it planned, moved, removed, set or sent something
+  unless a tool's answer on that call says so; when nothing can do what you asked, it says that instead.
 - **Your persona:** `calls.persona` adds words on how to talk, e.g. "be brief and a bit cheeky".
 
 The call's transcript is kept on your computer (Kurooto's state folder → `calls/transcripts/`, readable only by your
@@ -216,7 +218,7 @@ Each feature you turn on adds what calls can do; a feature that's off adds nothi
 | Remember how I like to be helped | Remember | yes (queued) |
 | Keep an eye on something for a while | Nightly look back | yes (queued) |
 | The week in numbers; the Sunday review's steps | Weekly summary | the review's steps from the last brief; the numbers need the computer |
-| Block time in the Agent plan calendar; reschedule or push the day | Agent plan calendar | yes (queued) |
+| Block time in the Agent plan calendar (never over another block); reschedule or push the day, in an order you give; remove blocks; put the plan back | Agent plan calendar | yes (queued) |
 | Send me a file, several files, or a study pack | Skills | yes (queued) |
 
 "Queued" means it's saved on your call line and done as soon as the computer is back; you then get "Done what you

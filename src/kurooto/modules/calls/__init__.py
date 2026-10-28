@@ -1407,6 +1407,8 @@ class Calls(Module):
             "Talk like a friend on a call: short and natural; never read out lists or markdown. Answer in the "
             "language they speak.",
             *[t.hint for t in tools if t.hint],
+            "Never say you did something (planned, moved, removed, set, sent) unless a tool's result in this call says "
+            "it was done; if no tool can do it, say so.",
             "If something needs a screen or their computer, say so. Don't read out email contents or other people's "
             "details.",
         ]
