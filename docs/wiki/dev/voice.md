@@ -467,7 +467,11 @@ through `Calls.run_tool()`; the result goes back in `toolResponse.functionRespon
 
 After the answer: `turn["live"] = 1` (`fast.numbers` passes it to `voice_timing`), `answer` stamped,
 `chat.record_turn(input transcription or the written-out words, output transcription)` while Chat is on, and the reply
-text (or `ALOUD`) returns to the portal, which shows it. Any exception: the session is closed, the stamps Live added
+text (or `ALOUD`) returns to the portal, which shows it. Then (0.9.0, L36; `_acted()` too) `App.after_turn(words,
+via="voice_live")`: `message_in` always (a fix: Live turns used to skip it, so `subjects.woke_at` and the rest never saw
+them), and with `voice.listen.live_after` (on) what `App.handle` runs on a message: `mind/tone.seen`, `mind/pest.heard`,
+`core/infer.observe`, `core/threads.observe` (`threads.add` dedups by words). Live only takes the owner's turns, so no
+guest turn reaches these (R10); tone stays on this computer. Any exception: the session is closed, the stamps Live added
 are taken off the turn, a `voice_live` event (stage, model, code, ms; never words) and `None`: the usual path answers.
 (0.8.18, a fix) Unless a tool already ran in that turn (`run_tool` records each in `Live._ran`, reset per turn): the
 usual path would run it again (Live's `order_groceries`, then the AI's or the add-on's plain words: "An order is

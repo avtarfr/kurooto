@@ -15,6 +15,9 @@
   a late heartbeat is logged with how late it was.
 - **Fix: the evening check-in doesn't ask what a class you missed covered.** A class with a catch-up task is
   mentioned as missed (the catch-up is on your list), and no study log is asked for it.
+- **Live turns count like typed ones** (`voice.listen.live_after`, on). A turn Gemini Live answered at the desk now
+  opens and closes threads, sets up what you stated and reaches Brain's tone and reply tracking, as a typed message
+  does; it always counts as a message from you (a fix: "first up today" missed it).
 
 ## 0.8.18 (2026-10-29)
 

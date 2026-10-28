@@ -343,6 +343,11 @@ you get an Approve / Deny question, as with any AI request. If Live can't answer
 within about 5 seconds), that turn is answered the usual way: never silence. The speed line in `/voice` counts Live
 turns too ("sent" is when your sound went, "first sound made" when Live's answer arrived).
 
+**What it notices (0.9.0, `voice.listen.live_after`, on).** A turn Live answered counts as a message from you, like a
+typed one: "I'll send the draft tonight" opens a thread, "I have a quiz every Thursday" is set up as a typed message
+would be (with `infer.on`), and Brain's reply tracking and tone (on this computer) see it. Off: only the fact that you
+said something is counted, as a typed message's is.
+
 ## When it doesn't listen
 
 - **Muted:** `/voice mute`, `kurooto voice mute`, or the dashboard's mute. It stays muted (across restarts) until

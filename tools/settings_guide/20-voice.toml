@@ -603,3 +603,10 @@ only. It uses calls.live_model (then calls.live_models) and calls.voice."""
 values = "`false` (default) or `true`."
 when = "Turn it on if you want quick spoken answers at the desk and are fine with your voice going to Google."
 needs = "`voice.listen.on`, a Gemini key, Voice ID (`voice.speaker_id.on`, enrolled) and Face presence."
+
+[s."voice.listen.live_after"]
+tip = "A turn Gemini Live answered is noticed like a typed message: threads, what you stated, Brain's tone and replies."
+what = "What App.handle notices in a typed message runs on a Live turn's words too: threads opened or closed, what you stated set up (`infer.on`), Brain's reply tracking and tone tag (on this computer). The turn always counts as a message from you either way."
+when = "Turn it off if Live turns shouldn't open threads or set things up."
+cost = "Nothing leaves this computer."
+needs = "`voice.listen.live`."
