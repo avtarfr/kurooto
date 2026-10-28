@@ -326,6 +326,10 @@ session goes what a call's setup carries (your name, the assistant's name, which
 calls) and, while a turn runs, what its tools find for it (a note it reads, say). Google sends back the answer's
 sound and its words. Nothing is written to disk; events hold the model, the stage and numbers only.
 
+If Live fails partway through a turn (no answer in time, the connection gone), the usual way answers instead; but if
+Live already did something in that turn (started an order, set a reminder), Kurooto says what that did in its own
+voice and doesn't ask your AI again, so nothing is done twice (0.8.18).
+
 **How to turn it on:** it needs a Gemini key (Settings → AI model), Voice ID on and enrolled (only your voice goes,
 so without Voice ID it never does) and Face presence on and enrolled (only while you face it). Then turn on `voice.listen.live` in Settings. It uses the call
 settings `calls.live_model` (then `calls.live_models` if that one isn't available) and `calls.voice`.

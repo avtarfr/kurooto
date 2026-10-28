@@ -469,8 +469,13 @@ After the answer: `turn["live"] = 1` (`fast.numbers` passes it to `voice_timing`
 `chat.record_turn(input transcription or the written-out words, output transcription)` while Chat is on, and the reply
 text (or `ALOUD`) returns to the portal, which shows it. Any exception: the session is closed, the stamps Live added
 are taken off the turn, a `voice_live` event (stage, model, code, ms; never words) and `None`: the usual path answers.
+(0.8.18, a fix) Unless a tool already ran in that turn (`run_tool` records each in `Live._ran`, reset per turn): the
+usual path would run it again (Live's `order_groceries`, then the AI's or the add-on's plain words: "An order is
+already going"), so `_acted()` waits for running tools up to `TOOL_WAIT_S` (15 s), records the turn in Chat and returns
+their results as the answer, said by the voice made here; the AI and the add-ons' intents never see the turn.
 Events: `voice_live` with `stage` `answered` (`turns`), or `connect`/`setup`/`send`/`first sound`/`no key`/`no calls`/
-`error` (`fallback: true` when that turn went the usual way).
+`error` (`fallback: true` when that turn went the usual way; `fallback: false, tools: n` when its tools' results were
+said instead).
 
 Not verified against Google: the raw v1beta setup shape for the configured models, the `x-goog-api-key` header on the
 websocket, manual activity with a pre-cut stretch, and whether `interrupted` is followed by a turnComplete

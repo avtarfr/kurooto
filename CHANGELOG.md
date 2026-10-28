@@ -22,6 +22,10 @@ Kurooto keeps its eyes and ears shut while it sleeps, stays up while you're at t
   After a look, its name first or last spelled any way is enough.
 - **A look works while it's drowsy or woken at night.** Only asleep stops it now (it used to stop in the half hour
   before its night too).
+- **Nothing is done twice when Live stumbles.** At the desk, Gemini Live started a grocery order, then didn't answer
+  in time; the turn went to your AI the usual way, which ordered again, and you heard "An order is already going".
+  Now, once Live has run a tool in a turn, a failure says that tool's result in Kurooto's own voice, and the turn
+  never goes to your AI or an add-on's plain words.
 - **One add-on can't blank the Features page.** An add-on whose setup form had no links list made the whole page fail
   to draw; the page now copes.
 

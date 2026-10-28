@@ -65,6 +65,7 @@ DESK = (
 )
 # (0.8.17) never at the desk: an approval is answered by their tap, not by the AI that asked for it
 DESK_NEVER = frozenset({"answer_approval"})
+TOOL_WAIT_S = 15.0  # (0.8.18) Live failed after starting a tool: its result is waited for this long, then said
 
 _log = logging.getLogger("kurooto.voice.live.ws")  # the websocket library's own log: off, so headers never print
 _log.propagate = False
@@ -108,6 +109,7 @@ class Live:
         self.sess: Session | None = None
         self._pcm: bytes | None = None  # the admitted turn's sound, in memory until it's sent or dropped
         self._spoke = False  # Live said this turn's answer: the portal mustn't say it again
+        self._ran: list[dict] = []  # (0.8.18) the tools this turn ran: {name, done (Event), out}
         self.loop: asyncio.AbstractEventLoop | None = None
         self._loop_lock = threading.Lock()
         self.bad: dict[str, float] = {}  # model -> tried last until (monotonic)
@@ -153,6 +155,7 @@ class Live:
             return None
         t0 = time.monotonic()
         before = set(turn)
+        self._ran = ran = []
         try:
             sess = self.sess
             if sess is None or sess.closed or sess.portal != self.v.portal.session:
@@ -164,7 +167,11 @@ class Live:
             for k in set(turn) - before:
                 turn.pop(k, None)
             stage, code = (e.stage, e.code) if isinstance(e, Failed) else ("error", type(e).__name__)
-            self._event(stage, fallback=True, code=code, ms=round((time.monotonic() - t0) * 1000))
+            ms = round((time.monotonic() - t0) * 1000)
+            if ran:  # (0.8.18) it acted already: the usual way would do it again ("An order is already going")
+                self._event(stage, fallback=False, code=code, ms=ms, tools=len(ran))
+                return "" if self.v.portal_cut() else self._acted(text, ran)
+            self._event(stage, fallback=True, code=code, ms=ms)
             return "" if self.v.portal_cut() else None
         finally:
             del pcm
@@ -182,6 +189,28 @@ class Live:
             except Exception:
                 pass
         return reply or ALOUD
+
+    def _acted(self, text: str, ran: list[dict]) -> str:
+        """(0.8.18) Live ran tools in this turn and then failed: what they said becomes the answer, spoken the usual
+        way (not by Live), and the turn doesn't go to your AI or the add-ons' plain words, which would run them again.
+        A tool still running is waited for TOOL_WAIT_S."""
+        end = time.monotonic() + TOOL_WAIT_S
+        parts = []
+        for r in ran:
+            if not r["done"].wait(max(0.0, end - time.monotonic())):
+                parts.append(f"{r['name']} is still running.")
+                continue
+            out = r["out"]
+            out = out if isinstance(out, str) else json.dumps(out, default=str)
+            parts.append(out.strip()[:400] or f"{r['name']}: done.")
+        reply = " ".join(parts)
+        chat = self.app.modules.get("chat")
+        if chat is not None and self.app.is_on("chat"):
+            try:
+                chat.record_turn(text, reply)
+            except Exception:
+                pass
+        return reply
 
     # ---------------------------------------------------------------------------------------------- the setup
     def setup(self, calls, model: str) -> dict:
@@ -453,6 +482,8 @@ class Live:
             return f"There's no {name} tool."
         if name in DESK_NEVER:  # (0.8.17) it could approve its own guarded action: the tap decides, not the AI
             return "Approvals are answered by their tap (the phone or the dashboard), never here. Tell them it waits."
+        rec = {"name": name, "done": threading.Event(), "out": None}
+        self._ran.append(rec)  # (0.8.18) this turn acted: a fallback mustn't do it again
         try:
             tool = next((t for t in calls.tools() if t.name == name), None)
             action = tap.action_of(tool, args) if tool is not None else ""
@@ -463,6 +494,8 @@ class Live:
             json.dumps(out)
         except (TypeError, ValueError):
             out = str(out)
+        rec["out"] = out
+        rec["done"].set()
         return out
 
     # ------------------------------------------------------------------------------------------- plumbing

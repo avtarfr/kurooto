@@ -97,10 +97,12 @@ class FakeLive:
         if self.mode == "silent":
             return
         await ws.send(sc(inputTranscription={"text": "what's due this week"}))
-        if self.mode == "tool":
+        if self.mode in ("tool", "tool_then_silent"):
             name, args = self.tool
             await ws.send(json.dumps({"toolCall": {"functionCalls": [{"id": "fc1", "name": name, "args": args}]}}))
             await asyncio.wait_for(got.wait(), 5)
+            if self.mode == "tool_then_silent":  # (0.8.18) it acted, then never spoke
+                return
         if self.mode == "interrupt":
             await ws.send(sound(b"\x05\x00" * 48000))  # two seconds: still playing when it's interrupted
             await asyncio.sleep(0.3)
@@ -310,6 +312,22 @@ def test_a_tool_call_runs_through_calls_run_tool(lv, monkeypatch):
     assert ran == [("hold_calls", {"until": "18:00"})]
     (resp,) = srv.tool_responses
     assert resp["functionResponses"] == [{"id": "fc1", "name": "hold_calls", "response": {"result": done}}]
+
+
+def test_a_tool_run_then_a_failure_isn_t_done_again_the_usual_way(lv, monkeypatch):
+    """(0.8.18) Live ran order_groceries, then no sound came: the usual way ran the request again and the second order
+    said "An order is already going". Now the tool's own answer is said, and nothing goes to the AI or the add-ons."""
+    lv.fake("tool_then_silent", tool=("order_groceries", {"items": "bread", "app": "zepto"}))
+    monkeypatch.setattr(live_mod, "FIRST_S", 0.5)
+    calls = lv.app.modules["calls"]
+    ran = []
+    started = "Filling your Zepto cart: bread. I'll ask you to approve."
+    monkeypatch.setattr(calls, "run_tool", lambda name, args, since="": ran.append(name) or started)
+    assert say(lv, "Kurooto, order bread from zepto") == started
+    assert ran == ["order_groceries"] and lv.text_way == []  # never the usual way: no second order
+    assert lv.engine.said == [started]  # said by the voice made here
+    ev = events(lv, "voice_live")[-1]
+    assert ev["stage"] == "first sound" and ev["fallback"] is False and ev["tools"] == 1
 
 
 def test_a_guarded_tool_asks_instead_of_running(lv, monkeypatch):
