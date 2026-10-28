@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.18 (unreleased)
+## 0.8.18 (2026-10-29)
 
 Kurooto keeps its eyes and ears shut while it sleeps, stays up while you're at the desk, and anyone's look opens a conversation.
 
