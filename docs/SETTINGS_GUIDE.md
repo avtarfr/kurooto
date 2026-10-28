@@ -260,12 +260,14 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `checkins.asleep_defers` | `true` | With check-ins by call and an alarm set, the night check-in waits for the morning once you've gone to bed. ([guide](wiki/user/settings-guide.md#checkinsasleepdefers)) |
 | `checkins.by_call` | `false` | Check-ins come as a call (a missed call falls back to Telegram). ([guide](wiki/user/settings-guide.md#checkinsbycall)) |
 | `checkins.day_starts` | `"05:00"` | When a check-in day begins, so a night check-in at 00:30 still counts for the evening before. ([guide](wiki/user/settings-guide.md#checkinsdaystarts)) |
+| `checkins.follow_register` | `false` | On a quiet day (Brain's register), the evening call does how it went and tomorrow first, then asks whether to go on. ([guide](wiki/user/settings-guide.md#checkinsfollowregister)) |
 | `checkins.journal` | `true` | Each check-in's answer goes into your journal. ([guide](wiki/user/settings-guide.md#checkinsjournal)) |
 | `checkins.learn_times` | `true` | A check-in you keep moving or answering late moves to when you actually do it, with Undo. ([guide](wiki/user/settings-guide.md#checkinslearntimes)) |
 | `checkins.questions.evening` | `"How did today go? What got done, and what slipped?"` | What the evening check-in asks. ([guide](wiki/user/settings-guide.md#checkinsquestionsevening)) |
 | `checkins.questions.midday` | `"How's the morning been? Anything to re-plan for the afte…` | What the midday check-in asks. ([guide](wiki/user/settings-guide.md#checkinsquestionsmidday)) |
 | `checkins.questions.night` | `"Before bed: anything else for your journal? What's first…` | What the night check-in asks. ([guide](wiki/user/settings-guide.md#checkinsquestionsnight)) |
 | `checkins.reflect` | `true` | The evening check-in lists up to three things today's records show you did, and asks what's first tomorrow. ([guide](wiki/user/settings-guide.md#checkinsreflect)) |
+| `checkins.reflect_open` | `true` | The evening check-in asks about what you said you'd do today (open threads due today): done, later or drop? ([guide](wiki/user/settings-guide.md#checkinsreflectopen)) |
 | `checkins.times.evening` | `"22:00"` | When the evening check-in comes: the day in review. ([guide](wiki/user/settings-guide.md#checkinstimesevening)) |
 | `checkins.times.midday` | `null` | When the midday check-in comes (off unless you set a time). ([guide](wiki/user/settings-guide.md#checkinstimesmidday)) |
 | `checkins.times.night` | `null` | When the night check-in comes, just before bed (off unless you set a time). ([guide](wiki/user/settings-guide.md#checkinstimesnight)) |
@@ -370,10 +372,12 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `exam_season.block_min` | `60` | Minutes in one revision block (one topic each). ([guide](wiki/user/settings-guide.md#examseasonblockmin)) |
 | `exam_season.budget` | `true` | During exams, only deadlines, quizzes and the alarm come in the day; the rest waits for the evening. ([guide](wiki/user/settings-guide.md#examseasonbudget)) |
 | `exam_season.debrief` | `true` | After each exam, a two-minute debrief that goes into the subject's course note. ([guide](wiki/user/settings-guide.md#examseasondebrief)) |
+| `exam_season.defer_background` | `false` | During exams, background AI work that isn't study waits until the day after the season. ([guide](wiki/user/settings-guide.md#examseasondeferbackground)) |
 | `exam_season.eve` | `true` | The evening before an exam, a checklist: where it is, your seat, calculator, ID card. ([guide](wiki/user/settings-guide.md#examseasoneve)) |
 | `exam_season.eve_at` | `"18:00"` | When the evening-before question can come. ([guide](wiki/user/settings-guide.md#examseasoneveat)) |
 | `exam_season.exam_min` | `180` | How long an exam lasts, in minutes (no calls then; the debrief comes half an hour after). ([guide](wiki/user/settings-guide.md#examseasonexammin)) |
 | `exam_season.hold_updates` | `true` | During exams, updates that aren't critical wait until the exams are over. ([guide](wiki/user/settings-guide.md#examseasonholdupdates)) |
+| `exam_season.jobs_priority` | `true` | During exams, AI requests about an exam's subject (and quiz and revision work) go first in the queue, one effort step up. ([guide](wiki/user/settings-guide.md#examseasonjobspriority)) |
 | `exam_season.leave_alarm` | `true` | On an exam day, an alarm to leave (a call with Phone calls, else a message). ([guide](wiki/user/settings-guide.md#examseasonleavealarm)) |
 | `exam_season.leave_min` | `45` | Minutes before the exam the leave alarm goes, unless you say a time ("leave 8:10"). ([guide](wiki/user/settings-guide.md#examseasonleavemin)) |
 | `exam_season.night_at` | `"21:30"` | When the nightly alarm check runs. ([guide](wiki/user/settings-guide.md#examseasonnightat)) |
@@ -399,6 +403,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `face.camera.device` | `""` | The camera to use: empty for the first ordinary one (infrared ones are skipped), or a number or part of its name. ([guide](wiki/user/settings-guide.md#facecameradevice)) |
 | `face.camera.height` | `480` | The picture height asked of the camera. ([guide](wiki/user/settings-guide.md#facecameraheight)) |
 | `face.camera.width` | `640` | The picture width asked of the camera (it may give another). ([guide](wiki/user/settings-guide.md#facecamerawidth)) |
+| `face.desk_time` | `false` | Your time at the desk, from when Face presence saw you arrive and leave, in the evening check-in and the weekly summary. ([guide](wiki/user/settings-guide.md#facedesktime)) |
 | `face.greet.after_absent_min` | `20` | Greet you only after you've been away at least this long, in minutes. ([guide](wiki/user/settings-guide.md#facegreetafterabsentmin)) |
 | `face.greet.gap_min` | `60` | The fewest minutes between two greetings. ([guide](wiki/user/settings-guide.md#facegreetgapmin)) |
 | `face.greet.listen_s` | `12` | How long that conversation stays open with nothing said, in seconds. ([guide](wiki/user/settings-guide.md#facegreetlistens)) |
@@ -415,8 +420,10 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `face.recognise.min_face_px` | `60` | Faces smaller than this many pixels are ignored: too far away to judge. ([guide](wiki/user/settings-guide.md#facerecogniseminfacepx)) |
 | `face.recognise.strictness` | `"normal"` | How rarely a stranger may pass: loose (1 in 100 frames), normal (1 in 1,000) or strict (1 in 10,000). ([guide](wiki/user/settings-guide.md#facerecognisestrictness)) |
 | `face.recognise.threshold` | `0.0` | 0 uses the calibrated threshold; a score from 0 to 1 overrides it (never below 0.363). ([guide](wiki/user/settings-guide.md#facerecognisethreshold)) |
+| `face.tools` | `true` | Your AI can ask kurooto_now: at the desk or away and since when, on a call, the camera's state, in words. ([guide](wiki/user/settings-guide.md#facetools)) |
 | `face.track.fps` | `10` | How many times a second it looks for faces while following them (1 to 15). ([guide](wiki/user/settings-guide.md#facetrackfps)) |
 | `face.track.on` | `true` | While the camera is open, follow every face in view (where it is and how much it moves) for the being's eye. ([guide](wiki/user/settings-guide.md#facetrackon)) |
+| `face.track.speaker` | `true` | While someone talks, the being's eye looks at them: at you when Voice ID says it's you, else the face moving most. ([guide](wiki/user/settings-guide.md#facetrackspeaker)) |
 | `face.watch.fps` | `1.0` | How many pictures a second it checks while waiting for you (0.2 to 2). ([guide](wiki/user/settings-guide.md#facewatchfps)) |
 | `face.watch.fps_battery` | `0.33` | Frames a second while the computer is on battery. ([guide](wiki/user/settings-guide.md#facewatchfpsbattery)) |
 | `face.watch.idle_s` | `60` | Seconds with no keyboard or mouse before the camera looks; while you type it doesn't need to. ([guide](wiki/user/settings-guide.md#facewatchidles)) |
@@ -430,6 +437,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 |---|---|---|
 | `files.folder` | `""` | A folder for files outside your notes (course files, PDFs); empty keeps them inside the notes. ([guide](wiki/user/settings-guide.md#filesfolder)) |
 | `files.links` | `""` | How notes link to files outside the notes folder. ([guide](wiki/user/settings-guide.md#fileslinks)) |
+| `files.to_app` | `true` | A file Kurooto sends you also comes to the phone app's chat as a link, not only to Telegram. ([guide](wiki/user/settings-guide.md#filestoapp)) |
 
 ### `finder`
 
@@ -635,15 +643,19 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `look.chat_page` | `true` | The Chat page (Alt+H): the phone app's chat on the dashboard, live, with its buttons, and a box to write in it. ([guide](wiki/user/settings-guide.md#lookchatpage)) |
 | `look.design` | `"new"` | The dashboard's design: new (sans-serif, rounded panes) or classic (the monospace look of 0.5.18). ([guide](wiki/user/settings-guide.md#lookdesign)) |
 | `look.hidden_features` | `[]` | Features hidden from the Features list (they still run if they're on). ([guide](wiki/user/settings-guide.md#lookhiddenfeatures)) |
+| `look.jobs_source` | `true` | The AI jobs page says where each request came from (Telegram, the phone chat, the talk box, voice, by itself). ([guide](wiki/user/settings-guide.md#lookjobssource)) |
 | `look.layout` | `"dense"` | Dense (everything on one full-screen board) or roomy (bigger panes and type). ([guide](wiki/user/settings-guide.md#looklayout)) |
 | `look.links_in` | `"default"` | Where links to other sites open: this computer's default browser, or the browser showing the dashboard. ([guide](wiki/user/settings-guide.md#looklinksin)) |
+| `look.notes_mastery` | `true` | The NOTES map rings concept notes by what Brain thinks you know: known well, partly, or ready to learn next. ([guide](wiki/user/settings-guide.md#looknotesmastery)) |
 | `look.palette` | `"kuro"` | The colours of Kurooto's pages and terminals: its own palettes, your desktop's, or a named theme. ([guide](wiki/user/settings-guide.md#lookpalette)) |
 | `look.panes` | `[]` | Panes hidden from the dense board: status, systems, notes, terminal. ([guide](wiki/user/settings-guide.md#lookpanes)) |
 | `look.projects` | `[]` | Folders of git repositories the PROJECTS box shows; empty uses Research's repositories. ([guide](wiki/user/settings-guide.md#lookprojects)) |
 | `look.settings_guide` | `true` | On the Settings page, a line under each setting that says what it does and opens its whole guide entry. ([guide](wiki/user/settings-guide.md#looksettingsguide)) |
+| `look.study_extras` | `true` | The Study pane's Open box: the subject's open doubts, and the concept Brain thinks you're ready to learn next. ([guide](wiki/user/settings-guide.md#lookstudyextras)) |
 | `look.study_mode` | `false` | The dashboard in Study mode: the notes map, the study timer and what's due (Alt+M, `/study mode`). ([guide](wiki/user/settings-guide.md#lookstudymode)) |
 | `look.talk_box` | `true` | A small box over the board to talk to Kurooto in plain English (Alt+K). ([guide](wiki/user/settings-guide.md#looktalkbox)) |
 | `look.theme_file` | `""` | A colours file of your own (a kitty theme, or matugen or pywal JSON) instead of the desktop's. ([guide](wiki/user/settings-guide.md#lookthemefile)) |
+| `look.today_class_actions` | `true` | Today's classes on the dashboard get skip / going buttons (the same as /skip and /attend). ([guide](wiki/user/settings-guide.md#looktodayclassactions)) |
 
 ### `mail_digest`
 
@@ -799,8 +811,10 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.talk.on` | `true` | Being talked to is a small reward for Brain (at most 0.2 a day; nothing for answers to its own pings). ([guide](wiki/user/settings-guide.md#mindtalkon)) |
 | `mind.tom.attention` | `false` | Hold a message (at most 15 minutes) while you're deep in one project. ([guide](wiki/user/settings-guide.md#mindtomattention)) |
 | `mind.tom.false_beliefs` | `true` | When something you were told turns out wrong, tell you once, with the evidence. ([guide](wiki/user/settings-guide.md#mindtomfalsebeliefs)) |
+| `mind.tom.from_chat` | `true` | Goals you state and due dates you give for your deadlines, in your messages, go into Brain's model of you. ([guide](wiki/user/settings-guide.md#mindtomfromchat)) |
 | `mind.tom.on` | `true` | A model of what you know, believe, want and prefer, each row with its source (`/model`). ([guide](wiki/user/settings-guide.md#mindtomon)) |
 | `mind.tone.on` | `false` | Tag each message you write with one word (calm, tired…), using the model on this computer only. ([guide](wiki/user/settings-guide.md#mindtoneon)) |
+| `mind.tools.on` | `true` | Your AI and calls can read Brain's plan, when you're likely free (in words) and your precedents; "call me when I'm free" works. ([guide](wiki/user/settings-guide.md#mindtoolson)) |
 | `mind.values.on` | `true` | Brain learns which kinds of things help (values), never affecting a choice in the shadow days. ([guide](wiki/user/settings-guide.md#mindvalueson)) |
 | `mind.values.shadow_days` | `21` | Days learned values are only counted, never used for a choice. ([guide](wiki/user/settings-guide.md#mindvaluesshadowdays)) |
 | `mind.why.on` | `true` | "Why this?" under a message Kurooto started says what Brain's gate and door did with it, what it expected, and how many it has sent today. ([guide](wiki/user/settings-guide.md#mindwhyon)) |
@@ -886,6 +900,12 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `persona.length` | `""` | How long answers should be, in your own words. ([guide](wiki/user/settings-guide.md#personalength)) |
 | `persona.register` | `true` | A short message gets a short answer, a voice note a spoken-style one. ([guide](wiki/user/settings-guide.md#personaregister)) |
 | `persona.tone` | `""` | The tone you want answers in, in your own words. ([guide](wiki/user/settings-guide.md#personatone)) |
+
+### `phone`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `phone.bedside.signal` | `true` | Your phone tells this computer when bedside mode opens or closes (a flag, no sensor). ([guide](wiki/user/settings-guide.md#phonebedsidesignal)) |
 
 ### `power`
 
@@ -1184,6 +1204,12 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `terminal.tabs` | `["agent", "shell", "chat", "logs"]` | The Kurooto Terminal's tabs, in order: your AI's program, your shell, Kurooto chat, the log. ([guide](wiki/user/settings-guide.md#terminaltabs)) |
 | `terminal.top` | `"left"` | Where `kurooto top` goes: a column beside the first tab, a tab of its own, or nowhere. ([guide](wiki/user/settings-guide.md#terminaltop)) |
 
+### `tools`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `tools.latex` | `true` | Your AI can compile a LaTeX file to a PDF with the compile_latex tool (shell escape off). ([guide](wiki/user/settings-guide.md#toolslatex)) |
+
 ### `turnon`
 
 | Setting | Default | What it does |
@@ -1236,6 +1262,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.learn_nightly` | `true` | Every night Kurooto learns from how its voice turns went: ones you carried on with, and ones you told off. ([guide](wiki/user/settings-guide.md#voicelistenlearnnightly)) |
 | `voice.listen.levels` | `true` | Show the microphone's loudness as a waveform on the dashboard (numbers only). ([guide](wiki/user/settings-guide.md#voicelistenlevels)) |
 | `voice.listen.live` | `false` | Your own turns answered by Gemini Live, speech to speech, in about a second. Their sound goes to Google. ([guide](wiki/user/settings-guide.md#voicelistenlive)) |
+| `voice.listen.live_after` | `true` | A turn Gemini Live answered is noticed like a typed message: threads, what you stated, Brain's tone and replies. ([guide](wiki/user/settings-guide.md#voicelistenliveafter)) |
 | `voice.listen.look_anyone` | `true` | Anyone's look opens the conversation, not only yours: a guest looking at it can talk to it too. ([guide](wiki/user/settings-guide.md#voicelistenlookanyone)) |
 | `voice.listen.look_away_s` | `3.0` | Looking away this long, before you've said anything, closes it again. ([guide](wiki/user/settings-guide.md#voicelistenlookaways)) |
 | `voice.listen.look_dwell_s` | `1.0` | How long you look at the camera before it starts listening: a glance shorter than this doesn't count. ([guide](wiki/user/settings-guide.md#voicelistenlookdwells)) |

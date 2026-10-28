@@ -25,32 +25,32 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 ## Contents
 
 - [You and how it talks to you](#you-and-how-it-talks-to-you): 11 settings
-- [Your AI](#your-ai): 34 settings
+- [Your AI](#your-ai): 35 settings
 - [Messages and where they reach you](#messages-and-where-they-reach-you): 31 settings
 - [When it may interrupt you](#when-it-may-interrupt-you): 13 settings
 - [Phone calls and the call line](#phone-calls-and-the-call-line): 35 settings
 - [Morning alarm](#morning-alarm): 11 settings
 - [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 34 settings
-- [Check-ins, journal and the week](#check-ins-journal-and-the-week): 18 settings
+- [Check-ins, journal and the week](#check-ins-journal-and-the-week): 20 settings
 - [Classes and timetable](#classes-and-timetable): 15 settings
 - [Calendar](#calendar): 11 settings
-- [Quiz and exams](#quiz-and-exams): 33 settings
+- [Quiz and exams](#quiz-and-exams): 35 settings
 - [Books, study time and handwritten notes](#books-study-time-and-handwritten-notes): 41 settings
-- [Notes, files and sync](#notes-files-and-sync): 28 settings
+- [Notes, files and sync](#notes-files-and-sync): 29 settings
 - [Notes brain (GBrain)](#notes-brain-gbrain): 18 settings
 - [Concept graph](#concept-graph): 26 settings
 - [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 49 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
-- [Brain](#brain): 127 settings
-- [Voice and voice notes](#voice-and-voice-notes): 80 settings
+- [Brain](#brain): 129 settings
+- [Voice and voice notes](#voice-and-voice-notes): 81 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
-- [Dashboard and terminal](#dashboard-and-terminal): 27 settings
+- [Dashboard and terminal](#dashboard-and-terminal): 31 settings
 - [Add-ons](#add-ons): 4 settings
-- [The phone app's own settings](#the-phone-apps-own-settings): 26 settings
-- [Face presence](#face-presence): 34 settings
+- [The phone app's own settings](#the-phone-apps-own-settings): 28 settings
+- [Face presence](#face-presence): 37 settings
 
 ## You and how it talks to you
 
@@ -425,6 +425,21 @@ Minutes a request may sit with no AI at work and no program running before the w
 - **When to change it:** Raise it if long-thinking requests are stopped while they're still fine; lower it to free a
   stuck queue sooner. A stopped request says so.
 - **Costs and what leaves this computer:** Nothing.
+
+### `tools.latex`
+
+Your AI can compile a LaTeX file to a PDF with the compile_latex tool (shell escape off).
+
+Kurooto compiles a copy of the .tex (Tectonic, else latexmk or pdflatex, at most five minutes) and answers with the
+PDF's path or the first errors. The PDF goes beside the .tex in your files folder (`files.folder`) or the course files
+folder, else into the files folder's inbox; never into your notes when a files folder is set. With a files folder, your
+AI is told to write the documents it makes there.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if your AI shouldn't make PDFs.
+- **Costs and what leaves this computer:** Nothing leaves this computer (Tectonic fetches LaTeX packages it lacks the
+  first time).
+- **Depends on:** LaTeX on this computer (TeX Live, MiKTeX, MacTeX) or Tectonic.
 
 ### `agents.export`
 
@@ -1750,6 +1765,28 @@ The evening check-in lists up to three things today's records show you did, and 
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off for the plain question only.
 
+### `checkins.reflect_open`
+
+The evening check-in asks about what you said you'd do today (open threads due today): done, later or drop?
+
+Up to three open threads due by the end of the day, in the evening call and message. Your answer closes them the usual
+way ("I emailed the draft to Mira"), from the call's transcript or your reply.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you'd rather not be asked.
+- **Depends on:** `memory.threads`.
+
+### `checkins.follow_register`
+
+On a quiet day (Brain's register), the evening call does how it went and tomorrow first, then asks whether to go on.
+
+Nothing is dropped: say go on and every other step follows, the quiz offer too. Decided on this computer by rules; the
+call never says why.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on for a shorter call on a quiet day.
+- **Depends on:** Brain with `mind.register.on`.
+
 ### `checkins.by_call`
 
 Check-ins come as a call (a missed call falls back to Telegram).
@@ -2290,6 +2327,29 @@ Each evening: did you cover today's revision topics? (Counts like a quiz answer.
 - **When to change it:** Turn it off if you'd rather not be asked.
 - **Depends on:** `exam_season.revision`.
 
+### `exam_season.jobs_priority`
+
+During exams, AI requests about an exam's subject (and quiz and revision work) go first in the queue, one effort step
+up.
+
+A request someone waits for in a chat still goes first. The effort goes up only when Kurooto picked it (not a `high:`
+you asked for) and that level's free limit isn't kept for you. Everything else still runs in order.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep the queue in plain order during exams.
+- **Depends on:** Exam season, with exam dates.
+
+### `exam_season.defer_background`
+
+During exams, background AI work that isn't study waits until the day after the season.
+
+Learning's look back, research digests, Brain's nightly work and the like wait; study work (quiz, revision) and your own
+requests don't.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on to keep the AI and its free limits for study during exams.
+- **Depends on:** Exam season, with exam dates.
+
 ### `skills.auto_pack`
 
 The evening before a quiz or exam, a revision pack: ask first, build it, or never.
@@ -2748,6 +2808,19 @@ The program that opens a note from the dashboard; empty uses the system's.
 
 - **Values:** A command, with `{path}` for the note: `kitty nvim {path}`. **Default:** empty.
 - **When to change it:** Set it to open notes in your own editor.
+
+### `files.to_app`
+
+A file Kurooto sends you also comes to the phone app's chat as a link, not only to Telegram.
+
+`kurooto send`, a file the AI sends, a long answer as a file, an add-on's picture (a grocery order's screenshot). Only
+while the chat gets Kurooto's messages (`notify.app_chat`); without Telegram files always come to the chat.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to get files on Telegram only, as before 0.9.0.
+- **Costs and what leaves this computer:** The file goes sealed with a one-time key through your call line (or your own
+  Google Drive with Drive upload on); the line keeps it 24 hours.
+- **Depends on:** A paired phone app and `notify.app_chat` on.
 
 ### `files.folder`
 
@@ -5160,6 +5233,20 @@ Keep where each belief came from (said, saw, inferred, imagined) and how sure it
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off to drop the hedging rules. `/beliefs` lists them.
 
+### `mind.tools.on`
+
+Your AI and calls can read Brain's plan, when you're likely free (in words) and your precedents; "call me when I'm free"
+works.
+
+Three read-only tools: brain_plan (as /plan), brain_free_time ("Likely free from 16:00", never a chance),
+brain_precedents (as /precedents). schedule_call takes when "when I'm free" and books the forecast's hour, still asking
+for your Approve outside a call.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep Brain's plan and forecast away from your AI.
+- **Costs and what leaves this computer:** Those lines go to the AI you picked when it asks.
+- **Depends on:** Brain; the free-time part needs `mind.presence_forecast.on`.
+
 ### `mind.precedents.on`
 
 Judgement calls between your values are asked once, then followed (off until you turn it on).
@@ -5277,6 +5364,18 @@ When something you were told turns out wrong, tell you once, with the evidence.
 
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off if you'd rather not get these corrections.
+- **Depends on:** `mind.tom.on`.
+
+### `mind.tom.from_chat`
+
+Goals you state and due dates you give for your deadlines, in your messages, go into Brain's model of you.
+
+"My goal is to finish the draft by Friday" becomes a stated goal; "the essay is due Monday" (one of your open deadlines)
+becomes what you believe about its date, so a wrong date can be pointed out once. Never health, money, passwords or the
+deny-list's topics. Kept on this computer.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep Brain's model to your deadlines, projects and what Kurooto told you.
 - **Depends on:** `mind.tom.on`.
 
 ### `mind.tom.attention`
@@ -6667,6 +6766,19 @@ seconds: that turn goes the usual way. Nothing is written to disk; events hold n
   Google.
 - **Depends on:** `voice.listen.on`, a Gemini key, Voice ID (`voice.speaker_id.on`, enrolled) and Face presence.
 
+### `voice.listen.live_after`
+
+A turn Gemini Live answered is noticed like a typed message: threads, what you stated, Brain's tone and replies.
+
+What App.handle notices in a typed message runs on a Live turn's words too: threads opened or closed, what you stated
+set up (`infer.on`), Brain's reply tracking and tone tag (on this computer). The turn always counts as a message from
+you either way.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if Live turns shouldn't open threads or set things up.
+- **Costs and what leaves this computer:** Nothing leaves this computer.
+- **Depends on:** `voice.listen.live`.
+
 ## Privacy and what it keeps
 
 Where Kurooto may reach on the internet, how long it keeps transcripts, requests and chats, and the one-line gists
@@ -7268,6 +7380,51 @@ only the settings, with what each does when you hover its name.
 - **When to change it:** Turn it off once you know your settings and want a shorter page; the guide stays in the user
   wiki.
 
+### `look.today_class_actions`
+
+Today's classes on the dashboard get skip / going buttons (the same as /skip and /attend).
+
+Skip marks today's class as skipped (calls may come during it, the evening check-in doesn't ask about it); going undoes
+that. Only what you tap: nothing is guessed.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep the Classes list read-only.
+- **Depends on:** Subjects.
+
+### `look.study_extras`
+
+The Study pane's Open box: the subject's open doubts, and the concept Brain thinks you're ready to learn next.
+
+Doubts come from the Doubt queue (with it on). The next concept comes from Brain's model of what you know
+(`mind.tom.on`): a concept not mastered whose prerequisites are, the subject's own first. Worked out on this computer.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off for a shorter Study pane.
+- **Costs and what leaves this computer:** Nothing leaves this computer.
+
+### `look.jobs_source`
+
+The AI jobs page says where each request came from (Telegram, the phone chat, the talk box, voice, by itself).
+
+A request from one of the phone app's chats links to that chat on the Chat page. Only the kind of place is kept (a word
+per request), never what was asked.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off for the shorter table.
+- **Costs and what leaves this computer:** Nothing leaves this computer.
+
+### `look.notes_mastery`
+
+The NOTES map rings concept notes by what Brain thinks you know: known well, partly, or ready to learn next.
+
+A ring over the neighbourhood's colour (green: known well; sand: partly; double peach: ready next), and the grade in
+words when you point at a note. From Brain's model of what you know (`mind.tom.on`), worked out on this computer.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off for the plain map.
+- **Costs and what leaves this computer:** Nothing leaves this computer.
+- **Depends on:** Brain with `mind.tom.on`.
+
 ### `look.study_mode`
 
 The dashboard in Study mode: the notes map, the study timer and what's due (Alt+M, `/study mode`).
@@ -7518,6 +7675,27 @@ Keep the screen on while bedside mode is open and charging.
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off to let the screen sleep; bedside mode still dims at night.
 
+### `app.bedsideToday`
+
+Bedside mode also shows today's reminders, what's due within a day and that Kurooto is asleep.
+
+From the Today list your computer sealed for this phone. Locked with a PIN or pattern: only how many.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off for the plain clock, alarm and calls.
+
+### `phone.bedside.signal`
+
+Your phone tells this computer when bedside mode opens or closes (a flag, no sensor).
+
+Kept as on or off with its time (calls/bedside.json) and an event; one sent while the computer was off is dropped.
+Nothing acts on it unless a feature that uses it is turned on.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if this computer shouldn't know.
+- **Costs and what leaves this computer:** The flag goes sealed through your call line, which passes it on.
+- **Depends on:** A paired Android phone (0.9.0 or later).
+
 ### `app.places.on`
 
 Location reminders: "remind me when I reach the library" for the places you saved.
@@ -7757,6 +7935,41 @@ When someone else is in view too: skip the greeting, say just "Welcome back.", o
 
 - **Values:** `skip`, `short`, `full`. **Default:** `skip`.
 - **When to change it:** Leave it on skip so your day isn't read out in front of others.
+
+### `face.tools`
+
+Your AI can ask kurooto_now: at the desk or away and since when, on a call, the camera's state, in words.
+
+Also where Kurooto's messages reach you, Voice ID's last verdict as a word and Brain's plan line. Never a picture, who
+else is in view, a mood, Brain's read, tone or a sense reading.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if your AI shouldn't know whether you're at the desk.
+- **Costs and what leaves this computer:** Those words go to the AI you picked when it asks.
+- **Depends on:** Nothing; the desk and camera parts need Face presence.
+
+### `face.track.speaker`
+
+While someone talks, the being's eye looks at them: at you when Voice ID says it's you, else the face moving most.
+
+Only that someone is talking and Voice ID's word reach the dashboard, never the sound.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off for the eye that moves between faces by itself.
+- **Depends on:** `face.track.on` and Voice listening.
+
+### `face.desk_time`
+
+Your time at the desk, from when Face presence saw you arrive and leave, in the evening check-in and the weekly summary.
+
+"4 h 10 at the desk today, longest 2 h 40 unbroken": a total and the longest stretch, told once as your own numbers,
+never as a judgement or to check what you said you did.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you'd like to know how long you sit at the screen.
+- **Costs and what leaves this computer:** Those two numbers go where the check-in and the weekly summary go (your AI
+  reads the call's script).
+- **Depends on:** Face presence.
 
 ### `face.track.on`
 
