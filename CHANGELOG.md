@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0 (unreleased)
+
+- **A guest an add-on recognises is greeted by name** (`voice.addons.guest_name`, on). When an add-on knows who the
+  guest in front of it is, the first answer starts "Hi Sam." Kurooto makes that greeting itself; the name reaches the
+  guest's AI only when guests are answered on this computer.
+
 ## 0.8.18 (2026-10-29)
 
 Kurooto keeps its eyes and ears shut while it sleeps, stays up while you're at the desk, and anyone's look opens a conversation.

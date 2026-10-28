@@ -27,7 +27,12 @@ agy or Codex: with one of them as the main AI, guests are answered by this compu
 plainly that Kurooto only chats with its owner here when there's none.
 
 An add-on's chat (0.8.12, Voice.guest_reply) comes here too, the same way, with the person's name as context and the
-add-on's own last turns instead of Voice's (never the owner's conversation's)."""
+add-on's own last turns instead of Voice's (never the owner's conversation's).
+
+A guest an add-on recognises (0.9.0, voice.addons.guest_name): a feature's guest_name() may say who is in front of it
+(for example a person who agreed to be remembered). Voice greets them by name with a set phrase (GREET) once a
+conversation; the name goes into the guest's prompt only when guests are answered on this computer's model, never to
+your main AI, and is never kept, logged or put in an event."""
 
 from __future__ import annotations
 
@@ -47,6 +52,7 @@ COMMAND = "Only my owner can give me commands; I can still chat."
 ACTION = "Only my owner's voice can make me do that; I can still chat."
 PERSONAL = "I can't share my owner's things; ask me something general."
 NO_LOCAL = "I can only chat when the model on this computer is running."
+GREET = "Hi {name}."  # (voice.addons.guest_name) a guest an add-on recognises, greeted by Voice with a set phrase
 _times: dict[int, deque] = {}
 
 
@@ -132,6 +138,25 @@ def prompt(app: App, text: str, turns: list | None = None, name: str = "") -> st
     return "\n".join(lines)
 
 
+def addon_name(app: App) -> str:
+    """(0.9.0, voice.addons.guest_name) The name an add-on gives the guest in front of it (a feature's guest_name() ->
+    str), cleaned to a name; "" when none does, or with the switch off. Asked only for a guest's turn; never kept."""
+    if app.settings.get("voice.addons.guest_name") is False:
+        return ""
+    for m in app.enabled():
+        fn = getattr(m, "guest_name", None)
+        if not callable(fn):
+            continue
+        try:
+            got = fn()
+        except Exception:  # noqa: S112 (one add-on's mistake never stops a guest's turn)
+            continue
+        name = re.sub(r"[^\w' .-]", "", str(got or ""))[:40].strip()
+        if name:
+            return name
+    return ""
+
+
 def sealed_brain(app: App) -> bool:
     """Can the main AI answer a guest with no way to the owner's data? An API brain gets no tools; Claude Code runs
     with --tools "" and --strict-mcp-config. Agent programs with their own MCP servers (agy, Codex) can't be held."""
@@ -173,6 +198,8 @@ def handle(app: App, msg: Incoming, name: str = "", turns: list | None = None) -
             msg.reply(NO_LOCAL)
             return
         brain = local.id
+        if not name:  # (voice.addons.guest_name) a guest an add-on recognises: their name, on this computer only
+            name = addon_name(app)
     if not allowed_now(app):
         app.events.emit("voiceid_refused", what="rate", speaker=what)
         msg.reply(BUSY)

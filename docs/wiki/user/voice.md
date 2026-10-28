@@ -474,6 +474,7 @@ downloaded to your computer as separate programs, not part of Kurooto.
 | `voice.audio.backend` | `auto` | how sound plays and records: `auto`, `pipewire` (`pw-play`/`pw-record`) or `portaudio` (sounddevice) |
 | `voice.addons.listen` | on | let an add-on take one thing said, written out here and never sent (mute still stops it) |
 | `voice.addons.chat` | on | let an add-on have Kurooto chat with someone the guest way: no tools, none of your data |
+| `voice.addons.guest_name` | on | (0.9.0) an add-on that recognises a guest may name them: the first answer starts "Hi Sam." (a set phrase, not the AI's), and the name reaches the guest's AI only when that's the model on this computer |
 
 All of them, each with its whole entry: [the settings guide](settings-guide.md#voice-and-voice-notes).
 
@@ -636,6 +637,10 @@ name with a question or request after it ("Kurooto, …") or a reply right after
   Kurooto only chats with its owner when there's none. `guest_brain: local` always uses this computer.
 - A guest's words go to the AI as a request; once the answer is spoken, the request's words are blanked (the request
   list keeps only a row titled "Guest"), so nothing learns from them later.
+- A guest an add-on recognises (0.9.0, `voice.addons.guest_name`; for example a friend who agreed to be remembered by
+  an add-on): the first answer of the conversation starts "Hi Sam." Kurooto puts that greeting together itself; the
+  name goes to the guest's AI only with `guest_brain: local` (the model on this computer), and is never kept, logged or
+  shown anywhere else.
 
 Licences: CAM++ (3D-Speaker, Apache-2.0), its ONNX conversion (sherpa-onnx, Apache-2.0), kaldi-native-fbank
 (Apache-2.0), onnxruntime (MIT), numpy (BSD-3-Clause); the strangers' voice prints are computed from LibriSpeech

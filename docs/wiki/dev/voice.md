@@ -65,6 +65,13 @@ On `Voice` (`app.modules["voice"]`), both blocking: call them from the add-on's 
   is the add-on's own `(said, answer)` pairs, last 4 used, instead of Voice ID's `guest_turns` (the owner's
   conversation's guests never mix in). Waits like `ask_brain` (`_wait_job`), then `jobs.forget_guest`. None when Voice
   or `voice.addons.chat` is off or the text is empty.
+- (0.9.0) A feature's `guest_name() -> str` names the guest in front of it, for the ordinary guest path (a turn
+  Voice ID called a guest, not the add-on's own chat). `core/guest.py:addon_name(app)` asks each enabled feature
+  (the first non-empty, cleaned like `name` above; an exception skips that one) unless `voice.addons.guest_name` is
+  off. `Voice.ask_brain`'s guest branch prefixes the first answer of a portal session with `guest.GREET` ("Hi
+  {name}. ", `_greet_guest`, reset in `_portal_changed`); `heard_guest` keeps the answer without it, so the next turn's
+  prompt never carries the name. `guest.handle` puts the name in the prompt only when the turn runs on the local model
+  (`guest_brain: local`, or a main AI that can't be sealed). Never in an event, the ledger or the job's title.
 - `say(text, wait=True)` (already there) speaks a scripted line.
 
 ## Outputs: playing the voice elsewhere (0.8.12)
