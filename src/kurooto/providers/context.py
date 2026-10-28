@@ -154,6 +154,11 @@ def headless_context(app: App, extra: str = "", lane: str = "you") -> str:
     where = layout.describe(app)  # their own notes layout and files folder, if they chose one (core/layout.py)
     if where:
         lines.append(where)
+    from kurooto.core.tools import latex_rule  # (0.9.0) documents it makes go to the files folder, not the notes
+
+    rule = latex_rule(app)
+    if rule:
+        lines.append(rule)
     if extra:
         lines.append(extra)
     return "\n".join(lines)

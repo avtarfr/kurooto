@@ -292,6 +292,14 @@ answered. `fell` comes from `handed()` (step 8 above).
 - `sync_tools()`: `sync_status`, `sync_now`.
 - `core/selfdoc.py:tool(app)`: `kurooto_self` (read-only): this computer's `self.md`, or with `part=manual` the shipped
   manual. See [self-manual.md](self-manual.md).
+- `latex_tools()` (0.9.0, `tools.latex`): `compile_latex(path)`. The source must be inside `places.read_roots`;
+  `_latex_workdir` copies its folder (at most `LATEX_COPY_MAX` files/bytes, hidden files left out; else the `.tex`
+  alone) into a temp dir and `modules/skills.py:compile_tex` compiles there (Tectonic `--untrusted`, else `latexmk -norc
+  -no-shell-escape` or `pdflatex` twice, `openin_any`/`openout_any` paranoid, `LATEX_TIMEOUT`). Only the PDF is copied
+  out, to `latex_dest`: beside the source inside `files.folder` or `places.course_files`; else `layout.file_dir("latex")`
+  (the files folder's inbox), except that with no files folder a source in a write root keeps its PDF beside it.
+  `latex_rule()` adds a line to the AI's context (`providers/context.py`) when `files.folder` is set: documents it makes
+  go there, not in the notes. Events `latex_compiled` (beside), `latex_compile_failed` (the first error line).
 - `app.ask.agent_tools()`: `ask_user`.
 - For each enabled module: `call_tools()` and `agent_tools()`, deduplicated by name; `CALL_ONLY = {"run_task",
   "pending_items"}` are never given to unattended work. Learns from its own work adds `search_history` this way.

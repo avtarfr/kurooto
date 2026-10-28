@@ -6,6 +6,10 @@
   (`notify.app_chat`), a file it sends you (`kurooto send`, the AI's file, a long answer, a grocery order's screenshot
   from an add-on) comes to the chat as a link as well as to Telegram; one reply says both. A file too big for Telegram
   goes to the chat. Off: Telegram only, as before.
+- **LaTeX to PDF for your AI** (`tools.latex`, on). A request that writes LaTeX can now get its PDF: the new
+  `compile_latex` tool compiles a copy with shell escape off and answers with the PDF or the first errors. The PDF goes
+  beside the `.tex` in your files folder, else into it, never into your notes when a files folder is set; your AI is
+  told to write the documents it makes there too.
 - **Fix: the call line no longer drops for nothing.** A heartbeat that looked silent because this computer was busy
   now gets one more ping and five seconds before the line is called dead (about 35 needless reconnects a day before);
   a late heartbeat is logged with how late it was.
