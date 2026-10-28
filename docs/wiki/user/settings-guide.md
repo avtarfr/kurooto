@@ -159,8 +159,8 @@ By the message's length only: nothing changes with the time of day or partway th
 
 ### `persona.templates`
 
-Words Kurooto makes by rules (the desk greeting, "Good morning" after "I'm awake", check-in messages) use your persona
-card's name and avoid line.
+Rule-made words (the desk greeting, "Good morning" after "I'm awake", check-in messages) use your persona card's name
+and avoid line.
 
 The desk greeting says the name only while nobody else is in view, and the name never pushes a part out of it. The avoid
 line is honoured as punctuation: exclamation marks become full stops, emojis go; nothing they say is dropped. Check-in

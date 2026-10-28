@@ -903,7 +903,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `persona.call_me` | `""` | What the AI calls you: a nickname, your first name, or nothing. ([guide](wiki/user/settings-guide.md#personacallme)) |
 | `persona.length` | `""` | How long answers should be, in your own words. ([guide](wiki/user/settings-guide.md#personalength)) |
 | `persona.register` | `true` | A short message gets a short answer, a voice note a spoken-style one. ([guide](wiki/user/settings-guide.md#personaregister)) |
-| `persona.templates` | `true` | Words Kurooto makes by rules (the desk greeting, "Good morning" after "I'm awake", check-in messages) use your persona card's name and avoid line. ([guide](wiki/user/settings-guide.md#personatemplates)) |
+| `persona.templates` | `true` | Rule-made words (the desk greeting, "Good morning" after "I'm awake", check-in messages) use your persona card's name and avoid line. ([guide](wiki/user/settings-guide.md#personatemplates)) |
 | `persona.tone` | `""` | The tone you want answers in, in your own words. ([guide](wiki/user/settings-guide.md#personatone)) |
 
 ### `power`
