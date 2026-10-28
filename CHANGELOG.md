@@ -50,6 +50,12 @@
 - **It knows when it recognised you.** Asked "do you recognise my face?" at the desk, the AI said it had no camera:
   a spoken turn reached it as bare text. Now each one says it was said aloud at the desk, whether Voice ID knew your
   voice, and whether Face presence recognises you in front of the camera (never the pictures themselves).
+- **Desk Live can't approve anything.** The call tools it shares included the one that answers approvals, so an
+  action that waits for your tap could have been approved by the AI that asked for it. At the desk it's never offered,
+  and asked for anyway it says the approval waits for your tap. Desk Live is also told each turn reached it because
+  Voice ID and Face presence recognised you (it never sees the camera's pictures).
+- **A question said at the desk is never filed as meeting minutes.** Within three hours of a meeting starting, a desk
+  question of eight words or more was taken as a voice note of the meeting and never answered.
 - **Voice language:** the settings guide now says to set `voice.listen.language`; left to be worked out on each short
   clip, an accent is often taken for another language and Kurooto's name is missed.
 - **The Chat page fills its pane.** The list of messages was a short box of about 170 px with the box to write in right

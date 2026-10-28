@@ -326,6 +326,20 @@ def test_a_guarded_tool_asks_instead_of_running(lv, monkeypatch):
     assert result.startswith("Not done yet")
 
 
+def test_live_can_never_answer_an_approval_at_the_desk(lv, monkeypatch):
+    """(0.8.17) answer_approval came with the call's tools: a guarded action Live asked for could be approved by Live
+    itself, no Voice ID, no tap. It isn't offered, and asked for anyway it only points to the tap."""
+    from kurooto.modules.voice import live as live_mod
+
+    calls = lv.app.modules["calls"]
+    ran = []
+    monkeypatch.setattr(calls, "run_tool", lambda name, args, since="": ran.append(name))
+    out = lv.live.run_tool("answer_approval", {"id": "x", "decision": "Approve"})
+    assert ran == [] and "tap" in out
+    assert "answer_approval" in live_mod.DESK_NEVER
+    assert "Voice ID recognised their voice" in live_mod.DESK and "never see the camera" in live_mod.DESK
+
+
 # -------------------------------------------------------------------------------------------- interrupted
 def test_live_interrupted_stops_playback(lv):
     srv = lv.fake("interrupt")

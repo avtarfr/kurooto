@@ -271,3 +271,13 @@ def test_the_weekly_summary_mentions_people_only_from_the_project_notes(env):
     app.settings.set("weekly.people", False)
     assert "People (" not in app.modules["weekly"].summary()
     assert len(env.fake.texts()) == n  # a line in the summary, never a message of its own
+
+
+def test_a_question_said_at_the_desk_is_never_minutes(env):
+    """(0.8.17) Desk Voice turns come as voice=True: within meetings.after_h, a spoken desk question of 8+ words was
+    filed as the meeting's minutes and never answered. A Telegram voice note still is minutes."""
+    app = setup(env, chat=True)
+    okafor(app)
+    text = "what do I have due for the bayesian course tomorrow"
+    assert meetings.take(app, Incoming(text, via="voice", voice=True), text, window=True) is False
+    assert meetings.take(app, Incoming(text, via="telegram", voice=True), text, window=True) is True

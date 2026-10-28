@@ -308,7 +308,8 @@ def take(app: App, msg: Incoming, text: str, window: bool = False) -> bool:
             hit = got
     elif window:
         words = len(text.split())
-        if (msg.voice and words >= 8) or (words >= MIN_WORDS and not text.rstrip().endswith("?")):
+        spoken_note = msg.voice and msg.via != "voice"  # (0.8.17) a question said at the desk isn't a voice note
+        if (spoken_note and words >= 8) or (words >= MIN_WORDS and not text.rstrip().endswith("?")):
             hit = recent(app)
     if hit is None:
         return False

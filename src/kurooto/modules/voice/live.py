@@ -60,8 +60,11 @@ ALOUD = "(answered aloud)"  # shown when Live said something but sent no words f
 DESK = (
     "This is not a phone call: they're at their computer and talk to you aloud; you hear each turn they say to you "
     "and answer through its speakers. Keep it to one to three short spoken sentences; what needs a screen is on the "
-    "computer in front of them."
+    "computer in front of them. Every turn you hear reached you because Voice ID recognised their voice and Face "
+    "presence recognised their face close to the camera, facing it; you never see the camera's pictures."
 )
+# (0.8.17) never at the desk: an approval is answered by their tap, not by the AI that asked for it
+DESK_NEVER = frozenset({"answer_approval"})
 
 _log = logging.getLogger("kurooto.voice.live.ws")  # the websocket library's own log: off, so headers never print
 _log.propagate = False
@@ -197,7 +200,11 @@ class Live:
         if speech:
             gen["speechConfig"] = speech
         tools = [  # a turn waits for its tools' answers (behavior NON_BLOCKING is for calls)
-            {"functionDeclarations": [_blocking(d) for d in t.get("functionDeclarations") or []]}
+            {
+                "functionDeclarations": [
+                    _blocking(d) for d in t.get("functionDeclarations") or [] if d.get("name") not in DESK_NEVER
+                ]
+            }
             for t in cfg.get("tools") or []
         ]
         return {
@@ -444,6 +451,8 @@ class Live:
         calls = self.app.modules.get("calls")
         if calls is None:
             return f"There's no {name} tool."
+        if name in DESK_NEVER:  # (0.8.17) it could approve its own guarded action: the tap decides, not the AI
+            return "Approvals are answered by their tap (the phone or the dashboard), never here. Tell them it waits."
         try:
             tool = next((t for t in calls.tools() if t.name == name), None)
             action = tap.action_of(tool, args) if tool is not None else ""

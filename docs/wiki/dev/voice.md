@@ -97,6 +97,13 @@ turning it down, at most `MOST` (8x) and never past 95% of full scale. VAD and b
 stretch handed on (transcriber, Voice ID, gate) is levelled. `status()["auto_gain"]` shows `noise_db` and the last
 `gain`. The system's microphone volume is never touched.
 
+## Desk Live's limits (0.8.17)
+
+`voice/live.py`: `DESK_NEVER` (`answer_approval`) is left out of the function declarations Live gets and refused by
+`run_tool` (an approval is answered by a tap, never by the AI that asked for it); `DESK` tells it each turn came
+because Voice ID and Face presence recognised the owner. `core/meetings.py:take` counts a voice note only for
+`via != "voice"`, so a desk question is never minutes.
+
 ## Barge-in (`barge.py`, 0.8.13)
 
 `voice.listen.barge_in` (on). Before it, `Listener` dropped every frame while `hold()` (`Speaker.holding() or
