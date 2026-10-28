@@ -108,7 +108,6 @@ class Seen:
     good: bool = False  # (0.9.0) clear enough to learn from (sharp, well lit, not blown out)
 
 
-@dataclass
 def drop_nested(faces: list) -> list:
     """(0.9.0, a fix) A face whose centre lies inside a bigger face's box is part of it (half a face, a reflection in
     glasses), never a second person: dropped, so one person isn't counted as two (29 Oct: a box at 0.15 of the frame's
@@ -127,6 +126,7 @@ def drop_nested(faces: list) -> list:
     return [f for f in faces if id(f) not in gone]
 
 
+@dataclass
 class Track:
     """One face followed frame to frame: its place in pixels, its landmarks relative to its centre in face heights."""
 
