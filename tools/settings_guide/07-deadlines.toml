@@ -187,3 +187,31 @@ what = "Only the topics as written, never the reasons after the dash. Asked abou
 when = "Turn it off if you'd rather the AI didn't know the list (the deadline, mail and Classroom filters still use it)."
 cost = "The topics go to the AI you picked and, on calls, to Gemini Live."
 needs = "A not-interested list (`/ignore`)."
+
+[parent."notinterested.filter"]
+tip = "Other features that can use your not-interested list: each puts a matching item last, tagged, never hidden."
+
+[s."notinterested.filter.research"]
+tip = "New-paper digests put papers about a topic you skip last, tagged."
+when = "Turn it on if papers on topics you dropped crowd your digest. Off: the digest's order as before."
+needs = "Research and a not-interested list."
+
+[s."notinterested.filter.integrate"]
+tip = "The concept graph reads class material about a topic you skip after the rest."
+when = "Turn it on if a dropped course's files take the night's reading budget. They are still read, later."
+needs = "The concept graph and a not-interested list."
+
+[s."notinterested.filter.quiz_links"]
+tip = "Link cards about a topic you skip come after the others, tagged."
+when = "Turn it on if link cards from a dropped course keep coming first. They still come when nothing else is due."
+needs = "Quiz's link cards and a not-interested list."
+
+[s."notinterested.filter.retro"]
+tip = "The nightly look back offers ideas about a topic you skip last, tagged."
+when = "Turn it on if its ideas keep circling a topic you dropped. With few proposals a night, a last one can wait."
+needs = "The nightly look back and a not-interested list."
+
+[s."notinterested.filter.frontier"]
+tip = "The Brain's frontier cards about a topic you skip are made last, and such text counts half on your frontier."
+when = "Turn it on if the Brain keeps carding a course you dropped."
+needs = "Brain's model of what you know and a not-interested list."

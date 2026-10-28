@@ -1013,7 +1013,7 @@ the offline helper (`core/helper.py`) offers it on computers whose profile has n
 | `core/inhibit.py` | keeping the computer awake (Stay awake on charger, the alarm) |
 | `core/leave.py` | uninstall (`--revoke`) and `kurooto rotate` |
 | `core/mcp.py` | `kurooto mcp` ([brains.md](brains.md#how-agent-programs-get-them-kurooto-mcp)) |
-| `core/notinterested.py` | topics the user doesn't care about (`about-me/not-interested.md`) |
+| `core/notinterested.py` | topics the user doesn't care about (`about-me/not-interested.md`); (0.9.0) `notinterested.tell_ai` puts them in `providers/context.py:not_interested_part`, and `demote(app, reader, items, text_of, tagged)` moves a reader's matching items last, tagged "you said not interested in X" (`notinterested.filter.<reader>`, each off: `research.papers`, `integrate.queued_items`, `quiz_links.next_card`, `retro` proposals, `mind/dream.make_cards` and `mind/frontier.score` halved). Never drops an item; the older filters (deadlines, mail, Classroom, curious, start-by, exam season) are unchanged |
 | `core/overlay.py` | add-ons: your folder's, and loading the add-ons by link ([modules.md](modules.md#add-ons-coreoverlaypy)) |
 | `core/addons.py` | add-ons by link: fetch at a pinned commit, the card, consent, update with what changes, remove and undo ([modules.md](modules.md#add-ons-by-link-coreaddonspy-corefencepy)) |
 | `core/official.py` | official add-ons: the shipped list (`data/official_addons.json`), what counts as official, Add / Update buttons (`oad:`), the once-per-commit update offer ([modules.md](modules.md#official-add-ons-coreofficialpy)) |

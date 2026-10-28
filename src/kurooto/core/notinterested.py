@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from kurooto.core import layout
 from kurooto.core.config import register_defaults
@@ -33,6 +33,14 @@ register_defaults(
     "notinterested",
     {
         "tell_ai": True,  # every AI request, call and desk talk is told your not-interested topics (just the topics)
+        # (0.9.0) more readers that use the list: each puts a matching item last and tags it, never hides it; each off
+        "filter": {
+            "research": False,  # new-paper digests: papers about a topic you skip go last, tagged
+            "integrate": False,  # the concept graph's reading queue: class material about one is read last
+            "quiz_links": False,  # link cards about one come after the others, tagged
+            "retro": False,  # the nightly look back's ideas about one are offered last, tagged
+            "frontier": False,  # Dreaming's frontier cards about one are made last, tagged; frontier scores halved
+        },
     },
 )
 
@@ -87,6 +95,44 @@ def matcher(app: App) -> Callable[[str], str | None]:
 def is_ignored(app: App, text: str) -> str | None:
     """The topic on your not-interested list that this text is about, or None."""
     return matcher(app)(text)
+
+
+def filter_on(app: App, reader: str) -> bool:
+    """Is notinterested.filter.<reader> on?"""
+    return bool(app.settings.get(f"notinterested.filter.{reader}"))
+
+
+def tag(topic: str) -> str:
+    """The words a demoted item carries."""
+    return f"you said not interested in {topic}"
+
+
+def demote(
+    app: App,
+    reader: str,
+    items: list,
+    text_of: Callable[[Any], str],
+    tagged: Callable[[Any, str], Any] | None = None,
+) -> list:
+    """(0.9.0, notinterested.filter.<reader>) The same items with those about a not-interested topic moved last, in
+    their order, each passed through tagged(item, tag(topic)) when given. Nothing is dropped. The list as it was with
+    the switch off or no topics."""
+    if not items or not filter_on(app, reader):
+        return items
+    match = matcher(app)
+    keep, last = [], []
+    for it in items:
+        try:
+            t = match(text_of(it) or "")
+        except Exception:
+            t = None
+        if t:
+            last.append(tagged(it, tag(t)) if tagged else it)
+        else:
+            keep.append(it)
+    if last:
+        app.events.emit("ignore_demoted", reader=reader, n=len(last))
+    return keep + last
 
 
 def add_topic(app: App, topic: str, why: str = "") -> bool:

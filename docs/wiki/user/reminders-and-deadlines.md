@@ -355,6 +355,17 @@ matched). Edit it freely. Matching is on whole words and phrases, ignoring case.
 told the topics (only the topics, never your reasons), so it doesn't bring them up on its own; ask about one and it
 helps as usual. Off: the AI isn't told.
 
+**More places that use the list** (0.9.0, each off until you turn it on). Each puts a matching item last and says
+"you said not interested in X" next to it; nothing is hidden or dropped:
+
+| Setting | What it changes |
+|---|---|
+| `notinterested.filter.research` | new-paper digests: papers about the topic come last |
+| `notinterested.filter.integrate` | the concept graph's reading queue: class material about it is read last |
+| `notinterested.filter.quiz_links` | link cards about it come after the others |
+| `notinterested.filter.retro` | the nightly look back offers ideas about it last |
+| `notinterested.filter.frontier` | the Brain's frontier cards about it are made last, and it counts less on your frontier |
+
 **What leaves your computer.** The topics, to the AI you picked and, on calls, to Gemini Live (with
 `notinterested.tell_ai` on). Nothing else.
 

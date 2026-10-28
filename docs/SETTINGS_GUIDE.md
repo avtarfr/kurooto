@@ -874,6 +874,11 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 
 | Setting | Default | What it does |
 |---|---|---|
+| `notinterested.filter.frontier` | `false` | The Brain's frontier cards about a topic you skip are made last, and such text counts half on your frontier. ([guide](wiki/user/settings-guide.md#notinterestedfilterfrontier)) |
+| `notinterested.filter.integrate` | `false` | The concept graph reads class material about a topic you skip after the rest. ([guide](wiki/user/settings-guide.md#notinterestedfilterintegrate)) |
+| `notinterested.filter.quiz_links` | `false` | Link cards about a topic you skip come after the others, tagged. ([guide](wiki/user/settings-guide.md#notinterestedfilterquizlinks)) |
+| `notinterested.filter.research` | `false` | New-paper digests put papers about a topic you skip last, tagged. ([guide](wiki/user/settings-guide.md#notinterestedfilterresearch)) |
+| `notinterested.filter.retro` | `false` | The nightly look back offers ideas about a topic you skip last, tagged. ([guide](wiki/user/settings-guide.md#notinterestedfilterretro)) |
 | `notinterested.tell_ai` | `true` | Every AI request, call and desk talk is told your not-interested topics, so it doesn't bring them up. ([guide](wiki/user/settings-guide.md#notinterestedtellai)) |
 
 ### `overlay`

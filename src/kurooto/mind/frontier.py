@@ -115,7 +115,12 @@ def score(app: App, text: str) -> float:
             return 0.0
         notes, g = _load(app)
         hits = knowledge.mentions(str(text)[:TEXT_MAX], notes)
-        return max((g.get(s, UNKNOWN) for s in hits), default=0.0)
+        best = max((g.get(s, UNKNOWN) for s in hits), default=0.0)
+        from kurooto.core import notinterested  # (0.9.0, notinterested.filter.frontier) a skipped topic: half
+
+        if best and notinterested.filter_on(app, "frontier") and notinterested.is_ignored(app, str(text)[:TEXT_MAX]):
+            best *= 0.5
+        return best
     except Exception:
         return 0.0
 

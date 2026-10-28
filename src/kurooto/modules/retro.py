@@ -301,11 +301,20 @@ class Retro(Module):
         state = self._state()
         store = jload(self.file, {}) or {}
         asked: list[dict] = []
-        for raw in out.get("proposals") or []:
+        cleaned = [p for p in (self.clean(r) if isinstance(r, dict) else None for r in out.get("proposals") or []) if p]
+        from kurooto.core import notinterested  # (0.9.0, notinterested.filter.retro) a skipped topic's idea: last
+
+        cleaned = notinterested.demote(
+            self.app,
+            "retro",
+            cleaned,
+            lambda p: p.get("idea", "") if p["type"] == "idea" else "",
+            lambda p, why: {**p, "text": f"{p['text']} ({why})"},
+        )
+        for p in cleaned:
             if len(asked) >= int(self.setting("max_proposals") or 3):
                 break
-            p = self.clean(raw) if isinstance(raw, dict) else None
-            if not p or self._blocked(p, state, asked):
+            if self._blocked(p, state, asked):
                 continue
             pid = uuid.uuid4().hex[:8]
             store[pid] = {**p, "at": now().isoformat()}

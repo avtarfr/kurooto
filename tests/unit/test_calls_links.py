@@ -9,6 +9,7 @@ from kurooto.core import notinterested
 from kurooto.modules import remember
 from kurooto.providers import context
 from tests.unit.test_calls import calls  # noqa: F401 (a pytest fixture)
+from tests.unit.test_learning import ai, app, propose, retro_questions  # noqa: F401 (pytest fixtures, helpers)
 
 
 def profile(app, text="A maths student who likes long walks."):
@@ -76,3 +77,94 @@ def test_desk_live_hears_it_in_its_setup(calls):
     assert "likes long walks" in si
     app.settings.set("calls.context_brief", False)
     assert "likes long walks" not in lv.setup(c, "m")["systemInstruction"]["parts"][0]["text"]
+
+
+# ------------------------------------------------------------------------------- L5: the readers, each its own switch
+def test_demote_moves_matching_items_last_and_tags_them_only_with_its_switch_on(env):
+    app = env.app
+    notinterested.add_topic(app, "drama club")
+    items = ["Drama club auditions", "Linear algebra notes", "Probability sheet"]
+    assert notinterested.demote(app, "research", items, str, lambda x, why: f"{x} ({why})") == items  # off
+    app.settings.set("notinterested.filter.research", True)
+    out = notinterested.demote(app, "research", items, str, lambda x, why: f"{x} ({why})")
+    assert out[:2] == ["Linear algebra notes", "Probability sheet"]
+    assert out[2] == "Drama club auditions (you said not interested in drama club)"
+    assert notinterested.demote(app, "retro", items, str) == items  # every reader has its own switch
+
+
+def test_research_digest_puts_a_skipped_topic_last_never_drops_it(env, monkeypatch):
+    app = env.app
+    notinterested.add_topic(app, "drama club")
+    r = app.modules["research"]
+    papers = [
+        {"id": "1", "title": "Drama club as social network", "authors": ["A. Writer"], "source": "arXiv", "summary": "",
+         "link": "https://example.com/1", "group": "g"},
+        {"id": "2", "title": "Spectral gaps", "authors": ["B. Writer"], "source": "arXiv", "summary": "",
+         "link": "https://example.com/2", "group": "g"},
+    ]  # fmt: skip
+    monkeypatch.setattr(r, "collect", lambda mark_seen=True: ([dict(p) for p in papers], []))
+    app.settings.set("research.rank", False)
+    app.settings.set("research.save_note", False)
+    r.papers()
+    text = env.fake.texts()[-1]
+    assert text.index("Drama club") < text.index("Spectral gaps")  # as before, off
+    app.settings.set("notinterested.filter.research", True)
+    r.papers()
+    text = env.fake.texts()[-1]
+    assert text.index("Spectral gaps") < text.index("Drama club") and "(you said not interested in drama club)" in text
+
+
+def test_retro_offers_an_idea_about_a_skipped_topic_last_and_tagged(app, env, ai):
+    env.on("chat", "retro")
+    notinterested.add_topic(app, "drama club")
+    app.settings.set("notinterested.filter.retro", True)
+    app.settings.set("retro.max_proposals", 5)
+    propose(
+        ai,
+        {"type": "idea", "idea": "Remind me of drama club rehearsals", "text": "Add to ideas?"},
+        {"type": "idea", "idea": "A Sunday reading list", "text": "Add this one?"},
+    )
+    assert app.modules["retro"].run() == 2
+    qs = retro_questions(app)
+    assert "Sunday reading list" in qs[0]["text"]
+    assert "drama club rehearsals" in qs[1]["text"] and "(you said not interested in drama club)" in qs[1]["text"]
+
+
+def test_link_cards_about_a_skipped_topic_come_after_the_others(env):
+    import datetime as dt
+
+    app = env.app
+    notinterested.add_topic(app, "drama club")
+    lc = app.modules["quiz"].links
+    today = dt.date.today().isoformat()
+    card = {"reps": 0, "history": [], "due": today}
+    st = {
+        "items": {
+            "a": {**card, "text": "How does drama club relate to stage fright?", "a": "x/drama-club", "b": "x/fear"},
+            "b": {**card, "text": "How is the rank used in the kernel?", "a": "x/rank", "b": "x/kernel"},
+        }
+    }
+    assert lc.next_card(st)[0] == "a"
+    app.settings.set("notinterested.filter.quiz_links", True)
+    iid, it = lc.next_card(st)
+    assert iid == "b"
+    st["items"].pop("b")
+    iid, it = lc.next_card(st)
+    assert iid == "a" and it["not_interested"] == "you said not interested in drama club"
+    assert "not_interested" not in st["items"]["a"]  # the stored card is left as it was
+
+
+def test_the_reading_queue_reads_a_skipped_topic_last(env):
+    app = env.app
+    notinterested.add_topic(app, "drama club")
+    ig = app.modules["integrate"]
+    items = {
+        "c:1": {"source": "classroom", "key": "c:1", "title": "Drama club handout", "date": "2026-10-02", "added": "2"},
+        "c:2": {"source": "classroom", "key": "c:2", "title": "Lecture 4", "date": "2026-10-01", "added": "1"},
+    }
+    ig.items = lambda: items
+    ig.sources = lambda: ["classroom"]
+    assert [it["key"] for it in ig.queued_items()] == ["c:1", "c:2"]
+    app.settings.set("notinterested.filter.integrate", True)
+    assert [it["key"] for it in ig.queued_items()] == ["c:2", "c:1"]
+

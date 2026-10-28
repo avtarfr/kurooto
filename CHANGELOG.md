@@ -7,6 +7,9 @@
   Brain's own state. Never your read, mood, tone or senses.
 - **Your AI knows your not-interested list** (`notinterested.tell_ai`, on). Every request, call and desk talk is told
   the topics (not your reasons), so it doesn't bring them up on its own.
+- **More features can use the not-interested list** (`notinterested.filter.research`, `integrate`, `quiz_links`,
+  `retro`, `frontier`, each off). Turned on, a matching paper, class reading, link card, nightly idea or frontier card
+  comes last, tagged "you said not interested in X". Nothing is hidden.
 
 ## 0.8.18 (2026-10-29)
 

@@ -292,13 +292,23 @@ def make_cards(app: App, day: dt.date, use_model: bool = True) -> int:
     notes = knowledge.concepts(app)
     ps = frontier.masteries(app)
     picks = [s for s in studied(app, day, notes) if frontier.on_frontier(s, notes, ps)]
+    from kurooto.core import notinterested  # (0.9.0, notinterested.filter.frontier) about a skipped topic: made last
+
+    why_last: dict[str, str] = {}
+
+    def tagged(slug: str, why: str) -> str:
+        why_last[slug] = why  # its card's title says so
+        return slug
+
+    picks = notinterested.demote(app, "frontier", picks, lambda s: f"{notes[s].title} {s.replace('-', ' ')}", tagged)
     st = _load(app)
     seen = {c["slug"] for c in st["cards"]} | {k[2:] for k in st["decided"] if k.startswith("c:")}
     new = []
     for slug in [s for s in picks if s not in seen][: cards_max(app)]:
         q, a, by_model = write_card(app, notes[slug], use_model)  # the model's turn: outside the lock
         new.append({
-            "ref": uuid.uuid4().hex[:8], "slug": slug, "title": notes[slug].title[:80], "q": q, "a": a,
+            "ref": uuid.uuid4().hex[:8], "slug": slug, "q": q, "a": a,
+            "title": notes[slug].title[:80] + (f" ({why_last[slug]})" if slug in why_last else ""),
             "subject": subject_of(app, notes[slug]), "made": now().date().isoformat(), "model": by_model, "shown": 0,
         })  # fmt: skip
     if new:

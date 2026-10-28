@@ -625,6 +625,15 @@ class Research(Module):
     def papers(self) -> list[dict]:
         new, failed = self.collect(mark_seen=False)  # seen once the digest is delivered, not before
         self.app.events.emit("research_papers", new=len(new), failed=len(failed))
+        from kurooto.core import notinterested  # (0.9.0, notinterested.filter.research) about a skipped topic: last
+
+        new = notinterested.demote(
+            self.app,
+            "research",
+            new,
+            lambda p: f"{p.get('title', '')} {p.get('summary', '')}",
+            lambda p, why: {**p, "title": f"{p['title']} ({why})"},
+        )
         n = self.setting("max_papers") or 8
         note = f"\n\n(Couldn't reach: {'; '.join(failed)})" if failed else ""
         if not new:

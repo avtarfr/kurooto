@@ -30,7 +30,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [When it may interrupt you](#when-it-may-interrupt-you): 13 settings
 - [Phone calls and the call line](#phone-calls-and-the-call-line): 36 settings
 - [Morning alarm](#morning-alarm): 11 settings
-- [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 35 settings
+- [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 40 settings
 - [Check-ins, journal and the week](#check-ins-journal-and-the-week): 18 settings
 - [Classes and timetable](#classes-and-timetable): 15 settings
 - [Calendar](#calendar): 11 settings
@@ -1689,6 +1689,50 @@ Only the topics as written, never the reasons after the dash. Asked about one, i
   filters still use it).
 - **Costs and what leaves this computer:** The topics go to the AI you picked and, on calls, to Gemini Live.
 - **Depends on:** A not-interested list (`/ignore`).
+
+### `notinterested.filter.research`
+
+New-paper digests put papers about a topic you skip last, tagged.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if papers on topics you dropped crowd your digest. Off: the digest's order as
+  before.
+- **Depends on:** Research and a not-interested list.
+
+### `notinterested.filter.integrate`
+
+The concept graph reads class material about a topic you skip after the rest.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if a dropped course's files take the night's reading budget. They are still read,
+  later.
+- **Depends on:** The concept graph and a not-interested list.
+
+### `notinterested.filter.quiz_links`
+
+Link cards about a topic you skip come after the others, tagged.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if link cards from a dropped course keep coming first. They still come when nothing
+  else is due.
+- **Depends on:** Quiz's link cards and a not-interested list.
+
+### `notinterested.filter.retro`
+
+The nightly look back offers ideas about a topic you skip last, tagged.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if its ideas keep circling a topic you dropped. With few proposals a night, a last
+  one can wait.
+- **Depends on:** The nightly look back and a not-interested list.
+
+### `notinterested.filter.frontier`
+
+The Brain's frontier cards about a topic you skip are made last, and such text counts half on your frontier.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if the Brain keeps carding a course you dropped.
+- **Depends on:** Brain's model of what you know and a not-interested list.
 
 ## Check-ins, journal and the week
 

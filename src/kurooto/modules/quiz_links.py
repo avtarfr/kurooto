@@ -224,6 +224,15 @@ class LinkCards:
             return (new, new and not kv[1].get("recent"), kv[1]["due"], kv[0])  # new ones met in class lately first
 
         due.sort(key=order)
+        from kurooto.core import notinterested  # (0.9.0, notinterested.filter.quiz_links) about a skipped topic: last
+
+        due = notinterested.demote(
+            self.app,
+            "quiz_links",
+            due,
+            lambda kv: f"{kv[1].get('text', '')} {' '.join(self.names(kv[1]))} {kv[1].get('subject', '')}",
+            lambda kv, why: (kv[0], {**kv[1], "not_interested": why}),
+        )
         return due[0] if due else None
 
     def sent_today(self, st: dict) -> int:
@@ -239,8 +248,9 @@ class LinkCards:
             return NONE if not st["items"] else "No link card is due right now."
         iid, it = pick
         name = self.quiz.name_of(it.get("subject") or "")
+        why_last = f"\n({it['not_interested']})" if it.get("not_interested") else ""
         self.app.notify(
-            f"Link card{' (' + name + ')' if name else ''}:\n{it['text']}\n\nReply in your own words.",
+            f"Link card{' (' + name + ')' if name else ''}:\n{it['text']}{why_last}\n\nReply in your own words.",
             kind="question",
             map_kind="qlink",
             map_ref=iid,

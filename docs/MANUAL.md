@@ -725,7 +725,9 @@ care about the drama club". `/ignored` lists them, `/unignore drama club` takes 
 Matching deadlines are left out of the list and the chase, and the mail and Classroom digests only count matching
 items instead of making tasks from them. Matching is on whole words, ignoring case. Every AI request, call and desk
 talk is told the topics (not your reasons) so it doesn't bring them up (0.9.0). *Undo:* `notinterested.tell_ai` =
-`false`.
+`false`. Five more readers can use it, each off until you turn it on (`notinterested.filter.research`, `integrate`,
+`quiz_links`, `retro`, `frontier`): a matching paper, reading, link card, idea or frontier card comes last, tagged
+"you said not interested in X", never hidden. *Undo:* that setting back to `false`.
 
 ### Exam mode
 On by itself two weeks before a quiz or exam (from the deadline list), for that subject; off after it. You're told

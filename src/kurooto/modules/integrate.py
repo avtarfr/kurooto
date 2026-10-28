@@ -372,7 +372,15 @@ class Integrate(Module):
             reverse=True,
         )
         back = sorted((it for it in items if it.get("backfill")), key=lambda it: int(it.get("order") or 0))
-        return fresh + back
+        from kurooto.core import notinterested  # (0.9.0, notinterested.filter.integrate) about a skipped topic: last
+
+        return notinterested.demote(
+            self.app,
+            "integrate",
+            fresh + back,
+            lambda it: f"{it.get('title', '')} {it.get('course', '')} {it.get('subject', '').replace('-', ' ')}",
+            lambda it, why: {**it, "not_interested": why},
+        )
 
     def take_classroom(self, batch: dict) -> int:
         """Classroom → notes filed a batch (modules/google_classroom.py): each file in it with real text, and a post
