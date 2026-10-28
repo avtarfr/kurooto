@@ -338,6 +338,16 @@ tip = "The longest a winner waits for a break, in minutes (unless Kurooto is asl
 when = "Lower it if things come too late; raise it for longer stretches undisturbed."
 needs = "`mind.workspace.breaks`."
 
+[s."mind.workspace.deep_hold"]
+tip = "While an add-on says you're deep in one thing, a winner waits even at a break (never past max_hold_min)."
+what = """An add-on may tell Brain you're deep in one thing, as a time only (mind/breaks.py deep). Until it ends, a
+message that came by itself and won at the door waits even at a natural break, still at most max_hold_min; when you
+surface, that's a break. Alarms, your reminders, calls, approvals, close deadlines, urgent things and answers are
+never held."""
+when = "Turn it off to let winners go at the next break whatever an add-on says."
+cost = "Nothing."
+needs = "`mind.workspace.arbiter` and `mind.workspace.breaks`, and an add-on that says it."
+
 [s."mind.workspace.break_after_min"]
 tip = "Minutes in one window before switching to another counts as a natural break."
 when = "Lower it if your stretches are short; raise it so only long ones count."

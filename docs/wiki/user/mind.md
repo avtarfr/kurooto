@@ -318,6 +318,11 @@ It never waits longer than 90 minutes (`mind.workspace.max_hold_min`), except wh
 those can see a break coming (no activity or phone screen sense, no Face presence, no add-on), there's nothing to wait
 for and a winner goes at once.
 
+**Deep in one thing** (0.9.0, `mind.workspace.deep_hold`, on): an add-on may tell Brain you're deep in one thing (the
+same topic at the desk for a while, say). Until you come up from it, a winner waits even at a break, still never longer
+than `max_hold_min`; when you surface, that's a break and it goes. Nothing on the list below is ever held for it. Only
+an add-on can say it, and only as a time: never what you're on.
+
 **Always straight through, never held:** the alarm, reminders you set, calls, approvals you're waiting on, deadlines less
 than 12 hours away and anything urgent, and answers to what you asked.
 

@@ -4,8 +4,12 @@ network or device is real."""
 from __future__ import annotations
 
 import datetime as dt
+import time
+
+import pytest
 
 from kurooto.modules.base import Module
+from tests.unit import test_mind_door as door
 from tests.unit.test_features import run_due
 
 
@@ -79,3 +83,40 @@ def test_seen_minutes_count_apart_never_during_a_session_and_have_a_switch(env):
     env.app.settings.set("study.seen", False)
     assert st.add_seen("linear-algebra", 60) is False
     assert st.seen_seconds() == 600
+
+
+# ------------------------------------------------------------------------------ deep in one thing, at the door (L145)
+@pytest.fixture
+def door_app(tmp_path, monkeypatch):
+    """Brain's door with test_mind_door.py's fakes."""
+    yield from door.app._get_wrapped_function()(tmp_path, monkeypatch)  # noqa: SLF001
+
+
+def test_deep_in_one_thing_holds_winners_even_at_a_break_never_exempt_ones(door_app):
+    app = door_app
+    from kurooto.mind import breaks, workspace
+
+    assert breaks.deep(app, time.time() + 3600) is True
+    assert breaks.deep_now(app) and breaks.deep_now(app, time.time() + breaks.DEEP_MAX_S + 5) is False  # capped
+    app.notify("A new paper on glacier flow.", why="research.papers")
+    assert app.out == [] and workspace.held_count(app) == 1  # held even though nothing can see breaks
+    breaks.signal(app, "pickup")
+    assert app.out == []  # a break doesn't let it out while you're deep
+    app.notify("Your reminder: call the bank", kind="reminder", why="reminders.own")
+    app.notify("Lab report due in 2 hours.", why="deadlines.reminder", due=door.due_in(2))
+    assert len(app.out) == 2  # what goes past the door is never held
+    breaks.deep(app, 0)
+    breaks.signal(app, "surfaced")
+    assert "A new paper on glacier flow." in door.texts(app)
+    app.settings.set("mind.workspace.deep_hold", False)
+    assert breaks.deep(app, time.time() + 60) is False and not breaks.deep_now(app)
+
+
+def test_deep_waits_no_longer_than_max_hold(door_app):
+    app = door_app
+    from kurooto.mind import breaks, workspace
+
+    breaks.deep(app, time.time() + 600)
+    w = {"urgent": False, "at": time.time() - breaks.max_hold_s(app) - 1}
+    assert workspace._may_go(app, w, time.time()) != "wait"
+    assert workspace._may_go(app, {"urgent": False, "at": time.time()}, time.time()) == "wait"

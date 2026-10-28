@@ -744,11 +744,16 @@ the `workspace` held reason, `why_text` adds `records.why_lines`), `mind/gate.py
   messages, and letting them take the door's places would starve every check-in. The link between them is `ON_MIND`.
 - `release(app)` (every minute from `tick`, and at once from `breaks.signal` / `breaks.on_event`): drops what's no longer
   relevant (an `ask` that isn't open, a due time that passed), noted; ranks; each of the top `capacity` goes if `_may_go`
-  allows (urgent; no wait needed; a break open now; waited `max_hold_min`), never while `asleep()` (B's
+  allows (urgent; no wait needed; a break open now; waited `max_hold_min`; 0.9.0: while `breaks.deep_now()`, a
+  non-urgent winner waits even at a break until it has waited `max_hold_min`), never while `asleep()` (B's
   `mind.sleep.state`, imported defensively); losers get `lost += 1`, and past `fold_h` go to `calm.hold(held="workspace")`
   (with Calm off, sent). More than `PENDING_MAX` (100) waiting: the oldest fold. With the arbiter off, `release` is
   `flush`: everything waiting goes.
 - `held_count(app)`: pending messages plus add-on bids waiting (D's status reads it).
+- (0.9.0, `mind.workspace.deep_hold`) `breaks.deep(app, until)`: an add-on's "deep in one thing until" (a time only,
+  capped `DEEP_MAX_S` 600 s ahead so a stopped add-on's mark runs out; 0 ends it), kept as `deep_until` in
+  `mind-breaks.json`; `breaks.deep_now(app)` reads it. The add-on signals the break kind `surfaced` when it ends.
+  Exempt messages never reach `_may_go`, so they're never held.
 
 ### Breaks (`mind/breaks.py`)
 

@@ -2,6 +2,9 @@
 
 ## 0.9.0 (unreleased)
 
+- **Fewer interruptions while you're deep in one thing** (`mind.workspace.deep_hold`, on). When an add-on says you're
+  deep in one thing, what Kurooto starts by itself waits even at a break, never past `max_hold_min`, and goes when you
+  come up; alarms, reminders, calls, approvals and close deadlines are never held.
 - **Seen minutes in the Study tracker** (`study.seen`, on). An add-on may add minutes it saw you on a subject's topic
   where the window doesn't name the subject; they count apart, never during a session, and /study says how much.
 - **An add-on can put a button on a reminder** (`reminders.addon_buttons`, on). A row of its own under +10 min and

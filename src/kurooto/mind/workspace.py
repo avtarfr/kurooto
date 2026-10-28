@@ -70,6 +70,9 @@ register_defaults(
             "arbiter": True,  # 0.8.14: every message that comes by itself bids at the door; only winners are sent
             "breaks": True,  # 0.8.14: a winner that isn't urgent waits for a natural break (a window switch, a pickup)
             "max_hold_min": 90,  # ...but never longer than this many minutes (unless Kurooto is asleep)
+            # (0.9.0) an add-on may say you're deep in one thing (mind/breaks.py deep): a winner that isn't urgent
+            # then waits even at a break, still at most max_hold_min; what goes past the door is never held
+            "deep_hold": True,
             "break_after_min": 25,  # a window switch is a break after this many minutes in one window
             "fold_h": 6,  # a message that kept losing this many hours goes into the next evening bundle instead
         },
@@ -659,6 +662,8 @@ def _may_go(app: App, w: dict, now: float) -> str:
 
     if w["urgent"]:
         return "it was urgent"
+    if breaks.deep_now(app, now) and now - float(w["at"]) < _max_hold_s(app):
+        return "wait"  # (mind.workspace.deep_hold) you're deep in one thing: not even at a break
     if not breaks.wait_needed(app, now):
         return ""
     brk = breaks.open_now(app, now)
