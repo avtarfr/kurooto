@@ -443,6 +443,17 @@ phone's own alarm, "I'm up" or the alarm ringing end it. `mind.sleep.window` (li
 there (`mind.sleep.desk_after_min`), at most at the window's end, so an all-nighter at the desk keeps it up all night.
 Once it's asleep, sitting back down doesn't wake it; after you wake it, the desk keeps it up again.
 
+**An add-on's reading** (`mind.sleep.follow_external`, off, 0.9.0). An add-on with senses of its own (the Body
+add-on's desk phone: the room dark and quiet, you away) can say you're asleep. Kurooto always notes it; with this
+switch on, it also starts its night there, as your phone's onset does (up to two hours early). Off by default because
+it would start its quiet hours earlier than before.
+
+**The desk wakes it, and ends its night** (`mind.sleep.follow_desk`, on, 0.9.0). Starting a talk at the desk wakes it
+as its name does: a look that opens a conversation, talking over it with a question or request, or a Gemini Live turn.
+And Face presence seeing you at the desk in the night's last hour and a half, while it's awake or you've woken it, is
+you being up: its night ends and what waited goes out. While it's asleep with its camera and microphone off, nothing
+sees or hears you, so this only matters once it's woken, while it's drowsy, or with `mind.sleep.senses_off` off.
+
 **Drowsy:** the half hour before, it says nothing aloud by itself (no greeting). Looking at it still opens a
 conversation (0.8.18).
 
@@ -690,6 +701,27 @@ class. The night and Kurooto's sleep window count as not free (`mind.presence_fo
   likelier time when you aren't seen at your desk, and says "Held a call until 11:00 (you're usually free then)".
 - **Where it shows:** `/mind` gives its Brier score (lower is better) next to the baseline's, and the next hour you're
   likely free.
+
+**Reachable, not only at the desk** (`mind.presence_forecast.reachable`, on, 0.9.0). Brain keeps a second estimate:
+at your desk *or* using your phone (the phone app, or the phone's screen sense if you turned it on). Check-ins and calls
+Kurooto places by itself go by that one, and a call rings now while you're on your phone, so a check-in isn't pushed
+past an hour while you're on your phone on campus. It never thinks you're less reachable than at-the-desk, and until it
+has seen an hour of the week itself it is the desk estimate, so nothing changes at first. What's said aloud at the desk
+still goes by the desk estimate. It isn't scored or paid for.
+
+**Busy times from an add-on** (`mind.presence_forecast.busy_hint`, on; `mind.presence_forecast.visitors`, off). An
+add-on can tell Kurooto the hours of the week you're usually busy (say, evenings a friend usually comes by: the times
+only, never who). They show as a hint on `/mind` and on Start-by messages ("Tue and Thu evenings are usually busy.").
+With `visitors` on, they also lower the forecast for those hours a little, never to a block. Nothing about them goes
+into a log or to any AI.
+
+**You're here** (0.9.0, `presence.owner_here.face`, `.voice`, `.dashboard`, `.phone`, all on). Besides the activity
+sense and your face, two more signs say you're at the desk: Voice ID calling a voice yours (even when you weren't
+talking to Kurooto), and you using the dashboard (its buttons, Ctrl+K, the journal, a capture, Study mode). Your phone
+app (its chat, a button, an answer, a Today action) says you're around, not at the desk. Each sign is only "you're
+here, by this": never a word, a face or a voice. They count as your first and last sign of life of the day (no "a bit
+earlier than usual" check-in after an hour of talking at the desk), at your desk for the forecast (not the phone), and
+using the dashboard or the phone app wakes a sleeping Kurooto as a tap does. Each has its own switch.
 
 Without the activity sense or Face presence nothing is scored and it learns nothing; classes and the night still move
 check-ins. It keeps hour-of-week counts and the last three days' outcomes in `mind-presence.json`, numbers only, on this

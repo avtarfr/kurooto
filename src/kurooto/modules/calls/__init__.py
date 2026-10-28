@@ -441,10 +441,10 @@ class Calls(Module):
             from kurooto.mind import presence_forecast as pf
         except (ImportError, ValueError, TypeError):
             return None
-        if not pf.prefer_on(self.app) or pf.free_now(self.app):
+        if not pf.prefer_on(self.app) or pf.free_now(self.app) or pf.reachable_now(self.app):  # (0.9.0) on your phone
             return None
         t = now()
-        to = pf.prefer(self.app, t, earliest=t)
+        to = pf.prefer(self.app, t, earliest=t, reach=True)
         return to if to - t >= dt.timedelta(minutes=10) else None
 
     def _held_call(self, p: dict) -> str | None:
@@ -1322,7 +1322,9 @@ class Calls(Module):
         while f.exists():  # two calls ending in the same second (a text call and a voice one)
             f = f.with_name(f.stem + "-1.txt")
         purpose = str(b.get("purpose") or "")
-        how = {"turns": "turn by turn", "telegram": "text on Telegram"}.get(str(b.get("layer") or ""), "")
+        how = {"turns": "turn by turn", "telegram": "text on Telegram", "desk": "at the desk"}.get(
+            str(b.get("layer") or ""), ""
+        )  # (0.9.0) "desk": a talk at the desk, from Voice (voice.listen.after_talk)
         head = " ".join(x for x in (purpose, f"({how})" if how else "") if x)
         text = "".join(f"{x.get('who', '?')}: {x.get('text', '')}\n" for x in lines)
         f.write_text((f"# {head}\n" if head else "") + text, encoding="utf-8")
@@ -1342,6 +1344,8 @@ class Calls(Module):
 
         threads.from_call(self.app, lines)  # "I'll send the draft tonight" said on the call: an open thread
         try:  # the look back never stands in the way of keeping the transcript
+            if b.get("layer") == "desk" and not used:  # (0.9.0) a desk talk's tools aren't known: no AI look back
+                return {"ok": True}
             review.review(self, lines, used, purpose)
         except Exception as e:
             self.app.events.emit("call_review_failed", error=f"{type(e).__name__}: {e}"[:200])

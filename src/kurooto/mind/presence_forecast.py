@@ -2,8 +2,8 @@
 each of the next HOURS hours, scored against what the senses then show, and paid for accuracy only.
 
 Free means: at your desk (the activity sense saw the computer in use, or Face presence saw you, in the last quarter
-hour), not on a call, not in a class on the timetable. Asleep counts as not free (the night hours, or Kurooto's sleep
-window, which follows yours).
+hour; 0.9.0: or core/here.py's desk signs, your voice by Voice ID or the dashboard used), not on a call, not in a
+class on the timetable. Asleep counts as not free (the night hours, or Kurooto's sleep window, which follows yours).
 
     the forecast   per hour of the week, the share of that hour's looks that found you free, pulled toward the same hour
                    on any day while there are few (a Beta-style average, K looks' worth); a class, the night, Kurooto's
@@ -19,6 +19,17 @@ window, which follows yours).
                    moved to a nearby hour you're likely free (within `within_min` minutes, 60) when the forecast thinks
                    you won't be then and a nearby hour is clearly better. Never an alarm, a reminder you set, a call
                    you asked for or a close deadline: their callers don't ask.
+
+(0.9.0) Reachable (`mind.presence_forecast.reachable`, on): a second estimate, at your desk OR using your phone (the
+phone app, core/here.py, or the phone's screen sense), learned the same way from its own looks and never scored. A
+check-in or a call Kurooto places by itself (prefer(reach=True)) is judged by it, and a call rings now while you're
+reachable: an hour on your phone on campus isn't moved away from. It is never below p_free, and until an hour has
+looks of its own it is p_free, so nothing changes until it has seen you. The desk estimate stays for what's said aloud.
+
+(0.9.0) Busy times (busy_from): an add-on can hand its usual busy hours of the week (times only, never who or why).
+They show as a hint ("Tue and Thu evenings are usually busy.") on the /mind line and Start-by messages
+(`mind.presence_forecast.busy_hint`, on: nothing shows until an add-on gives some), and with
+`mind.presence_forecast.visitors` (off) they cut p_free there by BUSY_CUT, never to a block.
 
 Kept in `<state>/mind-presence.json`: hour-of-week counts, the frozen forecasts, today's looks and the last days'
 outcomes (numbers only, this computer only). /mind shows the accuracy and the next free hour.
@@ -48,6 +59,14 @@ register_defaults(
             "on": True,  # forecast when you'll be at your desk and free, scored against what the senses show
             "prefer": True,  # its own check-ins and calls move to a nearby hour the forecast thinks you are free
             "within_min": 60,  # how far (minutes) such a check-in or call may move to a likelier hour
+            # (0.9.0) a second estimate, reachable (at the desk, or using your phone), for check-ins and calls: an
+            # hour you're on your phone isn't moved away from; the desk estimate stays for what's said aloud
+            "reachable": True,
+            # (0.9.0) an add-on's usual busy times (evenings with visitors: times only, never who) shown as a hint on
+            # the forecast line and Start-by messages
+            "busy_hint": True,
+            # (0.9.0) and those busy times lower the chance you're free there (a soft cut, never a block); off: hint
+            "visitors": False,
         }
     },
 )
@@ -68,6 +87,11 @@ def on(app: App) -> bool:
     return mind.part_on(app, PART)
 
 
+def reach_on(app: App) -> bool:
+    """(0.9.0, mind.presence_forecast.reachable) The reachable estimate is kept and used for check-ins and calls."""
+    return on(app) and bool(app.settings.get("mind.presence_forecast.reachable"))
+
+
 def prefer_on(app: App) -> bool:
     return on(app) and bool(app.settings.get("mind.presence_forecast.prefer"))
 
@@ -79,7 +103,7 @@ def _within(app: App) -> int:
 
 def _load(app: App) -> dict:
     d = jload(app.paths.state / FILE, {}) or {}
-    for k in ("cells", "hours", "frozen", "looks", "seen", "score"):
+    for k in ("cells", "hours", "frozen", "looks", "seen", "score", "rcells", "rhours", "rlooks"):
         if not isinstance(d.get(k), dict):
             d[k] = {}
     return d
@@ -153,7 +177,77 @@ def p_free(app: App, t: dt.datetime, st: dict | None = None) -> float:
     p_h = (float(a_h) + 1.0) / (float(n_h) + 2.0)
     a, n = (st["cells"].get(f"{t.weekday()}-{t.hour}") or [0.0, 0])[:2]
     p = (float(a) + K * p_h) / (float(n) + K)
+    if busy(app, t) and app.settings.get("mind.presence_forecast.visitors"):  # (0.9.0) a soft cut, never a block
+        p *= BUSY_CUT
     return round(max(BLOCKED_P, min(1.0 - BLOCKED_P, p)), 4)
+
+
+def p_reach(app: App, t: dt.datetime, st: dict | None = None) -> float:
+    """(0.9.0, reachable) The chance you're reachable at t: at your desk, or using your phone. Never below p_free;
+    p_free itself until this hour of the week has MIN_LOOKS looks of its own."""
+    st = st if st is not None else _load(app)
+    base = p_free(app, t, st)
+    if base <= BLOCKED_P or not reach_on(app):
+        return base
+    a, n = (st["rcells"].get(f"{t.weekday()}-{t.hour}") or [0.0, 0])[:2]
+    if int(n) < MIN_LOOKS:
+        return base
+    a_h, n_h = (st["rhours"].get(str(t.hour)) or [0.0, 0])[:2]
+    p_h = (float(a_h) + 1.0) / (float(n_h) + 2.0)
+    p = (float(a) + K * p_h) / (float(n) + K)
+    return round(max(base, min(1.0 - BLOCKED_P, p)), 4)
+
+
+# ------------------------------------------------------------------------------------------- busy times (add-ons)
+BUSY_CUT = 0.6  # (visitors) an add-on's usual busy hour: the chance you're free there, times this
+DAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+
+
+def busy_from(app: App, name: str, fn) -> None:
+    """(0.9.0) An add-on hands its usual busy times: fn(app) -> [(weekday 0-6, hour 0-23), ...]. Times only, never
+    who or why; read on this computer only, never put in a log, an event or an AI request. fn None removes it."""
+    hooks = getattr(app, "_busy_hooks", None)
+    if hooks is None:
+        hooks = {}
+        app._busy_hooks = hooks  # type: ignore[attr-defined]
+    if fn is None:
+        hooks.pop(str(name), None)
+    else:
+        hooks[str(name)] = fn
+
+
+def busy_cells(app: App) -> set[tuple[int, int]]:
+    out: set[tuple[int, int]] = set()
+    for fn in list((getattr(app, "_busy_hooks", None) or {}).values()):
+        try:
+            for wd, h in fn(app) or ():
+                if 0 <= int(wd) <= 6 and 0 <= int(h) <= 23:
+                    out.add((int(wd), int(h)))
+        except Exception:  # noqa: S110 (an add-on's trouble: no busy times from it)
+            pass
+    return out
+
+
+def busy(app: App, t: dt.datetime) -> bool:
+    return (t.weekday(), t.hour) in busy_cells(app)
+
+
+def busy_hint(app: App) -> str:
+    """(busy_hint) "Tue and Thu evenings are usually busy." from the add-ons' busy times; "" with none or it off."""
+    if not app.settings.get("mind.presence_forecast.busy_hint"):
+        return ""
+    parts: dict[str, set[int]] = {}
+    for wd, h in busy_cells(app):
+        part = "mornings" if 5 <= h < 12 else "afternoons" if 12 <= h < 17 else "evenings" if 17 <= h < 23 else "nights"
+        parts.setdefault(part, set()).add(wd)
+    if not parts:
+        return ""
+    bits = []
+    for part in ("mornings", "afternoons", "evenings", "nights"):
+        if part in parts:
+            days = [DAYS[d] for d in sorted(parts[part])]
+            bits.append(f"{' and '.join([', '.join(days[:-1]), days[-1]] if len(days) > 1 else days)} {part}")
+    return f"{'; '.join(bits)} are usually busy."
 
 
 # ------------------------------------------------------------------------------------------------- what's seen
@@ -195,7 +289,51 @@ def at_desk(app: App, t: float | None = None) -> bool | None:
                 seen = True
     except Exception:  # noqa: S110
         pass
+    try:  # (0.9.0) your voice (Voice ID) or the dashboard said you're here (core/here.py; the phone doesn't count)
+        from kurooto.core import here
+
+        h = here.last(app, desk=True)
+        if h is not None and t - h <= DESK_S:
+            return True
+    except Exception:  # noqa: S110
+        pass
     return seen if can else None
+
+
+def _phone_seen(app: App, t: float) -> bool | None:
+    """(reachable) You used your phone in the last DESK_S: the phone app (core/here.py's phone sign) or its screen
+    (the phone's screen sense, opt-in). None when neither can tell."""
+    can = seen = False
+    try:
+        from kurooto.core import here
+
+        if here.on(app, "phone"):
+            can = True
+            h = (getattr(app, "_owner_here", None) or {}).get("phone")
+            seen = bool(h and t - float(h[0]) <= DESK_S)
+    except Exception:  # noqa: S110
+        pass
+    try:
+        from kurooto.mind.senses import phone, store
+
+        if phone.enabled(app, "screen"):
+            can = True
+            rows = store.events(app, "phone:screen", t - DESK_S)
+            seen = seen or any(r["kind"] in ("on_min", "unlocks") and r["n"] > 0 for r in rows)
+    except Exception:  # noqa: S110
+        pass
+    return seen if can else None
+
+
+def reachable_now(app: App, t: dt.datetime | None = None) -> bool:
+    """(0.9.0, reachable) Reachable right now: free at the desk, or using your phone, and not in a class or on a
+    call. False with the switch off or when nothing can tell."""
+    if not reach_on(app):
+        return False
+    t = t or now()
+    if _on_call(app, t) or _in_class(app, t):
+        return False
+    return bool(at_desk(app, t.timestamp()) or _phone_seen(app, t.timestamp()))
 
 
 def free_now(app: App, t: dt.datetime | None = None) -> bool | None:
@@ -222,6 +360,20 @@ def tick(app: App, payload: dict | None = None) -> list[tuple[float, float, floa
         if look is not None:
             f, n = (st["looks"].get(cur) or [0, 0])[:2]
             st["looks"][cur] = [int(f) + int(look), int(n) + 1]
+        if reach_on(app):  # (0.9.0) the reachable estimate: its own looks, learned the same way, never scored
+            ph = _phone_seen(app, t.timestamp())
+            if look is not None or ph is not None:
+                r = bool(look) or bool(ph and not _on_call(app, t) and not _in_class(app, t))
+                f, n = (st["rlooks"].get(cur) or [0, 0])[:2]
+                st["rlooks"][cur] = [int(f) + int(r), int(n) + 1]
+        for s in sorted(k for k in st["rlooks"] if k < cur):
+            f, n = st["rlooks"].pop(s)[:2]
+            if int(n) < MIN_LOOKS:
+                continue
+            hour = _start(s)
+            for table, key in (("rcells", f"{hour.weekday()}-{hour.hour}"), ("rhours", str(hour.hour))):
+                a, m = (st[table].get(key) or [0.0, 0])[:2]
+                st[table][key] = [round(float(a) + int(f) / int(n), 4), int(m) + 1]
         for h in range(1, HOURS + 1):
             s = slot(t + dt.timedelta(hours=h))
             if s not in st["frozen"]:
@@ -264,10 +416,12 @@ def prefer(
     latest: dt.datetime | None = None,
     within_min: int | None = None,
     skip: tuple[str, ...] = (),
+    reach: bool = False,
 ) -> dt.datetime:
     """`at`, or a time within `within_min` of it (in quarter hours, between earliest and latest) when the forecast
     thinks you won't be free at `at` and that time is clearly likelier (by MARGIN, and FREE_P or better). `skip` names
-    blockers the caller doesn't count ("asleep" for a check-in meant for bedtime). With prefer off: `at`."""
+    blockers the caller doesn't count ("asleep" for a check-in meant for bedtime). reach (0.9.0): a message or a call
+    to your phone, judged by the reachable estimate when that's on (p_reach). With prefer off: `at`."""
     if not prefer_on(app):
         return at
     try:
@@ -282,7 +436,7 @@ def prefer(
                 a, n = (st["cells"].get(f"{t.weekday()}-{t.hour}") or [0.0, 0])[:2]
                 a_h, n_h = (st["hours"].get(str(t.hour)) or [0.0, 0])[:2]
                 return (float(a) + K * (float(a_h) + 1) / (float(n_h) + 2)) / (float(n) + K)
-            return p_free(app, t, st)
+            return p_reach(app, t, st) if reach else p_free(app, t, st)
 
         p0 = p(at)
         if p0 >= FREE_P:
@@ -340,7 +494,11 @@ def line(app: App) -> str:
             f"(same as yesterday: {a['base']:.3f}; lower is better)."
         )
     nf = next_free(app)
-    return head + (f" Likely free next: {nf[0]:%H:%M} ({nf[1]:.0%})." if nf else "")
+    hint = busy_hint(app)
+    return head + (f" Likely free next: {nf[0]:%H:%M} ({nf[1]:.0%})." if nf else "") + (f" {hint}" if hint else "")
 
 
-__all__ = ["tick", "p_free", "prefer", "free_now", "next_free", "accuracy", "line", "blocked"]
+__all__ = [
+    "tick", "p_free", "p_reach", "prefer", "free_now", "reachable_now", "next_free", "accuracy", "line", "blocked",
+    "busy_from", "busy", "busy_hint",
+]  # fmt: skip

@@ -23,6 +23,11 @@ it, "awake" otherwise. Asleep:
     - (0.8.18, `mind.sleep.senses_off`, on) Its senses close too: Face presence pauses ("Kurooto is asleep") and Voice
       stops listening (senses_off()). Then only you wake it: /wake, a message, a tap or a call; its name can't, since
       nothing listens. Switch off: Voice still listens and its name wakes it (wake(app, "its name")).
+    - (0.9.0) Using the dashboard or the phone app wakes it too (core/here.py's owner_here, as a tap does); your face
+      or voice alone don't (that's mind.sleep.follow_desk).
+    - (0.9.0, `mind.sleep.follow_desk`, on) The desk wakes it too: a look that opens a talk, talking over it with a
+      turn, or a Live turn (DESK_WAKES); and Face presence seeing you at the desk in the night's last UP_MIN minutes,
+      while it's awake or woken, is you being up (desk_up, from the minute's tick): the night ends, what waited goes.
     - Woken, it answers, and dozes off again after `mind.sleep.wake_minutes` (20) quiet minutes. What waited still
       waits for the morning: being woken to answer isn't being up.
     - The Brain's heavy work prefers this window (mind/senses/intero.py: gated()).
@@ -33,6 +38,10 @@ Public, for the other parts and add-ons:
     senses_off(app) -> bool            (0.8.18) asleep with mind.sleep.senses_off on: cameras and microphones stop
     wake(app, why, minutes=20)
     window(app) -> (start, end) | None, the current night's or the next one's, as local times
+    last_night(app) -> (fell asleep, window end) | None   (0.9.0) the night just had, for the alarm (alarm.sleep_aware)
+    external_asleep(app, asleep, source)  (0.9.0) an add-on's reading that you're asleep or awake again: always noted;
+                                       it moves the night's start with mind.sleep.follow_external on (off)
+    body_asleep(app, asleep)           the same, with source "body" (the name an add-on already probes)
 
 State: `<state>/mind-sleep.json` (until when it's woken, when you got up, what waits, the last state, wakes a day).
 Numbers and reason ids only, besides the waiting messages themselves; on this computer only.
@@ -69,6 +78,13 @@ register_defaults(
             # asleep: the window starts desk_after_min minutes after you were last there
             "desk_holds": True,
             "desk_after_min": 15,
+            # (0.9.0) the desk wakes it and ends its night: a look that opens a talk, talking over it or a Live turn
+            # wakes it as its name does, and Face presence seeing you at the desk in the night's last 90 minutes
+            # (awake or woken) is you being up, so what waited goes out
+            "follow_desk": True,
+            # (0.9.0) an add-on's own reading that you're asleep (a dark, quiet room, you away) moves its night's start
+            # as your phone's does; off: the reading is only noted
+            "follow_external": False,
         }
     },
 )
@@ -83,8 +99,11 @@ RECENT_MIN = 15  # "in use" means in the last this many minutes
 HELD_MAX = 200
 WAKE_KINDS = {"message_in": "a message", "button_tapped": "a tap", "call_answered": "a call"}
 UP_KINDS = {"alarm_up_now": "you said you're up", "alarm_rang": "the alarm rang"}
-NAME_WHYS = ("its name", "the wake word")  # what opened Voice's conversation (modules/voice/gate.py)
-EVENTS = (*WAKE_KINDS, *UP_KINDS, "voice_portal")  # the events it listens to
+NAME_WHYS = ("its name", "the wake word", "tapped")  # what opened Voice's talk (voice/gate.py; 0.9.0: a tap)
+DESK_WAKES = {"voice_portal": "a look", "voice_barge": "talking over it", "voice_live": "a Live turn"}  # (follow_desk)
+DESK_UP_S = 120  # (follow_desk) Face presence had you at the desk this recently: you're at it now
+HERE_WAKES = ("dashboard", "phone")  # (0.9.0) owner_here vias that wake it, as a tap does (core/here.py)
+EVENTS = (*WAKE_KINDS, *UP_KINDS, *DESK_WAKES, "owner_here")  # the events it listens to
 EXEMPT_KINDS = ("call", "approval", "reminder")
 DUMP_SKIP = ("rid", "extra", "state_read", "before")
 CACHE_S = 5.0  # asleep() is kept this long: Face presence and Voice ask every second
@@ -243,6 +262,11 @@ def _refine(app: App, s: dt.datetime, e: dt.datetime, t: dt.datetime, ph: dict, 
         u = dt.datetime.fromtimestamp(up_at).replace(microsecond=0)
         if s <= u < e:
             e = u
+    ext = ph.get("external")
+    if ext is not None and s - dt.timedelta(hours=EARLY_H) <= t < e:  # (0.9.0, follow_external) an add-on's reading
+        onset = dt.datetime.fromtimestamp(ext).replace(microsecond=0)
+        if s - dt.timedelta(hours=EARLY_H) <= onset < s and onset <= t:
+            s = onset
     desk = ph.get("desk")
     if desk is not None and s <= t < e:  # (0.8.18) at the desk: it waits for you, up to the window's end
         held = dt.datetime.fromtimestamp(desk).replace(microsecond=0) + dt.timedelta(minutes=_desk_after(app))
@@ -267,6 +291,9 @@ def window(app: App, t: dt.datetime | None = None) -> tuple[dt.datetime, dt.date
     ph = {} if manual else phone_now(app, t)
     st = _load(app)
     up = st.get("up_at")
+    ext = _external_since(app, st)
+    if ext is not None:
+        ph = {**ph, "external": ext}
     if float(st.get("slept_until") or 0) <= t.timestamp():  # (0.8.18) asleep already: the desk no longer holds it
         desk = _desk(app)
         if desk is not None:
@@ -279,6 +306,43 @@ def window(app: App, t: dt.datetime | None = None) -> tuple[dt.datetime, dt.date
         if e > t and s < e:
             out.append((s, e))
     return min(out) if out else None
+
+
+def external_asleep(app: App, asleep: bool, source: str = "addon") -> None:
+    """(0.9.0) An add-on's own reading that you're asleep (asleep=True: since now) or awake again. Always noted (in
+    the state file, and as a "<source>_sleep" event with the state only, as add-ons wrote before); it moves the night's
+    start only with mind.sleep.follow_external on (_refine, like the phone's onset). Never raises."""
+    try:
+        src = "".join(c for c in str(source or "addon").lower() if c.isalnum() or c == "_")[:24] or "addon"
+        t = now().timestamp()
+        with _lock:
+            st = _load(app)
+            ext = st.setdefault("external", {})
+            was = ext.get(src) or {}
+            if bool(asleep):
+                ext[src] = {"since": float(was.get("since") or t) if was.get("asleep") else t, "asleep": True}
+            else:
+                ext[src] = {"asleep": False, "at": t}
+            _save(app, st)
+        app.events.emit(f"{src}_sleep", state="asleep" if asleep else "awake")
+    except Exception as e:
+        try:
+            app.events.emit("mind_sleep_failed", error=f"external: {type(e).__name__}"[:60])
+        except Exception:
+            pass
+
+
+def body_asleep(app: App, asleep: bool) -> None:
+    """The name an add-on already probes for (getattr): external_asleep with its source."""
+    external_asleep(app, asleep, "body")
+
+
+def _external_since(app: App, st: dict) -> float | None:
+    """(follow_external) The earliest onset an add-on reports and still holds, or None (the switch off, or none)."""
+    if not app.settings.get("mind.sleep.follow_external") or app.settings.get("mind.sleep.window"):
+        return None
+    got = [float(v["since"]) for v in (st.get("external") or {}).values() if v.get("asleep") and v.get("since")]
+    return min(got) if got else None
 
 
 # ------------------------------------------------------------------------------------------------- the state
@@ -310,6 +374,9 @@ def state(app: App, t: dt.datetime | None = None) -> str:
             with _lock:
                 st = _load(app)
                 st["slept_until"] = e.timestamp()
+                night = st.get("night") or {}
+                if float(night.get("until") or 0) <= s.timestamp():  # (0.9.0) a new night: its onset, for last_night
+                    st["night"] = {"at": s.timestamp(), "until": e.timestamp()}
                 _save(app, st)
         return "asleep"
     if s - dt.timedelta(minutes=DROWSY_MIN) <= t < s:
@@ -329,6 +396,17 @@ def asleep(app: App) -> bool:
         v = False
     _cache[id(app)] = (m, v)
     return v
+
+
+def last_night(app: App, t: dt.datetime | None = None) -> tuple[dt.datetime, dt.datetime] | None:
+    """(0.9.0) The night just had or still on: (when it fell asleep, when the window ends), the onset as it was when
+    it first went to sleep (your phone, the desk, an add-on all count). None when it hasn't slept in the last day."""
+    t = t or now()
+    night = _load(app).get("night") or {}
+    a, b = float(night.get("at") or 0), float(night.get("until") or 0)
+    if not a or not b or a > t.timestamp() or t.timestamp() - a > 86400:
+        return None
+    return dt.datetime.fromtimestamp(a).replace(microsecond=0), dt.datetime.fromtimestamp(b).replace(microsecond=0)
 
 
 def senses_off(app: App) -> bool:
@@ -403,10 +481,48 @@ def on_event(app: App, rec: dict) -> None:
             wake(app, WAKE_KINDS[kind], _wake_minutes(app))
         elif kind == "voice_portal" and rec.get("open") and rec.get("why") in NAME_WHYS and resting(app):
             wake(app, "its name", _wake_minutes(app))
+        elif _desk_wake(app, kind, rec) and resting(app):  # (0.9.0, follow_desk) a look, talking over it, Live
+            wake(app, DESK_WAKES[kind], _wake_minutes(app))
+        elif kind == "owner_here" and rec.get("via") in HERE_WAKES and resting(app):  # you used the board or the app
+            wake(app, f"you used the {rec.get('via')}", _wake_minutes(app))
         elif kind in UP_KINDS:
             up(app, UP_KINDS[kind])
     except Exception as e:  # never in the way of the event that came
         app.events.emit("mind_sleep_failed", error=f"{type(e).__name__}"[:60])
+
+
+def _desk_wake(app: App, kind: str, rec: dict) -> bool:
+    """(0.9.0, mind.sleep.follow_desk) You started a talk at the desk: a look opened it (gate.LOOKED), you talked
+    over it with a turn, or Gemini Live answered you. Asleep with senses_off, nothing listens, so this matters while
+    it's drowsy, woken, or with senses_off off."""
+    if kind not in DESK_WAKES or not app.settings.get("mind.sleep.follow_desk"):
+        return False
+    if kind == "voice_portal":
+        return bool(rec.get("open")) and rec.get("why") == "looked at"
+    if kind == "voice_barge":
+        return rec.get("outcome") == "turn"
+    return rec.get("stage") == "answered"
+
+
+def desk_up(app: App, t: dt.datetime | None = None) -> bool:
+    """(0.9.0, mind.sleep.follow_desk) Face presence has you at the desk in the night's last UP_MIN minutes while
+    it's awake or woken (never while asleep: the latch): you're up, so the night ends and what waited goes out. The
+    minute's tick asks. True when it ended the night."""
+    if not on(app) or not app.settings.get("mind.sleep.follow_desk"):
+        return False
+    t = t or now()
+    w = window(app, t)
+    if not w or not (w[0] <= t < w[1]) or t < w[1] - dt.timedelta(minutes=UP_MIN) or state(app, t) == "asleep":
+        return False
+    try:
+        face = app.modules.get("face")
+        seen = face.desk_seen_at() if face is not None and app.is_on("face") else None
+    except Exception:
+        seen = None
+    if seen is None or t.timestamp() - seen > DESK_UP_S:
+        return False
+    up(app, "you're at the desk")
+    return True
 
 
 def _wake_minutes(app: App) -> int:
@@ -494,6 +610,10 @@ def tick(app: App, payload: dict | None = None) -> str | None:
             release(app)  # turned off while asleep: nothing stays held
         return None
     s = _changed(app)
+    try:
+        desk_up(app)  # (0.9.0, follow_desk) at the desk near the night's end: you're up
+    except Exception as e:
+        app.events.emit("mind_sleep_failed", error=f"desk: {type(e).__name__}"[:60])
     if not resting(app) and held_count(app):
         release(app)
     return s

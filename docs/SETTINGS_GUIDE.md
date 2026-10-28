@@ -90,6 +90,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `alarm.prep_min` | `20` | Minutes before the alarm that your AI drafts the day's plan into today's daily note. ([guide](wiki/user/settings-guide.md#alarmprepmin)) |
 | `alarm.reason` | `"Wake-up call"` | What the wake-up call says it's for. ([guide](wiki/user/settings-guide.md#alarmreason)) |
 | `alarm.retries` | `2` | How many more times the alarm rings if you don't answer (5 minutes apart). ([guide](wiki/user/settings-guide.md#alarmretries)) |
+| `alarm.skip_if_up` | `true` | Up before the alarm: one question, skip the ring? It rings as set unless you tap Skip. ([guide](wiki/user/settings-guide.md#alarmskipifup)) |
+| `alarm.sleep_aware` | `true` | Up late before a free morning: one offer of a later ring; after a short night the wake-up call keeps it brief. ([guide](wiki/user/settings-guide.md#alarmsleepaware)) |
 | `alarm.snooze_min` | `10` | Minutes a snoozed alarm waits before it rings again. ([guide](wiki/user/settings-guide.md#alarmsnoozemin)) |
 | `alarm.suggest` | `true` | Before your usual bedtime with no alarm set, one message offering your usual wake-up time. ([guide](wiki/user/settings-guide.md#alarmsuggest)) |
 
@@ -396,6 +398,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `face.away.hold_desktop` | `false` | Hold desktop pop-ups and spoken answers until you're back at the desk. ([guide](wiki/user/settings-guide.md#faceawayholddesktop)) |
 | `face.away.hold_max_min` | `60` | The longest a call waits while you're away, in minutes. ([guide](wiki/user/settings-guide.md#faceawayholdmaxmin)) |
 | `face.away.on` | `false` | Notice when you leave the desk and come back. ([guide](wiki/user/settings-guide.md#faceawayon)) |
+| `face.breaks` | `true` | Leaving, looking up at the camera and standing up are natural breaks for Brain's door. ([guide](wiki/user/settings-guide.md#facebreaks)) |
 | `face.camera.device` | `""` | The camera to use: empty for the first ordinary one (infrared ones are skipped), or a number or part of its name. ([guide](wiki/user/settings-guide.md#facecameradevice)) |
 | `face.camera.height` | `480` | The picture height asked of the camera. ([guide](wiki/user/settings-guide.md#facecameraheight)) |
 | `face.camera.width` | `640` | The picture width asked of the camera (it may give another). ([guide](wiki/user/settings-guide.md#facecamerawidth)) |
@@ -404,7 +407,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `face.greet.listen_s` | `12` | How long that conversation stays open with nothing said, in seconds. ([guide](wiki/user/settings-guide.md#facegreetlistens)) |
 | `face.greet.on` | `true` | Greet you by voice when you arrive at the desk. ([guide](wiki/user/settings-guide.md#facegreeton)) |
 | `face.greet.per_day` | `3` | A daily cap on greetings. ([guide](wiki/user/settings-guide.md#facegreetperday)) |
-| `face.greet.say` | `["next", "waiting", "deadline"]` | What the greeting tells you: what's next today, what's waiting, deadlines in 24 h, what was held while you were away. ([guide](wiki/user/settings-guide.md#facegreetsay)) |
+| `face.greet.say` | `["next", "waiting", "deadline", "answers"]` | What the greeting tells you: what's next today, what's waiting, deadlines in 24 h, what was held while you were away. ([guide](wiki/user/settings-guide.md#facegreetsay)) |
 | `face.greet.talk` | `true` | After the greeting, listen for a reply without its name being said. ([guide](wiki/user/settings-guide.md#facegreettalk)) |
 | `face.greet.with_others` | `"skip"` | When someone else is in view too: skip the greeting, say just "Welcome back.", or the full greeting. ([guide](wiki/user/settings-guide.md#facegreetwithothers)) |
 | `face.learn.every_h` | `6` | At most one new sample this often, in hours. ([guide](wiki/user/settings-guide.md#facelearneveryh)) |
@@ -765,8 +768,11 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.play.on` | `false` | A little nightly time to explore its own questions on your topics (off until you turn it on). ([guide](wiki/user/settings-guide.md#mindplayon)) |
 | `mind.precedents.on` | `false` | Judgement calls between your values are asked once, then followed (off until you turn it on). ([guide](wiki/user/settings-guide.md#mindprecedentson)) |
 | `mind.precedents.threshold` | `0.75` | How alike two situations must be (0 to 1) for a precedent to be followed. ([guide](wiki/user/settings-guide.md#mindprecedentsthreshold)) |
+| `mind.presence_forecast.busy_hint` | `true` | An add-on's usual busy hours (times only) show as a hint on /mind and Start-by messages. ([guide](wiki/user/settings-guide.md#mindpresenceforecastbusyhint)) |
 | `mind.presence_forecast.on` | `true` | Forecast, hour by hour for the next six hours, when you'll be at your desk and free; scored against what the senses then show. ([guide](wiki/user/settings-guide.md#mindpresenceforecaston)) |
 | `mind.presence_forecast.prefer` | `true` | Check-ins and calls Kurooto places by itself prefer an hour you're likely free. ([guide](wiki/user/settings-guide.md#mindpresenceforecastprefer)) |
+| `mind.presence_forecast.reachable` | `true` | Check-ins and calls Kurooto places by itself go by whether you're reachable: at the desk or on your phone. ([guide](wiki/user/settings-guide.md#mindpresenceforecastreachable)) |
+| `mind.presence_forecast.visitors` | `false` | An add-on's usual busy hours also lower the forecast there a little (never a block). ([guide](wiki/user/settings-guide.md#mindpresenceforecastvisitors)) |
 | `mind.presence_forecast.within_min` | `60` | How far (minutes) a check-in or a call may move to a likelier hour. ([guide](wiki/user/settings-guide.md#mindpresenceforecastwithinmin)) |
 | `mind.promises.on` | `true` | Its own promises ("I'll check back at 6") are noticed, kept, or owned up to first. ([guide](wiki/user/settings-guide.md#mindpromiseson)) |
 | `mind.read.asks_per_week` | `2` | How many times a week, at most, it may ask whether the week felt heavier than usual. ([guide](wiki/user/settings-guide.md#mindreadasksperweek)) |
@@ -780,6 +786,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.skills.on` | `true` | Solved tasks become tested, reusable skills; each new one starts out asking first. ([guide](wiki/user/settings-guide.md#mindskillson)) |
 | `mind.sleep.desk_after_min` | `15` | With desk_holds: how many minutes after you leave the desk its sleep starts. ([guide](wiki/user/settings-guide.md#mindsleepdeskaftermin)) |
 | `mind.sleep.desk_holds` | `true` | While you're at this computer, Kurooto doesn't fall asleep: its night starts after you leave. ([guide](wiki/user/settings-guide.md#mindsleepdeskholds)) |
+| `mind.sleep.follow_desk` | `true` | Starting a talk at the desk wakes Kurooto, and you at the desk near the night's end is you being up. ([guide](wiki/user/settings-guide.md#mindsleepfollowdesk)) |
+| `mind.sleep.follow_external` | `false` | An add-on's reading that you're asleep (a dark, quiet room, you away) starts Kurooto's night there. ([guide](wiki/user/settings-guide.md#mindsleepfollowexternal)) |
 | `mind.sleep.follow_owner` | `true` | Its sleep follows yours: bedtime to the alarm, refined by your phone (screen off, dark, charging; first use). ([guide](wiki/user/settings-guide.md#mindsleepfollowowner)) |
 | `mind.sleep.on` | `true` | Kurooto sleeps in your sleep window: nothing it starts by itself is sent or said aloud until morning. ([guide](wiki/user/settings-guide.md#mindsleepon)) |
 | `mind.sleep.senses_off` | `true` | Asleep, Kurooto's camera and microphone are off: Face presence pauses and Voice stops listening. ([guide](wiki/user/settings-guide.md#mindsleepsensesoff)) |
@@ -860,6 +868,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `notify.calm.monthly` | `true` | Once a month, it names a kind of question you hardly ever answer and offers to turn it off. ([guide](wiki/user/settings-guide.md#notifycalmmonthly)) |
 | `notify.calm.on` | `true` | Calm: each message Kurooto sends by itself says why, has Why? and Less of this, and there's a daily limit. ([guide](wiki/user/settings-guide.md#notifycalmon)) |
 | `notify.calm.stopped` | `[]` | Kinds of message you stopped with Less of this → Stop. ([guide](wiki/user/settings-guide.md#notifycalmstopped)) |
+| `notify.calm.voice_stops` | `true` | "Stop" said over something Kurooto said aloud by itself is noted; after a few, it offers to stop that kind. ([guide](wiki/user/settings-guide.md#notifycalmvoicestops)) |
 | `notify.calm.windows` | `{}` | Hours a kind of message may come in; outside them it waits for the evening bundle. ([guide](wiki/user/settings-guide.md#notifycalmwindows)) |
 | `notify.desktop` | `true` | Pop-up notifications on this computer. ([guide](wiki/user/settings-guide.md#notifydesktop)) |
 | `notify.desktop_kinds` | `["call", "question", "approval", "deadline", "update"]` | Which kinds of message pop up on this computer. ([guide](wiki/user/settings-guide.md#notifydesktopkinds)) |
@@ -892,6 +901,15 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | Setting | Default | What it does |
 |---|---|---|
 | `power.on_battery` | `"saver"` | What Kurooto does on battery: put off heavy work, carry on as usual, or pause. ([guide](wiki/user/settings-guide.md#poweronbattery)) |
+
+### `presence`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `presence.owner_here.dashboard` | `true` | Using the dashboard (buttons, Ctrl+K, journal, capture, Study mode) counts as you at the desk. ([guide](wiki/user/settings-guide.md#presenceownerheredashboard)) |
+| `presence.owner_here.face` | `true` | Face presence seeing your face counts as you being here (Brain's sense of your day, the forecast). ([guide](wiki/user/settings-guide.md#presenceownerhereface)) |
+| `presence.owner_here.phone` | `true` | Using the phone app (chat, buttons, answers, Today) counts as you being around, not at the desk. ([guide](wiki/user/settings-guide.md#presenceownerherephone)) |
+| `presence.owner_here.voice` | `true` | Voice ID calling a voice yours, even talk not to Kurooto, counts as you at the desk. ([guide](wiki/user/settings-guide.md#presenceownerherevoice)) |
 
 ### `privacy`
 
@@ -1216,6 +1234,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.addons.listen` | `true` | Let an add-on take one stretch of speech at a time through the microphone (written out here, never sent). ([guide](wiki/user/settings-guide.md#voiceaddonslisten)) |
 | `voice.audio.backend` | `"auto"` | How Kurooto plays and records sound: PipeWire's own tools, or the PortAudio library inside Kurooto. ([guide](wiki/user/settings-guide.md#voiceaudiobackend)) |
 | `voice.listen.after_speak_s` | `6` | Seconds after it spoke during which a question counts as an answer to it. ([guide](wiki/user/settings-guide.md#voicelistenafterspeaks)) |
+| `voice.listen.after_talk` | `true` | When a talk at the desk ends, its text goes where a call's does: transcripts, open threads, a line in the day's note. ([guide](wiki/user/settings-guide.md#voicelistenaftertalk)) |
 | `voice.listen.auto_gain` | `true` | Hearing follows the room: speech must stand above its noise, and a quiet voice is evened up. ([guide](wiki/user/settings-guide.md#voicelistenautogain)) |
 | `voice.listen.auto_gain_snr_db` | `6` | How far above the room's noise speech must be to count, in dB. ([guide](wiki/user/settings-guide.md#voicelistenautogainsnrdb)) |
 | `voice.listen.barge_in` | `true` | Talk over Kurooto while it speaks to stop it: "stop", a new question, or anything you want to say. ([guide](wiki/user/settings-guide.md#voicelistenbargein)) |
@@ -1226,6 +1245,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.conversation_follow_s` | `4` | In conversation mode, a reply to what Kurooto just said counts only this soon after it. ([guide](wiki/user/settings-guide.md#voicelistenconversationfollows)) |
 | `voice.listen.conversation_mode` | `true` | While another voice is here, Kurooto stays out of people talking: only its name said to it opens a talk. ([guide](wiki/user/settings-guide.md#voicelistenconversationmode)) |
 | `voice.listen.conversation_s` | `60` | Seconds after the other person last spoke before Kurooto stops staying out of the conversation. ([guide](wiki/user/settings-guide.md#voicelistenconversations)) |
+| `voice.listen.count_voices` | `false` | Two faces close to the camera plus a voice that isn't yours: people talking to each other, not to Kurooto. ([guide](wiki/user/settings-guide.md#voicelistencountvoices)) |
 | `voice.listen.device` | `""` | Which microphone to use; empty is the system's default. ([guide](wiki/user/settings-guide.md#voicelistendevice)) |
 | `voice.listen.early` | `true` | Write the words out at your first short pause, so the turn goes on the moment you've finished. ([guide](wiki/user/settings-guide.md#voicelistenearly)) |
 | `voice.listen.face_near` | `0.5` | How close counts: a face at least this share of your usual face height at the desk (0.5 is about twice as far). ([guide](wiki/user/settings-guide.md#voicelistenfacenear)) |
@@ -1254,6 +1274,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.night` | `true` | Keep listening during the night hours. ([guide](wiki/user/settings-guide.md#voicelistennight)) |
 | `voice.listen.on` | `false` | Listen through the microphone, all on this computer; only what's said to Kurooto leaves it. ([guide](wiki/user/settings-guide.md#voicelistenon)) |
 | `voice.listen.stt_model` | `"base"` | How big the speech-to-text model is: tiny (75 MB), base (145 MB) or small (484 MB, more accurate). ([guide](wiki/user/settings-guide.md#voicelistensttmodel)) |
+| `voice.listen.tap_to_talk` | `true` | A tap on an add-on's device (the Body face) opens the conversation, as its name would. ([guide](wiki/user/settings-guide.md#voicelistentaptotalk)) |
 | `voice.listen.threshold` | `0.7` | How sure the local model must be (0 to 1) that speech is said to Kurooto. ([guide](wiki/user/settings-guide.md#voicelistenthreshold)) |
 | `voice.listen.timing` | `true` | Time each spoken turn from your last word to Kurooto's first sound, as numbers only. ([guide](wiki/user/settings-guide.md#voicelistentiming)) |
 | `voice.listen.told_off` | `true` | "Stop", "not you", "never mind" and the like, right after it woke or spoke, stop it at once and close the talk. ([guide](wiki/user/settings-guide.md#voicelistentoldoff)) |
@@ -1261,6 +1282,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.wake_word` | `""` | A wake-word model of your own (an openWakeWord `.onnx` path); empty: its name wakes it. ([guide](wiki/user/settings-guide.md#voicelistenwakeword)) |
 | `voice.listen.warm_brain` | `true` | When listening starts, get your AI's program ready on this computer. ([guide](wiki/user/settings-guide.md#voicelistenwarmbrain)) |
 | `voice.listen.warm_up` | `true` | When listening starts, warm the transcriber and the voice, so your first turn isn't the slow one. ([guide](wiki/user/settings-guide.md#voicelistenwarmup)) |
+| `voice.mirror_to_chat` | `true` | What Kurooto says aloud by itself also shows in the app's and the dashboard's Chat. ([guide](wiki/user/settings-guide.md#voicemirrortochat)) |
 | `voice.speak.ack` | `"tone"` | While your AI thinks, a short soft sound says Kurooto heard you. ([guide](wiki/user/settings-guide.md#voicespeakack)) |
 | `voice.speak.engine` | `"kokoro"` | The voice made on this computer: Kokoro (natural, about 0.55 GB), Piper (lighter) or off. ([guide](wiki/user/settings-guide.md#voicespeakengine)) |
 | `voice.speak.join_sentences` | `true` | Speak short sentences together, up to about 200 characters at a time, instead of each on its own. ([guide](wiki/user/settings-guide.md#voicespeakjoinsentences)) |
@@ -1268,6 +1290,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.speak.numbers_as_words` | `true` | Say numbers as a person would: 21:31 as "nine thirty-one PM", ₹3,000 as "three thousand rupees". ([guide](wiki/user/settings-guide.md#voicespeaknumbersaswords)) |
 | `voice.speak.on` | `true` | Kurooto speaks through this computer's speakers. ([guide](wiki/user/settings-guide.md#voicespeakon)) |
 | `voice.speak.rate` | `1.0` | How fast it speaks: 1.0 is normal, 0.8 slower, 1.2 faster. ([guide](wiki/user/settings-guide.md#voicespeakrate)) |
+| `voice.speak.stop_when_gone` | `false` | Stop reading an answer when Face presence sees you've left the desk; the rest is offered when you're back. ([guide](wiki/user/settings-guide.md#voicespeakstopwhengone)) |
 | `voice.speak.stream` | `true` | Speak the answer a sentence at a time while your AI is still writing it. ([guide](wiki/user/settings-guide.md#voicespeakstream)) |
 | `voice.speak.voice` | `""` | Which Kokoro voice it speaks in; empty is `af_heart`. ([guide](wiki/user/settings-guide.md#voicespeakvoice)) |
 | `voice.speak.what` | `"voice"` | What's read aloud: answers to what you said aloud, every AI answer, or nothing. ([guide](wiki/user/settings-guide.md#voicespeakwhat)) |

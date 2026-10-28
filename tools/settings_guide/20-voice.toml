@@ -603,3 +603,33 @@ only. It uses calls.live_model (then calls.live_models) and calls.voice."""
 values = "`false` (default) or `true`."
 when = "Turn it on if you want quick spoken answers at the desk and are fine with your voice going to Google."
 needs = "`voice.listen.on`, a Gemini key, Voice ID (`voice.speaker_id.on`, enrolled) and Face presence."
+
+[s."voice.speak.stop_when_gone"]
+tip = "Stop reading an answer when Face presence sees you've left the desk; the rest is offered when you're back."
+what = "It goes by Face presence's \"stepped away\" (face.away.on, after face.away.after_min), never a turned head. The unread rest is on screen, and the greeting says an answer came while you were away; a yes reads it."
+when = "Turn it on if long answers keep playing to an empty room."
+needs = "Face presence on with face.away.on."
+
+[s."voice.mirror_to_chat"]
+tip = "What Kurooto says aloud by itself also shows in the app's and the dashboard's Chat."
+what = "A greeting or an add-on's spoken line appears as \"Said aloud at your desk\" (never on Telegram), and the next thing you type in any chat is told what it said, so you can answer by typing. Answers to you aren't repeated."
+when = "Turn it off to keep spoken lines out of Chat."
+cost = "With Phone calls on, the line goes to your phone app like any chat message (sealed, through your call line)."
+
+[s."voice.listen.count_voices"]
+tip = "Two faces close to the camera plus a voice that isn't yours: people talking to each other, not to Kurooto."
+what = "Face presence's count of close, facing faces (in memory) and Voice ID's verdict together mark a turn as two voices: it's treated as conversation, and that person's look doesn't open a talk. Your own voice never counts as the second."
+when = "Turn it on if it answers two friends talking in front of it."
+needs = "Face presence on and enrolled, and Voice ID."
+
+[s."voice.listen.tap_to_talk"]
+tip = "A tap on an add-on's device (the Body face) opens the conversation, as its name would."
+what = "No face is needed for that turn, and Voice ID's rules for others still apply. A tap while it speaks stays a stop. The add-on has its own switch too."
+when = "Turn it off if taps open conversations you didn't mean."
+needs = "Voice listening, and an add-on that offers it."
+
+[s."voice.listen.after_talk"]
+tip = "When a talk at the desk ends, its text goes where a call's does: transcripts, open threads, a line in the day's note."
+what = "Your turns and its answers as text (never sound, never anyone else's turns). With Phone calls on they're kept with the call transcripts (forgotten like them, with their gist); \"I'll send it tonight\" opens a thread; the day's note gets the time and the count of your turns under \"Desk talks\". The AI's look back after calls doesn't run for these."
+when = "Turn it off to keep desk talks out of the transcripts, threads and your daily note."
+cost = "Nothing leaves this computer."

@@ -62,7 +62,7 @@ import time
 from collections import deque
 from typing import TYPE_CHECKING
 
-from kurooto.core import nearby
+from kurooto.core import here, nearby
 from kurooto.core.biometric import Locked, TemplateStore, load_impostors
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jsave
@@ -104,7 +104,8 @@ register_defaults(
             "after_absent_min": 20,  # only after you've been away at least this long (minutes)
             "gap_min": 60,  # at most one greeting in this many minutes
             "per_day": 3,  # at most this many greetings a day
-            "say": ["next", "waiting", "deadline"],  # what it says: next (today), waiting, deadline (24 h), held
+            # what it says: next (today), waiting, deadline (24 h), held, answers (0.9.0: not read while you were away)
+            "say": ["next", "waiting", "deadline", "answers"],
             "with_others": "skip",  # someone else in view too: skip (no greeting), short ("Welcome back." only) or full
             "talk": True,  # then open the conversation: answer without saying its name (needs Voice listening)
             "listen_s": 12,  # how long that conversation stays open with nothing said (seconds)
@@ -124,6 +125,9 @@ register_defaults(
             "watch": True,  # an add-on may see who's in view (faces' places and numbers, in memory; never pictures)
             "hold": True,  # an add-on may keep the camera looking while you type (never past a pause or a switch)
         },
+        # (0.9.0) natural breaks for Brain's door (mind/breaks.py): you leaving (with away on), looking up at the
+        # camera, standing up (your face well below its usual desk size); kinds and times only
+        "breaks": True,
         "learn": {
             "on": False,  # refine your template slowly from confident recognitions (never unsure ones), with Undo
             "every_h": 6,  # at most one new sample this often (hours)
@@ -138,6 +142,9 @@ FACES_EVERY_S = 0.09  # "faces" to the pages at most about 10 a second
 HOLD_MAX_S = 600.0  # an add-on's hold lasts at most this long unless renewed: a crashed add-on can't keep the camera
 DESK_EVERY_S = 5.0  # your face's size at the desk is noted at most this often (a running median, in memory)
 DESK_MIN = 10  # sightings before the running median is trusted over the enrolment's front step
+LOOK_BREAK_S = 1.0  # (face.breaks) a look at the camera this long is "you looked up", a natural break
+STOOD_RATIO = 0.6  # (face.breaks) your face under this share of its usual desk height: you stood up
+STOOD_BACK = 0.8  # and back over this share: sitting again (the next stand counts)
 BLINK_HOLD_S = 1.0  # (look by the eyes) a frame whose eyes can't be read keeps the last verdict this long
 EYE_MB = 2.64  # the eye model (parts.py's iris)
 CONFIRM_FORGET_S = 7 * 86400  # Delete my face data, offered when Face presence is turned off, works this long
@@ -155,7 +162,7 @@ LICENCES = [
 ]
 EARLY = PAUSES[:3] + ("template locked",)  # no watcher is built for these
 STAGES = {"enrol": "capturing", "test": "testing", "gaze": "calibrating"}  # a session's kind -> the page's stage
-SAY_PARTS = ("next", "waiting", "deadline", "held")
+SAY_PARTS = ("next", "waiting", "deadline", "held", "answers")
 TOGGLES = {
     "greet.on": "Greet me when I sit down",
     "greet.talk": "Then listen for my answer",
@@ -238,6 +245,8 @@ class Face(Module):
         self._idle_at = (0.0, None, False)
         self._battery_at = (0.0, False)
         self._greets: dict = {}
+        self._break_look: float | None = None  # (face.breaks) the run of looks already called a break
+        self._stood = False  # (face.breaks) your face is under STOOD_RATIO of its desk size: stood up, said once
         self.slow = 1.0
         self._previous: dict | None = None  # the template before the last training, sealed nowhere: Undo, this run only
         self._people: list = []  # add-ons watching who's in view (watch_people)
@@ -607,7 +616,7 @@ class Face(Module):
         elif kind == "arrived":
             self._arrived(int(f.get("away_min") or 0), bool(f.get("others")))
         elif kind == "left":
-            self.app.events.emit("face_left")
+            self.app.events.emit("face_left")  # (0.9.0) a "left" break too, with face.breaks (mind/breaks.py)
         elif kind == "back":
             self.app.events.emit("face_back")
             self.flush_desktop()
@@ -619,6 +628,9 @@ class Face(Module):
             nearby.set_facing(self.app, int(f.get("faces") or 0), self.close_facing(f.get("sizes") or [], size))
             looks = f.get("looks")  # (0.8.18) anyone's look, voice.listen.look_anyone
             nearby.set_look(self.app, self.looking(f.get("owner"), f.get("eyes"), size, looks))  # (0.8.17) look to talk
+            if f.get("owner") is not None:  # (0.9.0) your face in view: you're here (core/here.py, words-free)
+                here.owner_here(self.app, "face")
+            self._break_signs(f.get("owner"), size)  # (0.9.0, face.breaks) looked up, stood up
             voice = self.app.modules.get("voice")
             if voice is not None and self.app.is_on("voice"):
                 try:
@@ -978,6 +990,37 @@ class Face(Module):
     def away_now(self) -> bool:
         return bool(self.setting("away.on") and self.watcher is not None and self.watcher.away)
 
+    def _break_signs(self, owner, frame) -> None:
+        """(0.9.0, face.breaks) Natural breaks for Brain's door, from what this frame shows of you: you looked at the
+        camera for LOOK_BREAK_S (one per run of looks, core/nearby.py's look times) -> face_looked; your face under
+        STOOD_RATIO of its usual desk height (owner_desk_height, measured shares only) -> face_stood, once until it's
+        back over STOOD_BACK. Kinds only into the event log; nothing about the face."""
+        if not self.setting("breaks"):
+            return
+        try:
+            since, last = nearby.look(self.app)
+            if since is not None and last is not None and last - since >= LOOK_BREAK_S and since != self._break_look:
+                self._break_look = since
+                self.app.events.emit("face_looked")
+            desk = self.owner_desk_height()
+            fh = float((frame or (0, 0))[1] or 0)
+            if owner is None or fh <= 0 or not desk or not desk.get("h") or not desk.get("measured"):
+                return
+            share = float(owner[0]) / fh
+            if not self._stood and share < STOOD_RATIO * float(desk["h"]):
+                self._stood = True
+                self.app.events.emit("face_stood")
+            elif self._stood and share >= STOOD_BACK * float(desk["h"]):
+                self._stood = False
+        except Exception as e:
+            self._failed("break signs", e)
+
+    def here(self) -> bool:
+        """(0.9.0, core/here.py) Your voice or the dashboard says you're here: Face presence's away ends without a
+        greeting. True when it was away."""
+        w = self.watcher
+        return bool(w is not None and self.setting("away.on") and w.here())
+
     def desk_seen_at(self) -> float | None:
         """(0.8.18, mind.sleep.desk_holds) When you were last at this computer by Face presence (your face, or your
         keyboard and mouse while it watches) as time.time(); None when it isn't watching or you've stepped away."""
@@ -1037,6 +1080,7 @@ class Face(Module):
             first_today=self.greets().get("day") != t.date().isoformat(),
             with_others=str(self.setting("greet.with_others") or "skip"),
             talk=talk,
+            answers=self._held_answers(),
         )
         v = self.app.modules["voice"]
         spoken, opened = v.greet(text, float(self.setting("greet.listen_s") or 12), talk=talk)
@@ -1049,6 +1093,14 @@ class Face(Module):
         self._write_status()
         self.app.events.emit("face_greeted", **_event_safe(parts=parts, talk=opened == "talk"))
         return True
+
+    def _held_answers(self) -> int:
+        """(0.9.0) How many answers Voice didn't read while you were away (a count only)."""
+        v = self.app.modules.get("voice")
+        try:
+            return len(v.held_answers) if v is not None and self.app.is_on("voice") else 0
+        except Exception:
+            return 0
 
     def _write_status(self) -> None:
         st = self.store.status()

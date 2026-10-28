@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.9.0 (unreleased)
+
+- **Your voice and the dashboard say you're here** (`presence.owner_here.face`, `.voice`, `.dashboard`, `.phone`, on).
+  One words-free sign from whichever sense saw you: Brain's day counts an hour of talking at the desk or ticking
+  deadlines on the board, the presence forecast sees you at the desk, using the dashboard or the phone app wakes a
+  sleeping Kurooto as a tap does, and your voice ends Face presence's "stepped away" without a greeting.
+- **The desk wakes Kurooto and ends its night** (`mind.sleep.follow_desk`, on). A look that opens a talk, talking over
+  it or a Live turn wakes it as its name does; at the desk in the night's last 90 minutes (awake or woken), its night
+  ends and what waited for the morning goes out.
+- **An add-on's sleep reading isn't dropped any more.** The Body add-on's "you're asleep" (dark, quiet, away) had
+  nowhere to go; it's noted now, and with `mind.sleep.follow_external` (off) it starts Kurooto's night there.
+- **Reachable, not only at the desk** (`mind.presence_forecast.reachable`, on). Check-ins and calls Kurooto places by
+  itself go by a second estimate, at the desk or on your phone, so they aren't pushed away while you're on your phone.
+- **An add-on's usual busy times show as a hint** on /mind and Start-by messages (`mind.presence_forecast.busy_hint`,
+  on); with `mind.presence_forecast.visitors` (off) they lower the forecast there a little. Times only, never who.
+- **The laptop's camera finds natural breaks** (`face.breaks`, on). Leaving the desk, looking up at the camera and
+  standing up are breaks for Brain's door, so a held message lands then; not only with an add-on's spare phone.
+- **Up before the alarm? It asks** (`alarm.skip_if_up`, on): in the hour before it, seen up, "skip the 07:00 alarm?".
+  Only your tap skips it; with no answer it rings as set.
+- **A short night ahead? A later ring is offered** (`alarm.sleep_aware`, on): still up late before a free morning,
+  "Ring at 09:30 instead?", set only on your tap; after a short night the wake-up call keeps it brief.
+- **Answers read aloud from elsewhere follow Calm.** With `voice.speak.what` all, an answer to a Telegram or app
+  message was read into the room even in a quiet week or exam season; Calm's spoken rules apply now (never counted).
+- **Telling it off counts** (`notify.calm.voice_stops`, on). "Stop" over a greeting or another line it said by itself
+  is noted; after three in two weeks it offers to stop that kind, applied only on your tap, with Undo.
+- **Two people in front of it are a conversation** (`voice.listen.count_voices`, off): two close faces plus a voice
+  that isn't yours.
+- **A tap to talk** (`voice.listen.tap_to_talk`, on): an add-on's device (the Body face) can open the conversation
+  with a tap, as its name would.
+- **Answers you missed while away are offered when you're back** (the greeting's `answers` part, on); with
+  `voice.speak.stop_when_gone` (off) it stops reading when Face presence sees you've left and offers the rest.
+- **What it says by itself shows in Chat** (`voice.mirror_to_chat`, on): greetings and add-ons' lines appear in the
+  app's and the dashboard's Chat (not Telegram), and the next thing you type is told what it said.
+- **Desk talks are kept like calls** (`voice.listen.after_talk`, on): when a talk at the desk ends, its text goes to the
+  call transcripts and open threads, and the day's note gets a "Desk talks" line (the time, never the words).
+
 ## 0.8.18 (2026-10-29)
 
 Kurooto keeps its eyes and ears shut while it sleeps, stays up while you're at the desk, and anyone's look opens a conversation.

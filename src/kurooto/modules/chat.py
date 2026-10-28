@@ -134,6 +134,11 @@ class Chat(Module):
             prompt = f"{prompt}\n\n{style}"  # last, so a "high:" prefix still comes first
         if msg.via == "voice":  # (0.8.17) said at the desk: who Kurooto knows said it (asked, it said it can't see)
             prompt = f"{prompt}\n\n{self._heard_line(msg)}"
+        else:  # (0.9.0, voice.mirror_to_chat) typed right after it said something aloud by itself: what it said
+            v = self.app.modules.get("voice")
+            said = v.unasked_line() if v is not None and self.app.is_on("voice") else ""
+            if said:
+                prompt = f"{said}\n\n{prompt}"
 
         helper = getattr(self.app, "helper", None)  # the internet down: the offline helper (core/helper.py)
         if helper is not None and not recent:

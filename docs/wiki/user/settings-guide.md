@@ -26,10 +26,10 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 
 - [You and how it talks to you](#you-and-how-it-talks-to-you): 11 settings
 - [Your AI](#your-ai): 34 settings
-- [Messages and where they reach you](#messages-and-where-they-reach-you): 31 settings
+- [Messages and where they reach you](#messages-and-where-they-reach-you): 32 settings
 - [When it may interrupt you](#when-it-may-interrupt-you): 13 settings
 - [Phone calls and the call line](#phone-calls-and-the-call-line): 35 settings
-- [Morning alarm](#morning-alarm): 11 settings
+- [Morning alarm](#morning-alarm): 13 settings
 - [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 34 settings
 - [Check-ins, journal and the week](#check-ins-journal-and-the-week): 18 settings
 - [Classes and timetable](#classes-and-timetable): 15 settings
@@ -42,15 +42,15 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 49 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
-- [Brain](#brain): 127 settings
-- [Voice and voice notes](#voice-and-voice-notes): 80 settings
+- [Brain](#brain): 136 settings
+- [Voice and voice notes](#voice-and-voice-notes): 85 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
 - [Dashboard and terminal](#dashboard-and-terminal): 27 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 26 settings
-- [Face presence](#face-presence): 34 settings
+- [Face presence](#face-presence): 35 settings
 
 ## You and how it talks to you
 
@@ -831,6 +831,16 @@ When a short request could mean either of two things, ask which with both as but
 - **When to change it:** Turn it off if you'd rather it went to your AI than asked.
 - **Costs and what leaves this computer:** Nothing: rules on this computer.
 
+### `notify.calm.voice_stops`
+
+"Stop" said over something Kurooto said aloud by itself is noted; after a few, it offers to stop that kind.
+
+Each stop over a greeting, an answer read aloud from elsewhere or an add-on's line is a mark for that kind (never your
+words). Three in two weeks bring one message asking whether to stop them; only your tap does, with Undo.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to have stops only stop it there and then.
+
 ## When it may interrupt you
 
 The night, focus time, calendar events that hold calls, and the regular commitments in your week. A held call or message
@@ -1376,6 +1386,29 @@ Before your usual bedtime with no alarm set, one message offering your usual wak
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off if you don't use an alarm every night. It never sets one by itself.
 - **Costs and what leaves this computer:** At most one Telegram message a day.
+
+### `alarm.skip_if_up`
+
+Up before the alarm: one question, skip the ring? It rings as set unless you tap Skip.
+
+In the hour before the alarm, when Face presence sees you at the desk, or you used the dashboard, the phone app or
+talked to it in the last ten minutes. Once per alarm.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you'd rather the alarm just rings.
+- **Costs and what leaves this computer:** At most one message per alarm.
+
+### `alarm.sleep_aware`
+
+Up late before a free morning: one offer of a later ring; after a short night the wake-up call keeps it brief.
+
+With less than six hours left before the alarm and you still up, a later time about 7.5 hours from now, at least an hour
+before your first class (needs Classes). It moves the alarm only if you tap it. The wake-up call is told "a short night"
+(Brain's sleep saw it), never when you slept.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you don't want late-night alarm offers.
+- **Costs and what leaves this computer:** At most one message per alarm.
 
 ## Reminders, deadlines and start-by dates
 
@@ -5813,6 +5846,106 @@ anything urgent.
 - **When to change it:** Turn it off to have Kurooto's ready-made messages come whole, as in 0.8.15.
 - **Depends on:** `mind.register.on`.
 
+### `presence.owner_here.face`
+
+Face presence seeing your face counts as you being here (Brain's sense of your day, the forecast).
+
+One words-free sign, owner_here (core/here.py), with the via only: your first and last sign of life of the day, and at
+your desk for the presence forecast. At most one event every 5 minutes; the time is kept in memory.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep your face out of Brain's sense of your day (Face presence itself is
+  unchanged).
+- **Depends on:** Face presence on and enrolled.
+
+### `presence.owner_here.voice`
+
+Voice ID calling a voice yours, even talk not to Kurooto, counts as you at the desk.
+
+It also ends Face presence's "you've stepped away" (never as an arrival: no greeting), so talking from out of the
+camera's view isn't being away. Only the fact goes anywhere: never a word or the voice.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if talking near the computer shouldn't count as being at it.
+- **Depends on:** Voice listening with Voice ID on and enrolled.
+
+### `presence.owner_here.dashboard`
+
+Using the dashboard (buttons, Ctrl+K, journal, capture, Study mode) counts as you at the desk.
+
+Your first and last sign of life of the day, at your desk for the forecast, it ends Face presence's away (no greeting),
+and while Kurooto sleeps it wakes it, as a tap does.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if the dashboard is used by someone else, or from elsewhere.
+
+### `presence.owner_here.phone`
+
+Using the phone app (chat, buttons, answers, Today) counts as you being around, not at the desk.
+
+Your first and last sign of life of the day, and while Kurooto sleeps it wakes it, as a tap does. It never counts as at
+the desk. These fire with every phone sense off.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep phone app use out of Brain's sense of your day.
+- **Depends on:** Brain on (the phone signs are read through it).
+
+### `mind.sleep.follow_desk`
+
+Starting a talk at the desk wakes Kurooto, and you at the desk near the night's end is you being up.
+
+A look that opens a conversation, talking over it with a question or request, or a Gemini Live turn wakes it as its name
+does. Face presence seeing you at the desk in the night's last 90 minutes, while it's awake or woken, ends its night,
+and what waited for the morning goes out. Asleep, the latch holds: sitting down doesn't wake it.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to have only its name, /wake, a message, a tap or a call wake it, and only the
+  alarm, "I'm up" or your phone end its night.
+- **Depends on:** `mind.sleep.on`; Voice listening and Face presence for the parts that need them.
+
+### `mind.sleep.follow_external`
+
+An add-on's reading that you're asleep (a dark, quiet room, you away) starts Kurooto's night there.
+
+An add-on with its own senses (the Body add-on's desk phone) can say you're asleep. The reading is always noted; with
+this on, the night starts at it, up to two hours early, as with your phone's onset. A window set by hand isn't moved.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if the add-on's room reading is a good sign you've gone to bed.
+- **Depends on:** `mind.sleep.on` and an add-on that reports it.
+
+### `mind.presence_forecast.reachable`
+
+Check-ins and calls Kurooto places by itself go by whether you're reachable: at the desk or on your phone.
+
+A second estimate beside at-the-desk, learned the same way from the phone app's use (and the phone's screen sense, if
+on). It's never lower than the desk one, and equals it until an hour of the week has been seen; it isn't scored. A call
+rings now while you're on your phone. What's said aloud keeps the desk estimate.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to have check-ins and calls go by the desk estimate alone, as in 0.8.18.
+- **Depends on:** `mind.presence_forecast.prefer`.
+
+### `mind.presence_forecast.busy_hint`
+
+An add-on's usual busy hours (times only) show as a hint on /mind and Start-by messages.
+
+For example "Tue and Thu evenings are usually busy." Nothing shows until an add-on gives busy times; never who or why.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to hide the hint.
+
+### `mind.presence_forecast.visitors`
+
+An add-on's usual busy hours also lower the forecast there a little (never a block).
+
+The chance you're free in those hours is cut by 40%, so a check-in or a call Kurooto places by itself may move to a
+nearby likelier hour. Times only, never who; nothing goes into a log or to an AI.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if those evenings really are bad times for Kurooto's own check-ins and calls.
+- **Depends on:** `mind.presence_forecast.on`, and an add-on that gives busy times.
+
 ## Voice and voice notes
 
 Kurooto speaks through this computer's speakers with a voice made here, and, if you turn listening on, hears the room
@@ -6666,6 +6799,63 @@ seconds: that turn goes the usual way. Nothing is written to disk; events hold n
 - **When to change it:** Turn it on if you want quick spoken answers at the desk and are fine with your voice going to
   Google.
 - **Depends on:** `voice.listen.on`, a Gemini key, Voice ID (`voice.speaker_id.on`, enrolled) and Face presence.
+
+### `voice.speak.stop_when_gone`
+
+Stop reading an answer when Face presence sees you've left the desk; the rest is offered when you're back.
+
+It goes by Face presence's "stepped away" (face.away.on, after face.away.after_min), never a turned head. The unread
+rest is on screen, and the greeting says an answer came while you were away; a yes reads it.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if long answers keep playing to an empty room.
+- **Depends on:** Face presence on with face.away.on.
+
+### `voice.mirror_to_chat`
+
+What Kurooto says aloud by itself also shows in the app's and the dashboard's Chat.
+
+A greeting or an add-on's spoken line appears as "Said aloud at your desk" (never on Telegram), and the next thing you
+type in any chat is told what it said, so you can answer by typing. Answers to you aren't repeated.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep spoken lines out of Chat.
+- **Costs and what leaves this computer:** With Phone calls on, the line goes to your phone app like any chat message
+  (sealed, through your call line).
+
+### `voice.listen.count_voices`
+
+Two faces close to the camera plus a voice that isn't yours: people talking to each other, not to Kurooto.
+
+Face presence's count of close, facing faces (in memory) and Voice ID's verdict together mark a turn as two voices: it's
+treated as conversation, and that person's look doesn't open a talk. Your own voice never counts as the second.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if it answers two friends talking in front of it.
+- **Depends on:** Face presence on and enrolled, and Voice ID.
+
+### `voice.listen.tap_to_talk`
+
+A tap on an add-on's device (the Body face) opens the conversation, as its name would.
+
+No face is needed for that turn, and Voice ID's rules for others still apply. A tap while it speaks stays a stop. The
+add-on has its own switch too.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if taps open conversations you didn't mean.
+- **Depends on:** Voice listening, and an add-on that offers it.
+
+### `voice.listen.after_talk`
+
+When a talk at the desk ends, its text goes where a call's does: transcripts, open threads, a line in the day's note.
+
+Your turns and its answers as text (never sound, never anyone else's turns). With Phone calls on they're kept with the
+call transcripts (forgotten like them, with their gist); "I'll send it tonight" opens a thread; the day's note gets the
+time and the count of your turns under "Desk talks". The AI's look back after calls doesn't run for these.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep desk talks out of the transcripts, threads and your daily note.
+- **Costs and what leaves this computer:** Nothing leaves this computer.
 
 ## Privacy and what it keeps
 
@@ -7733,7 +7923,10 @@ A daily cap on greetings.
 
 What the greeting tells you: what's next today, what's waiting, deadlines in 24 h, what was held while you were away.
 
-- **Values:** A list, typed as JSON. **Default:** `["next", "waiting", "deadline"]`.
+Parts: next, waiting, deadline, held, and (0.9.0) answers: how many answers weren't read aloud while you were away (a
+yes right after reads them).
+
+- **Values:** A list, typed as JSON. **Default:** `["next", "waiting", "deadline", "answers"]`.
 - **When to change it:** Trim it to what you want to hear first when you sit down.
 
 ### `face.greet.talk`
@@ -7918,3 +8111,15 @@ Also look while the screen is locked; off pauses it while locked.
 
 - **Values:** On or off. **Default:** off.
 - **When to change it:** Turn it on if you want it to notice you arriving at a locked computer.
+
+### `face.breaks`
+
+Leaving, looking up at the camera and standing up are natural breaks for Brain's door.
+
+A message Brain holds until a natural break (mind.workspace.breaks) can go when Face presence sees you leave (with
+face.away.on), look at the camera for a second, or stand up (your face well under its usual desk size). Kinds and times
+only.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if messages arrive at moments that don't feel like breaks.
+- **Depends on:** Face presence on and enrolled; Brain's mind.workspace.breaks.

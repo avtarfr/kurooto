@@ -351,6 +351,20 @@ going wrong: True. Greeting counts (day, n, last) live in `face.json`'s `greets`
 now`, `last_reply = text`, and a per-invite `close_s` put back when it closes. Rules 7 (open portal, a question or
 request) and 8 (a yes or no after a question) then apply; anything not addressed closes it.
 
+## owner_here and the greeting's answers (0.9.0)
+
+`Face.here()` (`Watcher.here()`) ends away from core/here.py's voice or dashboard sign: "back", never "arrived", and
+`here_at` joins `present_at` in `_check_away`. Each "view" with the owner's face calls `here.owner_here(app, "face")`.
+The greeting's `answers` part counts `Voice.held_answers` (`_held_answers`).
+
+## Breaks for Brain (0.9.0, `face.breaks`, on)
+
+`Face._break_signs(owner, frame)` on each "view": `face_looked` once per run of looks (core/nearby.py's look times,
+`LOOK_BREAK_S` = 1 s of looking); `face_stood` when the owner's face share of the frame is under `STOOD_RATIO` (0.6) of
+`owner_desk_height()["h"]` (measured shares only), once until it's back over `STOOD_BACK` (0.8). `mind/breaks.py`
+maps `face_left`, `face_looked`, `face_stood` to "left", "looked", "stood" (`FACE_EVENTS`) while `face.breaks` is on.
+Kinds only; no numbers about the face reach the log.
+
 ## Learning
 
 `Watcher` keeps a candidate from an arrival's frames when the frame is enrolment-grade (blur ≥ 60, 50 ≤ mean ≤ 210,

@@ -7,6 +7,9 @@ in "awaiting" mode, so "what's on today?" or "yes" goes to your AI without its n
     waiting   counts only: "Two questions and one approval wait for you."
     deadline  one due within 24 hours, its title and time: "Problem set 3 is due at 23:59."
     held      how many messages wait for the evening (never what they say)
+    answers   (0.9.0) how many answers weren't read aloud while you were away (face.away.hold_desktop, or
+              voice.speak.stop_when_gone): "One answer came while you were away; say yes to hear it." A yes right
+              after is read here, by Voice (Voice.read_held), not sent to the AI. Counts only, never what they say
     ending    "Want to go through them?" when something waits and the conversation will open
 
 Someone else in view (face.greet.with_others): skip (the default: no greeting at all), short ("Welcome back." only,
@@ -26,7 +29,7 @@ if TYPE_CHECKING:
     from kurooto.app import App
 
 MAX_CHARS = 220
-PARTS = ("next", "waiting", "deadline", "held")
+PARTS = ("next", "waiting", "deadline", "held", "answers")
 NUMBERS = {1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six", 7: "Seven", 8: "Eight", 9: "Nine"}
 
 
@@ -58,6 +61,7 @@ def compose(
     first_today: bool = False,
     with_others: str = "skip",
     talk: bool = True,
+    answers: int = 0,
 ) -> tuple[str, list[str]]:
     """The greeting's text and the names of the parts said (the event carries the names, never the text)."""
     opening = "Morning." if first_today and now.hour < 12 else "Welcome back."
@@ -85,14 +89,18 @@ def compose(
             said.append((p, f"{title.strip()[:60]} is due{day} at {due:%H:%M}."))
         elif p == "held" and held:
             said.append((p, f"{plural(held, 'message waits', 'messages wait').capitalize()} for this evening."))
-    waits = any(p in ("waiting", "held") for p, _ in said)
+        elif p == "answers" and answers:  # (0.9.0) last, so the trim drops it before the parts that came before it
+            came = f"{plural(answers, 'answer', 'answers').capitalize()} came while you were away"
+            said.append((p, f"{came}; say yes to hear {'it' if answers == 1 else 'them'}." if talk else f"{came}."))
+    # (0.9.0) with held answers offered, the yes is theirs: no second question
+    waits = any(p in ("waiting", "held") for p, _ in said) and not any(p == "answers" for p, _ in said)
     ending = " Want to go through them?" if waits and talk else ""
     while said:
         text = " ".join([opening, *[t for _, t in said]]) + ending
         if len(text) <= MAX_CHARS:
             return text, [p for p, _ in said]
         said.pop()  # the last part goes first
-        waits = any(p in ("waiting", "held") for p, _ in said)
+        waits = any(p in ("waiting", "held") for p, _ in said) and not any(p == "answers" for p, _ in said)
         ending = " Want to go through them?" if waits and talk else ""
     return opening, []
 

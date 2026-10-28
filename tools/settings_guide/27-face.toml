@@ -82,6 +82,7 @@ when = "Lower it to one for just a morning greeting."
 
 [s."face.greet.say"]
 tip = "What the greeting tells you: what's next today, what's waiting, deadlines in 24 h, what was held while you were away."
+what = "Parts: next, waiting, deadline, held, and (0.9.0) answers: how many answers weren't read aloud while you were away (a yes right after reads them)."
 when = "Trim it to what you want to hear first when you sit down."
 
 [s."face.greet.talk"]
@@ -196,3 +197,9 @@ when = "Turn it on if you work at your desk at night and want the greeting then 
 [s."face.watch.when_locked"]
 tip = "Also look while the screen is locked; off pauses it while locked."
 when = "Turn it on if you want it to notice you arriving at a locked computer."
+
+[s."face.breaks"]
+tip = "Leaving, looking up at the camera and standing up are natural breaks for Brain's door."
+what = "A message Brain holds until a natural break (mind.workspace.breaks) can go when Face presence sees you leave (with face.away.on), look at the camera for a second, or stand up (your face well under its usual desk size). Kinds and times only."
+when = "Turn it off if messages arrive at moments that don't feel like breaks."
+needs = "Face presence on and enrolled; Brain's mind.workspace.breaks."

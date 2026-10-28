@@ -64,6 +64,12 @@ register_defaults(
         "notes": True,  # after the wake-up call: today's plan (with Chat on) or what you said, in the daily note
         "keep_awake": False,  # keep this computer awake until the alarm (Linux: lid closed too), so the plan is drafted
         "suggest": True,  # before your usual bedtime with no alarm set: one message suggesting your usual time
+        # (0.9.0) up before the alarm (seen at the desk, using the dashboard or the phone app): one question, skip the
+        # ring? It rings as set unless you tap Skip
+        "skip_if_up": True,
+        # (0.9.0, with Brain's sleep) up late before an alarm with a free morning after it: one suggestion of a later
+        # ring (set only if you tap it); and after a short night the wake-up call keeps it light ("a short night")
+        "sleep_aware": True,
     },
 )
 DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -74,6 +80,12 @@ AWAKE_AFTER_MIN = 15  # keep_awake holds until this long after the alarm (repeat
 AWAKE_BEFORE_H = 12  # ... from this long before it (a daily alarm set in the morning doesn't hold all day)
 MAX_SET = 10  # alarms you set yourself, kept at once (the daily one isn't counted)
 SUGGEST_MIN = 60  # the suggestion comes within this long before your usual bedtime
+UP_LEAD_MIN = 60  # (skip_if_up) up within this long before the alarm: the question comes
+UP_SEEN_MIN = 10  # (skip_if_up) a sign of you this recent counts as you being up
+SHORT_H = 6.0  # (sleep_aware) less sleep than this before the alarm is a short night
+NIGHT_H = 7.5  # (sleep_aware) a later ring is offered at about this long from now
+CLASS_GAP_MIN = 60  # (sleep_aware) and at least this long before your first class
+LATE_GAIN_MIN = 30  # (sleep_aware) only when that's at least this much later than the alarm
 
 
 def _this_minute(at: dt.datetime) -> dt.datetime:
@@ -133,6 +145,7 @@ class Alarm(Module):
         self.action("awake", lambda p: self.keep_awake())
         self.every("plan", PLAN_EVERY, lambda p: self._plan())
         self.every("suggest", "every 30m", lambda p: self.suggest())
+        self.every("up_ask", "every 5m", lambda p: self.ask_skip() or self.suggest_later())  # (0.9.0)
         self.app.availability.sleep = self.sleep_windows
         self._plan()
         self.keep_awake()
@@ -531,6 +544,8 @@ class Alarm(Module):
                 (f"Ask when to call today: the evening check-in is at {ev}" if ev else "Ask when to call this evening")
                 + " (change_checkin moves or skips it), and whether they want a midday check-in."
             )
+        if self.short_night():  # (0.9.0, alarm.sleep_aware) coarse words only: never when they slept
+            steps.insert(0, "They had a short night: keep it gentle and brief.")
         steps.append("Wish them a good day.")
         head = (
             "Wake-up call. Say good morning, briefly and warmly; they've just woken up, so keep it light. It's "
@@ -756,12 +771,137 @@ class Alarm(Module):
         self.app.events.emit("alarm_suggested", at=wake.isoformat())
         return text
 
+    def up_signs(self, within_min: float = UP_SEEN_MIN) -> bool:
+        """(skip_if_up) A sign you're up in the last minutes: Face presence has you at the desk, or core/here.py's
+        owner_here (your voice, the dashboard, the phone app)."""
+        t = now().timestamp()
+        face = self.app.modules.get("face")
+        try:
+            seen = face.desk_seen_at() if face is not None and self.app.is_on("face") else None
+        except Exception:
+            seen = None
+        from kurooto.core import here
+
+        last = here.last(self.app)
+        return any(x is not None and 0 <= t - x <= within_min * 60 for x in (seen, last))
+
+    def ask_skip(self) -> str:
+        """(0.9.0, alarm.skip_if_up) Within UP_LEAD_MIN before the alarm, with a sign you're up: one question, "skip
+        the ring?", once per alarm. It never skips by itself: with no answer the alarm rings as set; Skip clears that
+        alarm as "cancel my alarm" does (Alarm.clear), Keep leaves it."""
+        if not self.setting("skip_if_up"):
+            return ""
+        at, t = self.next(), now()
+        if not at or not (t < at <= t + dt.timedelta(minutes=UP_LEAD_MIN)) or not self.up_signs():
+            return ""
+        f = self.app.paths.state / "alarm-upask.json"
+        if (jload(f, {}) or {}).get("at") == at.isoformat():
+            return ""
+        jsave(f, {"at": at.isoformat()})
+        text = f"You're up already: skip the {at:%H:%M} alarm? It rings as set unless you tap Skip."
+        self.app.notify(
+            text,
+            kind="question",
+            why="alarm.skip_if_up",
+            buttons=[[("Skip it", f"alm:{at:%Y%m%d%H%M}:skipup"), ("Keep it", "alm:up:keep")]],
+        )
+        self.app.events.emit("alarm_up_asked")
+        return text
+
+    def suggest_later(self) -> str:
+        """(0.9.0, alarm.sleep_aware) Still up (a sign of you in the last minutes; Kurooto, with Brain, not asleep)
+        with less than SHORT_H hours left before the next alarm: one offer of a later ring, about NIGHT_H hours from
+        now (to the quarter hour), at least CLASS_GAP_MIN before the day's first class and LATE_GAIN_MIN later than
+        the alarm.
+        Once per alarm; it never moves the alarm by itself (the button does, on your tap)."""
+        if not self.setting("sleep_aware"):
+            return ""
+        try:
+            from kurooto.mind import sleep
+        except ImportError:
+            return ""
+        at, t = self.next(), now()
+        if not at or at <= t or at - t >= dt.timedelta(hours=SHORT_H):
+            return ""
+        if (sleep.on(self.app) and sleep.state(self.app, t) == "asleep") or not self.up_signs():
+            return ""
+        f = self.app.paths.state / "alarm-later.json"
+        if (jload(f, {}) or {}).get("at") == at.isoformat():
+            return ""
+        sug = t + dt.timedelta(hours=NIGHT_H)
+        sug = sug.replace(minute=sug.minute // 15 * 15, second=0, microsecond=0)
+        first, cls = self._first_class(at.date()), ""
+        if first is not None:
+            sug = min(sug, first - dt.timedelta(minutes=CLASS_GAP_MIN))
+            cls = f" Your first class is at {first:%H:%M}."
+        elif self.app.is_on("subjects"):
+            cls = " No classes that morning."
+        else:
+            return ""  # nothing says the morning is free
+        if sug - at < dt.timedelta(minutes=LATE_GAIN_MIN):
+            return ""
+        jsave(f, {"at": at.isoformat()})
+        text = f"It's {t:%H:%M} and your alarm is at {at:%H:%M}: a short night.{cls} Ring at {sug:%H:%M} instead?"
+        self.app.notify(
+            text,
+            kind="question",
+            why="alarm.sleep_aware",
+            buttons=[
+                [(f"Ring at {sug:%H:%M}", f"alm:{at:%Y%m%d%H%M}-{sug:%Y%m%d%H%M}:later"), ("Keep it", "alm:up:keep")]
+            ],
+        )
+        self.app.events.emit("alarm_later_offered")
+        return text
+
+    def _first_class(self, day: dt.date) -> dt.datetime | None:
+        sub = self.app.modules.get("subjects")
+        if sub is None or not self.app.is_on("subjects"):
+            return None
+        try:
+            starts = [c["start_dt"] for c in sub.classes_on(day) if c.get("start_dt")]
+        except Exception:
+            return None
+        return min(starts) if starts else None
+
+    def short_night(self) -> bool:
+        """(alarm.sleep_aware) Kurooto's own sleep (mind/sleep.py) fell asleep less than SHORT_H hours ago."""
+        if not self.setting("sleep_aware"):
+            return False
+        try:
+            from kurooto.mind import sleep
+
+            n = sleep.last_night(self.app) if sleep.on(self.app) else None
+        except Exception:
+            n = None
+        return bool(n and now() - n[0] < dt.timedelta(hours=SHORT_H))
+
     def callbacks(self):
         return {"alm": self._suggest_button}
 
     def _suggest_button(self, ref: str, act: str) -> str:
+        if act == "later":  # (sleep_aware) your tap: the alarm moves, if it's still the one set
+            try:
+                was, to = (dt.datetime.strptime(x, "%Y%m%d%H%M") for x in ref.split("-", 1))
+            except ValueError:
+                return "That button is out of date."
+            nxt = self.next()
+            if nxt is None or nxt.replace(second=0, microsecond=0) != was or to <= now():
+                return "That alarm isn't the one set any more."
+            self.clear()
+            return self.set(to)
+        if act == "skipup":  # (skip_if_up) your tap: that alarm off, if it's still the one set
+            try:
+                at = dt.datetime.strptime(ref, "%Y%m%d%H%M")
+            except ValueError:
+                return "That button is out of date."
+            nxt = self.next()
+            if nxt is None or nxt.replace(second=0, microsecond=0) != at or at <= now():
+                return "That alarm isn't the one set any more."
+            self.clear()
+            self.app.events.emit("alarm_skipped", day=at.date().isoformat(), up=True)
+            return f"OK, the {at:%H:%M} alarm won't ring."
         if act != "set":
-            return "OK, no alarm."
+            return "OK, the alarm stays." if ref == "up" else "OK, no alarm."
         try:
             at = dt.datetime.strptime(ref, "%Y%m%d%H%M")
         except ValueError:

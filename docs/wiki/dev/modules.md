@@ -663,6 +663,15 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   bedtime (`app.rhythm.usual_hours()`), with nothing in `upcoming()` or `next_daily()` up to 3 h past the usual wake,
   one message once per bedtime date (`<state>/alarm-suggest.json`), Calm reason `alarm.suggest`, buttons
   `alm:<YYYYmmddHHMM>:set` (calls `set()`) and `alm:suggest:no`; event `alarm_suggested`. It never sets one itself.
+  (0.9.0) `alarm:up_ask` every 5 min: `ask_skip()` (`alarm.skip_if_up`, L15): within `UP_LEAD_MIN` (60) of `next()`
+  with `up_signs()` (Face's `desk_seen_at` or `core/here.py`'s `last()` within `UP_SEEN_MIN`), one question per alarm
+  (`alarm-upask.json`), Calm reason `alarm.skip_if_up`, buttons `alm:<at>:skipup` (`clear()` if it's still `next()`,
+  event `alarm_skipped up=True`) and `alm:up:keep`; `_ring` is unchanged. Then `suggest_later()`
+  (`alarm.sleep_aware`, L14): up (`up_signs`, not asleep with Brain) with under `SHORT_H` (6) h to `next()`, a later
+  ring `NIGHT_H` (7.5) h from now to the quarter, capped `CLASS_GAP_MIN` before the first class (`subjects`; without
+  Classes on, nothing), at least `LATE_GAIN_MIN` later; once per alarm (`alarm-later.json`), reason
+  `alarm.sleep_aware`, button `alm:<at>-<to>:later` (`clear()` then `set(to)`). `script()` puts "a short night" first
+  when `mind/sleep.last_night()` fell asleep under `SHORT_H` ago: coarse words, never the times.
 - **lidsafe** (`modules/lidsafe.py`, requires `calls`): seals the next day's reminders for paired Android phones (s1)
   and hands them to the call line, so they arrive with the lid shut; whichever side is awake says each once.
 - **awake** (`modules/awake.py`): holds a sleep inhibitor on mains power (`core/inhibit.py`).

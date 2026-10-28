@@ -271,6 +271,9 @@ No Stop; only Another time. When sent as urgent they always come.
 | "A lighter day after your exam ..." (Not today; Dreaming's morning message carries it when that's on) | Your rhythm | `notify.calm.lighter_after` | no more lighter days | | | |
 | "Haven't heard from you in two days. All good? Nothing's urgent." (I'm fine / Busy, quiet for a week) | Your rhythm | `availability.absence_days` | no more of these | | | |
 | "You usually wake around 16:30; set an alarm?" (Set / Not tonight) | Morning alarm | `alarm.suggest` | no more alarm suggestions | | | |
+| "You're up already: skip the 07:00 alarm?" (Skip it / Keep it) | Morning alarm | `alarm.skip_if_up` | no more of these | | | |
+| "You've told me to stop 3 times lately when I spoke up by myself (...). Stop these?" (Stop these / Keep them) | Calm | `notify.calm.voice_stops` | no more of these offers | | | |
+| "It's 02:00 and your alarm is at 07:00: a short night ... Ring at 09:30 instead?" (Ring at / Keep it) | Morning alarm | `alarm.sleep_aware` | no more of these | | | |
 
 ### Google
 

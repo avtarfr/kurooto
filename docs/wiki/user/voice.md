@@ -42,7 +42,21 @@ Kurooto reads its answers aloud, a few sentences at a time (the first piece play
 it starts quickly). Short sentences are spoken together, up to about 200 characters, because a few words read on their
 own sound hurried and flat (0.8.13; `voice.speak.join_sentences` off reads one sentence at a time). Between pieces it
 leaves the short pause Kokoro itself makes between sentences. By default it reads the answers to what you said aloud; `voice.speak.what` = `all` reads every
-answer from your AI (Telegram and the phone app ones too), and `off` keeps it silent unless asked.
+answer from your AI (Telegram and the phone app ones too), and `off` keeps it silent unless asked. (0.9.0) Those
+other answers follow Calm's rules for spoken words, as the greeting does: Less of this → Stop, a quiet week or exam
+season keep them off the speakers (they're on screen as always), and they never count against the day's limit. Answers
+to what you say aloud or type in the talk box are always read.
+
+**Stepping away mid-answer** (`voice.speak.stop_when_gone`, off, 0.9.0). With Face presence noticing when you leave
+(`face.away.on`), it stops reading a long answer once it sees you've gone (never because you turned your head); the
+rest is on screen, and when you're back the greeting offers it: "One answer came while you were away; say yes to hear
+it." A yes reads it, here on the computer. Answers that came while you were away with `face.away.hold_desktop` on are
+offered the same way (the greeting's `answers` part, `face.greet.say`).
+
+**What it says by itself shows in Chat** (`voice.mirror_to_chat`, on, 0.9.0). A greeting, or an add-on's spoken line,
+also appears in the phone app's and the dashboard's Chat as "Said aloud at your desk" (never on Telegram), so with
+someone asleep in the room you can answer by typing; the next thing you type is told what it said. Answers to you are
+in Chat already and aren't repeated.
 
 - Pick a voice with `voice.speak.voice` (Kokoro: `af_heart`, the default, `af_bella`, `af_nicole`, `af_sarah`,
   `am_michael`, `am_adam`, `bf_emma`, `bf_isabella`, `bm_george`, `bm_lewis`), and the speed with `voice.speak.rate`.
@@ -204,6 +218,11 @@ once, closes the conversation and says nothing. You can say it while it's still 
 that switched off, say it as soon as it stops (or `/voice stop`, the dashboard). It notes the misfire (which rule woke
 it, never your words) for the night's learning. `voice.listen.told_off` (on).
 
+(0.9.0, `notify.calm.voice_stops`, on) Told off over something it said by itself (the greeting, an answer read aloud
+from elsewhere, an add-on's line), Calm notes it for that kind of line. After three in two weeks it asks once: "You've
+told me to stop 3 times lately when I spoke up by myself (...). Stop these?" Only your tap stops them, with Undo.
+Brain's records note a "less" too.
+
 ### Cutting in while it speaks
 
 You don't have to wait for a long answer to finish: talk over it. Kurooto keeps listening while it speaks, goes quiet
@@ -251,6 +270,12 @@ said first. `/voice` and `/health` show what it learned, as numbers. `voice.list
 your voice (`/voice id forget`) deletes these too.
 
 ## The conversation (the "portal")
+
+**After a talk at the desk** (`voice.listen.after_talk`, on, 0.9.0). When a conversation closes, its text lines (what
+you said and its answers; never sound, never anyone else's turns) go where a phone call's do: with Phone calls on, the
+call transcripts (kept and forgotten like a call's, with their gist), and "I'll send the draft tonight" opens a thread
+(/threads). The day's note gets one line in Kurooto's own "Desk talks" section ("14:05 a talk at the desk (3 turns of
+yours)"), so your timeline shows desk talks. The AI's look back after a call doesn't run for desk talks.
 
 When the gate decides you're talking to Kurooto, a conversation opens: your words go to your AI like a chat message
 (answers worded to be spoken), and the answer comes back on the dashboard and aloud. The conversation carries context
@@ -602,6 +627,11 @@ mode** (`voice.listen.conversation_mode`): it stays out of people talking to eac
 name with a question or request after it ("Kurooto, …") or a reply right after its own answer opens the conversation.
 "Kurooto told me…" only mentions it. The dashboard's ear says "conversation: staying out".
 
+**Two people in front of it** (`voice.listen.count_voices`, off, 0.9.0). Face presence counting two faces close and
+facing the camera while Voice ID hears a voice that isn't yours means two people talking to each other: what's said
+then is treated as their conversation, and that person's look doesn't open a talk. Your own voice never counts as the
+second: your name or your look still work. Off by default because it holds back replies it gives today.
+
 ### Your voice print
 
 - **Kept:** only your voice print (numbers, condition names, dates, thresholds, quality numbers and the microphone's
@@ -640,6 +670,10 @@ name with a question or request after it ("Kurooto, …") or a reply right after
 Licences: CAM++ (3D-Speaker, Apache-2.0), its ONNX conversion (sherpa-onnx, Apache-2.0), kaldi-native-fbank
 (Apache-2.0), onnxruntime (MIT), numpy (BSD-3-Clause); the strangers' voice prints are computed from LibriSpeech
 (CC BY 4.0): numbers only, no audio.
+
+**A tap to talk** (`voice.listen.tap_to_talk`, on, 0.9.0). An add-on's device can open the conversation with a tap,
+as its name would (the Body add-on's face, with its own switch `body.face.tap_talk`; a tap while it speaks still stops
+it). No face is needed for that turn; Voice ID's rules for other people still apply.
 
 ## Greeting you at your desk
 

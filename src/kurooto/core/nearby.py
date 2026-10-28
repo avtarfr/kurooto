@@ -20,6 +20,7 @@ between people unless it's named. An event "nearby_others {on, source}" says whe
                                   that describe a face, no identity.
     facing(app, since, until) -> (frames, frames_with_one)   the frames looked at in that stretch (monotonic times)
                                   and how many of them had a face close and facing it
+    facing_most(app, since, until) -> int   (0.9.0) the most close and facing faces in one frame of that stretch
     last_facing(app) -> float | None   when the last such face was seen (monotonic)
 
     set_look(app, on)             (0.8.17, voice.listen.look_to_talk) Face presence, each frame it looks at: whether the
@@ -143,6 +144,14 @@ def facing(app: App, since: float, until: float | None = None) -> tuple[int, int
     with _lock:
         rows = [r for r in _looks(app) if since <= r[0] <= hi]
     return len(rows), sum(1 for r in rows if r[2] > 0)
+
+
+def facing_most(app: App, since: float, until: float | None = None) -> int:
+    """(0.9.0, voice.listen.count_voices) The most faces close and facing the camera in any one frame between since
+    and until (monotonic): a count only."""
+    hi = time.monotonic() if until is None else until
+    with _lock:
+        return max((r[2] for r in _looks(app) if since <= r[0] <= hi), default=0)
 
 
 def last_facing(app: App) -> float | None:

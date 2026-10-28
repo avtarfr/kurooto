@@ -6,8 +6,11 @@ A message that won at the workspace's door (mind/workspace.py) and isn't urgent 
                     activity sense, mind/senses/activity.py, opt-in)
     session_end     a study session or focus time ended
     pickup          the phone was unlocked (the phone's screen sense, opt-in)
-    back            you came back to the desk after being away (Face presence)
-    stood, left, looked     an add-on's senses, through signal()
+    back            you came back to the desk after being away (Face presence; 0.9.0: or your voice or the dashboard
+                    ended its away, core/here.py)
+    stood, left, looked     an add-on's senses, through signal(); (0.9.0, face.breaks) and Face presence on this
+                    computer: face_left (with face.away.on), face_looked (a look at the camera for a second),
+                    face_stood (your face well under its usual desk size)
 It also goes after at most `mind.workspace.max_hold_min` (90) minutes of waiting, unless Kurooto is asleep
 (mind/sleep.py, when that part is there).
 
@@ -52,6 +55,7 @@ EVENTS = {  # Kurooto's own events that are breaks (or start the thing whose end
     "face_back": "back",
     "face_arrived": "back",
 }
+FACE_EVENTS = {"face_left": "left", "face_looked": "looked", "face_stood": "stood"}  # (0.9.0, face.breaks)
 
 
 def on(app: App) -> bool:
@@ -123,6 +127,10 @@ def on_event(app: App, rec: dict) -> None:
                 _save(app, d)
             return
         b = EVENTS.get(kind)
+        if kind in FACE_EVENTS and app.settings.get("face.breaks"):  # (0.9.0) the laptop's camera, not only add-ons'
+            b = FACE_EVENTS[kind]
+        if kind == "owner_here" and rec.get("back"):  # (0.9.0) your voice or the dashboard ended Face's away
+            b = "back"
         if b is None or not on(app):
             return
         if _mark(app, b, time.time()):

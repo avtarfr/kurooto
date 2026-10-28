@@ -164,6 +164,7 @@ class Watcher:
         self.slow = 1.0
         self.away = False
         self.left_at: float | None = None
+        self.here_at = -1e9  # (0.9.0, core/here.py) your voice or the dashboard said you're here: away waits again
         self.locked_since: float | None = None
         self._was_locked = False
         self._last_tick = now
@@ -361,6 +362,17 @@ class Watcher:
             self.candidate = None
             self.emit("learn", e=e)
 
+    def here(self, at: float | None = None) -> bool:
+        """(0.9.0, core/here.py) Another sign you're here (Voice ID heard you, you used the dashboard): away ends
+        ("back", never "arrived": no greeting) and starts counting again from now. True when it ended away."""
+        self.here_at = max(self.here_at, self.clock() if at is None else at)
+        if not self.away:
+            return False
+        self.away = False
+        self.left_at = None
+        self.emit("back")
+        return True
+
     def _presence(self, at: float, before: float, c: dict) -> None:
         gap = at - before
         if gap >= float(c.get("after_absent_min") or 20) * 60 and self.returning is None:
@@ -376,7 +388,8 @@ class Watcher:
         if not c.get("away_on") or self.away:
             return
         after = float(c.get("away_after_min") or 5) * 60
-        gone = (not locked and self.camera_open and now - self.present_at >= after) or (
+        seen = max(self.present_at, self.here_at)
+        gone = (not locked and self.camera_open and now - seen >= after) or (
             locked and self.locked_since is not None and now - self.locked_since >= after
         )
         if gone:

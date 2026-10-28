@@ -67,6 +67,7 @@ from __future__ import annotations
 
 import asyncio
 import queue
+import re
 import threading
 import time
 import urllib.parse
@@ -75,7 +76,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from kurooto.core import nearby
+from kurooto.core import here, nearby
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Module
@@ -86,6 +87,7 @@ from kurooto.modules.voice.gate import (
     ADDRESSED,
     CHATTER,
     NOISE,
+    TAPPED,
     TOLD_OFF,
     Context,
     Decision,
@@ -121,6 +123,9 @@ register_defaults(
             "join_sentences": True,  # short sentences spoken together (up to ~200 characters), not each on its own
             "ack": "tone",  # while the AI thinks, a soft sound says it heard you: tone, word ("Hmm.") or off
             "stream": True,  # speak the answer a sentence at a time as the AI writes it (when the AI can stream)
+            # (0.9.0) with Face presence's "stepped away" (face.away.on): stop reading an answer when it sees you've
+            # left; the rest is on screen and offered when you're back (face.greet.say "answers")
+            "stop_when_gone": False,
         },
         "listen": {  # hearing: what it listens for, when, and what counts as said to it
             "on": False,  # listen through the microphone, all on this computer; only turns said to Kurooto leave
@@ -167,6 +172,16 @@ register_defaults(
             # (0.8.18) with others here (careful calls, conversation mode), a look plus its name heard any way counts
             # as the call, so a misheard name isn't dropped; off: a look counts there only before a question or request
             "look_in_company": True,
+            # (0.9.0) two people close and facing the camera while Voice ID hears a voice not yours: two voices, so
+            # what's said is people talking to each other (gate rule 6), and that guest's look doesn't open a talk
+            "count_voices": False,
+            # (0.9.0) a tap on a device an add-on watches (the Body face) opens the conversation as its name would
+            # (Voice.tapped); the add-on has its own switch too
+            "tap_to_talk": True,
+            # (0.9.0) when a talk at the desk ends, its text lines (yours and its answers, never sound, never anyone
+            # else's) go where a phone call's do: the call transcripts and their gists, open threads ("I'll send it
+            # tonight"), and a line in the day's note under "Desk talks"
+            "after_talk": True,
             "timing": True,  # time each turn from your last word to its first sound (numbers only; medians in /voice)
             "fast_brain": "same",  # plain chat by voice: same (your AI), local (this computer's model) or fastest
             "warm_up": True,  # when listening starts, warm the transcriber and the voice so the first turn is quick
@@ -197,6 +212,9 @@ register_defaults(
         "audio": {
             "backend": "auto",  # how sound is played and recorded: auto, pipewire (pw-play/pw-record) or portaudio
         },
+        # (0.9.0) what Kurooto says aloud by itself (a greeting, an add-on's line) also shows in the app's and the
+        # dashboard's Chat, and the next thing you type there is told it said it (answers to you are there already)
+        "mirror_to_chat": True,
         "addons": {
             "listen": True,  # an add-on may take one stretch of speech at a time (written out here, never sent)
             "chat": True,  # an add-on may have Kurooto chat with someone through the guest path (no tools, no data)
@@ -221,10 +239,16 @@ FACE_SLOW_S = 2.0  # no frame in the stretch at all (3 s apart on battery): wait
 NO_FACE = "no one facing it nearby"
 BLIND = "the camera can't see: not answering by voice"
 LOOK_FRESH_S = 4.0  # (look_to_talk) a look counts as now this long after its frame (1 s apart, 3 s on battery)
-FACE_FREE = ("the wake word",)  # rules a face isn't needed for (told off never opens anything, so it needs none)
+FACE_FREE = ("the wake word", TAPPED)  # rules a face isn't needed for (told off never opens anything, so it needs none)
 WARM = ("warm",)  # (warm_up) the hearing thread's own item: warm the transcriber there, never beside a turn
 WARM_BRAIN_S = 600  # (warm_brain) at most this often
 FAST_BRAINS = ("same", "local", "fastest")
+TOLD_SPOKE_S = 10.0  # (0.9.0) told off this soon after a line it said by itself: about that line (gate.TOLD_S)
+TALK_MAX = 400  # (after_talk) text lines kept for one conversation at most
+UNASKED_S = 600.0  # (mirror_to_chat) a typed turn this soon after an unasked spoken line is told about it
+READ_IT = re.compile(  # (0.9.0) a yes to the greeting's offer of the answers held while you were away
+    r"^\s*(?:yes|yeah|yep|sure|ok(?:ay)?|go ahead|please|read (?:it|them)(?: out)?)(?:[\s,]+please)?[\s.!]*$", re.I
+)
 
 
 class Speaker:
@@ -304,6 +328,10 @@ class Speaker:
                         fut = pool.submit(tts.synth, out[i + 1])
                         pcm += pause_after(tts, out[i], sr)
                     if self._cancel.is_set():
+                        break
+                    if i and self.v.gone():  # (0.9.0, stop_when_gone) you've left: an answer's rest waits for you
+                        if self.v.spoken_why in ("", "voice.read_all"):  # not a greeting or an add-on's line
+                            self.v.hold_answer(" ".join(p for p in out[i:] if p != "The rest is on screen."))
                         break
                     if not self.say_piece(pcm, sr):
                         break
@@ -512,6 +540,10 @@ class Voice(Module):
         self._look_used: float | None = None  # (look_to_talk) the run of looks that opened it (or found it open)
         self.look_count = 0  # (look_to_talk) conversations a look opened since start: a count
         self.live = Live(self)  # (voice.listen.live, 0.8.17) your own turns answered by Gemini Live: live.py
+        self.spoken_why = ""  # (0.9.0) the Calm reason of what it's saying by itself now ("" for an answer to you)
+        self.held_answers: deque = deque(maxlen=10)  # (0.9.0) answers not read while you were away (memory only)
+        self._unasked: tuple[float, str] | None = None  # (0.9.0, mirror_to_chat) its last unasked line, for Chat
+        self._talk: list[dict] = []  # (0.9.0, after_talk) this conversation's text lines, yours and its (memory only)
 
     # ------------------------------------------------------------------------------------------- the parts
     def wants(self) -> list[str]:
@@ -685,6 +717,9 @@ class Voice(Module):
         if not is_open:
             self.voiceid.portal_closed()  # (voice id) a guest's turns of this conversation are dropped
             self.live.close()  # (voice.listen.live) its Live session ends with the conversation
+            talk, self._talk = self._talk, []
+            if talk and self.setting("listen.after_talk"):  # (0.9.0) a talk at the desk, as a call's end has
+                threading.Thread(target=self.after_talk, args=(talk,), name="voice-after-talk", daemon=True).start()
 
     def _level(self, frame: bytes) -> None:
         if not self.setting("listen.levels"):
@@ -946,6 +981,7 @@ class Voice(Module):
         gate_first = bool(vid.s("gate", True))
         if on and (gate_first or self.setting("listen.conversation_mode")) and h.speech and audio is not None:
             who = vid.check(audio, h.speech_s, h.voices)  # (voice id) who, before the words
+            self._here(who)
             # a look stood in for the owner's call, no one else's (0.8.18, look_anyone: for anyone's)
             closed = not self.portal.open or (self.portal.looked and not self.setting("listen.look_anyone"))
             if gate_first and who.decision != "owner" and not h.wake and closed:
@@ -976,6 +1012,7 @@ class Voice(Module):
             ctx.conversation = vid.conversation() or guests_here
             ctx.follow_s = float(self.setting("listen.conversation_follow_s") or 4)
         self._moment(ctx, who)
+        self._count_voices(h, who)
         d = g.decide(h, ctx)
         if d.why == TOLD_OFF:
             self._told_off(h, audio)
@@ -997,6 +1034,7 @@ class Voice(Module):
         said = g.matcher.uncall(h.text) if h.wake or d.why == "its name" else h.text  # the call itself isn't sent
         if on and who is None and said and audio is not None:  # (voice id) the gate first is off: addressed only
             who = vid.check(audio, h.speech_s, h.voices)
+            self._here(who)
         self.live.keep(audio, who)  # (voice.listen.live) an owner's admitted turn: its sound, for this turn only
         del audio
         if on and who is None and said:  # nothing to check it with: unsure (fail closed)
@@ -1015,6 +1053,58 @@ class Voice(Module):
             self._pending = {"row": row, "session": self.portal.session, "who": who.decision if who else "",
                              "face": face}  # fmt: skip
         return reply
+
+    def gone(self) -> bool:
+        """(0.9.0, voice.speak.stop_when_gone) Face presence says you've stepped away (its away state, never a turned
+        head)."""
+        if not self.setting("speak.stop_when_gone"):
+            return False
+        away = getattr(self.app, "away_from_desk", None)
+        try:
+            return bool(away is not None and away())
+        except Exception:
+            return False
+
+    def hold_answer(self, text: str) -> None:
+        """(0.9.0) An answer (or its unread rest) not read because you were away: kept in memory until Face's
+        greeting offers it (face.greet.say "answers") and you say yes, or Kurooto stops."""
+        text = (text or "").strip()
+        if text:
+            self.held_answers.append(text[:4000])
+            self.app.events.emit("voice_answer_held", n=len(self.held_answers))
+
+    def read_held(self, text: str) -> str | None:
+        """(0.9.0) Right after the greeting offered held answers, a yes ("yes", "read it") is answered here: what was
+        held, read in order (then cleared). None when it isn't that."""
+        p = self.portal
+        offered = p.open and p.opened_why == "greeting" and "say yes to hear" in p.last_reply
+        if not self.held_answers or not offered or not READ_IT.match(text or ""):
+            return None
+        out = list(self.held_answers)
+        self.held_answers.clear()
+        head = "Here's what came while you were away." if len(out) > 1 else "Here it is."
+        return " ".join([head, *out])
+
+    def _count_voices(self, h: Heard, who) -> None:
+        """(0.9.0, voice.listen.count_voices) Heard.voices, when nothing else filled it: 2 when Face presence saw two
+        faces close and facing the camera in one frame of the stretch (core/nearby.py, counts only) and Voice ID called
+        the voice someone else's (a guest). The owner's own voice never makes it two: his name or his look still open a
+        talk. Without both, it stays unknown (None), as before."""
+        if h.voices is not None or not self.setting("listen.count_voices") or who is None or who.decision != "guest":
+            return
+        end = h.ended_at if h.ended_at is not None else time.monotonic()
+        try:
+            most = nearby.facing_most(self.app, end - max(h.seconds, 0.0) - FACE_BEFORE_S, end + FACE_AFTER_S)
+        except Exception:
+            return
+        if most >= 2:
+            h.voices = 2
+
+    def _here(self, who) -> None:
+        """(0.9.0, presence.owner_here.voice) Voice ID called this voice yours, whatever it said and to whom: you're
+        at the desk (core/here.py: the via only, never words)."""
+        if who is not None and who.decision == "owner":
+            here.owner_here(self.app, "voice")
 
     # ----------------------------------------------------------------------------- 0.8.13: the moment, told off
     def _moment(self, ctx: Context, who) -> None:
@@ -1204,6 +1294,25 @@ class Voice(Module):
         if p.look():
             self.look_count += 1
 
+    def tapped(self) -> tuple[bool, str]:
+        """(0.9.0, voice.listen.tap_to_talk) For an add-on: a tap on its device (the Body face, while it isn't
+        speaking: a tap while it speaks stays "stop") opens the conversation, silently (Portal.tapped). (True, "")
+        or (False, why not): the switch off, Voice off, not listening, blocked (muted, a call, paused), asleep."""
+        if not self.setting("listen.tap_to_talk"):
+            return False, "off"
+        if not self.app.is_on(self.id):
+            return False, "Voice is off"
+        why = self.blocked()
+        if why:
+            return False, why
+        if self._on_call():
+            return False, "you're on a call"
+        if _asleep(self.app):
+            return False, "Kurooto is asleep"
+        if self.listener is None or not self.listener.running():
+            return False, "not listening"
+        return (True, "") if self.portal.tapped() else (False, "a conversation is open already")
+
     def _went_well(self, who) -> None:
         """An addressed turn in the same conversation, from the same voice: the turn before it went well (a row
         labelled 1), and a face-confirmed one may now refine the voice print (voiceid.learn_face)."""
@@ -1222,7 +1331,9 @@ class Voice(Module):
 
     def _told_off(self, h: Heard, audio: bytes | None) -> None:
         """Told off ("stop", "not you" ...) right after it opened or spoke: stop speaking at once, close the talk, no
-        reply; a misfire event (the rules, never words) and, with learn_nightly, a training row labelled 0."""
+        reply; a misfire event (the rules, never words) and, with learn_nightly, a training row labelled 0. (0.9.0) Over
+        a line it said by itself (spoken_why), Calm and Brain's records note it (_mark_stop)."""
+        just_spoke = self.speaker.holding() or time.monotonic() - self.speaker.until <= TOLD_SPOKE_S
         self.speaker.stop()
         self._heard_wave(audio)
         h.text = ""
@@ -1240,8 +1351,29 @@ class Voice(Module):
             except OSError as e:
                 self.app.events.emit("voice_failed", part="learning", error=f"{type(e).__name__}"[:100])
         self.voiceid.take_face()  # a face-assisted turn that was told off is never learned from
+        why, self.spoken_why = self.spoken_why, ""
+        if why and just_spoke:  # over what it said by itself, not an answer to you
+            self._mark_stop(why)
         if not p.close("told off"):
             p.state("listening", "told off")
+
+    def _mark_stop(self, why: str) -> None:
+        """(0.9.0, notify.calm.voice_stops) A "stop" over a line it said by itself: Calm notes it for that kind (it
+        may offer to stop the kind after a few, never by itself), and Brain's records a "less" (mind/records.py)."""
+        calm = getattr(self.app, "calm", None)
+        if calm is None:
+            return
+        try:
+            calm.voice_stop(why)
+            if calm.s("voice_stops", True):
+                from kurooto import mind
+                from kurooto.mind import records
+
+                did = records.decide(self.app, f"spoken:{why}"[:80], scored_reason=why)
+                if did:
+                    mind.connect(self.app).report("decision_outcome", {"decision": did, "result": "less"})
+        except Exception as e:
+            self.app.events.emit("voice_failed", part="told off", error=f"{type(e).__name__}"[:100])
 
     def barge_turn(self, pcm: bytes, flags: bytes, how: dict, ended_at: float | None = None) -> str | None:
         """(barge.py) A stretch that talked over Kurooto; it has already stopped speaking. Written out here, then: a
@@ -1277,6 +1409,7 @@ class Voice(Module):
                     who = Verdict(OWNER, barge_mod.OWN_WHY, how.get("score"), speech_s)
                 else:  # never learned from: its own voice may be in it
                     who = vid.check(pcm, speech_s, adapt=False)
+                self._here(who)
             d = self._timed_face_check(h, Decision(ADDRESSED, 0.9, "barged in"), turn) if said and asks(said) else None
             if d is not None and not d.addressed:  # (need_face) nobody in front of it: chatter, it carries on
                 outcome = "no face"
@@ -1320,9 +1453,16 @@ class Voice(Module):
         spoken as the AI writes them when it can stream (voice.speak.stream) and plain chat may go to a quicker AI
         (voice.listen.fast_brain), both through the queue's turn_options (core/jobs.py); the turn's times are kept."""
         turn = self._turn_t if self._turn_t is not None else {"end": time.monotonic()}
+        self.spoken_why = ""  # (0.9.0) what's said next answers a turn: a stop over it isn't about a kind of line
+        if who is None or who.decision == "owner":  # (0.9.0) "yes" to the greeting's offer of held answers
+            held = self.read_held(text)
+            if held is not None:
+                return held
         if who is not None and who.decision == "owner":  # (voice.listen.live) Gemini Live answers it aloud, or None
             said = self.live.turn(text, turn)
             if said is not None:
+                self._talk_line("you", text)  # (after_talk) a Live turn is a turn of this talk too
+                self._talk_line(self.app.name, said)
                 return said
         replies: list[str] = []
         msg = Incoming(
@@ -1352,6 +1492,7 @@ class Voice(Module):
             if answer:
                 self.voiceid.heard_guest(text, answer)
             return answer
+        self._talk_line("you", text)  # (0.9.0, after_talk) your turn (not a guest's: those returned above)
         stream, opts = self._turn_opts(text, turn)
         options = getattr(self.app.jobs, "turn_options", None)
         fast.stamp(turn, "taken")
@@ -1372,6 +1513,7 @@ class Voice(Module):
         if not jid:
             fast.stamp(turn, "first_text")
             fast.stamp(turn, "answer")
+            self._talk_line(self.app.name, "\n".join(replies))
             return "\n".join(replies)
         answer = self._wait_job(msg) if stream is None else self._wait_job(msg, stream)
         if stream is not None and stream.cut and not answer:  # cut off mid-answer: what it said is the answer shown
@@ -1379,6 +1521,7 @@ class Voice(Module):
         turn["streamed"] = 1 if stream is not None and stream.raw else 0
         fast.stamp(turn, "first_text")
         fast.stamp(turn, "answer")
+        self._talk_line(self.app.name, answer)
         chat = self.app.modules.get("chat")
         if chat is not None and answer and chat.owns(jid):  # the conversation goes on, as a typed one does
             try:
@@ -1617,6 +1760,7 @@ class Voice(Module):
             st.finish(text)
             return
         self.speaker.turn = self._turn_t
+        self.spoken_why = ""  # (0.9.0) an answer to you: being told off over it isn't about a kind of message
         self.speaker.say(text, wait=True)
 
     def portal_cut(self) -> bool:
@@ -1627,10 +1771,7 @@ class Voice(Module):
         if ev is not None:
             ev.set()
             return
-        away = getattr(self.app, "away_from_desk", None)
-        if away is not None and self.app.settings.get("face.away.hold_desktop") and away():
-            return  # stepped away from the desk (Face presence): the answer stays on screen, not read to an empty room
-        if (
+        readable = (
             self.app.is_on(self.id)
             and self.setting("speak.what") == "all"
             and not self.muted()
@@ -1639,8 +1780,22 @@ class Voice(Module):
             and not getattr(job, "background", False)
             and getattr(result, "ok", False)
             and getattr(result, "text", "")
-        ):
-            self.speaker.say(result.text, wait=False)
+        )
+        away = getattr(self.app, "away_from_desk", None)
+        if away is not None and self.app.settings.get("face.away.hold_desktop") and away():
+            if readable:  # (0.9.0) offered when you're back (face.greet.say "answers")
+                self.hold_answer(result.text)
+            return  # stepped away from the desk (Face presence): the answer stays on screen, not read to an empty room
+        if not readable:
+            return
+        # (0.9.0, a fix) read without being asked for aloud (Telegram, the app): Calm's rules for spoken words apply,
+        # never counted against the daily limit (core/calm.py, voice.read_all); answers to what you say aloud and the
+        # talk box are never this path (their requests are quiet or waited on above)
+        calm = getattr(self.app, "calm", None)
+        if calm is not None and not calm.speak_ok("voice.read_all"):
+            return
+        self.spoken_why = "voice.read_all"
+        self.speaker.say(result.text, wait=False)
 
     def add_output(self, fn: Output) -> Callable[[], None]:
         """Play Kurooto's voice elsewhere (an add-on: another device). fn(pcm, sr, stop) gets each piece's 16-bit
@@ -1663,9 +1818,10 @@ class Voice(Module):
             return None
         return r if r != base else None
 
-    def say(self, text: str, wait: bool = False, unprompted: bool = False) -> tuple[bool, str]:
+    def say(self, text: str, wait: bool = False, unprompted: bool = False, why: str = "") -> tuple[bool, str]:
         """Speak this now (POST /api/voice/say, /voice say). unprompted: an add-on's line said without being asked
-        (Brain's register sets its pace); anything said back to you keeps voice.speak.rate."""
+        (Brain's register sets its pace; 0.9.0: it's also mirrored into Chat, and `why`, its Calm reason, is what a
+        "stop" over it marks); anything said back to you keeps voice.speak.rate."""
         if not self.app.is_on(self.id):
             return False, "Voice is off."
         if self.muted():
@@ -1674,6 +1830,9 @@ class Voice(Module):
         if not text:
             return False, "Nothing to say."
         self.publish("voice_text", who="kurooto", text=text)
+        self.spoken_why = (why or "voice.unprompted") if unprompted else ""
+        if unprompted:
+            self.mirror(text)
         return self.speaker.say(text, wait=wait, rate=self._unasked_rate() if unprompted else None)
 
     def greet(self, text: str, listen_s: float, talk: bool = True) -> tuple[bool, str]:
@@ -1690,6 +1849,8 @@ class Voice(Module):
         if tts is None:
             return False, why or "Voice can't speak"
         self.publish("voice_text", who="kurooto", text=text)
+        self.spoken_why = "face.greet"
+        self.mirror(text)
         ok, why = self.speaker.say(text, wait=True, rate=self._unasked_rate())  # a greeting is said unasked
         if not ok:
             return False, why
@@ -1700,6 +1861,69 @@ class Voice(Module):
             return True, f"spoken; not listening: {blocked}"
         self.portal.invite(text, listen_s)
         return True, "talk"
+
+    def _talk_line(self, who: str, text: str) -> None:
+        """(after_talk) One text line of this conversation, in memory until it closes (at most TALK_MAX lines)."""
+        text = (text or "").strip()
+        if text and self.setting("listen.after_talk") and len(self._talk) < TALK_MAX:
+            self._talk.append({"who": who, "text": text[:4000]})
+
+    def after_talk(self, lines: list[dict]) -> None:
+        """(0.9.0, voice.listen.after_talk) A talk at the desk ended (the portal closed) with at least one turn of
+        yours: its text lines go where a call's do (Calls.save_transcript: the transcript, its gist and open threads;
+        the AI's look back only when the talk used tools, which a desk talk's lines don't say, so not), or, with Phone
+        calls off, to open threads alone; and one line in the day's note, in Kurooto's own "Desk talks" section.
+        Never sound, never a guest's turn. Never raises."""
+        yours = sum(1 for x in lines if x.get("who") != self.app.name)
+        if not yours:
+            return
+        try:
+            calls = self.app.modules.get("calls")
+            if calls is not None and self.app.is_on("calls"):
+                calls.save_transcript({"lines": lines, "purpose": "a talk at the desk", "layer": "desk"})
+            else:
+                from kurooto.core import threads
+
+                threads.from_call(self.app, lines)
+            from kurooto.core.clock import now
+            from kurooto.core.tools import add_to_section, write_note_file
+            from kurooto.modules import daily
+
+            t = now()
+            f = daily.note_path(self.app, t.date())
+            if f.is_file():
+                old = f.read_text(encoding="utf-8")
+            else:  # a new day's note, as daily.append makes it
+                from kurooto.core import layout
+
+                old = layout.frontmatter(self.app, "daily", f, agent=False, bare=True) + f"# {t.date().isoformat()}\n"
+            line = f"- {t:%H:%M} a talk at the desk ({yours} turn{'s' if yours != 1 else ''} of yours)"
+            write_note_file(f, add_to_section(old, "Desk talks", line))
+            self.app.events.emit("voice_after_talk", lines=len(lines))
+        except Exception as e:
+            self.app.events.emit("voice_failed", part="after the talk", error=f"{type(e).__name__}"[:100])
+
+    def mirror(self, text: str) -> None:
+        """(0.9.0, voice.mirror_to_chat) What it says aloud by itself, as a Kurooto message in the phone app's and the
+        dashboard's Chat (never Telegram), and kept for the next typed turn (unasked_line). Never raises."""
+        if not self.setting("mirror_to_chat") or not (text or "").strip():
+            return
+        self._unasked = (time.time(), text.strip()[:600])
+        calls = self.app.modules.get("calls")
+        if calls is None or not self.app.is_on("calls") or getattr(calls, "chat", None) is None:
+            return
+        try:
+            calls.chat.say(text.strip(), title="Said aloud at your desk")
+        except Exception as e:
+            self.app.events.emit("voice_failed", part="mirror to chat", error=f"{type(e).__name__}"[:100])
+
+    def unasked_line(self, within_s: float = UNASKED_S) -> str:
+        """(mirror_to_chat) For the next typed turn (modules/chat.py), once: what it said aloud by itself in the last
+        `within_s` seconds, so a typed reply to it isn't taken bare. "" otherwise."""
+        got, self._unasked = self._unasked, None
+        if not got or not self.setting("mirror_to_chat") or time.time() - got[0] > within_s:
+            return ""
+        return f'You just said this aloud at their desk, unasked: "{got[1]}". What they type next may answer it.'
 
     # ---------------------------------------------------------------------------------------- running
     def start(self) -> None:
