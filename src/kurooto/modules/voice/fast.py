@@ -58,7 +58,7 @@ def numbers(turn: dict) -> dict:
     for k in STAMPS:
         if k in turn:
             out[f"{k}_ms"] = max(0, round((turn[k] - end) * 1000))
-    for k in ("face_ms", "streamed", "fast"):
+    for k in ("face_ms", "streamed", "fast", "live"):
         if k in turn:
             out[k] = turn[k]
     return out

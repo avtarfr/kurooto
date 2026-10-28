@@ -827,6 +827,7 @@
 "voice.listen.language": "The language you speak, e.g. `en` or `hi`; empty works it out each time.",
 "voice.listen.learn_nightly": "Every night Kurooto learns from how its voice turns went: ones you carried on with, and ones you told off.",
 "voice.listen.levels": "Show the microphone's loudness as a waveform on the dashboard (numbers only).",
+"voice.listen.live": "Your own turns answered by Gemini Live, speech to speech, in about a second. Their sound goes to Google.",
 "voice.listen.model_judge": "When the rules can't tell whether you're talking to it, the model on this computer judges.",
 "voice.listen.name_variants": "More spellings of its name to accept (the common mishearings of Kurooto are built in).",
 "voice.listen.need_face": "Answer only someone in front of it: a face close to the camera and facing it while they speak.",

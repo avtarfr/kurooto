@@ -1227,6 +1227,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.language` | `""` | The language you speak, e.g. `en` or `hi`; empty works it out each time. ([guide](wiki/user/settings-guide.md#voicelistenlanguage)) |
 | `voice.listen.learn_nightly` | `true` | Every night Kurooto learns from how its voice turns went: ones you carried on with, and ones you told off. ([guide](wiki/user/settings-guide.md#voicelistenlearnnightly)) |
 | `voice.listen.levels` | `true` | Show the microphone's loudness as a waveform on the dashboard (numbers only). ([guide](wiki/user/settings-guide.md#voicelistenlevels)) |
+| `voice.listen.live` | `false` | Your own turns answered by Gemini Live, speech to speech, in about a second. Their sound goes to Google. ([guide](wiki/user/settings-guide.md#voicelistenlive)) |
 | `voice.listen.model_judge` | `true` | When the rules can't tell whether you're talking to it, the model on this computer judges. ([guide](wiki/user/settings-guide.md#voicelistenmodeljudge)) |
 | `voice.listen.name_variants` | `[]` | More spellings of its name to accept (the common mishearings of Kurooto are built in). ([guide](wiki/user/settings-guide.md#voicelistennamevariants)) |
 | `voice.listen.need_face` | `true` | Answer only someone in front of it: a face close to the camera and facing it while they speak. ([guide](wiki/user/settings-guide.md#voicelistenneedface)) |

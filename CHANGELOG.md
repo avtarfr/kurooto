@@ -2,6 +2,11 @@
 
 ## 0.8.17 (unreleased)
 
+- **Live at the desk** (`voice.listen.live`, off): your own spoken turns can be answered by Gemini Live, speech to
+  speech, in about a second, the way phone calls already work. Only turns Kurooto already decided you said to it, in
+  your voice (Voice ID) and while you face it close by, go to Google, as sound; everything else stays as before. The
+  conversation keeps one Live session while it's open, tools that need your tap still ask, and if Live can't answer
+  the turn goes the usual way.
 - **Voice says the whole answer.** Barge-in stopped an answer for good whenever a voice that passed as yours was
   heard over it, even an "mm", a cough or a word to someone else, and the rest went unsaid. Now it goes quiet at once,
   and unless what you said was "stop" or a new question or request, it carries on from the start of the sentence it

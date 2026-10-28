@@ -486,3 +486,22 @@ gets its own permissions and context, which a kept process couldn't change."""
 values = "`true` (default) or `false`."
 when = "Turn it off if you don't want the extra start of the AI's program."
 needs = "`voice.listen.on`."
+
+[s."voice.listen.live"]
+tip = "Your own turns answered by Gemini Live, speech to speech, in about a second. Their sound goes to Google."
+what = """Instead of writing your words out, asking your AI and making the answer's voice here, the turn's sound goes to
+Google's Gemini Live (with your Gemini key) and its spoken answer plays through the same speakers or add-on output.
+A different AI answers: Google's Live model, with the tools a phone call has. What leaves the computer is the sound of
+the turns Kurooto already decided you said to it, and only those: the gate called it addressed (not chatter or noise),
+Voice ID said it's your voice, and you were facing it, close by: only turns you say to it while facing it, close by
+(the face check saw a face near the camera and turned to it during the turn). A turn let through without a face seen
+(the wake word and the request right after it, voice.listen.need_face off, Face presence off or paused, or the camera
+blind with voice.listen.need_face_fallback "voice") goes the usual way, as do chatter, other voices and a voice it's
+unsure of. With each session goes what a call's setup carries (your name, the assistant's, which tools exist, the
+lessons from earlier calls), and a turn's tool results (a note it reads, say). The session stays open while the
+conversation does and closes with it. Tools that need your tap ask Approve / Deny first. No key, Google refusing, or
+no sound within about 5 seconds: that turn goes the usual way. Nothing is written to disk; events hold numbers
+only. It uses calls.live_model (then calls.live_models) and calls.voice."""
+values = "`false` (default) or `true`."
+when = "Turn it on if you want quick spoken answers at the desk and are fine with your voice going to Google."
+needs = "`voice.listen.on`, a Gemini key, Voice ID (`voice.speaker_id.on`, enrolled) and Face presence."

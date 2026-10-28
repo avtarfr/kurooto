@@ -254,6 +254,38 @@ If it still feels slow, the speed line says where the time goes: a big gap betwe
 is your AI; between "first words" and "first sound made", making the speech (Piper, `voice.speak.engine`, is quicker to make
 than Kokoro); between "first sound made" and "playing", the speakers or the other device.
 
+### Live at the desk (Gemini Live, off)
+
+`voice.listen.live` (0.8.17, off) answers your own spoken turns the way phone calls already work: Gemini Live hears
+the turn and answers aloud, speech to speech, in about a second, instead of writing your words out, asking your AI and
+making the answer's voice here. It's a different AI from your own (Google's Live model, with the tools a call has),
+and **your voice goes to Google**, so it's off until you turn it on.
+
+**What leaves the computer, exactly:** the sound of the turns Kurooto already decided were said to it by you, and
+nothing else: only turns you say to it while facing it, close by. A turn goes to Live only after the gate called it
+addressed (not chatter, not noise), Voice ID said it's your voice, and the face check actually saw a face close to the
+camera and turned to it during that turn (`voice.listen.face_near`, `voice.listen.face_yaw_deg`). A turn let through
+without a face seen goes the usual way (your AI, the voice made here), never to Live: the wake word and the request
+right after it, `voice.listen.need_face` off, Face presence off or paused, and the camera unable to see with
+`voice.listen.need_face_fallback` `voice`. Chatter, noise, other people's voices, a voice it's unsure of and anything
+said while the conversation is closed never reach Google; those turns go the usual way or nowhere, as before. With each opened
+session goes what a call's setup carries (your name, the assistant's name, which tools exist, the lessons from earlier
+calls) and, while a turn runs, what its tools find for it (a note it reads, say). Google sends back the answer's
+sound and its words. Nothing is written to disk; events hold the model, the stage and numbers only.
+
+**How to turn it on:** it needs a Gemini key (Settings → AI model), Voice ID on and enrolled (only your voice goes,
+so without Voice ID it never does) and Face presence on and enrolled (only while you face it). Then turn on `voice.listen.live` in Settings. It uses the call
+settings `calls.live_model` (then `calls.live_models` if that one isn't available) and `calls.voice`.
+
+**How it behaves:** the first turn of a conversation opens a Live session; while the conversation stays open, each
+further turn you say to it goes to the same session (so it remembers what you just said); when the conversation
+closes, so does the session. The answer plays through the same speakers or add-on output, you can cut in on it as
+usual, and the words are shown and kept in the chat history like a typed turn, so if a later turn goes the usual way
+the conversation carries on. Tools that need your tap (placing a call, setting an alarm) aren't run from the desk:
+you get an Approve / Deny question, as with any AI request. If Live can't answer (no key, Google refuses, no sound
+within about 5 seconds), that turn is answered the usual way: never silence. The speed line in `/voice` counts Live
+turns too ("sent" is when your sound went, "first sound made" when Live's answer arrived).
+
 ## When it doesn't listen
 
 - **Muted:** `/voice mute`, `kurooto voice mute`, or the dashboard's mute. It stays muted (across restarts) until
@@ -319,6 +351,8 @@ can't be done by voice: type it or use the dashboard."
   message (and kept in the chat history like a typed one). While the conversation is closed, nothing leaves. With
   `voice.listen.fast_brain` `fastest` (not the default), a plain-chat turn may go to another AI you've set up (a
   Gemini key, say) instead of your main one, with what a chat request carries; `local` keeps it on this computer.
+  With `voice.listen.live` (not the default), the sound of your own turns said to Kurooto (Voice ID: you, and facing
+  it close by) goes to Google's Gemini Live instead, and its answer comes back as sound; see [Live at the desk](#live-at-the-desk-gemini-live-off).
   The turn times (`voice.listen.timing`) are numbers only and stay here.
 - **Downloads:** setting it up fetches packages from PyPI and models from GitHub and Hugging Face; nothing of yours is
   sent.
@@ -360,6 +394,7 @@ downloaded to your computer as separate programs, not part of Kurooto.
 | `voice.listen.fast_brain` | `same` | plain chat by voice: `same` (your AI), `local` (this computer's model) or `fastest` |
 | `voice.listen.warm_up` | on | warm the transcriber and the voice when listening starts |
 | `voice.listen.warm_brain` | on | get Claude Code's program (or, with `fast_brain` `local`, the local model) ready too |
+| `voice.listen.live` | off | your own turns answered by Gemini Live, speech to speech (their sound goes to Google) |
 | `voice.listen.night` | on | keep listening during the night hours |
 | `voice.listen.calls` | off | keep listening during calls |
 | `voice.listen.stt_model` | `base` | `tiny`, `base` or `small` |
