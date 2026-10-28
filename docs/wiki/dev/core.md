@@ -588,8 +588,8 @@ depend on it, list it in that check's `events` in `core/health_checks.py`.
   `approval`. `notify.desk_first` adds any kind to the desktop at the desk. `notify.guests_hold`: `guests_here()`
   (`nearby.facing_many`: two faces close and facing in a frame of the last 10 s, or `biometric.voice_others`) shows
   `GENERIC` instead of the text; emits `notify_generic`. Voice's `speak.guests_private` asks `guests_here()` too and
-  keeps the answer in memory for the `vrd:0:read` button. `notify.desktop_retract`: `desktop.show()` returns the
-  pop-up id (Linux `notify-send --print-id`, falling back to the plain call); `Notifier.shown` keeps the last 50 as
+  keeps the answer in memory for the `vrd:0:read` button. `notify.desktop_retract`: `desktop.notify()` leaves the
+  pop-up's id in `desktop.last_id` (`show()`: Linux `notify-send --print-id`, falling back to the plain call); `Notifier.shown` keeps the last 50 as
   (map_kind, map_ref, button data, id); `retract()` ends with `_desktop_retract`, which `desktop.close()`s matching
   ones (`gdbus ... CloseNotification`) and drops matching Face holds (`Face.drop_held`; held entries now carry that
   key as a fourth item). Emits `notify_retracted` (`channel=desktop`).

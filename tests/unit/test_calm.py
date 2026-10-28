@@ -644,7 +644,6 @@ def test_calm_said_in_plain_words_and_on_a_call(clock):
     """L126 (0.9.0, notify.calm.talk): why, less of this, a named kind, the bundle and today's count, typed or as call
     tools; every change goes through apply() and has its Undo."""
     c, app = with_subjects(clock), clock.app
-    c.env.on("research")
     c.say("New papers: three.", why="research.papers")
     name, text, _ = app.calm.intent("why did you send that?")
     assert name == "calm_why" and "New papers" in text

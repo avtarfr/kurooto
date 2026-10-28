@@ -87,7 +87,7 @@ class Message:
     setting: str | None = None  # the setting it comes from, when more precise than the reason's own
     about: str | None = None  # the deadline, class or item that triggered it, in words (Why? says it)
     item: str | None = None  # that item's id (a subject, a deadline), for Less of this
-    # (0.9.0) the same item as Brain's workspace names it ("deadline:<id>", "class:<subject>", "quiz:<deadline id>"),
+    # (0.9.0) the same item as Brain's workspace names it: deadline:<id>, class:<subject> or quiz:<deadline id>,
     # kept apart from `item` so Less of this keeps reading the bare id: it counts double at the door while the item is
     # on Brain's mind, and Calm's recheck (core/calm.py: still) reads it; the gate's stage-10 rule and fatigue use it
     # only with mind.workspace.item_fatigue on
@@ -372,7 +372,9 @@ class Notifier:
         if s.get("notify.guests_hold") and self.guests_here():  # (0.9.0) someone else could read it here
             title, text = self.app.name, GENERIC
             self.app.events.emit("notify_generic", channel="desktop")
-        ok, nid = desktop.show(title, text, urgent=msg.urgent)
+        desktop.last_id = ""
+        ok = desktop.notify(title, text, urgent=msg.urgent)
+        nid = desktop.last_id
         if ok and nid and (msg.map_kind or data):
             self.shown = [*self.shown[-49:], (msg.map_kind, msg.map_ref, data, nid)]
 

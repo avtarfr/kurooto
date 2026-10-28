@@ -275,6 +275,9 @@ tip = "Make its trust verdicts bind: it asks first for what it isn't trusted wit
 when = "Turn it on after the shadow weeks if you want its learned trust to take effect."
 needs = "`mind.autonomy.on`."
 
+[parent."mind.trust"]
+tip = "What, besides what it did on its own, may change its trust in a kind of action."
+
 [s."mind.trust.from_wrong"]
 tip = "A Wrong on what a request did counts as a complaint against that kind of action, so Kurooto asks first before doing it on its own."
 what = "It only ever makes it ask more; nothing you asked for changes. Off: Wrong keeps a test case and nothing else changes in its trust."
@@ -371,7 +374,7 @@ what = "It adds to Calm's Why? on Telegram, and puts a Why this? button on the p
 when = "Turn it off to keep Calm's Why? as it was."
 
 [s."mind.why.console_link"]
-tip = "Why? ends with a link that opens that message's decision in the Brain console (what it weighed, the evidence), and the console shows the message's Why? beside it."
+tip = "Why? ends with a link that opens that message's decision in the Brain console."
 when = "Turn it off to leave the link out of Why?."
 needs = "`mind.why.on`; the link opens the dashboard on this computer."
 
@@ -777,7 +780,7 @@ when = "Turn it off to have every one of them ask, as in 0.8.15."
 needs = "`mind.autonomy.on`; each kind needs its feature (Deadlines, Start-by, Reminders, Skills, Quiz, Brain's dreaming)."
 
 [s."mind.act.record_asked"]
-tip = "The Sunday list also shows what tools changed because you asked on a call or in a chat, apart from what it did on its own, with Undo where it has one."
+tip = "The Sunday list also shows what tools changed because you asked on a call or in a chat, with Undo."
 what = "Never an order or anything about money. It doesn't change what needs your OK: these ran because you asked."
 when = "Turn it off to list only what it did on its own."
 needs = "`mind.autonomy.on`."

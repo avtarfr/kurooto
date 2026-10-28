@@ -84,7 +84,7 @@ def _start(app: App, st: dict) -> str:
     qs = app.ask.pending(kind="question")
     approvals = len(app.ask.pending(kind="approval"))
     st.update(queue=[q["id"] for q in qs], current=None, at=time.monotonic())
-    lead = (f"{approvals} approval{'s' if approvals != 1 else ''} wait for your tap on the phone or Telegram. "
+    lead = (f"{approvals} approval{'s wait' if approvals != 1 else ' waits'} for your tap on the phone or Telegram. "
             if approvals else "")  # fmt: skip
     if not qs:
         _state.pop(id(app), None)

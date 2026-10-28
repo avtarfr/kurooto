@@ -23,9 +23,10 @@ def app(tmp_path, monkeypatch):
 
     def show(title, text, urgent=False):
         a.sent["desktop"].append((title, text))
-        return True, str(next(ids))
+        desktop.last_id = str(next(ids))
+        return True
 
-    monkeypatch.setattr(desktop, "show", show)
+    monkeypatch.setattr(desktop, "notify", show)
     monkeypatch.setattr(desktop, "close", lambda nid: a.sent["closed"].append(nid) or True)
     yield a
     a.close()
@@ -190,9 +191,10 @@ def test_moving_and_a_phone_call_hold_only_what_is_switched_on(app, monkeypatch)
     until = (dt.datetime.now() + dt.timedelta(minutes=20)).timestamp() * 1000
     assert chat._busy({"until": until}) == (200, {"ok": True})
     assert av.phone_busy_until() is not None and av.on_call_until() is None  # apart from its own calls
-    assert av.call_block(why="checkins.call") == (None, None)  # off: only noted
+    noon = dt.datetime.now().replace(hour=12, minute=0)
+    assert av.call_block(noon, why="checkins.call") == (None, None)  # off: only noted
     app.settings.set("calls.phone_busy", True)
-    assert av.call_block(why="checkins.call")[0] == av_mod.PHONE_CALL
+    assert av.call_block(noon, why="checkins.call")[0] == av_mod.PHONE_CALL
     assert chat._busy({"until": 0})[0] == 200 and av.phone_busy_until() is None
 
 
@@ -240,6 +242,7 @@ def test_one_wrong_reaches_its_learners(app, monkeypatch):
     with cs._lock:
         d = cs._drafts[cs._last]
     d.update(did="skip_commitment", tools=["search_notes"])
+    cs.store.change(lambda dd: dd["cases"].get(d["id"], {}).update(did="skip_commitment"), cs._keep_days())
     cs.wrong(d["id"])
     assert complaints == []  # mind.trust.from_wrong is off by default
     kinds = [e["kind"] for e in app.events.tail(50)]

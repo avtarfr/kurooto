@@ -81,7 +81,7 @@ when = "Turn it off if you don't want that kept. `/threads` shows them."
 needs = "Nothing: core."
 
 [s."memory.day_rows"]
-tip = "Each night, one line about the day goes into the memory ledger: about how long you were at the desk, what you studied, and the classes you said you skipped or attended."
+tip = "Each night, one line about the day in the memory ledger: time at the desk, what you studied, classes you skipped."
 what = "Made from what Kurooto already records: Face presence's comings and goings (rounded to the hour), your study sessions and your own class taps. Never a place and never read from the senses. Sealed like every ledger row; \"what was I doing last Thursday?\" and your AI's memory can use it (one-line items, like gists)."
 when = "Turn it on if you'd like Kurooto to remember the shape of your days. /memory forgets a row."
 cost = "Like the rest of the ledger, a line may go to your AI with a request that refers to that day."
@@ -170,7 +170,7 @@ when = "Turn it off to learn only from test cases you make."
 needs = "Wrong button and test cases."
 
 [s."cases.surfaces"]
-tip = "Where else Wrong works, besides Telegram and the terminal: the phone app's chat, the dashboard's chat, and saying \"that's wrong\" just after an answer said aloud."
+tip = "Where else Wrong works besides Telegram and the terminal: the app's chat, the dashboard's chat, \"that's wrong\" said aloud."
 values = "A list of `app`, `dashboard`, `voice`; `[]`: Telegram and the terminal only, as before 0.9.0."
 what = "Requests from there are kept as cases like Telegram's. Said aloud, only your voice counts (Voice ID), and the words still go to your AI as before."
 when = "Remove one to leave it out."

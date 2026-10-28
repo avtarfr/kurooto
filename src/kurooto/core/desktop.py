@@ -31,13 +31,19 @@ $app = '{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell
 _MAC = "on run argv\ndisplay notification (item 2 of argv) with title (item 1 of argv)\nend run"
 
 
+last_id = ""  # (0.9.0) the id of the pop-up notify() just showed, where the system gives one (Linux); else ""
+
+
 def notify(title: str, text: str, urgent: bool = False) -> bool:
-    return show(title, text, urgent)[0]
+    """Show a pop-up. Its id, where the system gives one, is left in last_id for close()."""
+    global last_id
+    ok, last_id = show(title, text, urgent)
+    return ok
 
 
 def show(title: str, text: str, urgent: bool = False) -> tuple[bool, str]:
-    """notify(), and (0.9.0) the pop-up's id where the system gives one (Linux: notify-send --print-id), so close()
-    can take it down once its question is answered elsewhere; "" elsewhere (Windows, macOS: best effort, no close)."""
+    """A pop-up, and (0.9.0) its id where the system gives one (Linux: notify-send --print-id), so close() can take
+    it down once its question is answered elsewhere; "" elsewhere (Windows, macOS: best effort, no close)."""
     title, text = str(title)[:120], str(text)[:500]
     if os.environ.get("KUROOTO_NO_DESKTOP"):  # a developer's scratch run: nothing pops up on the real desktop
         return False, ""
