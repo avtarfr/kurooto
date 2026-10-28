@@ -1219,7 +1219,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | Setting | Default | What it does |
 |---|---|---|
 | `voice.addons.chat` | `true` | Let an add-on have Kurooto chat with someone who isn't you, the guest way: no tools, none of your data. ([guide](wiki/user/settings-guide.md#voiceaddonschat)) |
-| `voice.addons.guest_name` | `true` | Let an add-on that recognises a guest name them: "Hi Sam." before the first answer, and the name to the guest's AI only when that's this computer's model. ([guide](wiki/user/settings-guide.md#voiceaddonsguestname)) |
+| `voice.addons.guest_name` | `true` | Let an add-on that recognises a guest name them: a greeting by name, the name to a local guest AI only. ([guide](wiki/user/settings-guide.md#voiceaddonsguestname)) |
 | `voice.addons.listen` | `true` | Let an add-on take one stretch of speech at a time through the microphone (written out here, never sent). ([guide](wiki/user/settings-guide.md#voiceaddonslisten)) |
 | `voice.audio.backend` | `"auto"` | How Kurooto plays and records sound: PipeWire's own tools, or the PortAudio library inside Kurooto. ([guide](wiki/user/settings-guide.md#voiceaudiobackend)) |
 | `voice.listen.after_speak_s` | `6` | Seconds after it spoke during which a question counts as an answer to it. ([guide](wiki/user/settings-guide.md#voicelistenafterspeaks)) |

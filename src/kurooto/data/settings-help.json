@@ -818,7 +818,7 @@
 "updates.window": "The hours an automatic update may switch versions.",
 "voice.addons": "What add-ons may do with Voice: hear one stretch of speech, and chat with someone the guest way.",
 "voice.addons.chat": "Let an add-on have Kurooto chat with someone who isn't you, the guest way: no tools, none of your data.",
-"voice.addons.guest_name": "Let an add-on that recognises a guest name them: \"Hi Sam.\" before the first answer, and the name to the guest's AI only when that's this computer's model.",
+"voice.addons.guest_name": "Let an add-on that recognises a guest name them: a greeting by name, the name to a local guest AI only.",
 "voice.addons.listen": "Let an add-on take one stretch of speech at a time through the microphone (written out here, never sent).",
 "voice.audio": "How sound reaches the speakers and comes in from the microphone.",
 "voice.audio.backend": "How Kurooto plays and records sound: PipeWire's own tools, or the PortAudio library inside Kurooto.",

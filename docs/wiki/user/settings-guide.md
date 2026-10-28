@@ -6303,8 +6303,7 @@ pause still stop it, and it never takes a conversation that's open with you.
 
 ### `voice.addons.guest_name`
 
-Let an add-on that recognises a guest name them: "Hi Sam." before the first answer, and the name to the guest's AI only
-when that's this computer's model.
+Let an add-on that recognises a guest name them: a greeting by name, the name to a local guest AI only.
 
 For a turn Voice ID called a guest, a feature that knows who is in front of it (an add-on's guest_name()) may give their
 name. Voice puts "Hi <name>." before the first answer of the conversation, a set phrase it makes itself. The name goes
