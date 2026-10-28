@@ -159,6 +159,13 @@ with the frame. Pause list (0.8.18): "Kurooto is asleep" after "night hours" (`m
 `mind/sleep.senses_off()`), 17 reasons; `desk_seen_at()` (the watcher's `present_at` as `time.time()`, None when
 away or not watching) feeds `mind.sleep.desk_holds`.
 
+0.9.0 (`face.camera.yaw_offset_deg`, 0): `Face.yaw_offset()` (clamped to +-30, 0 for a bad value) moves the centre of
+the look. The head path compares `|atan(yaw / YAW_K) - offset|` (signed: pose's mirrored yaw, + to the user's right)
+with `look_yaw_deg`, which is `yaw_degrees` at 0; the eyes path subtracts it from `angles()`' sideways degrees before
+`look_gaze_yaw_deg`. `close_facing` and the `face_yaw_deg` head limit are unchanged (they ask "facing the camera at
+all"). Generic on purpose: an add-on whose camera's lens sits beside the spot to look at (the Body add-on's drawn eye)
+sets the setting while `face.camera.device` names its camera and clears it on unplug.
+
 ### By the eyes (0.8.17, `voice.listen.look_gaze`, `gaze.py`)
 
 - **The part.** `parts.py`: `iris` = `iris_landmark.tflite` (MediaPipe Iris, Apache-2.0, 2,640,568 bytes), from

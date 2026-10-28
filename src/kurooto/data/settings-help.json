@@ -224,6 +224,7 @@
 "face.camera.device": "The camera to use: empty for the first ordinary one (infrared ones are skipped), or a number or part of its name.",
 "face.camera.height": "The picture height asked of the camera.",
 "face.camera.width": "The picture width asked of the camera (it may give another).",
+"face.camera.yaw_offset_deg": "How far beside the camera's lens the spot you look at sits, in degrees (+: to your right); look to talk centres there.",
 "face.greet": "The greeting when you sit down: when, how often, what it says, and whether it then listens.",
 "face.greet.after_absent_min": "Greet you only after you've been away at least this long, in minutes.",
 "face.greet.gap_min": "The fewest minutes between two greetings.",

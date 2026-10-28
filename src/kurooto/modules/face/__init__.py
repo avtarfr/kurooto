@@ -56,6 +56,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime as dt
+import math
 import re
 import threading
 import time
@@ -71,7 +72,7 @@ from kurooto.modules.face import gaze as gaze_mod
 from kurooto.modules.face import parts as face_parts
 from kurooto.modules.face.enrol import MINIMUM, PLAN, TARGET, TARGETS, Enrolment, Session, Vision
 from kurooto.modules.face.model import FLOOR, MODEL, STRICTNESS, Template
-from kurooto.modules.face.vision import pitch_degrees, px_scale, yaw_degrees
+from kurooto.modules.face.vision import YAW_K, pitch_degrees, px_scale, yaw_degrees
 from kurooto.modules.face.watch import PAUSES, TRACK_FAST, TRACK_OFF, TRACK_SLOW, Watcher
 
 if TYPE_CHECKING:
@@ -84,6 +85,9 @@ register_defaults(
             "device": "",  # the camera: empty = the first ordinary one (infrared skipped); a number or part of its name
             "width": 640,  # capture size asked of the camera (it may give another)
             "height": 480,  # capture height asked of the camera
+            # (0.9.0) degrees the spot you look at sits beside the lens (+: to your right as you face it; -30 to 30):
+            # look to talk centres on it, head and eyes alike; 0 = the lens itself (an add-on's camera may set it)
+            "yaw_offset_deg": 0.0,
         },
         "watch": {
             "fps": 1.0,  # frames a second it looks at while watching for you (0.2 to 2)
@@ -822,7 +826,7 @@ class Face(Module):
         cal = self.gaze_calibration()
         if cal is not None:
             return self._looking_by_eyes(yaw, pitch, eyes, cal, own)
-        if yaw_degrees(yaw) > yaw_max:
+        if abs(math.degrees(math.atan(float(yaw) / YAW_K)) - self.yaw_offset()) > yaw_max:  # 0 offset: yaw_degrees
             return False
         t = self._template_or_none()
         front = (t.baseline or {}).get("pitch") if t is not None else None
@@ -849,11 +853,23 @@ class Face(Module):
             last = self._gaze_last
             return bool(last.get("looking")) and now - float(last.get("t") or 0) <= BLINK_HOLD_S
         gh, gv = gaze_mod.angles(float(eyes[0]), float(eyes[1]), float(yaw), float(pitch), cal)
+        gh -= self.yaw_offset()  # (0.9.0) the spot to look at, beside the lens the calibration looked into
         ok = abs(gh) <= h_max and abs(gv) <= v_max
         if not own:
             return ok
         self._gaze_last = {"t": now, "looking": ok, "yaw_deg": round(gh, 1), "pitch_deg": round(gv, 1)}
         return ok
+
+    def yaw_offset(self) -> float:
+        """(0.9.0, face.camera.yaw_offset_deg) How far beside the lens the spot to look at sits, in degrees (+: to your
+        right), at most 30 either way: a camera whose lens is off the place you look at (a drawn eye beside a phone's
+        punch hole) moves look to talk's centre there. An add-on with such a camera sets it while that camera is in
+        use and clears it after."""
+        try:
+            off = float(self.setting("camera.yaw_offset_deg") or 0)
+        except (TypeError, ValueError):
+            return 0.0
+        return max(-30.0, min(30.0, off)) if math.isfinite(off) else 0.0
 
     # ------------------------------------------------------------------------------- your eyes (0.8.17, gaze.py)
     def gaze_calibration(self) -> dict | None:

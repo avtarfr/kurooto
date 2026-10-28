@@ -184,6 +184,11 @@ own it goes by which way your head points; with the eye model and your eyes cali
 at once. The camera is held while Voice listens for this too, and looks up to 5 times a second then
 (`face.watch.look_fps`).
 
+**When the spot to look at isn't the lens** (0.9.0, `face.camera.yaw_offset_deg`, 0): if you're meant to look at
+something beside the camera (a drawn eye next to a phone's camera, say), set how many degrees to your right (or left,
+negative) of the lens it sits, and a look there counts instead of a look into the lens. About 7 degrees for 7 cm at
+60 cm. An add-on whose camera needs it may set it while that camera is in use.
+
 **Calibrating your eyes** (the Face page, under Look to talk, once you've enrolled): **Get the eye model** (2.6 MB, once),
 then **Calibrate my eyes**: the camera opens and you look at its lens, head turned to it, for about three seconds. It
 keeps four numbers in your sealed face model (where your irises sit in your eyes and how your head was turned), never a
@@ -328,6 +333,7 @@ From a terminal: `kurooto face`, `kurooto face pause 1h`, `kurooto face forget [
 | Setting | Default | What it does |
 |---|---|---|
 | `face.camera.device` | (the first) | which camera: a number or part of its name |
+| `face.camera.yaw_offset_deg` | 0 | degrees beside the lens the spot to look at sits (+: your right); look to talk centres there |
 | `face.watch.fps`, `fps_battery` | 1, 0.33 | frames a second while it looks |
 | `face.watch.look_fps` | 5 | frames a second while Voice listens for a look (at most 5; 0: as usual) |
 | `face.watch.idle_s` | 60 | seconds without input before it looks |

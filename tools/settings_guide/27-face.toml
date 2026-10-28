@@ -196,3 +196,9 @@ when = "Turn it on if you work at your desk at night and want the greeting then 
 [s."face.watch.when_locked"]
 tip = "Also look while the screen is locked; off pauses it while locked."
 when = "Turn it on if you want it to notice you arriving at a locked computer."
+
+[s."face.camera.yaw_offset_deg"]
+tip = "How far beside the camera's lens the spot you look at sits, in degrees (+: to your right); look to talk centres there."
+what = "A camera whose lens isn't where you look (a drawn eye on a screen beside a phone's punch-hole camera, a webcam off to one side of a picture you look at) makes a look at that spot read as a turned head. This moves the centre of look to talk, by the head's turn and by the eyes alike, onto the spot. An add-on with such a camera may set it while its camera is in use and clear it after."
+values = "-30 to 30 degrees; 0 (the default) is the lens itself."
+when = "Set it if looking at the place you're meant to look rarely opens a conversation and looking at the lens does: about 7 degrees for 7 cm at 60 cm."

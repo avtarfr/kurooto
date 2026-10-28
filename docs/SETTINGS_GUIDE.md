@@ -399,6 +399,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `face.camera.device` | `""` | The camera to use: empty for the first ordinary one (infrared ones are skipped), or a number or part of its name. ([guide](wiki/user/settings-guide.md#facecameradevice)) |
 | `face.camera.height` | `480` | The picture height asked of the camera. ([guide](wiki/user/settings-guide.md#facecameraheight)) |
 | `face.camera.width` | `640` | The picture width asked of the camera (it may give another). ([guide](wiki/user/settings-guide.md#facecamerawidth)) |
+| `face.camera.yaw_offset_deg` | `0.0` | How far beside the camera's lens the spot you look at sits, in degrees (+: to your right); look to talk centres there. ([guide](wiki/user/settings-guide.md#facecamerayawoffsetdeg)) |
 | `face.greet.after_absent_min` | `20` | Greet you only after you've been away at least this long, in minutes. ([guide](wiki/user/settings-guide.md#facegreetafterabsentmin)) |
 | `face.greet.gap_min` | `60` | The fewest minutes between two greetings. ([guide](wiki/user/settings-guide.md#facegreetgapmin)) |
 | `face.greet.listen_s` | `12` | How long that conversation stays open with nothing said, in seconds. ([guide](wiki/user/settings-guide.md#facegreetlistens)) |

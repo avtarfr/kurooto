@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0 (unreleased)
+
+- **Look to talk can centre beside the lens** (`face.camera.yaw_offset_deg`, 0). When the spot you're meant to look at
+  sits beside the camera (a drawn eye next to a phone's camera), a look there counts, by the head's turn and by the
+  eyes; an add-on with such a camera can set it while its camera is in use. At 0 nothing changes.
+
 ## 0.8.18 (2026-10-29)
 
 Kurooto keeps its eyes and ears shut while it sleeps, stays up while you're at the desk, and anyone's look opens a conversation.

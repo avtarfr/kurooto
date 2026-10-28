@@ -50,7 +50,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Dashboard and terminal](#dashboard-and-terminal): 27 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 26 settings
-- [Face presence](#face-presence): 34 settings
+- [Face presence](#face-presence): 35 settings
 
 ## You and how it talks to you
 
@@ -7918,3 +7918,16 @@ Also look while the screen is locked; off pauses it while locked.
 
 - **Values:** On or off. **Default:** off.
 - **When to change it:** Turn it on if you want it to notice you arriving at a locked computer.
+
+### `face.camera.yaw_offset_deg`
+
+How far beside the camera's lens the spot you look at sits, in degrees (+: to your right); look to talk centres there.
+
+A camera whose lens isn't where you look (a drawn eye on a screen beside a phone's punch-hole camera, a webcam off to
+one side of a picture you look at) makes a look at that spot read as a turned head. This moves the centre of look to
+talk, by the head's turn and by the eyes alike, onto the spot. An add-on with such a camera may set it while its camera
+is in use and clear it after.
+
+- **Values:** -30 to 30 degrees; 0 (the default) is the lens itself. **Default:** `0.0`.
+- **When to change it:** Set it if looking at the place you're meant to look rarely opens a conversation and looking at
+  the lens does: about 7 degrees for 7 cm at 60 cm.
