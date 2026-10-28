@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.8.17 (unreleased)
+## 0.8.17 (2026-10-28)
+
+Voice you can talk to: it finishes what it says, hears you over the room, answers sooner, opens when you look at it (by your eyes), and can answer through Gemini Live; calls keep going on Back and save every transcript; plans that follow what changed; messages one by one; and the AI knows when it recognised you.
 
 - **Back no longer hangs up a call** (Android app). Back during a call now leaves it running behind your other apps,
   the way a phone call does, with an "On a call with Kurooto" notification: tap it to go back to the call, or use its
