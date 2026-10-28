@@ -445,6 +445,12 @@ tip = "When something you were told turns out wrong, tell you once, with the evi
 when = "Turn it off if you'd rather not get these corrections."
 needs = "`mind.tom.on`."
 
+[s."mind.tom.from_chat"]
+tip = "Goals you state and due dates you give for your deadlines, in your messages, go into Brain's model of you."
+what = "\"My goal is to finish the draft by Friday\" becomes a stated goal; \"the essay is due Monday\" (one of your open deadlines) becomes what you believe about its date, so a wrong date can be pointed out once. Never health, money, passwords or the deny-list's topics. Kept on this computer."
+when = "Turn it off to keep Brain's model to your deadlines, projects and what Kurooto told you."
+needs = "`mind.tom.on`."
+
 [s."mind.tom.attention"]
 tip = "Hold a message (at most 15 minutes) while you're deep in one project."
 when = "Turn it on if interruptions while you're focused bother you."

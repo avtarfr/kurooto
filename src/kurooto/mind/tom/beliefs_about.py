@@ -17,6 +17,7 @@ claim in any other domain isn't kept, and a topic on the deny-list isn't either 
 from __future__ import annotations
 
 import datetime as dt
+import re
 import time
 from typing import TYPE_CHECKING
 
@@ -37,6 +38,38 @@ def told(app: App, domain: str, subject: str, claim: str, fact: dict, source: st
     return model.put(
         app, PART, f"{domain}:{subject}", claim, source, 0.9, [f"told:{int(time.time())}"], fact=fact, corrected=False
     )
+
+
+DUE_SAID = re.compile(
+    r"(?i)^(?:the\s+)?(?P<what>[\w' -]{3,60}?)\s+(?:is|was)\s+due\s+(?:on\s+|by\s+)?(?P<when>[\w: -]{2,24}?)[.!]?$"
+)
+
+
+def heard(app: App, sentence: str) -> dict | None:
+    """(0.9.0, mind.tom.from_chat) "The essay is due Thursday": when it names one of your open deadlines, what you
+    believe about its due date (source said), for check() to compare with the deadline itself. None otherwise."""
+    m = DUE_SAID.match(sentence.strip())
+    dl = app.modules.get("deadlines")
+    if not m or dl is None or not app.is_on("deadlines"):
+        return None
+    words = set(model.norm(m["what"]).split()) - {"the", "my", "a", "an", "deadline", "is"}
+    if not words:
+        return None
+    hit = None
+    for iid, it in dl.items().items():
+        if it.get("status") == "open" and words <= set(model.norm(str(it.get("title") or "")).split()):
+            hit = (iid, it) if hit is None else ("", None)  # two match: too unsure to keep
+    if not hit or not hit[0]:
+        return None
+    from kurooto.core.clock import parse_when
+
+    try:
+        due = parse_when(m["when"])
+    except ValueError:
+        return None
+    title = str(hit[1].get("title") or "")[:80]
+    fact = {"type": "deadline", "id": hit[0], "due": due.isoformat(timespec="minutes")}
+    return told(app, "deadline", title, sentence.strip()[:200], fact)
 
 
 def check_backup(app: App, fact: dict) -> tuple[bool | None, str]:

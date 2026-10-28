@@ -591,6 +591,9 @@ class App:
             from kurooto.core import threads  # "I'll send the draft tonight": an open thread (core/threads.py)
 
             threads.observe(self, text, via="chat")
+            from kurooto.mind.tom import model as tom  # (0.9.0) goals and due dates you state (mind.tom.from_chat)
+
+            tom.from_chat(self, text)
             from kurooto.core import meetings  # "about the meeting with X: ...": minutes in its project note
 
             if meetings.take(self, msg, text):

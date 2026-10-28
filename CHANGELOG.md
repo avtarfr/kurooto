@@ -34,6 +34,9 @@
 - **Brain's plan and your free time for your AI** (`mind.tools.on`, on with Brain). Read-only `brain_plan`,
   `brain_free_time` ("Likely free from 16:00") and `brain_precedents`; "call me back when I'm free" books the call
   for that hour.
+- **Brain hears goals and due dates you state** (`mind.tom.from_chat`, on with its model of you). "My goal is to
+  finish the draft by Friday" and "the essay is due Monday" become rows you can see and correct in `/model`; never
+  health, money or the deny-list's topics.
 
 ## 0.8.18 (2026-10-29)
 

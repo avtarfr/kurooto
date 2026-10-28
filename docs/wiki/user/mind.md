@@ -397,6 +397,12 @@ can't be used to change your mind. It never models your health, relationships, p
 isn't kept. `/model wrong <id>` says a row is wrong (that counts as something you said, and it won't be inferred again); `/model forget <id>` drops it for good.
 Switches: `mind.tom.on`, `mind.tom.false_beliefs`, `mind.tom.attention`.
 
+**From what you write (0.9.0, `mind.tom.from_chat`, on with the model).** A goal you state in a message ("my goal is
+to finish the draft by Friday", "I want to ...") and a due date you state for one of your deadlines ("the essay is
+due Monday") are kept as rows with source "said". The second is what lets it tell you once if you have the date
+wrong. A message with a health, money or password detail, or a topic on the deny-list, gives nothing. Off: only
+your deadlines, projects and what Kurooto told you.
+
 ## What it senses, and what it never does
 
 Kurooto looks at three things, each switchable, and everything stays on this computer.

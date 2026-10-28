@@ -22,6 +22,10 @@ register_defaults(
             "on": True,  # a model of what you know, believe, want and prefer, each row with its source
             "false_beliefs": True,  # tell you once, with the evidence, when something you were told proved wrong
             "attention": False,  # hold a message while you're deep in something (needs the activity stream)
+            # (0.9.0) what you state in a message is evidence too (source "said"): a goal ("my goal is to finish the
+            # draft by Friday") and when a deadline you keep is due ("the essay is due Thursday"); never health,
+            # money or other people (model.DENY and remember.sensitive)
+            "from_chat": True,
         }
     },
 )

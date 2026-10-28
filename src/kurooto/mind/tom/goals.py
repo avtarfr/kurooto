@@ -10,6 +10,7 @@ standing goals (a goal grows more pressing as its deadline closes in) and, from 
 from __future__ import annotations
 
 import datetime as dt
+import re
 import time
 from typing import TYPE_CHECKING
 
@@ -24,6 +25,30 @@ WEEKLY = 7 * 86400
 
 def stated(app: App, text: str, due: str = "", evidence: str = "told") -> dict | None:
     return model.put(app, PART, f"goal:{model.norm(text)[:40]}", text, "said", 1.0, [evidence], due=due)
+
+
+GOAL = re.compile(
+    r"(?i)^(?:my goal is to|i want to|i(?:'m| am) aiming to|i(?:'m| am) trying to|i plan to)\s+"
+    r"(?P<what>.{6,140}?)(?:\s+by\s+(?P<due>[\w: -]{2,24}))?[.!]?$"
+)
+
+
+def heard(app: App, sentence: str) -> dict | None:
+    """(0.9.0, mind.tom.from_chat) A goal you state in a message ("I want to finish the draft by Friday") becomes a
+    stated goal (source said, evidence chat). None for anything else."""
+    m = GOAL.match(sentence.strip())
+    if not m:
+        return None
+    due = ""
+    if m["due"]:
+        from kurooto.core.clock import parse_when
+
+        try:
+            due = parse_when(m["due"]).isoformat(timespec="minutes")
+        except ValueError:
+            due = ""
+    what = m["what"].strip() + (f" by {m['due'].strip()}" if m["due"] and not due else "")
+    return stated(app, what, due, "chat")
 
 
 def sync_deadlines(app: App) -> int:

@@ -891,10 +891,18 @@ init 0.30, transit 0.15, slip 0.10, guess 0.20 and a weight (a weak sign moves i
 as whole words (alias and title). Evidence from `from_quiz` (a graded answer counts once; cards that name a concept), `from_notes` (a changed note) and `asked`. The false-belief
 check has two fact checkers (backup, deadline) and runs only on those domains.
 
-**Deviations.** (1) `/model` is text with ids (Wrong, Forget as commands); no inline buttons, no dashboard page, no mastery overlay on the notes map. (2) Stating a belief in chat
+**Deviations.** (1) `/model` is text with ids (Wrong, Forget as commands); no inline buttons, no dashboard page; (0.9.0, L132) the notes map's mastery overlay exists: `web/api.py:notes_mastery` (`GET
+notes/mastery`, `look.notes_mastery`) maps `frontier.grades()` to words (`MASTERY_WORDS`; UNKNOWN left out), home.js
+reads it every 2 minutes into `mind.mastery`, `views/notesmap.js` rings started/solid/frontier nodes and the card says
+the grade. (2) Stating a belief in chat
 ("the deadline is Friday") isn't captured automatically yet: `beliefs_about.told(...)` is called with what Kurooto tells him (backup done on `/backup`, deadline reminders); his
-own statements need an intent hook. (3) Quiz cards are linked to concepts by name mention, since a card has no concept id. (4) Prerequisites in the frontier are a note's typed
-`prereq` links, else its links. (5) Exam results he reports aren't evidence yet. (6) Stated goals from chat text aren't parsed; deadlines and projects are.
+own statements need an intent hook; (0.9.0, L94, `mind.tom.from_chat`) `model.from_chat(app, text)`, called in
+`App.handle` beside `infer.observe` / `threads.observe`, keeps per sentence `beliefs_about.heard` ("the essay is due
+Monday" naming one open deadline: a `deadline` fact for `check()`) and `goals.heard` ("my goal is to ...", "I want
+to ... by Friday": `stated(evidence="chat")`), skipping a message with a `remember.sensitive` detail or a `DENY`
+topic; event `mind_tom_said` (rows only). The nightly readers (infer.sweep, fold, retro's remember) keep their own
+reads and schedules: the shared cached read L94 proposed isn't built. (3) Quiz cards are linked to concepts by name mention, since a card has no concept id. (4) Prerequisites in the frontier are a note's typed
+`prereq` links, else its links. (5) Exam results he reports aren't evidence yet. (6) Stated goals from chat text are parsed since 0.9.0 (above); deadlines and projects were already.
 
 ## Stage 15: week-scale plans
 

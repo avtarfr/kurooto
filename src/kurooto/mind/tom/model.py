@@ -162,6 +162,32 @@ def forget_span(app: App, lo: float, hi: float) -> int:
     return len(gone)
 
 
+def from_chat(app: App, text: str) -> int:
+    """(0.9.0, mind.tom.from_chat) A message of yours (App.handle, beside infer and threads): each sentence that states
+    a goal or a deadline's due date becomes a row with source "said". Nothing with Brain's model off, nothing with a
+    health, money or credentials detail (modules/remember.py) or a topic on the deny-list. How many rows. Never
+    raises."""
+    try:
+        if not on(app) or not app.settings.get("mind.tom.from_chat") or not text or text.lstrip().startswith("/"):
+            return 0
+        from kurooto.mind.tom import beliefs_about, goals
+        from kurooto.modules.remember import sensitive
+
+        if sensitive(text) or denied(text):
+            return 0
+        n = 0
+        for s in re.split(r"(?<=[.!?])\s+|\n+", text):
+            s = s.strip()
+            if 8 <= len(s) <= 200 and not s.endswith("?"):
+                n += bool(goals.heard(app, s) or beliefs_about.heard(app, s))
+        if n:
+            app.events.emit("mind_tom_said", rows=n)
+        return n
+    except Exception as e:
+        app.events.emit("mind_tom_failed", error=type(e).__name__)
+        return 0
+
+
 def say(row: dict) -> str:
     """The row as it may be said to you (I-13): said and saw as fact, inferred as 'it looks like', imagined as a
     guess."""
