@@ -1,17 +1,17 @@
 {
- "versionCode": 80149,
- "versionName": "0.8.14",
- "url": "https://avtarfr.github.io/kurooto/releases/0.8.14/kurooto.apk",
- "sha256": "1c5b6db986fb141b0ed890d38b86b9969137b5cdc992dbf17353a89cef76d16a",
+ "versionCode": 80169,
+ "versionName": "0.8.16",
+ "url": "https://avtarfr.github.io/kurooto/releases/0.8.16/kurooto.apk",
+ "sha256": "99bc670f115de3cdb00d96c2805b3bc644e972c5af014b87de13c1d0404af1e9",
  "doc": {
-  "versionCode": 80149,
-  "versionName": "0.8.14",
-  "url": "https://avtarfr.github.io/kurooto/releases/0.8.14/kurooto.apk",
-  "sha256": "1c5b6db986fb141b0ed890d38b86b9969137b5cdc992dbf17353a89cef76d16a",
-  "size": 6725412,
-  "manifest_url": "https://avtarfr.github.io/kurooto/releases/0.8.14/manifest.json",
+  "versionCode": 80169,
+  "versionName": "0.8.16",
+  "url": "https://avtarfr.github.io/kurooto/releases/0.8.16/kurooto.apk",
+  "sha256": "99bc670f115de3cdb00d96c2805b3bc644e972c5af014b87de13c1d0404af1e9",
+  "size": 6774788,
+  "manifest_url": "https://avtarfr.github.io/kurooto/releases/0.8.16/manifest.json",
   "channel": "beta",
-  "issued": 1793124218.2642221
+  "issued": 1793189696.7350352
  },
- "sig": "ey+pNVorMxJtF0JfgYmzVU0gd3I/u5oOcc94jLx96r4oxxqvvjb+4cVb4p1RDqa0pvWqYvz5YEi8l2i5UNxGCA=="
+ "sig": "dCdMUTU13YhP3nBehdaYANUAT7cE6RqDIK6vRfY9YBBB/NfxaTiKFFJza7sJKXPUFoKnj4zjWPlkHu/6Nh1YCA=="
 }

@@ -1,0 +1,25 @@
+{
+ "doc": {
+  "version": "0.8.16",
+  "notes": "The Brain becomes core: one door for what Kurooto says by itself, sleep on your schedule, dreaming, one being across the dashboard, phone and voice; plus the new call screen in the call, faster and steadier voice, the dashboard's Chat page and narrow windows.",
+  "created": 1793133593.389188,
+  "files": {
+   "kurooto-0.8.16.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.8.16/kurooto-0.8.16.tar.gz",
+    "sha256": "c2082843e9deee6067afb1ad84ac5bd59a39471505e2247d190b9e01a06de6bf",
+    "size": 12333883
+   }
+  },
+  "android": {
+   "file": "kurooto.apk",
+   "url": "https://avtarfr.github.io/kurooto/releases/0.8.16/kurooto.apk",
+   "sha256": "99bc670f115de3cdb00d96c2805b3bc644e972c5af014b87de13c1d0404af1e9",
+   "size": 6774788,
+   "versionCode": 80169,
+   "versionName": "0.8.16",
+   "cert_sha256": "bad55b2e9de40d31a40d19767bf6e53ac372fb9e8e67e63d01d21e3d3ef8d325",
+   "source": "f10fb1e5f7c7f4855c133a5d335ccd250f6cd1b2e96eb908198f32ef2ba65100"
+  }
+ },
+ "sig": "yuXDUObyMJ4js6MO6nrG1YgPgG5SfmNZrrZzL9/IYk3J9fpkHMNY2g9vlPQxX6QOnDRW8e+ps7mkaXSbW+7wDw=="
+}
