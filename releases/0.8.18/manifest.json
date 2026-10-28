@@ -1,0 +1,25 @@
+{
+ "doc": {
+  "version": "0.8.18",
+  "notes": "0.8.18: asleep its senses shut (/wake), the desk keeps it awake, anyone's look opens a talk, a look counts in company, desk Live never repeats a tool",
+  "created": 1793216224.013595,
+  "files": {
+   "kurooto-0.8.18.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.8.18/kurooto-0.8.18.tar.gz",
+    "sha256": "5ec64d5676dbe44b9bb9bc8bf52eb6fcbe2bb81289ea83da3ad513b86307eb0c",
+    "size": 12451913
+   }
+  },
+  "android": {
+   "file": "kurooto.apk",
+   "url": "https://avtarfr.github.io/kurooto/releases/0.8.18/kurooto.apk",
+   "sha256": "d49bcb7fe423896582e425fabcf099985dd14e76fdb8502930a320f18bf37e4d",
+   "size": 6778884,
+   "versionCode": 80189,
+   "versionName": "0.8.18",
+   "cert_sha256": "bad55b2e9de40d31a40d19767bf6e53ac372fb9e8e67e63d01d21e3d3ef8d325",
+   "source": "c949893d9c3ebc21e6de4e860140b94a2634e9153e8ee71ca3c0ae0b71918f41"
+  }
+ },
+ "sig": "Nku9PM6DHoM3DMTXbSaH9rKvB3Do/ESsBe5w4yltOUs2Hx9Cv/JKGsJEwojJOadHjrScd80ow576xz6CTYEnBw=="
+}
