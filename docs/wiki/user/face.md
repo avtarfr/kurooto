@@ -286,7 +286,12 @@ elsewhere.
 - **What it never keeps:** the camera's frames (looked at in memory and dropped), the preview (made in memory for the
   Face page), and anything of other people: a stranger's face is dropped with the frame, and only a count since start
   is kept ("faces: you 120, unsure 4, not you 9").
-- **What leaves your computer:** nothing. The one-time downloads fetch the models from `media.githubusercontent.com`
+- **What your AI may ask (0.9.0, `face.tools`, on):** the tool `kurooto_now` answers in words: at the desk or away
+  and since when ("at the desk since 14:05"), on a call or not, where Kurooto's messages reach you, Voice ID's last
+  verdict as a word ("you", "someone else", "unsure"), Brain's plan line, and the camera's state as the Face page says
+  it ("camera on: looking for you", "paused: ..."). Never a picture, who else is in view, a mood, Brain's read, tone or
+  a sense reading. The words go to the AI you picked, like any tool's answer. Off: no `kurooto_now`.
+- **What leaves your computer:** nothing else. The one-time downloads fetch the models from `media.githubusercontent.com`
   (OpenCV's model zoo), the package from PyPI and, only if you tap Get the eye model, MediaPipe's iris model from
   `storage.googleapis.com`; nothing of yours is sent.
 - **Honest limits:** without a keychain (no keychain service, starting at boot on Linux, or `KUROOTO_HOME` set) the key

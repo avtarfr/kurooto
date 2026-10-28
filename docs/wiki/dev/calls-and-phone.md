@@ -250,8 +250,11 @@ transcripts, events and answers until the computer takes them (`Calls.take_queue
   the zone named, a Live model once planned in UTC ("1:30 PM" at 17:00 IST). Voice by kind: `Calls.voice_for`.
 - Tool calls: page to `/tool`, Worker to WebSocket, `Calls.handle_request` to `Calls.run_tool`. Tools are
   `Calls.tools()`: its own (`pending_items`, `search_notes`, `read_note`, `schedule_call`, `call_now`, `hold_calls`,
-  `run_task` when Chat is on), `app.ask.call_tools()`, `core/tools.py:sync_tools`, and every enabled module's
-  `call_tools()`. With the computer off, each tool's `offline` value decides: `brief` (answered from the last pushed
+  `run_task` when Chat is on), `app.ask.call_tools()`, `core/tools.py:sync_tools`, `core/tools.py:now_tools`
+  (0.9.0, `kurooto_now` with `face.tools`), and every enabled module's `call_tools()`. (0.9.0, L125) `schedule_call`'s
+  `when` matching `FREE_WHEN` ("when I'm free", "when free", "next free") takes `_when_free()`: 10 minutes ahead when
+  `presence_forecast.free_now`, else `next_free`'s hour; with `mind.tools.on` or the forecast off, or no free hour, it
+  answers "give a time". Still `guarded="call.place"`. With the computer off, each tool's `offline` value decides: `brief` (answered from the last pushed
   brief), `queue` (done later), `needs` (the assistant says it can't).
 - `/tasks` is polled for finished jobs and approvals; `Calls.on_call` keeps `availability.set_on_call` 90 s ahead
   (`ON_CALL_S`), so nothing else rings and updates wait. The end: the page's `/transcript` (`ended: true`) clears it at

@@ -367,6 +367,13 @@ needs = "`mind.workspace.on`."
 tip = "Keep where each belief came from (said, saw, inferred, imagined) and how sure it is."
 when = "Turn it off to drop the hedging rules. `/beliefs` lists them."
 
+[s."mind.tools.on"]
+tip = "Your AI and calls can read Brain's plan, when you're likely free (in words) and your precedents; \"call me when I'm free\" works."
+what = "Three read-only tools: brain_plan (as /plan), brain_free_time (\"Likely free from 16:00\", never a chance), brain_precedents (as /precedents). schedule_call takes when \"when I'm free\" and books the forecast's hour, still asking for your Approve outside a call."
+when = "Turn it off to keep Brain's plan and forecast away from your AI."
+cost = "Those lines go to the AI you picked when it asks."
+needs = "Brain; the free-time part needs `mind.presence_forecast.on`."
+
 [s."mind.precedents.on"]
 tip = "Judgement calls between your values are asked once, then followed (off until you turn it on)."
 when = "Turn it on if you'd like fewer repeat questions. It can never unlock anything on the always-ask list."

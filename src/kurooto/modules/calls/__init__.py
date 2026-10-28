@@ -93,6 +93,10 @@ ALARM_RING_S = 300  # how long the call line and the Android app ring a wake-up 
 ON_CALL_S = 90  # a live call checks in every few seconds; this long after the last sign of it, it's over
 GEMINI_KEY = "gemini.api_key"
 ASKED_WHYS = ("", "asked", "calls.own")  # a call you asked for (or an alarm, a reminder): Brain's register leaves it be
+# (0.9.0) schedule_call's when="when I'm free": Brain's presence forecast picks the time (Calls._when_free)
+FREE_WHEN = re.compile(
+    r"^\s*(?:when(?:ever)?\s+(?:i['’]m|i am|im|they['’]re|they are)\s+free|when\s+free|next\s+free)\b", re.I
+)
 APP_LINE_SOON_MIN = 1  # a new phone app goes to the call line this soon after it's fetched
 APP_LINE_BUSY_MIN = 10  # on a call, or another deploy running: looked at again this much later
 APP_LINE_RETRY_MIN = 30  # a deploy that failed (offline, Cloudflare): tried again this much later
@@ -471,9 +475,10 @@ class Calls(Module):
 
     # ----------------------------------------------------------------------------------------- tools
     def tools(self) -> list[Tool]:
-        from kurooto.core.tools import sync_tools  # sync_status, shared with unattended AI runs
+        from kurooto.core.tools import now_tools, sync_tools  # sync_status, shared with unattended AI runs
 
         out = self._own_tools() + self.app.ask.call_tools() + sync_tools(self.app)  # + answer_question/_approval
+        out += now_tools(self.app)  # (0.9.0) kurooto_now: calls and desk Live too
         for m in self.app.enabled():
             if m.id != self.id and hasattr(m, "call_tools"):
                 try:
@@ -527,7 +532,12 @@ class Calls(Module):
                 "Call them later about something new (a reminder call). To have THIS call later (a check-in), use "
                 "change_checkin instead; used during a check-in, this moves the check-in anyway.",
                 lambda a: self._schedule_tool(a, live),
-                {"when": arg('e.g. "17:30", "tomorrow 7:00", "in 20 minutes"'), "reason": arg("what the call is for")},
+                {
+                    "when": arg(
+                        'e.g. "17:30", "tomorrow 7:00", "in 20 minutes", or "when I\'m free" (Brain\'s forecast)'
+                    ),
+                    "reason": arg("what the call is for"),
+                },
                 ("when", "reason"),
                 offline="queue",
                 hint="schedule_call calls them back later; hold_calls stops calls until a time.",
@@ -661,10 +671,18 @@ class Calls(Module):
         return clip(text, 6000) if text is not None else f'No note "{a.get("slug", "")}".'
 
     def _schedule_tool(self, a: dict, live: bool = True) -> str:
-        try:
-            at = parse_when(str(a.get("when", "")))
-        except ValueError:
-            return f"I couldn't read the time {a.get('when')!r}."
+        if FREE_WHEN.match(str(a.get("when", ""))):  # (0.9.0) "when I'm free": Brain's presence forecast
+            at = self._when_free()
+            if at is None:
+                return (
+                    "I can't tell when you'll be free (Brain's presence forecast is off or sees no free hour); "
+                    "give a time."
+                )
+        else:
+            try:
+                at = parse_when(str(a.get("when", "")))
+            except ValueError:
+                return f"I couldn't read the time {a.get('when')!r}."
         reason = str(a.get("reason") or "").strip()
         cur = self.live_call() if live else None
         if cur and cur.get("key") and self._same_call(reason, cur["reason"]):
@@ -677,6 +695,19 @@ class Calls(Module):
                     return out
             return self.schedule(at, cur["reason"], key=cur["key"], why="calls.own")
         return self.schedule(at, reason or "a reminder", why="calls.own")
+
+    def _when_free(self) -> dt.datetime | None:
+        """(0.9.0, mind.tools.on) The next hour Brain's presence forecast thinks you're free; in 10 minutes when you're
+        free now; None without Brain's forecast or a free hour ahead."""
+        from kurooto import mind
+        from kurooto.mind import presence_forecast as pf
+
+        if not mind.part_on(self.app, "tools") or not pf.on(self.app):
+            return None
+        if pf.free_now(self.app):
+            return now() + dt.timedelta(minutes=10)
+        nf = pf.next_free(self.app)
+        return nf[0] if nf else None
 
     def busy_with(self, key: str = "") -> str:
         """Why a new call of Kurooto's own shouldn't ring now: "a call is going on" or "a call is ringing" (one rang

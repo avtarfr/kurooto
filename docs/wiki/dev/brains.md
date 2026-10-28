@@ -292,6 +292,16 @@ answered. `fell` comes from `handed()` (step 8 above).
 - `sync_tools()`: `sync_status`, `sync_now`.
 - `core/selfdoc.py:tool(app)`: `kurooto_self` (read-only): this computer's `self.md`, or with `part=manual` the shipped
   manual. See [self-manual.md](self-manual.md).
+- `now_tools()` (0.9.0, L124, `face.tools`): `kurooto_now` (`writes=False`, so MCP marks it read-only), also in
+  `Calls.tools()` (calls, desk Live). `now_view(app)`: `desk` from the last `face_arrived`/`face_back`/`face_left`
+  event (`DESK_EVENTS`) and the watcher's `away`, `camera` = `Face.line()`, `call` from `web/tools_api.live_call`,
+  `messages_go_to` from the notifier's channels (and `notify.app_chat`), `voice_id` = `VoiceID.last_word` (a
+  `speakerid.WORDS` word), `plan` = `mind/plans.line()` (`digest_line` cached `LINE_S`). Words only (R7); guests get no
+  tools (`tools_for`). Place labels aren't built: they need the owner's yes.
+- Brain's read-only tools (0.9.0, L125, `modules/mind.py:Mind.call_tools`, `mind.tools.on`): `brain_plan`
+  (`mind/plans.view`), `brain_free_time` (`free_words`: "Likely free from 16:00" from `presence_forecast.next_free`,
+  never its chance), `brain_precedents` (`precedents.listing`). Nothing reads the read, mood, tone or the forecast of
+  him (I-11, I-14).
 - `latex_tools()` (0.9.0, `tools.latex`): `compile_latex(path)`. The source must be inside `places.read_roots`;
   `_latex_workdir` copies its folder (at most `LATEX_COPY_MAX` files/bytes, hidden files left out; else the `.tex`
   alone) into a temp dir and `modules/skills.py:compile_tex` compiles there (Tectonic `--untrusted`, else `latexmk -norc

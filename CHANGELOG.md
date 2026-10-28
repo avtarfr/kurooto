@@ -28,6 +28,12 @@
   subject and quiz or revision work go first in the queue and, when Kurooto picks the effort, one step higher; the rest
   still runs. Holding back other background AI work until the season ends is its own switch,
   `exam_season.defer_background`, off.
+- **"Am I at my desk?" gets a real answer** (`face.tools`, on). Every AI and calls get `kurooto_now`: at the desk or
+  away and since when, on a call, where messages reach you, Voice ID's last word, Brain's plan line and the camera's
+  state, in words only.
+- **Brain's plan and your free time for your AI** (`mind.tools.on`, on with Brain). Read-only `brain_plan`,
+  `brain_free_time` ("Likely free from 16:00") and `brain_precedents`; "call me back when I'm free" books the call
+  for that hour.
 
 ## 0.8.18 (2026-10-29)
 

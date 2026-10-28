@@ -87,11 +87,31 @@ register_defaults(
         "anchor_every": 1000,  # the log's head is written down every this many records (and once a day)
     },
 )
+# (0.9.0) Brain's read-only tools for every AI and calls: this week's plan, when you're likely free next (words, never
+# numbers), your precedents. Never the read, a mood, tone, the forecast of you or a sense reading
+register_defaults("mind", {"tools": {"on": True}})
 
 BACKOFF_MAX_S = 60  # a scorekeeper that keeps dying is started again at most this often
 STEADY_S = 300  # one that ran this long starts the wait from 1 s again
 END_S = 5  # it's asked to stop, and killed if it hasn't after this long
 CONFIRM_S = 7 * 86400  # Delete Brain's data works this long after it was offered
+
+
+def free_words(app) -> str:
+    """(0.9.0) Brain's presence forecast in words: "likely free from 16:00", never its chances (R7). Also what
+    schedule_call's when="when I'm free" uses (modules/calls)."""
+    from kurooto.mind import presence_forecast as pf
+
+    if not pf.on(app):
+        return "Brain's presence forecast is off (mind.presence_forecast.on)."
+    if pf.free_now(app):
+        return "Likely free now."
+    nf = pf.next_free(app)
+    if nf is None:
+        return "Not likely free in the next hours, as far as Brain can tell."
+    at = nf[0]
+    when = f"{at:%H:%M}" if at.date() == dt.date.today() else f"{at:%a %H:%M}"
+    return f"Likely free from {when}."
 
 
 class Mind(Module):
@@ -372,6 +392,37 @@ class Mind(Module):
         if not st["head"]:
             return []
         return [f"Brain's log: {st['records']:,} records, head #{st['head']} {st['hash'][:12]}."]
+
+    def call_tools(self):
+        """(0.9.0, mind.tools.on) What any AI may read of Brain: words only (R7)."""
+        if not mind.part_on(self.app, "tools"):
+            return []
+        from kurooto.modules.calls.tools import Tool
+
+        return [
+            Tool(
+                "brain_plan",
+                "Brain's suggestion for this week: hours a day per deadline or milestone, and which may be missed at "
+                "their pace. A suggestion, not a to-do.",
+                lambda a: mind_plans.view(self.app),
+                writes=False,
+                hint="For 'what should I work on this week?', call brain_plan and quote it.",
+            ),
+            Tool(
+                "brain_free_time",
+                "When they're likely free next (at the desk, not in class, not asleep, not on a call), from Brain's "
+                "presence forecast, in words.",
+                lambda a: free_words(self.app),
+                writes=False,
+                hint="For 'when am I free?', call brain_free_time; schedule_call also takes when='when I'm free'.",
+            ),
+            Tool(
+                "brain_precedents",
+                "How they settled earlier judgement calls between two of their values (their precedents).",
+                lambda a: mind_precedents.listing(self.app),
+                writes=False,
+            ),
+        ]
 
     def commands(self) -> list[Command]:
         return [

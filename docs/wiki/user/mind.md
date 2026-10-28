@@ -690,6 +690,11 @@ class. The night and Kurooto's sleep window count as not free (`mind.presence_fo
   likelier time when you aren't seen at your desk, and says "Held a call until 11:00 (you're usually free then)".
 - **Where it shows:** `/mind` gives its Brier score (lower is better) next to the baseline's, and the next hour you're
   likely free.
+- **Your AI and calls can ask (0.9.0, `mind.tools.on`, on with Brain):** the tool `brain_free_time` answers in words
+  ("Likely free from 16:00", "Likely free now"), never a chance or a number; "call me back when I'm free" books the
+  call for that hour (`schedule_call` with when "when I'm free"; it still asks for your Approve outside a call). Two more
+  read-only tools: `brain_plan` (this week's suggested hours and the milestones at risk, as `/plan` shows) and
+  `brain_precedents` (your rulings, as `/precedents` shows). Off: none of the three, and "when I'm free" asks for a time.
 
 Without the activity sense or Face presence nothing is scored and it learns nothing; classes and the night still move
 check-ins. It keeps hour-of-week counts and the last three days' outcomes in `mind-presence.json`, numbers only, on this
@@ -733,8 +738,11 @@ The log keeps **ids, kinds and numbers, never words**: never the words of a mess
 an error or anything you typed. A decision record keeps the reason Kurooto's code gave, and, when an AI made the
 decision, what the AI said about it, in at most 300 characters.
 
-Nothing of Brain leaves this computer, and it isn't in backups or Profile sync: an older copy put back would look like
-a log that was cut short. Deleting it: turn Brain off and tap **Delete Brain's data**.
+Nothing of Brain's data leaves this computer, and it isn't in backups or Profile sync: an older copy put back would
+look like a log that was cut short. Since 0.9.0 your AI may ask Brain for a few lines in words, and only these
+(`mind.tools.on`; `face.tools` for the plan line in `kurooto_now`): when you're likely free ("Likely free from 16:00"),
+this week's plan and the milestone most at risk, and your precedents. These go to the AI you picked, like any tool's
+answer; never the read, a mood, tone, its forecast of you as numbers or a sense reading. Deleting it: turn Brain off and tap **Delete Brain's data**.
 
 ## Hardened mode (optional)
 

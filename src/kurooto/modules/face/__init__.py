@@ -77,6 +77,9 @@ from kurooto.modules.face.watch import PAUSES, TRACK_FAST, TRACK_OFF, TRACK_SLOW
 if TYPE_CHECKING:
     from kurooto.app import App
 
+# (0.9.0) kurooto_now (core/tools.py): every AI can ask whether you're at the desk and since when, on a call, the
+# channel, Voice ID's last word, Brain's plan line and the camera's state: words only, never pictures or senses
+register_defaults("face", {"tools": True})
 register_defaults(
     "face",
     {
