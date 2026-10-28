@@ -26,6 +26,9 @@
 - **Your words are written out at your first pause** (`voice.listen.early`, on): if you don't go on, the turn uses
   them straight away, and a finished question ends your turn after 0.35 s of quiet instead of 0.7 s. Nothing is sent
   early, and with Voice ID's gate another voice is never written out early.
+- **Claude Code can open the pictures a job is about.** A screenshot or photo outside your notes (Interest's look
+  at your screen, a picture from the phone) was named in the request but reading it was denied every time, so the
+  answer said it couldn't see it. Each such picture is now readable for that job, and nothing else beside it.
 - **Voice language:** the settings guide now says to set `voice.listen.language`; left to be worked out on each short
   clip, an accent is often taken for another language and Kurooto's name is missed.
 - **The Chat page fills its pane.** The list of messages was a short box of about 170 px with the box to write in right

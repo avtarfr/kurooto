@@ -93,7 +93,9 @@ The user's view (choosing an AI, limits, fallbacks): [../user/ai-brains.md](../u
 - `permissions(app, task)`: `Edit(//path/**)` for every write root, `Read(//path/**)` for every read root
   (`rule_path()` converts Windows drive paths to `//c/...`), `Bash(<c>)` and `Bash(<c> *)` for agy's `COMMANDS`,
   `WebFetch`, `WebSearch`, `mcp__kurooto`, `mcp__gbrain` when applicable; `deny` always holds `Bash(kurooto)` and
-  `Bash(kurooto *)`.
+  `Bash(kurooto *)`. (0.8.17) `Task.images` that exist get `Read(//file)` for each file exactly and their folders in
+  `--add-dir` (before, a picture outside the read roots, such as Interest's screenshot in the runtime folder, was
+  named in the prompt but denied).
 - Text-only requests get `--tools ""` and no MCP config.
 - A change request (`Task.scratch` set, [architecture.md](architecture.md#scratch-folders-and-proposals)): `Edit` is
   allowed for the scratch folder only (`write_roots(app, scratch=...)`), `Edit` of the original and of every usual

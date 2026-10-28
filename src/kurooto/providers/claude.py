@@ -199,6 +199,12 @@ def permissions(app: App | None, task: Task) -> tuple[dict, list[str]]:
             deny += [f"Edit({rule_path(scratch)}/**/{pat})" for pat in SECRETS]
     elif task.cwd:  # no app (tests): the folder it runs in
         allow += [f"Read({rule_path(task.cwd)}/**)"]
+    # (0.8.17) the pictures the job is about (Task.images: a screenshot Interest asked about, a photo from the phone):
+    # those files exactly, and their folder so Claude Code can reach them. They were only named in the prompt, so
+    # reading them was denied in every unattended run
+    pics = [Path(i) for i in task.images or [] if Path(i).is_file()]
+    allow += [f"Read({rule_path(i)})" for i in pics]
+    dirs += [d for d in dict.fromkeys(i.parent for i in pics) if d not in dirs]
     for c in COMMANDS if scratch is None else [c for c in COMMANDS if c not in SCRATCH_NO]:
         allow += [f"Bash({c})", f"Bash({c} *)"]
     for f, name in safe_scripts(app) if app is not None and scratch is None else []:  # your scripts (agents.scripts)

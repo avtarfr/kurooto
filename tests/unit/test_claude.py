@@ -57,6 +57,21 @@ def test_a_run_may_write_in_notes_and_read_documents_but_not_write_there(app, tm
     assert str(app.workspace) in dirs or Path(app.workspace).resolve() in [Path(d).resolve() for d in dirs]
 
 
+def test_a_job_s_pictures_can_be_read_and_nothing_else_beside_them(app, tmp_path):
+    """(0.8.17) Interest's screenshot sat outside every folder it could read: opening it was denied every time."""
+    shots = tmp_path / "interest"
+    shots.mkdir()
+    pic, other = shots / "look-1.jpg", shots / "look-0.jpg"
+    pic.write_bytes(b"\xff\xd8")
+    other.write_bytes(b"\xff\xd8")
+    cfg, dirs = permissions(app, Task(prompt="x", images=[pic]))
+    allow = cfg["permissions"]["allow"]
+    assert f"Read({rule_path(pic)})" in allow and shots in [Path(d) for d in dirs]
+    assert f"Read({rule_path(other)})" not in allow and f"Read({rule_path(shots)}/**)" not in allow
+    cfg, dirs = permissions(app, Task(prompt="x", images=[tmp_path / "gone.jpg"]))  # a file that's gone: nothing
+    assert not any("gone.jpg" in r for r in cfg["permissions"]["allow"])
+
+
 def test_no_kurooto_tools_unless_the_run_has_them(app):
     cfg, _ = permissions(app, Task(prompt="x"))
     assert "mcp__kurooto" not in cfg["permissions"]["allow"]
