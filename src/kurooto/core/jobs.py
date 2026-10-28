@@ -642,6 +642,14 @@ class Jobs:
         finally:
             _TURN.opts = old
 
+    def _conversation(self, jid: str) -> str:
+        """(0.8.17) The conversation a request is a turn of (modules/chat.py), or "" for one on its own."""
+        chat = self.app.modules.get("chat")
+        try:
+            return str(chat.conversation(jid)) if chat is not None and hasattr(chat, "conversation") else ""
+        except Exception:
+            return ""
+
     def _hook(self, jid: str, name: str, *args) -> None:
         fn = (self.hooks.get(jid) or {}).get(name)
         if fn is not None:
@@ -750,6 +758,7 @@ class Jobs:
             images=[Path(p) for p in json.loads(pics or "[]")],
             on_process=lambda pid: self._mark(jid, proc=_process(pid)),
             stop=stop,
+            session="" if guest or sc is not None else self._conversation(jid),
         )
         chain = []
         if guest:  # (voice id) the one AI it was given; no stand-ins, no last resort

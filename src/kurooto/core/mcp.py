@@ -31,6 +31,7 @@ NAME = "kurooto"
 PROTOCOLS = ("2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05")  # newest first
 ENV_URL, ENV_TOKEN = "KUROOTO_TOOLS_URL", "KUROOTO_TOOLS_TOKEN"
 ENV_JOB = "KUROOTO_JOB"  # the AI request this run belongs to, so its tool uses are counted as its steps (core/jobs.py)
+ENV_JOB_FILE = "KUROOTO_JOB_FILE"  # (0.8.17) or a file holding it: a program kept for a chat (providers/claude.py)
 # what paths() reads, so the bridge finds Kurooto's folders even when an agent program passes it a short environment
 ENV_PATHS = ("KUROOTO_HOME", "XDG_CONFIG_HOME", "XDG_STATE_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "LOCALAPPDATA")
 NOT_RUNNING = (
@@ -112,6 +113,18 @@ def path_env() -> dict:
     return {k: os.environ[k] for k in ENV_PATHS if os.environ.get(k)}
 
 
+def job_id() -> str | None:
+    """The AI request this run is working on: ENV_JOB_FILE's content when it has one (read at each use: a kept
+    program's request changes), else ENV_JOB."""
+    f = os.environ.get(ENV_JOB_FILE)
+    if f:
+        try:
+            return Path(f).read_text(encoding="utf-8").strip() or None
+        except OSError:
+            return None
+    return os.environ.get(ENV_JOB) or None
+
+
 def run_env(p: Paths) -> dict:
     """What an agent run passes to `kurooto mcp`: Kurooto's folders and, if it's running, its address and key."""
     out = path_env()
@@ -188,7 +201,7 @@ class Server:
         }
 
     def list_tools(self) -> dict:
-        jid = os.environ.get(ENV_JOB)  # a change request's tools write only in its scratch folder
+        jid = job_id()  # a change request's tools write only in its scratch folder
         r = self.bridge.request("GET", "tools" + (f"?job={urllib.parse.quote(jid)}" if jid else ""))
         tools = r[1].get("tools") if r and r[0] == 200 else None
         if not isinstance(tools, list):
@@ -216,8 +229,9 @@ class Server:
         if not isinstance(args, dict):
             return _text("The arguments must be a JSON object.", error=True)
         body = {"name": name, "args": args, "via": "mcp"}
-        if os.environ.get(ENV_JOB):
-            body["job"] = os.environ[ENV_JOB]
+        jid = job_id()
+        if jid:
+            body["job"] = jid
         r = self.bridge.request("POST", "tools/call", body)
         if r is None:
             return _text(NOT_RUNNING, error=True)

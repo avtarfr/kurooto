@@ -49,6 +49,9 @@ class Task:
     # stream (Claude Code's stream-json, an API without tools); `key` changes with each new message of the run, so a
     # message written before a tool call is told apart from the answer. Brains that can't stream never call it.
     on_text: Callable | None = None
+    # (0.8.17) the conversation this request is a turn of ("main", a phone app chat's id): a brain that keeps a program
+    # running per conversation (Claude Code, brain.claude.session) sends it there; "" is a request on its own
+    session: str = ""
 
 
 @dataclass

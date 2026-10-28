@@ -25,7 +25,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 ## Contents
 
 - [You and how it talks to you](#you-and-how-it-talks-to-you): 11 settings
-- [Your AI](#your-ai): 31 settings
+- [Your AI](#your-ai): 33 settings
 - [Messages and where they reach you](#messages-and-where-they-reach-you): 30 settings
 - [When it may interrupt you](#when-it-may-interrupt-you): 13 settings
 - [Phone calls and the call line](#phone-calls-and-the-call-line): 35 settings
@@ -305,6 +305,32 @@ How Kurooto talks to the agy program: through a pipe, or a pseudo-terminal.
 - **When to change it:** Only if agy runs but Kurooto gets no output from it (some versions buffer when piped): try
   `pty`.
 - **Depends on:** agy as your main or fallback AI.
+
+### `brain.claude.session`
+
+Keep Claude Code running between turns of a conversation, so each message doesn't start it again.
+
+Your chat with Kurooto (Telegram, the phone app's chats, voice) keeps one Claude Code program running and sends it each
+message, instead of starting it for every request, so its answers start sooner. It gets exactly the permissions, tools,
+folders and model a fresh run would, and a request that needs other ones gets its own; it remembers the conversation
+itself. It closes after `brain.claude.session_idle_min`, when your AI or this switch changes, when the chat starts over
+(`/new`) and when Kurooto stops; if it fails, that message is answered by a fresh run.
+
+- **Values:** `true` (default) or `false`. **Default:** on.
+- **When to change it:** Turn it off if a kept Claude Code misbehaves, or to have every message start Claude Code fresh
+  as before 0.8.17.
+- **Costs and what leaves this computer:** Nothing more is sent: the same messages go to Anthropic through Claude Code.
+  A kept program uses some memory while it waits (at most two).
+- **Depends on:** Claude Code as your AI (`brain.main` `claude` or `claude:<name>`).
+
+### `brain.claude.session_idle_min`
+
+Minutes a kept Claude Code waits for your next message before it closes.
+
+- **Values:** Minutes, more than 0. **Default:** `10`.
+- **When to change it:** Longer keeps it for slow conversations; shorter frees its memory sooner.
+- **Costs and what leaves this computer:** Nothing is sent; a waiting program uses memory.
+- **Depends on:** `brain.claude.session`.
 
 ### `quota.on`
 
@@ -6421,8 +6447,8 @@ When listening starts, get your AI's program ready on this computer.
 
 With Claude Code as your AI, its program is run once for its version (at most every 10 minutes), so its files are read
 from the disk then and not on your first turn; nothing is sent. With voice.listen.fast_brain `local`, the model on this
-computer answers one word so it's loaded. A running Claude Code isn't kept between turns: each request gets its own
-permissions and context, which a kept process couldn't change.
+computer answers one word so it's loaded. After your first turn, `brain.claude.session` keeps Claude Code running for
+the conversation, so later turns don't start it again.
 
 - **Values:** `true` (default) or `false`. **Default:** on.
 - **When to change it:** Turn it off if you don't want the extra start of the AI's program.

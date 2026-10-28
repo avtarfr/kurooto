@@ -10,6 +10,8 @@ needs = "Nothing: core settings. The dashboard's AI step on the setup page and `
 tip = "Minutes a request may run before it's stopped, for quick, normal and hard requests."
 [parent."brain.agy"]
 tip = "How Kurooto talks to the agy program."
+[parent."brain.claude"]
+tip = "Claude Code kept running for a conversation."
 
 [s."brain.main"]
 tip = "The AI that answers your requests and does the bigger tasks."
@@ -81,6 +83,25 @@ needs = "Dreaming with `dreaming.tune_fallbacks` on, and a `brain.fallback`."
 tip = "How Kurooto talks to the agy program: through a pipe, or a pseudo-terminal."
 when = "Only if agy runs but Kurooto gets no output from it (some versions buffer when piped): try `pty`."
 needs = "agy as your main or fallback AI."
+
+[s."brain.claude.session"]
+tip = "Keep Claude Code running between turns of a conversation, so each message doesn't start it again."
+what = """Your chat with Kurooto (Telegram, the phone app's chats, voice) keeps one Claude Code program running and sends
+it each message, instead of starting it for every request, so its answers start sooner. It gets exactly the permissions,
+tools, folders and model a fresh run would, and a request that needs other ones gets its own; it remembers the
+conversation itself. It closes after `brain.claude.session_idle_min`, when your AI or this switch changes, when the chat
+starts over (`/new`) and when Kurooto stops; if it fails, that message is answered by a fresh run."""
+values = "`true` (default) or `false`."
+when = "Turn it off if a kept Claude Code misbehaves, or to have every message start Claude Code fresh as before 0.8.17."
+cost = "Nothing more is sent: the same messages go to Anthropic through Claude Code. A kept program uses some memory while it waits (at most two)."
+needs = "Claude Code as your AI (`brain.main` `claude` or `claude:<name>`)."
+
+[s."brain.claude.session_idle_min"]
+tip = "Minutes a kept Claude Code waits for your next message before it closes."
+values = "Minutes, more than 0."
+when = "Longer keeps it for slow conversations; shorter frees its memory sooner."
+cost = "Nothing is sent; a waiting program uses memory."
+needs = "`brain.claude.session`."
 
 [s."quota.on"]
 tip = "Keep part of each AI's free limit for what you're waiting on, so background work never uses it all."

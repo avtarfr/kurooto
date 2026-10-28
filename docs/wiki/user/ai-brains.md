@@ -50,6 +50,14 @@ Nothing is saved in Claude Code's own settings, and your own Claude Code hooks, 
 `kurooto` command itself never runs from a request. Models: `brain.models.claude` (default `haiku` for quick
 requests, `sonnet` for the rest).
 
+**Claude Code kept running for a conversation (0.8.17).** Your chat with Kurooto (Telegram, the phone app, voice)
+keeps one Claude Code running between turns instead of starting it again for each message, so answers start sooner
+(no program start-up each turn) and it remembers the conversation itself. It gets exactly the permissions, tools and
+folders a fresh run would; a request with other ones (another effort or model) gets its own. It closes after 10
+minutes without a message (`brain.claude.session_idle_min`), when you change your AI, when you `/new` the chat, and
+when Kurooto stops; if it ever fails, that message is answered the old way. Off: `brain.claude.session` = false (each
+message starts Claude Code fresh, as before).
+
 **Ollama** runs models on your computer. Without a graphics card (or Apple Silicon) it's too slow to be your main
 AI model. With **Local AI models** on (see [your-computer.md](your-computer.md)), a small model on your computer answers
 the quick "how hard is this?" question and makes the notes index; your main AI model still does the real work. A small

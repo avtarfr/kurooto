@@ -481,8 +481,8 @@ needs = "`voice.listen.on`."
 tip = "When listening starts, get your AI's program ready on this computer."
 what = """With Claude Code as your AI, its program is run once for its version (at most every 10 minutes), so its files
 are read from the disk then and not on your first turn; nothing is sent. With voice.listen.fast_brain `local`, the
-model on this computer answers one word so it's loaded. A running Claude Code isn't kept between turns: each request
-gets its own permissions and context, which a kept process couldn't change."""
+model on this computer answers one word so it's loaded. After your first turn, `brain.claude.session` keeps Claude
+Code running for the conversation, so later turns don't start it again."""
 values = "`true` (default) or `false`."
 when = "Turn it off if you don't want the extra start of the AI's program."
 needs = "`voice.listen.on`."
