@@ -374,6 +374,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `exam_season.eve_at` | `"18:00"` | When the evening-before question can come. ([guide](wiki/user/settings-guide.md#examseasoneveat)) |
 | `exam_season.exam_min` | `180` | How long an exam lasts, in minutes (no calls then; the debrief comes half an hour after). ([guide](wiki/user/settings-guide.md#examseasonexammin)) |
 | `exam_season.hold_updates` | `true` | During exams, updates that aren't critical wait until the exams are over. ([guide](wiki/user/settings-guide.md#examseasonholdupdates)) |
+| `exam_season.learning_now` | `true` | /revise <course> starts with a line of its topics you're learning now (concepts another feature marked). ([guide](wiki/user/settings-guide.md#examseasonlearningnow)) |
 | `exam_season.leave_alarm` | `true` | On an exam day, an alarm to leave (a call with Phone calls, else a message). ([guide](wiki/user/settings-guide.md#examseasonleavealarm)) |
 | `exam_season.leave_min` | `45` | Minutes before the exam the leave alarm goes, unless you say a time ("leave 8:10"). ([guide](wiki/user/settings-guide.md#examseasonleavemin)) |
 | `exam_season.night_at` | `"21:30"` | When the nightly alarm check runs. ([guide](wiki/user/settings-guide.md#examseasonnightat)) |
@@ -707,6 +708,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.budget.on` | `true` | The body budget: a few things about Kurooto's own state it tries to keep level, and its drive. ([guide](wiki/user/settings-guide.md#mindbudgeton)) |
 | `mind.checkins.surprise` | `true` | The next check-in comes early when the day departs strongly from Brain's forecast. ([guide](wiki/user/settings-guide.md#mindcheckinssurprise)) |
 | `mind.console.on` | `true` | The Brain console: a dashboard page (Alt+O) and the phone's Brain view showing what the Brain decided and why. ([guide](wiki/user/settings-guide.md#mindconsoleon)) |
+| `mind.context.addons` | `true` | Let an add-on add a few short lines of its own to your AI requests, when its own switch allows it. ([guide](wiki/user/settings-guide.md#mindcontextaddons)) |
 | `mind.context.on` | `true` | Every AI request gets Brain's hints: concepts you're shaky on, and what's on its mind. ([guide](wiki/user/settings-guide.md#mindcontexton)) |
 | `mind.dream.cards` | `true` | Each night, 1 to 3 quiz cards for concepts you studied that day that are on your frontier, kept by a tap. ([guide](wiki/user/settings-guide.md#minddreamcards)) |
 | `mind.dream.cards_max` | `3` | The most dream cards a night (1 to 3). ([guide](wiki/user/settings-guide.md#minddreamcardsmax)) |
@@ -809,6 +811,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.workspace.breaks` | `true` | A winner that isn't urgent waits for a natural break: a window switch after a long stretch, a phone pickup, a session ending. ([guide](wiki/user/settings-guide.md#mindworkspacebreaks)) |
 | `mind.workspace.capacity` | `3` | How many things can be on Brain's mind at once (1 to 3). ([guide](wiki/user/settings-guide.md#mindworkspacecapacity)) |
 | `mind.workspace.cycle_s` | `30` | The least gap in seconds between two cycles (events poke it sooner). ([guide](wiki/user/settings-guide.md#mindworkspacecycles)) |
+| `mind.workspace.deep_hold` | `true` | While an add-on says you're deep in one thing, a winner waits even at a break (never past max_hold_min). ([guide](wiki/user/settings-guide.md#mindworkspacedeephold)) |
 | `mind.workspace.fold_h` | `6` | Hours a message may keep losing at the door before it goes into the evening bundle instead. ([guide](wiki/user/settings-guide.md#mindworkspacefoldh)) |
 | `mind.workspace.max_hold_min` | `90` | The longest a winner waits for a break, in minutes (unless Kurooto is asleep). ([guide](wiki/user/settings-guide.md#mindworkspacemaxholdmin)) |
 | `mind.workspace.on` | `true` | A small "now" stage that parts compete to enter; only what wins may start a message or act on its own. ([guide](wiki/user/settings-guide.md#mindworkspaceon)) |
@@ -950,6 +953,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `quiz.call_min` | `10` | Minutes a quiz call is meant to take. ([guide](wiki/user/settings-guide.md#quizcallmin)) |
 | `quiz.exam_daily` | `""` | In exam mode, a practice check-in every day at this time; empty: never. ([guide](wiki/user/settings-guide.md#quizexamdaily)) |
 | `quiz.exam_per_session` | `6` | Questions in one quiz while exam mode is on. ([guide](wiki/user/settings-guide.md#quizexampersession)) |
+| `quiz.learning_now` | `true` | A quiz session ends with one extra card on a concept you're learning now (marked by another feature). ([guide](wiki/user/settings-guide.md#quizlearningnow)) |
 | `quiz.links` | `false` | Recall cards from the links in your concept graph come by themselves. ([guide](wiki/user/settings-guide.md#quizlinks)) |
 | `quiz.links_at` | `"daily 11:00,16:00,20:00"` | When a link card may come (never during a class, focus time or the night). ([guide](wiki/user/settings-guide.md#quizlinksat)) |
 | `quiz.links_check` | `false` | A model on this computer says how close your answer to a link card came. ([guide](wiki/user/settings-guide.md#quizlinkscheck)) |
@@ -977,6 +981,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 
 | Setting | Default | What it does |
 |---|---|---|
+| `reminders.addon_buttons` | `true` | Let an add-on put its own buttons under a reminder as it fires (for example Order on Zepto under "buy milk"). ([guide](wiki/user/settings-guide.md#remindersaddonbuttons)) |
 | `reminders.places` | `false` | Location reminders: "remind me when I reach the library to …". ([guide](wiki/user/settings-guide.md#remindersplaces)) |
 
 ### `repair`
@@ -1138,6 +1143,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `study.keywords` | `{}` | Extra words per subject that count a window for it. ([guide](wiki/user/settings-guide.md#studykeywords)) |
 | `study.research_paths` | `[]` | Words or folders whose windows count as Research time. ([guide](wiki/user/settings-guide.md#studyresearchpaths)) |
 | `study.sample_s` | `30` | Seconds between looks at the window you're working in. ([guide](wiki/user/settings-guide.md#studysamples)) |
+| `study.seen` | `true` | Let an add-on add minutes it saw you on a subject's topic, kept apart as "seen". ([guide](wiki/user/settings-guide.md#studyseen)) |
 | `study.timer_ends_mode` | `false` | When a focus ends, Study mode ends too, instead of starting a break. ([guide](wiki/user/settings-guide.md#studytimerendsmode)) |
 
 ### `studypack`
@@ -1213,6 +1219,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | Setting | Default | What it does |
 |---|---|---|
 | `voice.addons.chat` | `true` | Let an add-on have Kurooto chat with someone who isn't you, the guest way: no tools, none of your data. ([guide](wiki/user/settings-guide.md#voiceaddonschat)) |
+| `voice.addons.guest_name` | `true` | Let an add-on that recognises a guest name them: "Hi Sam." before the first answer, and the name to the guest's AI only when that's this computer's model. ([guide](wiki/user/settings-guide.md#voiceaddonsguestname)) |
 | `voice.addons.listen` | `true` | Let an add-on take one stretch of speech at a time through the microphone (written out here, never sent). ([guide](wiki/user/settings-guide.md#voiceaddonslisten)) |
 | `voice.audio.backend` | `"auto"` | How Kurooto plays and records sound: PipeWire's own tools, or the PortAudio library inside Kurooto. ([guide](wiki/user/settings-guide.md#voiceaudiobackend)) |
 | `voice.listen.after_speak_s` | `6` | Seconds after it spoke during which a question counts as an answer to it. ([guide](wiki/user/settings-guide.md#voicelistenafterspeaks)) |
