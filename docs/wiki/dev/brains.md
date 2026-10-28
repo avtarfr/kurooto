@@ -360,6 +360,13 @@ at `kurooto_self` / `reserve/self.md` for questions about Kurooto itself; a requ
 requests also end with one register line (`core/persona.py:register_line`, marked `[Reply style]`, left out of chat
 history by `strip_register`).
 
+Rule-made words (0.9.0, `persona.templates`, on): `persona.address(app)` (the card's `call_me`, "" when off) and
+`persona.template(app, text)` (the avoid line read for what a template can honour, `AVOID`: "exclamation" turns `!`
+into `.`, "emoji" strips emoji; punctuation only, never a part dropped). Used by `face/greet.py:compose(name=...)`
+(only with nobody in view: the arrival's `others` and `nearby.others`; the name doesn't count toward `MAX_CHARS`),
+`alarm.up` and the check-in messages (`checkins._worded`; no name there, since the phone's `CardRules.java` reads the
+"Evening check-in: " start).
+
 ## Adding a brain
 
 1. Subclass `Brain` in a new `providers/<name>.py`. Set `id`, `label`, `kind`. Implement `available()`, `run(task)`

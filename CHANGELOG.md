@@ -2,6 +2,11 @@
 
 ## 0.9.0 (unreleased)
 
+- **Words made by rules use your persona card** (`persona.templates`, on). The desk greeting says the name you gave
+  ("Welcome back, Sam.") while nobody else is in view, "I'm awake" answers "Good morning, Sam.", and the avoid line is
+  honoured as punctuation (no exclamation marks, no emojis) in those and in check-in messages. No part of a greeting is
+  dropped for it.
+
 - **Look to talk can centre beside the lens** (`face.camera.yaw_offset_deg`, 0). When the spot you're meant to look at
   sits beside the camera (a drawn eye next to a phone's camera), a look there counts, by the head's turn and by the
   eyes; an add-on with such a camera can set it while its camera is in use. At 0 nothing changes.

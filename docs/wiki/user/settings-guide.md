@@ -24,7 +24,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 
 ## Contents
 
-- [You and how it talks to you](#you-and-how-it-talks-to-you): 11 settings
+- [You and how it talks to you](#you-and-how-it-talks-to-you): 12 settings
 - [Your AI](#your-ai): 34 settings
 - [Messages and where they reach you](#messages-and-where-they-reach-you): 31 settings
 - [When it may interrupt you](#when-it-may-interrupt-you): 13 settings
@@ -156,6 +156,18 @@ By the message's length only: nothing changes with the time of day or partway th
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off if you want the same style of answer whatever you send. A length on your persona
   card wins over it either way.
+
+### `persona.templates`
+
+Words Kurooto makes by rules (the desk greeting, "Good morning" after "I'm awake", check-in messages) use your persona
+card's name and avoid line.
+
+The desk greeting says the name only while nobody else is in view, and the name never pushes a part out of it. The avoid
+line is honoured as punctuation: exclamation marks become full stops, emojis go; nothing they say is dropped. Check-in
+messages keep their start for the phone's card, so they take the avoid line only.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you'd rather the rule-made words stay exactly as they were.
 
 ### `persona.boundaries`
 

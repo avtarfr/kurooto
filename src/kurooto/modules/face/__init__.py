@@ -63,7 +63,7 @@ import time
 from collections import deque
 from typing import TYPE_CHECKING
 
-from kurooto.core import nearby
+from kurooto.core import nearby, persona
 from kurooto.core.biometric import Locked, TemplateStore, load_impostors
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jsave
@@ -1053,7 +1053,9 @@ class Face(Module):
             first_today=self.greets().get("day") != t.date().isoformat(),
             with_others=str(self.setting("greet.with_others") or "skip"),
             talk=talk,
+            name="" if others or nearby.others(self.app) else persona.address(self.app),  # (0.9.0) alone in view only
         )
+        text = persona.template(self.app, text)  # (0.9.0, persona.templates) the avoid line, as punctuation
         v = self.app.modules["voice"]
         spoken, opened = v.greet(text, float(self.setting("greet.listen_s") or 12), talk=talk)
         if not spoken:

@@ -358,6 +358,10 @@ going wrong: True. Greeting counts (day, n, last) live in `face.json`'s `greets`
 now`, `last_reply = text`, and a per-invite `close_s` put back when it closes. Rules 7 (open portal, a question or
 request) and 8 (a yes or no after a question) then apply; anything not addressed closes it.
 
+Name (0.9.0, `persona.templates`): `Face.greet` passes `name=persona.address(app)` unless the arrival saw others or
+`nearby.others(app)`; `compose` makes "Welcome back, Sam." and measures `MAX_CHARS` without the name, then
+`persona.template` applies the avoid line as punctuation.
+
 ## Learning
 
 `Watcher` keeps a candidate from an arrival's frames when the frame is enrolment-grade (blur ≥ 60, 50 ≤ mean ≤ 210,

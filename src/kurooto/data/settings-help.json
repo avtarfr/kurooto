@@ -636,6 +636,7 @@
 "persona.call_me": "What the AI calls you: a nickname, your first name, or nothing.",
 "persona.length": "How long answers should be, in your own words.",
 "persona.register": "A short message gets a short answer, a voice note a spoken-style one.",
+"persona.templates": "Words Kurooto makes by rules (the desk greeting, \"Good morning\" after \"I'm awake\", check-in messages) use your persona card's name and avoid line.",
 "persona.tone": "The tone you want answers in, in your own words.",
 "power.on_battery": "What Kurooto does on battery: put off heavy work, carry on as usual, or pause.",
 "privacy.allow_hosts": "More hosts Kurooto may reach, besides its list and the addresses you set up yourself.",

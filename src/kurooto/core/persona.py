@@ -40,6 +40,9 @@ register_defaults(
         "avoid": "",  # persona card: things to avoid, e.g. "emojis, exclamation marks, motivational lines"
         "register": True,  # a short message gets a short answer, a voice note a spoken-style one (by length only)
         "boundaries": True,  # health, relationship and money decisions: not Kurooto's to make; it points to a person
+        # (0.9.0) words made by rules (the desk greeting, the check-in and alarm openers) use your card too: its name
+        # (spoken only when nobody else is in view) and its avoid line as punctuation, never dropping what they say
+        "templates": True,
     },
 )
 
@@ -254,6 +257,39 @@ def command(app: App, arg: str) -> str:
     c, dropped = save(app, values)
     said = "Saved. " + "; ".join(f"{label}: {c[k] or '(empty)'}" for k, label, _ in FIELDS if k in values) + "."
     return said + (" " + dropped_text(dropped) if dropped else "")
+
+
+# ------------------------------------------------------------------------------------- rule-made words
+# The avoid line, read for what rule-made text can honour by itself: (what the line mentions, how the text changes).
+# Punctuation only: a template never loses a part (what's next, what waits, a deadline) for the avoid line.
+EMOJI = re.compile("[\U0001f000-\U0001faff\u2600-\u27bf\ufe0f]")
+AVOID = (
+    (re.compile(r"exclamation", re.I), lambda t: t.replace("!", ".")),
+    (re.compile(r"emoji", re.I), lambda t: re.sub(r"\s{2,}", " ", EMOJI.sub("", t)).strip()),
+)
+
+
+def templates_on(app: App) -> bool:
+    return bool(app.settings.get("persona.templates", True))
+
+
+def address(app: App) -> str:
+    """(persona.templates) What rule-made words call you: the card's call_me, or "" (off, or no name on the card)."""
+    if not templates_on(app):
+        return ""
+    return card(app)["call_me"][:40]
+
+
+def template(app: App, text: str) -> str:
+    """(persona.templates) Rule-made text with the card's avoid line applied as punctuation (AVOID); unchanged when
+    off or when the line asks nothing a template can do."""
+    if not text or not templates_on(app):
+        return text
+    avoid = card(app)["avoid"]
+    for rx, change in AVOID:
+        if avoid and rx.search(avoid):
+            text = change(text)
+    return text
 
 
 # ------------------------------------------------------------------------------------------- boundaries

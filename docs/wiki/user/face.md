@@ -226,7 +226,9 @@ When you arrive, Kurooto says, in about three sentences, through your speakers:
 ("Morning." the first time a day before noon.) What it mentions is `face.greet.say`: what's next today, how many
 questions and approvals wait (never what they say), one deadline due within 24 hours, and how many messages wait for
 the evening (`held`, off by default). It's made by rules on your computer: no AI request, and it's never sent to
-Telegram, your phone or your AI.
+Telegram, your phone or your AI. With "what to call you" on your [persona card](teaching-kurooto.md#your-persona-card)
+(0.9.0, `persona.templates`), it starts "Welcome back, Sam." while you're alone in view; the name never pushes a part
+out of the greeting.
 
 Then the conversation opens for 12 seconds (`face.greet.listen_s`), like after you'd said "Kurooto": "what's next?"
 or "yes" goes to your AI without saying its name. Chatter nearby closes it at once and isn't sent. That needs Voice

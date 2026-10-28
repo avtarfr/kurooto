@@ -9,6 +9,10 @@ in "awaiting" mode, so "what's on today?" or "yes" goes to your AI without its n
     held      how many messages wait for the evening (never what they say)
     ending    "Want to go through them?" when something waits and the conversation will open
 
+Your name (0.9.0, persona.templates): with "what to call you" on your persona card, the opening carries it ("Welcome
+back, Sam.") only while nobody else is in view; it doesn't count toward the 220 characters, so it never pushes a part
+out. The card's avoid line applies as punctuation only (core/persona.py:template).
+
 Someone else in view (face.greet.with_others): skip (the default: no greeting at all), short ("Welcome back." only,
 no conversation), or full. Class and deadline names are never spoken in front of someone else unless you chose full.
 
@@ -58,11 +62,15 @@ def compose(
     first_today: bool = False,
     with_others: str = "skip",
     talk: bool = True,
+    name: str = "",
 ) -> tuple[str, list[str]]:
-    """The greeting's text and the names of the parts said (the event carries the names, never the text)."""
+    """The greeting's text and the names of the parts said (the event carries the names, never the text). name: what
+    to call you, said only with nobody else in view and not counted toward MAX_CHARS."""
     opening = "Morning." if first_today and now.hour < 12 else "Welcome back."
     if others and with_others != "full":
         return "Welcome back.", []
+    named = f"{opening[:-1]}, {name.strip()}." if name.strip() and not others else opening
+    extra = len(named) - len(opening)
     said: list[tuple[str, str]] = []
     for p in parts or ():
         if p == "next":
@@ -88,13 +96,13 @@ def compose(
     waits = any(p in ("waiting", "held") for p, _ in said)
     ending = " Want to go through them?" if waits and talk else ""
     while said:
-        text = " ".join([opening, *[t for _, t in said]]) + ending
-        if len(text) <= MAX_CHARS:
+        text = " ".join([named, *[t for _, t in said]]) + ending
+        if len(text) - extra <= MAX_CHARS:
             return text, [p for p, _ in said]
         said.pop()  # the last part goes first
         waits = any(p in ("waiting", "held") for p, _ in said)
         ending = " Want to go through them?" if waits and talk else ""
-    return opening, []
+    return named, []
 
 
 def may_greet(app: App, face, others: bool, now: dt.datetime | None = None) -> tuple[bool, str]:
