@@ -32,8 +32,12 @@ if TYPE_CHECKING:
     from kurooto.modules.voice import Speaker
 
 # ---------------------------------------------------------------------------------------------------- timing
-STAMPS = ("text", "gate", "sent", "start", "first_text", "answer", "ack", "audio", "play")
-SHOWN = (("text", "words"), ("gate", "decided"), ("sent", "sent"), ("first_text", "first words from the AI"),
+# (0.8.17) between "gate" and "sent": "taken" (handed to the routing), then App.handle's own steps (Incoming.mark):
+# "mind" (Brain's hooks), "addon_intents" (an add-on's intent classifier), "intents" (Kurooto's own)
+STAMPS = ("text", "gate", "taken", "mind", "addon_intents", "intents", "sent", "start", "first_text", "answer", "ack",
+          "audio", "play")  # fmt: skip
+SHOWN = (("text", "words"), ("gate", "decided"), ("taken", "handed on"), ("addon_intents", "add-on intents"),
+         ("intents", "intents"), ("sent", "sent"), ("start", "AI started"), ("first_text", "first words from the AI"),
          ("audio", "first sound made"), ("play", "playing"))  # fmt: skip
 KEEP = 20  # turns the medians are taken over
 
@@ -104,6 +108,8 @@ def tone(sr: int = ACK_RATE) -> bytes:
 
 # ---------------------------------------------------------------------------------------------- streaming
 BOUNDARY = re.compile(r"(?<=[.!?])\s+|\n+")
+CLAUSE = re.compile(r"(?<=[,;:])\s+")  # (0.8.17) before anything is said, a clause this far in may go first
+CLAUSE_MIN = 20  # characters
 REST = "The rest is on screen."
 
 
@@ -145,7 +151,10 @@ class Stream:
                 return
             self.text = text
             done, rest = text[: self.used], text[self.used :]
-            for end in reversed([m.end() for m in BOUNDARY.finditer(rest)]):
+            ends = [m.end() for m in BOUNDARY.finditer(rest)]
+            if not self.raw and not ends:  # nothing said yet: the first clause goes as soon as it's written (0.8.17)
+                ends = [m.end() for m in CLAUSE.finditer(rest) if m.start() >= CLAUSE_MIN][:1]
+            for end in reversed(ends):
                 if (done + rest[:end]).count("```") % 2 == 0:  # never inside a code block: up to before it
                     self.used += end
                     self._queue(rest[:end])

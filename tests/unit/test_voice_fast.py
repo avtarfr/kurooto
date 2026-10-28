@@ -190,6 +190,38 @@ def test_the_stream_waits_for_a_code_block_and_keeps_the_length_limit(sv):
     assert sum(len(p) for p in sv.engine.said[:-1]) <= 30 + len("Run this.")
 
 
+def test_the_first_clause_is_spoken_before_its_sentence_ends(sv):
+    """(0.8.17) Nothing said yet: a clause 20 characters or more in goes first; after that, whole sentences."""
+    st = fast.Stream(sv.speaker, {})
+    st.feed("k", "Well, ")
+    assert st.raw == []  # too short to go alone
+    st.feed("k", "Mostly reading about Fourier series, and ")
+    assert st.raw == ["Mostly reading about Fourier series, "]
+    st.feed("k", "Mostly reading about Fourier series, and some tea, honestly")
+    assert st.raw == ["Mostly reading about Fourier series, "]  # later clauses wait for their sentence
+    st.finish("Mostly reading about Fourier series, and some tea, honestly.")
+    assert " ".join("".join(st.raw).split()) == "Mostly reading about Fourier series, and some tea, honestly."
+
+
+def test_a_spoken_turn_s_routing_is_timed_and_skips_button_offers(sv, monkeypatch):
+    """(0.8.17) App.handle marks its steps on a spoken turn (numbers in voice_timing); the offers that are only
+    buttons (two close readings, a feature that's off) aren't waited for by voice."""
+    from kurooto.core import repair, turnon
+    from kurooto.modules.base import Incoming
+
+    offered = []
+    monkeypatch.setattr(repair, "offer", lambda *a, **k: offered.append("repair"))
+    monkeypatch.setattr(turnon, "offer", lambda *a, **k: offered.append("turnon"))
+    msg = Incoming(text="something nobody understands at all", via="voice", voice=True, timing={},
+                   respond=lambda *a, **k: None)  # fmt: skip
+    sv.app.handle(msg)
+    assert {"mind", "intents"} <= set(msg.timing) and all(isinstance(v, float) for v in msg.timing.values())
+    assert offered == []  # never offered by voice
+    typed = Incoming(text="something nobody understands at all", via="telegram", respond=lambda *a, **k: None)
+    sv.app.handle(typed)
+    assert typed.timing is None and offered  # only spoken turns are timed; typed ones still get the offers
+
+
 # --------------------------------------------------------------------------------------------- acknowledgement
 def test_the_tone_is_short_soft_and_clickless():
     pcm = fast.tone(24000)

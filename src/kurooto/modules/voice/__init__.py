@@ -1189,6 +1189,7 @@ class Voice(Module):
             respond=lambda t, buttons=None: replies.append(str(t)),
             speaker=who.decision if who is not None else "",
             speaker_by="voice" if who is not None else "",
+            timing={},
         )
         self._ack(turn)
         if who is not None and who.decision != "owner":  # (voice id) a guest's turn: kept in memory for this talk only
@@ -1210,12 +1211,15 @@ class Voice(Module):
             return answer
         stream, opts = self._turn_opts(text, turn)
         options = getattr(self.app.jobs, "turn_options", None)
+        fast.stamp(turn, "taken")
         if options is not None and opts:
             with options(**opts) as got:
                 self.app.handle(msg)
         else:
             self.app.handle(msg)
             got = {}
+        for step, at in (msg.timing or {}).items():  # (0.8.17) where the routing spent its time
+            fast.stamp(turn, step, at)
         fast.stamp(turn, "sent")
         jid = getattr(msg, "job", None)
         if stream is not None and (not jid or got.get("jid") != jid):  # answered here, or not the request it waits on

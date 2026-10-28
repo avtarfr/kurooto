@@ -406,6 +406,7 @@ class App:
         from kurooto.mind import records  # (Brain, 0.8.14) a reply closes what its own message expected
 
         records.heard(self, msg.reply_to)
+        msg.mark("mind")
         if msg.reply_to:  # (calm) you answered one of its messages (core/calm.py)
             self.calm.touched(map_kind=msg.reply_to.get("kind"), map_ref=msg.reply_to.get("ref"))
         if msg.reply_to and msg.reply_to.get("kind") == "ask":  # an answer to a question (core/ask.py)
@@ -635,6 +636,7 @@ class App:
             from kurooto.core import overlay  # (ws5) an add-on's intent classifier goes first (core/overlay.py)
 
             picked = overlay.classify(self, plain, mods, asks)
+            msg.mark("addon_intents")
             if picked:
                 self.events.emit("intent", name=picked[0].name, via="classifier")
                 self.keep.used(self.keep.intent_owner(picked[0].name, mods), "intent", msg.via)
@@ -658,6 +660,9 @@ class App:
                         self.keep.used(m.id, "intent", msg.via)
                         msg.reply(it.run(msg, slots) or "Done.")
                         return
+            msg.mark("intents")
+        if plain and not too_complex(plain) and taught != "ai" and msg.via != "voice":
+            # (0.8.17) not by voice: these are buttons it can't see, and the helper's pick is a wait for nothing
             from kurooto.core import repair  # two close readings: ask which, with both as buttons (core/repair.py)
 
             near = repair.readings(plain, mods, asks) if self.helper.ready() else []

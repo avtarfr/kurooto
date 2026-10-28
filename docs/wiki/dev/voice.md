@@ -327,7 +327,9 @@ ID 0.6 s, Claude Code at low effort 4 s, then Kokoro and an add-on output on a p
 
 - **Timing** (`voice.listen.timing`). `hear()` and `barge_turn()` make a turn dict `{"end": h.ended_at}`; `stamp()`
   records the first time of each step: `text` (written out), `gate` (decided, after `face_check`; `face_ms` is the
-  face check's own time), `sent` (after `app.handle` returned: queued), `start` (the queue's `on_start` hook, before
+  face check's own time), (0.8.17) `taken` (just before `app.handle`) and App.handle's own marks via
+  `Incoming.timing` / `Incoming.mark()` (`mind` after Brain's hooks, `addon_intents` after `overlay.classify`,
+  `intents` after Kurooto's own patterns; only a spoken turn carries `timing={}`), `sent` (after `app.handle` returned: queued), `start` (the queue's `on_start` hook, before
   `brain.run`), `first_text` (the first finished sentence from a stream, else the answer), `answer`, `ack`, `audio`
   (the first piece synthesised: `Speaker._speak` or `Stream._run`) and `play` (`Speaker._play`, just before an output's
   fn or the `Player` gets the piece). `Voice._take()` wraps `portal.take` (it sets `_turn_t` for `ask_brain` and
@@ -335,6 +337,10 @@ ID 0.6 s, Claude Code at low effort 4 s, then Kokoro and an add-on output on a p
   row in `timings` (20, memory). `speed()` / `fast.medians()` give the medians: `status()["speed"]` and the `/voice`
   line. `face_check` already returns at once when a qualifying frame is in the window (during the stretch included);
   it waits (at most FACE_AFTER_S, FACE_SLOW_S with no frame at all) only when none is there yet, and `face_ms` shows it.
+- **(0.8.17) Routing by voice** (app.py): `repair.readings`/`helper.pick`/`repair.offer` and `turnon.offer` are skipped
+  for `via == "voice"` (button offers; the helper's pick could wait up to `local_helper.timeout_s`). **First clause**
+  (`fast.Stream.feed`): while nothing is queued yet and no sentence has ended, a `,;:` boundary at least `CLAUSE_MIN`
+  (20) characters in is queued, so speech starts before the first sentence is written out.
 - **Acknowledgement** (`voice.speak.ack`: `tone`, `word`, `off`). `ask_brain` calls `_ack(turn)`; only while a
   listener runs (a heard turn), with speaking on. A `voice-ack` thread waits `ACK_WAIT_S` (0.25 s), skips when the
   turn has `first_text`/`answer` or the speaker is holding, then `Speaker.ack(pcm, sr, turn)`: a non-blocking take of

@@ -9,6 +9,9 @@
 - **Auto gain** (`voice.listen.auto_gain`, on): hearing follows the room. Speech has to stand clearly above the
   room's noise to count (`voice.listen.auto_gain_snr_db`, 6 dB), and a quiet or far voice is brought up to one level
   before it's written out. Inside Kurooto only; the system's microphone volume is never changed.
+- **Voice answers start sooner.** The first clause of an answer is spoken as soon as it's written, not after its
+  whole sentence; a spoken turn no longer waits for offers that only come as buttons (two close readings, a feature
+  that's off), including the local helper's pick; and /voice's speed line now times the routing steps by name.
 - **Voice language:** the settings guide now says to set `voice.listen.language`; left to be worked out on each short
   clip, an accent is often taken for another language and Kurooto's name is missed.
 
