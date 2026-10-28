@@ -31,6 +31,10 @@ only the time and the counts go to core/nearby.py, so Voice answers only someone
 holds the camera with hold_watch(..., core=True): a hold of Kurooto's own, not an add-on's, so face.addons.hold doesn't
 turn it off; every pause reason still applies first.
 
+Look at it to talk (0.8.17, voice.listen.look_to_talk): each frame, whether the owner's face is close and turned to the
+camera within the tight look angles (looking()) goes to core/nearby.py as a time, and Voice is told at once
+(Voice.look_tick), so a steady look opens its conversation as if its name was said.
+
 Tracking (0.8.12, face.track.on): while the camera is open and a dashboard is in sight or an add-on holds the camera,
 every face in view goes out as {"t": "face", "kind": "faces", "faces": [{id, x, y, h, owner, m}]} (at most 10 a
 second; watch.py's tracking), so the being's eye can follow anyone; watch_faces(cb) hands the same to an add-on. A
@@ -55,7 +59,7 @@ from kurooto.modules.base import Answer, Command, Incoming, Intent, Module
 from kurooto.modules.face import parts as face_parts
 from kurooto.modules.face.enrol import MINIMUM, PLAN, TARGET, TARGETS, Enrolment, Session, Vision
 from kurooto.modules.face.model import FLOOR, MODEL, STRICTNESS, Template
-from kurooto.modules.face.vision import yaw_degrees
+from kurooto.modules.face.vision import pitch_degrees, yaw_degrees
 from kurooto.modules.face.watch import PAUSES, TRACK_FAST, TRACK_OFF, TRACK_SLOW, Watcher
 
 if TYPE_CHECKING:
@@ -573,6 +577,13 @@ class Face(Module):
         elif kind == "view":  # (0.8.13) how many faces, and whether the only one is yours: memory only, never an event
             nearby.set_view(self.app, int(f.get("faces") or 0), bool(f.get("owner_alone")))
             nearby.set_facing(self.app, int(f.get("faces") or 0), self.close_facing(f.get("sizes") or []))
+            nearby.set_look(self.app, self.looking(f.get("owner")))  # (0.8.17) look to talk: a time only
+            voice = self.app.modules.get("voice")
+            if voice is not None and self.app.is_on("voice"):
+                try:
+                    voice.look_tick()  # at once, not at Voice's next second: a look should feel instant
+                except Exception as e:
+                    self._failed("telling Voice it's looked at", e)
         elif kind == "learn":
             self.learn(f.get("e"))
         elif kind == "failed":
@@ -731,6 +742,29 @@ class Face(Module):
             if yaw is not None and float(h_px) >= base and yaw_degrees(yaw) <= limit:
                 n += 1
         return n
+
+    def looking(self, owner) -> bool:
+        """(voice.listen.look_to_talk, 0.8.17) Whether the owner's face in a frame, given as (height in pixels, pose
+        yaw, pose pitch) or None, is looking at the camera: close (as close_facing), turned at most
+        voice.listen.look_yaw_deg from it, and nodded at most look_pitch_deg from your enrolment's front step (none on
+        record: the yaw alone). YuNet's five points give the head's direction, not the eyes': "your head turned to
+        it" is the nearest honest stand-in for eye contact, hence angles tighter than face_yaw_deg."""
+        if not owner or not self.app.settings.get("voice.listen.look_to_talk", True):
+            return False
+        h_px, yaw, pitch = (list(owner) + [None, None])[:3]
+        get = self.app.settings.get
+        try:
+            yaw_max = float(get("voice.listen.look_yaw_deg", 15))
+            pitch_max = float(get("voice.listen.look_pitch_deg", 15))
+        except (TypeError, ValueError):
+            yaw_max = pitch_max = 15.0
+        if yaw is None or h_px is None or not self.close_facing([(h_px, 0.0)]) or yaw_degrees(yaw) > yaw_max:
+            return False
+        t = self._template_or_none()
+        front = (t.baseline or {}).get("pitch") if t is not None else None
+        if front is None:
+            return True
+        return pitch is not None and pitch_degrees(pitch, front) <= pitch_max
 
     def _held_now(self) -> bool:
         return bool(self.holds())

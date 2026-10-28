@@ -173,8 +173,12 @@ answered only when a face close to the camera (about your desk distance, `voice.
 (`voice.listen.face_yaw_deg`) was seen while it was said. Someone on a phone call across the room isn't answered. The
 pause list below still comes first; then `voice.listen.need_face_fallback` decides (`voice`: the voice rules alone;
 `none`: nothing by voice). Only times and counts are kept, in memory. This hold isn't an add-on's, so
-`face.addons.hold` doesn't stop it; `voice.listen.need_face` or muting Voice does. While it holds the camera, a video
+`face.addons.hold` doesn't stop it; `voice.listen.need_face` with `voice.listen.look_to_talk`, or muting Voice, does. While it holds the camera, a video
 call app can't use it.
+
+**Look at it to talk** (`voice.listen.look_to_talk`, on): look straight at the camera for about a second and Voice
+starts listening as if you'd said its name ([Voice](voice.md#look-at-it-to-talk)). Only your own face counts, and only
+which way your head points (the camera can't follow your eyes). The camera is held while Voice listens for this too.
 
 **Following faces** (`face.track.on`, on): while the camera is open and a dashboard is in sight, the being's eye
 follows whoever is in view, not just you: it looks at one person and moves on to another every few seconds, sooner
@@ -350,4 +354,4 @@ All of them: [the settings guide](../../SETTINGS_GUIDE.md).
 | "template locked" | the keychain is locked (often right after boot); it waits and never makes a new key over your model |
 | No greeting | `/face` says why it's paused; the greeting needs Voice on and speaking, no call, focus or night, and 20 minutes away |
 | Voice ignores you ("no one facing it nearby") | face the camera when you talk; if you sit further back than usual, lower `voice.listen.face_near`; with a second screen beside you, raise `voice.listen.face_yaw_deg`; or turn `voice.listen.need_face` off |
-| A video call app can't get the camera while Voice listens | `/voice mute` or `/face pause 1h` for the call, or turn `voice.listen.need_face` off |
+| A video call app can't get the camera while Voice listens | `/voice mute` or `/face pause 1h` for the call, or turn `voice.listen.need_face` and `voice.listen.look_to_talk` off |

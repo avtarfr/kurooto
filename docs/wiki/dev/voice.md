@@ -179,6 +179,9 @@ and the worker are daemon threads; the coroutine never blocks the loop. `heavy =
    `you.assistant_name` and "Kurooto", through `names.py:NameMatcher`)
    -> addressed, 0.95
 5. the portal is awaiting (its name or the wake word alone opened it) -> addressed, 0.9
+   5b. (0.8.17) `ctx.looked` (a look opened the portal, nothing said since), `voices < 2` and `ctx.speaker != "guest"`:
+   addressed, 0.9, why `LOOKED` ("looked at"); when careful (`ctx.careful and ctx.unconfirmed()`) or in conversation
+   mode only if `asks(text)`, else it falls through to the rules below. Never vetoed (not `borderline`).
 6. `voices >= 2` -> chatter, 0.8 (the listener doesn't count voices yet: `Heard.voices` stays None)
 7. portal open, within `close_s`, and a question (`?`, `QUESTION`) or request (`REQUEST`) -> addressed, 0.85
 8. within `after_speak_s` of speaking, a question or request; `REPLY` words (yes/no/sure ...) only when what it said
@@ -230,6 +233,24 @@ from the switches, `Speaker.holding()`, `core/nearby.py:view()` and Voice ID's v
   `FACE_RENEW_S` (10 s); else, and in `_stop_listening`, `_face_release()` -> `release_watch(FACE_HOLD)`. `core=True`
   isn't subject to `face.addons.hold` ([face.md](face.md)). `line()` adds `face_line()`; `status()["need_face"]` has
   `{on, state, why, fallback, held, seen_s, no_face, blind}` (words and counts).
+
+- **look at it to talk** (0.8.17, `voice.listen.look_to_talk`, on; `look_dwell_s` 1, `look_yaw_deg` 15,
+  `look_pitch_deg` 15, `look_away_s` 3). The watcher's "view" carries `owner=(height px, yaw, pitch)` of the best owner
+  face (None without one); `Face.looking(owner)` is true when it's close (`close_facing([(h, 0)])`, so `face_near`),
+  `yaw_degrees(yaw) <= look_yaw_deg` and `vision.pitch_degrees(pitch, baseline.pitch) <= look_pitch_deg` (the
+  template's enrolment front step; no baseline: yaw only). `core/nearby.py:set_look(app, on)` keeps `(since, last)`:
+  the start of the current run of looking frames (None after a frame without) and the last looking frame;
+  `clear_view` breaks the run. Face's "view" handler then calls `Voice.look_tick()` at once (also run each second by
+  `background()`). `look_tick`: with `now - last <= LOOK_FRESH_S` (4) and `last - since >= look_dwell_s`, a run not
+  yet used (`_look_used`) and `_look_why() == ""` (switch, Voice on, not `blocked()`, not `_on_call()` even with
+  `listen.calls`, not `_drowsing`, `_face_on()`, the listener running) -> `Portal.look()`: `_set(True, LOOKED)`,
+  `looked = True`, `state("addressed", LOOKED)`, nothing spoken or sent; a run that finds the portal open is spent.
+  While `portal.looked`: still looking refreshes `portal.last`; not looking for `look_away_s` (and not busy) ->
+  `close("looked away")`. `looked` clears on any addressed `take()`, `invite()`, `listen_on()` and every close, so a
+  conversation going on is left to `close_s`/`follow_s`. In `hear()`, Voice ID's gate-first drop treats a look-opened
+  portal as closed (someone else's voice not calling it is written out only at the edges). `_face_hold()` holds the
+  camera for `_face()` or, with look_to_talk, `_face_on()`. `status()["look_to_talk"]`: `{on, state (off, watching,
+  open), why, dwell_s, yaw_deg, pitch_deg, away_s, opened}`; `line()` adds "looking at it opens a conversation".
 
 `Decision` carries `name` (exact/known/near), `where`, `careful` and `feats` (`features()`: rule, name flags, where,
 voices, speaker, score, since_chatter_s, faces, careful; never words).

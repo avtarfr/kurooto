@@ -306,6 +306,9 @@ def test_the_camera_is_held_while_listening_and_released(fv):
     assert f.holds() == [voice_mod.FACE_HOLD]
     fv.app.settings.set("voice.listen.need_face", False)
     fv._face_hold()
+    assert f.holds() == [voice_mod.FACE_HOLD]  # (0.8.17) look_to_talk still needs the camera looking
+    fv.app.settings.set("voice.listen.look_to_talk", False)
+    fv._face_hold()
     assert f.holds() == []
     fv.app.settings.set("voice.listen.need_face", True)
     fv._face_hold()

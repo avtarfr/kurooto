@@ -93,6 +93,16 @@ def yaw_degrees(yaw: float) -> float:
     return math.degrees(math.atan(abs(float(yaw)) / YAW_K))
 
 
+# (0.8.17) pose()'s pitch moves by about PITCH_K * tan(angle) when the head nods by that angle: a typical face's nose
+# tip stands out from the eyes more than the mouth does (enrolment's chin up or down, 0.06 off the front: 13 degrees)
+PITCH_K = 0.26
+
+
+def pitch_degrees(pitch: float, front: float) -> float:
+    """pose()'s pitch as degrees nodded away from `front` (your enrolment's front step), the side doesn't matter."""
+    return math.degrees(math.atan(abs(float(pitch) - float(front)) / PITCH_K))
+
+
 def moved(a: Face | None, b: Face | None) -> float:
     """How far the landmarks moved between two sightings, in pixels (the largest of the five)."""
     if a is None or b is None:

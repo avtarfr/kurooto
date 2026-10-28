@@ -1229,6 +1229,11 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.language` | `""` | The language you speak, e.g. `en` or `hi`; empty works it out each time. ([guide](wiki/user/settings-guide.md#voicelistenlanguage)) |
 | `voice.listen.learn_nightly` | `true` | Every night Kurooto learns from how its voice turns went: ones you carried on with, and ones you told off. ([guide](wiki/user/settings-guide.md#voicelistenlearnnightly)) |
 | `voice.listen.levels` | `true` | Show the microphone's loudness as a waveform on the dashboard (numbers only). ([guide](wiki/user/settings-guide.md#voicelistenlevels)) |
+| `voice.listen.look_away_s` | `3.0` | Looking away this long, before you've said anything, closes it again. ([guide](wiki/user/settings-guide.md#voicelistenlookaways)) |
+| `voice.listen.look_dwell_s` | `1.0` | How long you look at the camera before it starts listening: a glance shorter than this doesn't count. ([guide](wiki/user/settings-guide.md#voicelistenlookdwells)) |
+| `voice.listen.look_pitch_deg` | `15` | How straight at the camera your head must point, up or down, judged against your face at enrolment. ([guide](wiki/user/settings-guide.md#voicelistenlookpitchdeg)) |
+| `voice.listen.look_to_talk` | `true` | Look at the camera for a second and Kurooto starts listening, as if you'd said its name. ([guide](wiki/user/settings-guide.md#voicelistenlooktotalk)) |
+| `voice.listen.look_yaw_deg` | `15` | How straight at the camera your head must point, left or right: at most this many degrees (an estimate). ([guide](wiki/user/settings-guide.md#voicelistenlookyawdeg)) |
 | `voice.listen.model_judge` | `true` | When the rules can't tell whether you're talking to it, the model on this computer judges. ([guide](wiki/user/settings-guide.md#voicelistenmodeljudge)) |
 | `voice.listen.name_variants` | `[]` | More spellings of its name to accept (the common mishearings of Kurooto are built in). ([guide](wiki/user/settings-guide.md#voicelistennamevariants)) |
 | `voice.listen.need_face` | `true` | Answer only someone in front of it: a face close to the camera and facing it while they speak. ([guide](wiki/user/settings-guide.md#voicelistenneedface)) |
