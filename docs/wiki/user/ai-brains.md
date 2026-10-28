@@ -221,7 +221,8 @@ answer.
 **What it may read and write** (the same for Kurooto's own tools, agy and Claude Code):
 
 - **Read:** your notes folder; your Documents, Downloads and Screenshots folders; Kurooto's copies of Classroom (course
-  files) and mail (the digest's batches). Hidden files and folders (like `.git`) are left out, and a link leading
+  files) and mail (the digest's batches); the files you attached on the dashboard's Chat page (0.9.0, once there are
+  any). Hidden files and folders (like `.git`) are left out, and a link leading
   anywhere else is refused.
 - **Write:** your notes folder, the folder Classroom's course files go to, and (with Your add-ons on) your add-ons'
   `skills/`. Text files only (`.md`, `.txt`, `.tex`, `.bib`, `.csv`, `.json`, `.yaml`...). Documents and Downloads

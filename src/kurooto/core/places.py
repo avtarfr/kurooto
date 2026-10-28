@@ -5,7 +5,8 @@ it may write in its own scratch folder only (core/scratch.py; write_roots(app, s
 the original. What it wrote reaches your files only as a proposal you apply (core/proposals.py).
 
 Reading: your notes folder, Kurooto's copies of Classroom and mail (its data folders), your Documents and Downloads,
-and your Screenshots folder if there is one. Writing: your notes folder (all of it), your files folder (files.folder,
+your Screenshots folder if there is one, and (0.9.0) the files you attached on the dashboard's Chat page once there are
+any (chat_files below). Writing: your notes folder (all of it), your files folder (files.folder,
 if you set one), the folder Classroom's course files go to, and your add-ons' skills/ when "Your add-ons" is on (never
 the skills Kurooto ships, which updates replace). Documents and Downloads stay read-only. Each is the real folder on
 this OS (Windows' known folders, which OneDrive may have moved; Linux's XDG user dirs), as an absolute path.
@@ -107,6 +108,19 @@ def files_folder(app: App) -> Path | None:
     return Path(os.path.abspath(root)) if root else None
 
 
+def chat_files(app: App) -> Path:
+    """(0.9.0) Where files you attach on the dashboard's Chat page are kept: Kurooto's own state, never your notes
+    (web/chat_api.py)."""
+    return Path(os.path.abspath(app.paths.state / "chat-files"))
+
+
+def _attached(app: App) -> list[Path]:
+    """The Chat page's attachments folder, while dashboard.chat_attach is on and once something was attached: agy's
+    allow-list is agreed once (providers/agy.py), so it isn't asked again of everyone who never attaches a file."""
+    d = chat_files(app)
+    return [d] if app.settings.get("dashboard.chat_attach") is not False and d.is_dir() else []
+
+
 def write_roots(app: App, scratch: Path | None = None) -> list[Path]:
     """Every folder the AI may write in, absolute, without repeats. A change request (core/scratch.py) may write in
     its scratch folder and nowhere else: then that's the one folder."""
@@ -138,6 +152,7 @@ def read_roots(app: App, extra: list[Path] | tuple = ()) -> list[Path]:
         user_folder("documents"),
         user_folder("downloads"),
         screenshots(),
+        *_attached(app),  # (0.9.0) files you attached on the dashboard's Chat page, for the AI you sent them to
     ]
     roots += write_roots(app)  # what it may write, it may read
     roots += list(extra)

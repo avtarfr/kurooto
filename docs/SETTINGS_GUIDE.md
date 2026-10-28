@@ -289,6 +289,12 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `commitments.items` | `[]` | Your regular commitments (the gym, a shift, a standup), each on its days and hours. ([guide](wiki/user/settings-guide.md#commitmentsitems)) |
 | `commitments.no_calls` | `true` | No calls while a commitment is on. ([guide](wiki/user/settings-guide.md#commitmentsnocalls)) |
 
+### `dashboard`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `dashboard.chat_attach` | `true` | On the Chat page: paste a picture (Ctrl+V), drop files or pick them with the paperclip to send with a message. ([guide](wiki/user/settings-guide.md#dashboardchatattach)) |
+
 ### `date_offers`
 
 | Setting | Default | What it does |

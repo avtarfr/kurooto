@@ -439,16 +439,17 @@ class PhoneChat:
         to_id = str(fields.get("reply") or fields.get("to") or "")
         return self._yours(mid, sid, text, to_id, path, sent, bool(fields.get("voice")) and path is not None)
 
-    def typed(self, text: str, session: str = "", reply: str = "") -> tuple[int, dict]:
+    def typed(self, text: str, session: str = "", reply: str = "", files: list | None = None) -> tuple[int, dict]:
         """A message typed on the dashboard's Chat page (web/chat_api.py, behind the dashboard's key): handled exactly
-        as one typed in the app (the same session, its AI context, replies), and your phones see it as yours."""
+        as one typed in the app (the same session, its AI context, replies), and your phones see it as yours. files
+        (0.9.0): [(path, card)] attached on the page (chat_api.attached), sent with it as a phone's file is."""
         sid = self.sessions.norm(session)
         if sid is None or (sid != MAIN and self.sessions.get(sid) is None):
             return 404, {"ok": False, "note": "There's no such chat."}
         text = str(text or "").strip()[:TEXT_MAX]
-        if not text:
+        if not text and not files:
             return 400, {"ok": False, "note": "The message was empty."}
-        return self._yours(uuid.uuid4().hex[:16], sid, text, str(reply or ""), on="dashboard")
+        return self._yours(uuid.uuid4().hex[:16], sid, text, str(reply or ""), on="dashboard", more=files or [])
 
     def press(self, mid: str, n) -> tuple[int, dict]:
         """A button under one of Kurooto's messages, tapped on the dashboard's Chat page: as a tap in the app."""
@@ -459,9 +460,11 @@ class PhoneChat:
         return [self.public(m) for m in self._load() if (m.get("session") or MAIN) == sid]
 
     def _yours(self, mid: str, sid: str, text: str, to_id: str, path: Path | None = None, sent: dict | None = None,
-               voice: bool = False, on: str = "") -> tuple[int, dict]:  # fmt: skip
+               voice: bool = False, on: str = "", more: list | None = None) -> tuple[int, dict]:  # fmt: skip
         """Your message (from the app, or the dashboard's Chat page: on="dashboard"): kept, sent to your phones, and
-        handled like a Telegram message in its chat."""
+        handled like a Telegram message in its chat. path and sent: the file a phone shared with it; more: [(path,
+        card)], the files attached on the dashboard (the message's `file` is the first, as the app shows one, and
+        `files` lists them all when there are more)."""
         to = self._find(to_id)
         reply_to = {"kind": to["_map"][0], "ref": to["_map"][1]} if to and to.get("_map") else None
         mine = {"id": mid, "from": "you", "text": text, "at": int(time.time()), "session": sid}
@@ -470,12 +473,20 @@ class PhoneChat:
             mine["re"] = to["id"]
             quote = {"id": to["id"], "from": to.get("from", ""), "text": _clip(to.get("text") or "", QUOTE_MAX)}
             mine["quote"] = quote
-        if path is not None:
-            mine["file"] = {
-                "name": _clip(sent.get("name") or path.name, 120),
-                "size": int(sent.get("size") or path.stat().st_size),
-                "mime": str(sent.get("mime") or mimetypes.guess_type(path.name)[0] or "")[:100],
+        files = [(path, sent or {})] if path is not None else []
+        files += list(more or [])
+        cards = [
+            {
+                "name": _clip(c.get("name") or p.name, 120),
+                "size": int(c.get("size") or p.stat().st_size),
+                "mime": str(c.get("mime") or mimetypes.guess_type(p.name)[0] or "")[:100],
             }
+            for p, c in files
+        ]
+        if cards:
+            mine["file"] = cards[0]
+        if len(cards) > 1:
+            mine["files"] = cards
         self._add(mine)
         self._push(mine)  # your other phones see it too
         self.sessions.touch(sid, mine)
@@ -497,16 +508,16 @@ class PhoneChat:
                 respond(f"Couldn't make out that voice note: {e}"[:300])
                 return 200, {"ok": True, "id": mid, "said": said}
             respond(f"Heard: {heard[:600]}")
-            text, path = (text + "\n" + heard).strip(), None
+            text, files = (text + "\n" + heard).strip(), []
 
         self.app.events.emit(
-            "phone_chat", chars=len(text), **({"files": 1} if path is not None else {}), **({"on": on} if on else {})
+            "phone_chat", chars=len(text), **({"files": len(files)} if files else {}), **({"on": on} if on else {})
         )
         inc = Incoming(
             text,
             via="app",
             message_id=PREFIX + mid,
-            files=[path] if path is not None else [],
+            files=[p for p, _ in files],
             reply_to=reply_to,
             voice=voice,
             respond=respond,
@@ -596,7 +607,7 @@ class PhoneChat:
         else:  # msg.delete: everywhere (this phone alone is the app's own)
 
             def change(x):
-                for k in ("file", "quote", "buttons"):
+                for k in ("file", "files", "quote", "buttons"):
                     x.pop(k, None)
                 x.update(text="", deleted=True)
 

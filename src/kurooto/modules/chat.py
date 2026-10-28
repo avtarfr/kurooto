@@ -149,7 +149,12 @@ class Chat(Module):
         title = msg.text.strip()[:80] or (msg.files[0].name if msg.files else "")
         waits = helper is not None and helper.holds() and not helper.here(self._main())  # said here, not again
         jid = self.app.jobs.submit(
-            prompt, title=title, reply_to=None if quiet else msg.message_id, quiet=quiet, offline=waits
+            prompt,
+            title=title,
+            reply_to=None if quiet else msg.message_id,
+            quiet=quiet,
+            offline=waits,
+            images=self._pictures(msg.files) or None,
         )
         msg.job = jid
         self.mine = {*list(self.mine)[-50:], jid}
@@ -158,6 +163,24 @@ class Chat(Module):
         if not terminal:
             self.turns = {**dict(list(self.turns.items())[-50:]), jid: sid or MAIN}
         return helper.waiting_line() if waits else "On it."
+
+    def _pictures(self, files) -> list:
+        """(0.9.0) The pictures among the files sent with a message (a photo on Telegram or from the phone, one attached
+        on the dashboard's Chat page), for the request's Task.images: an API brain gets them with the request and
+        Claude Code may open exactly those; agy opens them where the prompt says. None when your AI says it can't read
+        pictures (an Ollama model without vision would refuse the whole request)."""
+        from pathlib import Path
+
+        from kurooto.providers.openai_compat import PICTURE_TYPES
+
+        pics = [Path(f) for f in files or [] if Path(f).suffix.lower() in PICTURE_TYPES and Path(f).is_file()]
+        if not pics:
+            return []
+        try:
+            ok, _ = providers.sees(self.app)
+        except Exception:
+            ok = None
+        return pics if ok is not False else []
 
     def _heard_line(self, msg: Incoming) -> str:
         """(0.8.17) How a spoken turn came: the desk's microphone, Voice ID's verdict, what Face presence sees now."""

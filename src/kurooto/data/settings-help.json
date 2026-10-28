@@ -150,6 +150,7 @@
 "commitments.hooks": "Words of yours that start a hold: \"gym\" alone holds calls for 90 minutes.",
 "commitments.items": "Your regular commitments (the gym, a shift, a standup), each on its days and hours.",
 "commitments.no_calls": "No calls while a commitment is on.",
+"dashboard.chat_attach": "On the Chat page: paste a picture (Ctrl+V), drop files or pick them with the paperclip to send with a message.",
 "date_offers.remind_min": "An event you tap Add on (from a photo, mail or a shared calendar) is reminded this long before.",
 "deadlines.call": "The urgent nudge is a call, when Phone calls is on (a message when no call fits before it).",
 "deadlines.exam_mode_days": "Days before a quiz or exam that exam mode starts (more practice, revision); 0 turns it off.",

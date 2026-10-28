@@ -47,7 +47,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
-- [Dashboard and terminal](#dashboard-and-terminal): 27 settings
+- [Dashboard and terminal](#dashboard-and-terminal): 28 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 26 settings
 - [Face presence](#face-presence): 34 settings
@@ -7256,6 +7256,23 @@ pages and its live messages stop.
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off if you only use the chat on your phone or Telegram.
 - **Depends on:** Phone calls on (the chat comes with the phone app).
+
+### `dashboard.chat_attach`
+
+On the Chat page: paste a picture (Ctrl+V), drop files or pick them with the paperclip to send with a message.
+
+They wait above the box with a small preview and × to take one off, then go with your next message: up to 10 at a time,
+20 MB each. Your AI gets them as a photo or a file sent on Telegram: told where each is, a picture as a picture. A
+picture is told by its bytes, not its name. They're kept in Kurooto's state folder (`chat-files/`), never in your notes,
+until you delete them; your phones see each file's name and size only. Off, the paperclip goes, nothing more can be
+attached, and the AI no longer reads that folder.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you never send files from the dashboard, or don't want them kept on this
+  computer.
+- **Costs and what leaves this computer:** A file you attach goes to the AI you picked with that message, as a file sent
+  on Telegram does.
+- **Depends on:** `look.chat_page` on, and Phone calls (the chat comes with the phone app).
 
 ### `look.settings_guide`
 

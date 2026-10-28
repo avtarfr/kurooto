@@ -47,6 +47,7 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | Telegram | your messages to the bot, its replies, files you send it | Telegram, to your own bot |
 | Questions and approvals | each question or approval, wherever Kurooto reaches you; open ones are also in the brief your call line keeps | Telegram and your paired phones; desktop notifications stay here |
 | Chat with your AI | what you ask; notes it reads to answer; what its tools return; your profile's "In brief" part, your how-to-help-me note and your persona card (empty unless you write one) | the AI you picked |
+| Dashboard: files you attach on the Chat page (0.9.0) | the pictures and files you paste, drop or pick, with that message; your phones get only each file's name and size | the AI you picked |
 | Setup page: Try it now | what you type that isn't an instant request, like a Chat message; nothing goes to Telegram or your phone | the AI you picked |
 | Voice notes | the recordings | Google (Gemini, your key) |
 | Face presence (off; nothing watches until you enrol) | nothing: the camera's frames are looked at in memory on this computer and dropped; someone else's face is only counted; only your template (numbers, never a picture) is kept, encrypted, and never in backups, Profile sync or diagnostics. Never a lock. See [Face presence](face.md#privacy) | nowhere |
@@ -317,6 +318,8 @@ unless `backups.secrets` is on, and it sends to Anthropic like your usual one.
   earlier versions of skills it changed (`learning/before/`). What's kept of conversations stays until you
   set how long:
   [How long it's kept](#how-long-its-kept).
+- **Files you attach on the dashboard's Chat page** (0.9.0) are in the state folder's `chat-files/`, readable only by
+  your user account, until you delete them (they aren't your notes, and `privacy.keep_days` doesn't remove them).
 - **The memory ledger** (`ledger.db` in the state folder) holds what Kurooto remembers, encrypted with a key in your
   keychain: [The memory ledger](#the-memory-ledger).
 - **The data folder** holds the About you reports (never synced), Classroom's downloaded files, books and their text,
@@ -464,7 +467,7 @@ More on each: [updates-and-backups.md](updates-and-backups.md). Before you share
 ## What the AI may read and write on your computer
 
 - **Read:** your notes folder; your Documents, Downloads and Screenshots folders; Kurooto's copies of Classroom and
-  mail; the reserve. Hidden files and folders (like `.git`) are left out, and a link that leads elsewhere is refused.
+  mail; the reserve; the files you attached on the dashboard's Chat page (0.9.0). Hidden files and folders (like `.git`) are left out, and a link that leads elsewhere is refused.
 - **Write:** your notes folder, Classroom's course files folder, and (with add-ons on) your add-ons' `skills/`. Text
   files only. Documents and Downloads stay read-only.
 - **Your text:** it adds notes and lines; it changes existing text only when you asked, and that change comes as a
