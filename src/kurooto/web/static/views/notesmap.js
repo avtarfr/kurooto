@@ -258,6 +258,12 @@ class Mind {
       ctx.fillStyle = rgba(col, 0.08 + (0.8 + 0.12 * this.fk) * n.a);
       ctx.beginPath(); ctx.arc(S.x, S.y, r, 0, TAU); ctx.fill();
       if (n.f > 0.02) { ctx.strokeStyle = rgba(PAL.fg, n.f); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(S.x, S.y, r + 4.5, 0, TAU); ctx.stroke(); }
+      const mg = this.mastery && this.mastery[n.id]; // (0.9.0) Brain's grade: a ring over the neighbourhood's colour
+      if (mg && mg !== "near") {
+        ctx.strokeStyle = rgba(mg === "solid" ? PAL.accent : mg === "frontier" ? PAL.peach : PAL.sand, 0.85);
+        ctx.lineWidth = mg === "frontier" ? 1.8 : 1; ctx.beginPath(); ctx.arc(S.x, S.y, r + 2.2, 0, TAU); ctx.stroke();
+        if (mg === "frontier") { ctx.lineWidth = 0.8; ctx.beginPath(); ctx.arc(S.x, S.y, r + 5.2, 0, TAU); ctx.stroke(); }
+      }
       if (this.showRecent && isNodeRecent) {
         ctx.strokeStyle = isHourRecent ? PAL.peach : rgba(col, 0.70);
         ctx.lineWidth = isHourRecent ? 1.4 : 0.9;

@@ -34,6 +34,8 @@
 - **Brain's plan and your free time for your AI** (`mind.tools.on`, on with Brain). Read-only `brain_plan`,
   `brain_free_time` ("Likely free from 16:00") and `brain_precedents`; "call me back when I'm free" books the call
   for that hour.
+- **What you know, on the notes map** (`look.notes_mastery`, on). With Brain's model of what you know on, concept
+  notes get a ring: known well, partly known, or ready to learn next; pointing at one says it in words.
 - **Brain hears goals and due dates you state** (`mind.tom.from_chat`, on with its model of you). "My goal is to
   finish the draft by Friday" and "the essay is due Monday" become rows you can see and correct in `/model`; never
   health, money or the deny-list's topics.

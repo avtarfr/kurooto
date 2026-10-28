@@ -68,7 +68,7 @@ flattened to their first value; a non-dict JSON body becomes `{}`. Anything unma
 GET (in `Api.get`): `tools`, `job?id=`, `usage?days=` (tools_api); `addons` (the add-ons by link: `linked` rows with their card and text, `kept` for Undo, `official`: the official list with what you have of each), `jobs`, `term`, `health`, `sync/status`,
 `profile`, `note?id=`, `settings`, `look`, `events` (last 80), `board` (503 without `Live`), `state` (the wizard's
 whole state, with `setup` and `calm` below), `setup` (`core/setupsteps.py:view`: each step's status, `resume`, `left`), `phone`, `power`, `aboutyou/profile`, `aboutyou?source=`, `persona`, `research`, `progress`, `ask`, `ask/<id>`,
-`voice` (`modules/voice:Voice.status`), `today` (`core/actions.py:today`), `study?subject=` (`core/actions.py:study_view`), `morning`
+`voice` (`modules/voice:Voice.status`), `today` (`core/actions.py:today`), `study?subject=` (`core/actions.py:study_view`), `notes/mastery` (0.9.0: `notes_mastery`, the map's rings), `morning`
 (`modules/daily.py:morning_view`), `mail/confidential?day=`, `books`, `notes/fit?folder=` (`core/notesfit.py:view`: the proposal for that folder or the notes
 folder, `in_use`, `presets`, the move to `undo`).
 

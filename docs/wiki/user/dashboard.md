@@ -236,6 +236,12 @@ once the [concept graph](notes-and-concept-graph.md) reads a book, hundreds of n
 lines, and before 0.5.19 it took every label and the map read as a list of book titles. The region names step back
 while you point at or search for a note.
 
+**What you know, on the map (0.9.0, `look.notes_mastery`, on).** With Brain's model of what you know on
+(`mind.tom.on`), concept notes get a ring over their neighbourhood's colour: green for one you know well, sand for one
+partly known, and a double peach ring for one you're ready to learn next (its prerequisites are solid). Pointing at a
+note says it in words ("Brain: ready to learn next"). It's worked out on this computer and read again every two
+minutes; off, or with Brain off, no rings.
+
 **Pointing at a note (0.6.1).** The note and the notes it links to (or that link to it) light up in full colour with
 their names raised above everything else, placed so they never overlap (up to 24 neighbours' names, the course
 pages, hubs and links you made first); everything else dims and the region names step aside. It eases in over

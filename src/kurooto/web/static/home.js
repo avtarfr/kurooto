@@ -453,7 +453,8 @@ class Notes extends Mind {
   }
   async showCard(n, pinned) {
     const card = $("#mind-card"); if (!n) { card.classList.add("hidden"); return; }
-    card.innerHTML = `<div class="h">${esc(n.title)}</div><div class="d">${esc(n.id)}</div><div>${n.deg - (n.via || 0)} links${n.via ? ` (+${n.via} from reading)` : ""} · ${n.words} words · edited ${ago(Date.now() / 1000 - (n.mtime || 0))} ago</div>` + (pinned ? '<pre>…</pre><div class="d">double-click: open it</div>' : "");
+    const mg = this.mastery && this.mastery[n.id], MG = { solid: "you know it well", started: "partly known", near: "next to what you're ready for", frontier: "ready to learn next" };
+    card.innerHTML = `<div class="h">${esc(n.title)}</div><div class="d">${esc(n.id)}</div><div>${n.deg - (n.via || 0)} links${n.via ? ` (+${n.via} from reading)` : ""} · ${n.words} words · edited ${ago(Date.now() / 1000 - (n.mtime || 0))} ago</div>` + (mg ? `<div class="d">Brain: ${MG[mg] || esc(mg)}</div>` : "") + (pinned ? '<pre>…</pre><div class="d">double-click: open it</div>' : "");
     card.classList.remove("hidden");
     if (pinned) { try { const r = await api(`note?id=${encodeURIComponent(n.id)}`); if (this.selected === n) card.querySelector("pre").textContent = (r.text || "").trim().split("\n").slice(0, 14).join("\n"); } catch { /* leave it */ } }
   }
@@ -2326,6 +2327,9 @@ window.addEventListener("resize", () => { applyLayout(); refit(); });
 
 (function main() {
   body = new Board($("#body")); mind = new Notes($("#mind"));
+  // (0.9.0, look.notes_mastery) Brain's grade of each concept rings it on the map; read again every 2 minutes
+  const mastery = () => api("notes/mastery").then((r) => { mind.mastery = r && r.on ? r.grades : null; }).catch(() => {});
+  mastery(); setInterval(() => { if (!document.hidden) mastery(); }, 120000);
   setTimeout(mountBrainPane, 0); // after the hidden panes are known (a hidden BRAIN never loads three.js)
   try { tab = localStorage.getItem("kurooto.dash.tab") || "activity"; dtab = localStorage.getItem("kurooto.dash.dtab") || "kurooto"; } catch { /* fine */ }
   if (!TABS[tab] && tab !== "terminals") tab = "activity";

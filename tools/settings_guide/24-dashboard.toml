@@ -105,6 +105,13 @@ what = "A request from one of the phone app's chats links to that chat on the Ch
 when = "Turn it off for the shorter table."
 cost = "Nothing leaves this computer."
 
+[s."look.notes_mastery"]
+tip = "The NOTES map rings concept notes by what Brain thinks you know: known well, partly, or ready to learn next."
+what = "A ring over the neighbourhood's colour (green: known well; sand: partly; double peach: ready next), and the grade in words when you point at a note. From Brain's model of what you know (`mind.tom.on`), worked out on this computer."
+when = "Turn it off for the plain map."
+cost = "Nothing leaves this computer."
+needs = "Brain with `mind.tom.on`."
+
 [s."look.study_mode"]
 tip = "The dashboard in Study mode: the notes map, the study timer and what's due (Alt+M, `/study mode`)."
 when = "Usually switched with Alt+M rather than here."
