@@ -34,15 +34,23 @@
 - **Brain's plan and your free time for your AI** (`mind.tools.on`, on with Brain). Read-only `brain_plan`,
   `brain_free_time` ("Likely free from 16:00") and `brain_precedents`; "call me back when I'm free" books the call
   for that hour.
+- **The evening check-in asks about what you said you'd do today** (`checkins.reflect_open`, on). Open threads due
+  today come up in the evening call and message; your answer ("I emailed the draft") closes them.
+- **A gentler order on a quiet day** (`checkins.follow_register`, off). With Brain's register quiet, the evening call
+  does how it went and tomorrow first, then asks once whether to go through the rest; nothing is dropped.
 - **What you know, on the notes map** (`look.notes_mastery`, on). With Brain's model of what you know on, concept
   notes get a ring: known well, partly known, or ready to learn next; pointing at one says it in words.
 - **Brain hears goals and due dates you state** (`mind.tom.from_chat`, on with its model of you). "My goal is to
   finish the draft by Friday" and "the essay is due Monday" become rows you can see and correct in `/model`; never
   health, money or the deny-list's topics.
+- **The eye looks at whoever is talking** (`face.track.speaker`, on). On the dashboard's being, while someone talks
+  the eye turns to them: to you when Voice ID says it's you, else to the face moving most.
 - **Reminders, deadlines and sleep on the bedside screen** (phone app: Settings → Bedside, on). Bedside mode shows
   today's reminders, what's due within a day and that Kurooto is asleep; locked, only how many.
 - **The computer hears when bedside mode opens** (`phone.bedside.signal`, on). A flag, no sensor; nothing acts on it
   yet unless a feature that uses it is turned on.
+- **Your time at the desk** (`face.desk_time`, off). From when Face presence saw you arrive and leave: "4 h 10 at the
+  desk today, longest 2 h 40 unbroken" in the evening check-in and the weekly summary, as your own numbers.
 
 ## 0.8.18 (2026-10-29)
 

@@ -195,6 +195,9 @@ when someone new appears or someone moves more; with one person it follows them 
 included. It only knows where each face is and how much it moves (and which one is you); it never works out who
 anyone else is. It looks up to 10 times a second then (`face.track.fps`), which costs roughly a tenth of one
 processor core while it lasts; it never opens the camera by itself. An add-on can follow faces the same way.
+While someone is talking (0.9.0, `face.track.speaker`, on), the eye looks at them: at you when Voice ID says the words
+were yours, else at the face moving most (the one talking). Only "someone is talking" and Voice ID's word reach the
+page, never the sound. Off: it moves between faces as before.
 
 **You've arrived** when it recognises you in 3 of 4 frames within 6 seconds, after at least 20 minutes with no sign of
 you (`face.greet.after_absent_min`; a locked screen isn't a sign of you). Unsure frames and other people count for
@@ -291,6 +294,9 @@ elsewhere.
   verdict as a word ("you", "someone else", "unsure"), Brain's plan line, and the camera's state as the Face page says
   it ("camera on: looking for you", "paused: ..."). Never a picture, who else is in view, a mood, Brain's read, tone or
   a sense reading. The words go to the AI you picked, like any tool's answer. Off: no `kurooto_now`.
+- **Time at the desk (0.9.0, `face.desk_time`, off):** from when it saw you arrive and leave (times only), a line in
+  the evening check-in and the weekly summary. It goes where those go (your AI reads the call's script and the
+  weekly summary): a total and the longest stretch, nothing else.
 - **What leaves your computer:** nothing else. The one-time downloads fetch the models from `media.githubusercontent.com`
   (OpenCV's model zoo), the package from PyPI and, only if you tap Get the eye model, MediaPipe's iris model from
   `storage.googleapis.com`; nothing of yours is sent.

@@ -80,6 +80,12 @@ if TYPE_CHECKING:
 # (0.9.0) kurooto_now (core/tools.py): every AI can ask whether you're at the desk and since when, on a call, the
 # channel, Voice ID's last word, Brain's plan line and the camera's state: words only, never pictures or senses
 register_defaults("face", {"tools": True})
+# (0.9.0) the being's eye looks at whoever is talking: your face when Voice ID says it's you, else the face moving
+# most; only "someone is talking" and Voice ID's word reach the page, never sound
+register_defaults("face", {"track": {"speaker": True}})
+# (0.9.0) your time at the desk, from Face presence's arrivals and departures (times only): a line in the evening
+# check-in and the weekly summary ("6 h at the desk, longest 2 h 40 unbroken"); off by default
+register_defaults("face", {"desk_time": False})
 register_defaults(
     "face",
     {
@@ -641,7 +647,8 @@ class Face(Module):
             now = time.monotonic()
             if (not faces or now - self._faces_at >= FACES_EVERY_S) and self._page_in_sight():
                 self._faces_at = now
-                self._push({"t": "face", "kind": "faces", "faces": faces})
+                spk = {"speaker": True} if self.setting("track.speaker") else {}  # (0.9.0) the eye: who's talking
+                self._push({"t": "face", "kind": "faces", "faces": faces, **spk})
             self._hand_faces(faces)
         elif kind == "seen":  # your face's place in the frame: to open dashboards only (the being's eyes), never kept
             now = time.monotonic()
@@ -1398,6 +1405,65 @@ class Face(Module):
         nearby.set_others(self.app, "face", False)
 
     # -------------------------------------------------------------------------------------------- showing it
+    # --------------------------------------------------------------------------------- time at the desk
+    DESK_KINDS = {"face_arrived": True, "face_back": True, "face_left": False}
+
+    def desk_spans(self, lo: dt.datetime, hi: dt.datetime) -> list[tuple[dt.datetime, dt.datetime]]:
+        """(0.9.0) Your stretches at the desk in [lo, hi), from Face presence's arrivals and departures (times only;
+        a stretch still going ends now). Never what it saw, only when you came and went."""
+        from kurooto.core.clock import now
+
+        end = min(hi, now())
+        marks = []
+        for e in self.app.events.tail(5000, kinds=set(self.DESK_KINDS)):
+            try:
+                t = dt.datetime.fromisoformat(e["ts"]).replace(tzinfo=None)
+            except (KeyError, ValueError):
+                continue
+            if t < end:
+                marks.append((t, self.DESK_KINDS[e["kind"]]))
+        spans, start, here = [], None, False
+        for t, came in marks:
+            if t < lo:
+                here = came  # where you were when the window opened
+                continue
+            if here and start is None:
+                start = lo
+            if came and start is None:
+                start = t
+            elif not came and start is not None:
+                spans.append((start, t))
+                start = None
+            here = came
+        if here and start is None and marks and marks[-1][0] < lo:
+            start = lo
+        if start is not None and end > start:
+            spans.append((start, end))
+        return [(a, b) for a, b in spans if b > a]
+
+    def desk_line(self, lo: dt.datetime, hi: dt.datetime, when: str = "today") -> str:
+        """(face.desk_time) "6 h at the desk today, longest 2 h 40 unbroken", or "" (off, or nothing seen)."""
+        if not self.setting("desk_time") or not self.app.is_on(self.id):
+            return ""
+        spans = self.desk_spans(lo, hi)
+        total = sum((b - a).total_seconds() for a, b in spans)
+        if total < 15 * 60:
+            return ""
+        longest = max((b - a).total_seconds() for a, b in spans)
+
+        def hm(s: float) -> str:
+            h, m = int(s // 3600), int(s % 3600 // 60)
+            return f"{h} h {m:02d}" if h and m else f"{h} h" if h else f"{m} min"
+
+        return f"{hm(total)} at the desk {when}, longest {hm(longest)} unbroken."
+
+    def weekly_lines(self) -> list[str]:
+        from kurooto.core.clock import now
+
+        t = now()
+        line = self.desk_line(t - dt.timedelta(days=7), t, "this week")
+        return [line[0].upper() + line[1:]] if line else []
+
     def line(self) -> str:
         w = self.watcher
         if not self.app.is_on(self.id):

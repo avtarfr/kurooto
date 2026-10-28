@@ -580,6 +580,14 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `_status`, `mark_done` and a ticked notes task), `threads.closed_between()` rows closed as done (not those keyed
   `deadline:`/`study:`, told from their own record), deadlines with `progress_at` in the day, study totals of
   `REFLECT_STUDY_MIN` (15) min or more per subject (one line), and classes whose after-class question is `answered`.
+  (0.9.0, L45, `checkins.reflect_open`) `open_due(day)`: open threads (`threads.open_threads`, `memory.threads`) whose
+  `due` is before the next `day_starts`, oldest due first, at most 3: a "done, later or drop?" step in the evening
+  script and a list in the evening message. Closing stays `threads.observe`: the call's transcript (`from_call`), and
+  now the evening message's reply (`_answer` calls `threads.observe(via="checkin")`), so nothing closes twice. The
+  greeting's line and the Agent plan's slot (L45's other parts) wait for the face branch's greet parts (L105).
+  (0.9.0, L43, `checkins.follow_register`, off) `_quiet_day()` (`mind/register.register == "quiet"`, rule-side):
+  the evening steps are reordered, never dropped: how it went (+ the records' line), tomorrow, "want to go through the
+  rest, or stop here?", then every other step prefixed "(If they go on)". Nothing about the register goes in the call.
   Each part fails alone (`checkin_reflect_failed`). Nothing found: no list.
 - **deadlines** (`modules/deadlines.py`): merges deadlines from manual entries, notes tasks, Classroom, the calendar,
   recurring quizzes and the term note; the hourly `deadlines:tick` chases them (24 h ping, 6 h call or urgent message,

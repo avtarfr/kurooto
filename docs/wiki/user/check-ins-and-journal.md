@@ -147,6 +147,17 @@ missed](classes-and-timetable.md#catching-up-on-a-class-you-missed)) isn't asked
 you missed it and the catch-up is on your list, and no study log is asked for it (0.9.0). **Went to ...** puts it
 back.
 
+**What you said you'd do today (0.9.0, `checkins.reflect_open`, on).** With threads on (`memory.threads`), up to three
+open threads due by the end of the day ("I'll send the draft tonight") come up in the evening call and message: "Still
+open from what you said you'd do today: send the draft. Done, later or drop?" What you answer closes them the usual
+way ("I emailed the draft to Mira"): on the call from its transcript, in a reply to the evening message from the reply. Off: not
+asked.
+
+**A quiet day (0.9.0, `checkins.follow_register`, off).** With Brain's register on and quiet today, the evening call
+asks how the day went (and says back what you did), then tomorrow, then once: "want to go through the rest, or stop
+here?" Say go on and every other step follows, the quiz offer included; nothing is dropped. The call never says why.
+Off: the usual order.
+
 **Night check-in** (3 to 5 minutes, if you turned it on): anything more for the journal, study logs still due,
 tomorrow's top priority and when to wake you (it sets the alarm), goodnight. With the night check-in off, the evening
 one asks tomorrow's priority and the wake-up time.
@@ -241,6 +252,10 @@ today's note unless you turn that off (`retro.journal`).
 - lines from other features: study hours per subject (Study tracker), research activity, crunch weeks and what to
   start next week ([Start-by dates](reminders-and-deadlines.md#start-by-dates-and-crunch-weeks));
 - **Needs a look**: what isn't working and could wait until Sunday ([your-computer.md](your-computer.md)).
+- **Time at the desk** (0.9.0, `face.desk_time`, off): with [Face presence](face.md) on, "31 h at the desk this week,
+  longest 2 h 40 unbroken", from when it saw you arrive and leave (times only). The evening check-in says the day's
+  ("4 h 10 at the desk today, longest 2 h 40 unbroken") once, as your own numbers, never as a judgement or to check
+  what you said you did.
 - **People** (`weekly.people`, on): one line about the people in your [project notes](research.md), only from
   what's logged there (minutes, "Last met", "Meets:"): who you met this week, who's next in the coming week, and
   anyone you meet regularly but haven't met for three weeks. "People (from your project notes): met Dr Okafor
