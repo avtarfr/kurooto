@@ -1,0 +1,25 @@
+{
+ "doc": {
+  "version": "0.8.17",
+  "notes": "Voice that finishes, hears over the room, answers sooner, opens when you look at it; calls survive Back; plans follow changes; messages one by one.",
+  "created": 1793201918.0731046,
+  "files": {
+   "kurooto-0.8.17.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.8.17/kurooto-0.8.17.tar.gz",
+    "sha256": "53461c646d8af321bab3d4378fb9d99c2e241df111646e3f44dc62c2142ea2ab",
+    "size": 12441278
+   }
+  },
+  "android": {
+   "file": "kurooto.apk",
+   "url": "https://avtarfr.github.io/kurooto/releases/0.8.17/kurooto.apk",
+   "sha256": "e64b4642fa493fa74c9723392a51387d2f8b5585230b70d5d97115da2dba0b3d",
+   "size": 6778884,
+   "versionCode": 80179,
+   "versionName": "0.8.17",
+   "cert_sha256": "bad55b2e9de40d31a40d19767bf6e53ac372fb9e8e67e63d01d21e3d3ef8d325",
+   "source": "d523e3ff6ae6cc27d830793fdbed58afbba21522ad4d6b66581c6cf2559a7431"
+  }
+ },
+ "sig": "YNzvcBe6oPLK0U8vWK3iTk/td3ONmwXlXR8PEGmuZvw1S7/7Ie1LwfF/5V9qJ2jhVclk+oBll8QoHpN7sqIlDA=="
+}
