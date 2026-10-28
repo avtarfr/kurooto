@@ -390,3 +390,36 @@ def test_a_recorder_that_never_gives_sound_is_reported(linux, monkeypatch):
     lis = audio.Listener(audio.Mic(backend="pipewire"), Vad(), None, on_speech=lambda *a: None)
     lis._run()
     assert "pw-record stopped without sound" in lis.error
+
+
+# ------------------------------------------------------------------------------------- auto gain (0.8.17)
+def _tone(level: int, frames: int = 10) -> bytes:
+    import math as _m
+
+    return b"".join(int(level * _m.sin(i / 3)).to_bytes(2, "little", signed=True) for i in range(audio.FRAME * frames))
+
+
+def test_gain_needs_speech_above_the_room_s_noise():
+    g = audio.Gain(6)
+    assert g.loud_enough(_tone(100, 1))  # nothing known about the room yet: yes
+    for _ in range(200):
+        g.quiet(_tone(800, 1))  # a noisy room
+    assert not g.loud_enough(_tone(1000, 1))  # barely above it
+    assert g.loud_enough(_tone(3000, 1))  # clearly above it
+    assert g.status()["noise_db"] is not None
+
+
+def test_gain_brings_a_quiet_stretch_up_but_never_down_or_past_full_scale():
+    g = audio.Gain()
+    quiet = _tone(300)
+    up = g.level(quiet, b"\x01" * 10)
+    assert len(up) == len(quiet) and g.gain == audio.Gain.MOST  # 300 -> as far as 8x allows
+    loud = _tone(20000)
+    assert g.level(loud, b"\x01" * 10) == loud and g.gain == 1.0  # never turned down
+    peaky = _tone(2000) + _tone(30000, 1)
+    out = g.level(peaky, b"\x01" * 11)
+    import array as _a
+
+    a = _a.array("h")
+    a.frombytes(out)
+    assert max(a) <= 32767 * 0.96  # never clipped

@@ -19,6 +19,7 @@ in snd_pcm_poll_descriptors_revents."""
 
 from __future__ import annotations
 
+import array
 import collections
 import io
 import os
@@ -596,6 +597,75 @@ class Wake:
             pass
 
 
+# ------------------------------------------------------------------------------------------------ auto gain
+def _rms(a: array.array) -> float:
+    return (sum(x * x for x in a) / max(1, len(a))) ** 0.5 / 32768
+
+
+class Gain:
+    """(voice.listen.auto_gain, 0.8.17) Hearing that follows the room, inside Kurooto only (the system's microphone
+    volume is never changed, so calls and other apps hear as before):
+
+    - **The noise floor:** the loudness of what isn't speech, followed over a few seconds. Speech starts a stretch only
+      when it is at least `snr_db` above it, so a noisy room asks for a clearer voice and a quiet one hears a soft one.
+    - **One level:** a stretch is brought to TARGET loudness (its speech only, never turned down, at most MOST times,
+      never clipped) before it's written out, so a quiet or far voice reads as well as a near one.
+
+    Numbers only: nothing is kept but the floor and the last gain."""
+
+    TARGET = 0.08  # the speech's RMS (0..1) a stretch is brought to, about -22 dBFS
+    MOST = 8.0  # at most this many times louder
+    NOISE_S = 4.0  # the floor follows the room over about this long
+    FLOOR = 0.002  # the floor is never taken as lower than this (about -54 dBFS)
+
+    def __init__(self, snr_db: float = 6.0):
+        self.snr = 10 ** (max(0.0, float(snr_db)) / 20)
+        self.noise: float | None = None
+        self.gain = 1.0
+
+    def quiet(self, frame: bytes) -> None:
+        """A frame that isn't speech: the floor follows it."""
+        a = array.array("h")
+        a.frombytes(frame[: len(frame) - len(frame) % 2])
+        r = _rms(a)
+        k = min(1.0, FRAME / RATE / self.NOISE_S)
+        self.noise = r if self.noise is None else self.noise + k * (r - self.noise)
+
+    def loud_enough(self, frame: bytes) -> bool:
+        """Clearly above the room's noise (nothing known about the room yet: yes)."""
+        if self.noise is None:
+            return True
+        a = array.array("h")
+        a.frombytes(frame[: len(frame) - len(frame) % 2])
+        return _rms(a) >= max(self.FLOOR, self.noise) * self.snr
+
+    def level(self, pcm: bytes, flags: bytes = b"") -> bytes:
+        """The stretch at one level: its speech frames' loudness (flags: the VAD's 1/0 per FRAME) set the gain."""
+        a = array.array("h")
+        a.frombytes(pcm[: len(pcm) - len(pcm) % 2])
+        if not a:
+            return pcm
+        speech = array.array("h")
+        for i, f in enumerate(flags):
+            if f:
+                speech.extend(a[i * FRAME : (i + 1) * FRAME])
+        r = _rms(speech if len(speech) else a)
+        peak = max(1, max(a), -min(a))
+        g = min(self.MOST, self.TARGET / r if r > 0 else 1.0, 0.95 * 32767 / peak)
+        if g <= 1.05:
+            self.gain = 1.0
+            return pcm
+        self.gain = round(g, 2)
+        out = array.array("h", (int(x * g) for x in a))
+        return out.tobytes()
+
+    def status(self) -> dict:
+        import math
+
+        noise = None if self.noise is None else round(20 * math.log10(max(self.noise, 1e-6)), 1)
+        return {"noise_db": noise, "gain": self.gain}
+
+
 # ------------------------------------------------------------------------------------------------- listener
 class Listener:
     """Cuts the microphone's sound into stretches of speech and hands each one on (with whether the wake word fired),
@@ -619,7 +689,9 @@ class Listener:
         hold: Callable[[], bool] = lambda: False,
         wake_threshold: float = 0.5,
         barge=None,
+        gain: Gain | None = None,
     ):
+        self.gain = gain  # voice.listen.auto_gain: the room's noise floor and one level (Gain)
         self.mic, self.vad, self.wake = mic, vad, wake
         self.on_speech, self.on_level, self.on_start, self.hold = on_speech, on_level, on_start, hold
         self.wake_threshold = wake_threshold
@@ -690,7 +762,9 @@ class Listener:
                         del wake_buf[: WAKE_CHUNK * 2]
                 p = self.vad.prob(frame)
                 if buf is None:
-                    if p >= self.START:
+                    if self.gain is not None and p < self.STOP:
+                        self.gain.quiet(frame)
+                    if p >= self.START and (self.gain is None or self.gain.loud_enough(frame)):
                         flags = bytearray(len(pre)) + b"\x01"
                         buf = bytearray(b"".join(pre)) + frame
                         pre.clear()
@@ -707,6 +781,8 @@ class Listener:
                     seconds = len(buf) / (RATE * 2)
                     woke = time.monotonic() - woke_at <= seconds + 2
                     audio, cut = bytes(buf), bytes(flags)
+                    if self.gain is not None:
+                        audio = self.gain.level(audio, cut)
                     buf, quiet, flags = None, 0, bytearray()
                     self.vad.reset()
                     self.on_speech(audio, woke, seconds, cut)

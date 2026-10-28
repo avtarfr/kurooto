@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.17 (unreleased)
+
+- **Voice says the whole answer.** Barge-in stopped an answer for good whenever a voice that passed as yours was
+  heard over it, even an "mm", a cough or a word to someone else, and the rest went unsaid. Now it goes quiet at once,
+  and unless what you said was "stop" or a new question or request, it carries on from the start of the sentence it
+  was cut in.
+- **Auto gain** (`voice.listen.auto_gain`, on): hearing follows the room. Speech has to stand clearly above the
+  room's noise to count (`voice.listen.auto_gain_snr_db`, 6 dB), and a quiet or far voice is brought up to one level
+  before it's written out. Inside Kurooto only; the system's microphone volume is never changed.
+- **Voice language:** the settings guide now says to set `voice.listen.language`; left to be worked out on each short
+  clip, an accent is often taken for another language and Kurooto's name is missed.
+
 ## 0.8.16 (2026-10-28)
 
 The Brain becomes core: one door for what Kurooto says by itself, sleep on your schedule, dreaming, one being across the dashboard, phone and voice; plus the new call screen in the call, faster and steadier voice, the dashboard's Chat page and narrow windows.

@@ -43,7 +43,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
 - [Brain](#brain): 124 settings
-- [Voice and voice notes](#voice-and-voice-notes): 65 settings
+- [Voice and voice notes](#voice-and-voice-notes): 67 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
@@ -5914,8 +5914,35 @@ How big the speech-to-text model is: tiny (75 MB), base (145 MB) or small (484 M
 The language you speak, e.g. `en` or `hi`; empty works it out each time.
 
 - **Values:** A language code, or empty. **Default:** empty.
-- **When to change it:** Set it if it guesses your language wrong.
+- **When to change it:** Set it if it guesses your language wrong, or misses its name: worked out on each short clip, an
+  accent is often taken for another language (English for Hindi or Urdu) and the name never comes out right.
 - **Depends on:** `voice.listen.on`.
+
+### `voice.listen.auto_gain`
+
+Hearing follows the room: speech must stand above its noise, and a quiet voice is evened up.
+
+While nothing is being said, Kurooto follows the room's noise floor (the loudness of what isn't speech, over a few
+seconds). Speech starts a stretch only when it's at least voice.listen.auto_gain_snr_db above that floor, so a noisy
+room asks for a clearer voice and a quiet one still hears a soft one. Each stretch is then brought to one level (never
+turned down, at most eight times louder, never clipped) before it's written out, so a quiet or far voice reads as well
+as a near one. All inside Kurooto: the system's microphone volume is never changed, so calls and other apps hear exactly
+as before. Only the noise floor and the last gain are kept (in memory, numbers only; /voice status).
+
+- **Values:** `true` (default), `false` (every stretch the voice detector finds counts, at the level it came in).
+  **Default:** on.
+- **When to change it:** Turn it off if soft speech close to the microphone is missed in a noisy room.
+- **Depends on:** `voice.listen.on`.
+
+### `voice.listen.auto_gain_snr_db`
+
+How far above the room's noise speech must be to count, in dB.
+
+- **Values:** A number of dB, 0 or more (default 6). Higher is stricter in a noisy room; 0 lets any speech through.
+  **Default:** `6`.
+- **When to change it:** Raise it if far-off talk or a TV starts stretches; lower it if you're missed when you speak
+  softly.
+- **Depends on:** `voice.listen.auto_gain`.
 
 ### `voice.listen.device`
 
@@ -6199,12 +6226,13 @@ While Kurooto speaks it keeps listening, but never takes its own voice coming ba
 of speech counts as you cutting in when Voice ID (on and enrolled) recognises your voice in it (at least about 0.6
 seconds of speech, closer to your voice print than to Kurooto's own, which is made once in memory from a phrase its
 voice says silently), or when it's clearly louder than the echo of what's playing just then and its words, written out
-here, aren't Kurooto's own. Then it stops speaking at once (on this computer, or on another device an add-on plays it
-on), and what you said is: a told-off phrase ("stop", "never mind"): it just stops; a question or a request: a new turn
-in the same conversation; anything else: it stops and listens. Limits: on a speakerphone or at a high volume its echo
-can drown you out, so speak up or come closer; without Voice ID only the loudness check works; and with Voice ID only
-your voice can cut in by voice (a guest has to be louder than its echo). Nothing extra is kept: the sound stays in
-memory as for any stretch, and the event says only how it was noticed and what came of it.
+here, aren't Kurooto's own. Then it goes quiet at once (on this computer, or on another device an add-on plays it on),
+and what you said is: a told-off phrase ("stop", "never mind"): it stops; a question or a request: a new turn in the
+same conversation; anything else ("mm", a cough, a word to someone else): it carries on, saying the sentence it was cut
+in from its start (0.8.17), or stops if that isn't settled within about 12 seconds. Limits: on a speakerphone or at a
+high volume its echo can drown you out, so speak up or come closer; without Voice ID only the loudness check works; and
+with Voice ID only your voice can cut in by voice (a guest has to be louder than its echo). Nothing extra is kept: the
+sound stays in memory as for any stretch, and the event says only how it was noticed and what came of it.
 
 - **Values:** `true` (default), `false` (the microphone is dropped while it speaks, as before; /voice stop still stops
   it). **Default:** on.

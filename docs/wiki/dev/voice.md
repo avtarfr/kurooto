@@ -87,6 +87,16 @@ speakers. `fn(pcm: bytes, sr: int, stop: threading.Event) -> bool`:
 - **Unchanged:** `voice_speak` is published as each sentence starts, wherever it plays; `status()` still names the
   local player. The sound is handed over in memory only; the output must not write or keep it either.
 
+## Auto gain (`audio.Gain`, 0.8.17)
+
+`voice.listen.auto_gain` (on), `voice.listen.auto_gain_snr_db` (6). `Listener(gain=Gain(snr_db))`: while no stretch is
+open, each frame with VAD < 0.35 updates the noise floor (an EMA over `NOISE_S` 4 s of its RMS); a stretch starts only
+when VAD >= 0.5 *and* the frame's RMS >= `max(FLOOR, noise) * 10^(snr_db/20)` (`loud_enough`; nothing known yet: yes).
+When a stretch ends, `Gain.level(pcm, flags)` scales it so its speech frames' RMS reaches `TARGET` (0.08), never
+turning it down, at most `MOST` (8x) and never past 95% of full scale. VAD and barge-in see the raw frames; only the
+stretch handed on (transcriber, Voice ID, gate) is levelled. `status()["auto_gain"]` shows `noise_db` and the last
+`gain`. The system's microphone volume is never touched.
+
 ## Barge-in (`barge.py`, 0.8.13)
 
 `voice.listen.barge_in` (on). Before it, `Listener` dropped every frame while `hold()` (`Speaker.holding() or
@@ -114,8 +124,11 @@ thinking: the old drop. Nothing else in the listener changes.
   SELF_MARGIN` (0.10). (2) Else loudness then words: loud frames >= 0.3 s and >= half the speech frames, then
   `Voice._write_out(pcm)`; `words_ok()`: real words (not `made_up()`), a told-off phrase always, else fewer than
   `ECHO_WORDS` (60%) of them in what it's saying.
-- **On a barge-in** the checking thread calls `Speaker.stop()` (the `Player`, and `_cancel`, the stop event an add-on
-  output was handed) and publishes `voice_state hearing, why "barged in"`. The stretch is still collected to its end,
+- **On a barge-in** the checking thread calls `Speaker.hold()` (0.8.17; it was `stop()`): the piece playing is cut
+  (the `Player`, and the per-piece event an add-on output was handed, `Speaker._piece`) and the sentence loop waits in
+  `Speaker.say_piece()`. `barge_turn()` then settles it: told off or a new turn -> `stop()`; anything else ("mm", no
+  face) -> `release()`, and `say_piece()` plays the cut piece again from its start and goes on (event outcome
+  `resumed`). Never settled within `HOLD_MAX_S` (12 s): it stops. It publishes `voice_state hearing, why "barged in"`. The stretch is still collected to its end,
   then `Voice._heard_audio(..., barge={"sid", "how", "score"})` queues it like any stretch (never blocking the
   listener); `_work_one` sends it to `Voice.barge_turn()`.
 - **`barge_turn(pcm, flags, how)`** on `voice-hear` (after the interrupted `portal.take` has returned): written out;

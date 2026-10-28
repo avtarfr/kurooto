@@ -129,8 +129,27 @@ needs = "`voice.listen.on`."
 [s."voice.listen.language"]
 tip = "The language you speak, e.g. `en` or `hi`; empty works it out each time."
 values = "A language code, or empty."
-when = "Set it if it guesses your language wrong."
+when = """Set it if it guesses your language wrong, or misses its name: worked out on each short clip, an accent is
+often taken for another language (English for Hindi or Urdu) and the name never comes out right."""
 needs = "`voice.listen.on`."
+
+[s."voice.listen.auto_gain"]
+tip = "Hearing follows the room: speech must stand above its noise, and a quiet voice is evened up."
+what = """While nothing is being said, Kurooto follows the room's noise floor (the loudness of what isn't speech, over a
+few seconds). Speech starts a stretch only when it's at least voice.listen.auto_gain_snr_db above that floor, so a
+noisy room asks for a clearer voice and a quiet one still hears a soft one. Each stretch is then brought to one level
+(never turned down, at most eight times louder, never clipped) before it's written out, so a quiet or far voice reads
+as well as a near one. All inside Kurooto: the system's microphone volume is never changed, so calls and other apps
+hear exactly as before. Only the noise floor and the last gain are kept (in memory, numbers only; /voice status)."""
+values = "`true` (default), `false` (every stretch the voice detector finds counts, at the level it came in)."
+when = "Turn it off if soft speech close to the microphone is missed in a noisy room."
+needs = "`voice.listen.on`."
+
+[s."voice.listen.auto_gain_snr_db"]
+tip = "How far above the room's noise speech must be to count, in dB."
+values = "A number of dB, 0 or more (default 6). Higher is stricter in a noisy room; 0 lets any speech through."
+when = "Raise it if far-off talk or a TV starts stretches; lower it if you're missed when you speak softly."
+needs = "`voice.listen.auto_gain`."
 
 [s."voice.listen.device"]
 tip = "Which microphone to use; empty is the system's default."
@@ -316,9 +335,10 @@ what = """While Kurooto speaks it keeps listening, but never takes its own voice
 A stretch of speech counts as you cutting in when Voice ID (on and enrolled) recognises your voice in it (at least
 about 0.6 seconds of speech, closer to your voice print than to Kurooto's own, which is made once in memory from a
 phrase its voice says silently), or when it's clearly louder than the echo of what's playing just then and its words,
-written out here, aren't Kurooto's own. Then it stops speaking at once (on this computer, or on another device an
-add-on plays it on), and what you said is: a told-off phrase ("stop", "never mind"): it just stops; a question or a
-request: a new turn in the same conversation; anything else: it stops and listens. Limits: on a speakerphone or at a
+written out here, aren't Kurooto's own. Then it goes quiet at once (on this computer, or on another device an
+add-on plays it on), and what you said is: a told-off phrase ("stop", "never mind"): it stops; a question or a
+request: a new turn in the same conversation; anything else ("mm", a cough, a word to someone else): it carries on,
+saying the sentence it was cut in from its start (0.8.17), or stops if that isn't settled within about 12 seconds. Limits: on a speakerphone or at a
 high volume its echo can drown you out, so speak up or come closer; without Voice ID only the loudness check works;
 and with Voice ID only your voice can cut in by voice (a guest has to be louder than its echo). Nothing extra is kept:
 the sound stays in memory as for any stretch, and the event says only how it was noticed and what came of it."""

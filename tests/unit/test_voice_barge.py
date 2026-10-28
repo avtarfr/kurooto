@@ -51,9 +51,10 @@ class Rig:
         self.v, self.b = v, v.barge
         self.b.sync = True
         self.clock = self.b.clock = Clock()
-        self.stops = []
-        real = v.speaker.stop
+        self.stops = []  # it went quiet: stopped, or held while what cut in is written out (Speaker.hold)
+        real, hold = v.speaker.stop, v.speaker.hold
         v.speaker.stop = lambda: (self.stops.append(1), real())[1]
+        v.speaker.hold = lambda: (self.stops.append(1), hold())[1]
         v.listener = SimpleNamespace(running=lambda: True, stop=lambda: None, error="")
         monkeypatch.setattr(v, "tts", lambda: (OwnTts(), ""))
         self.stt = Stt()
@@ -313,14 +314,65 @@ def test_an_output_on_another_device_is_stopped_by_its_stop_event(vrig, monkeypa
     r.echo(1.0)
     r.quiet(0.8)
     r.feed(bytes(pcm(1, 7, seconds=1.0, level=3000, pre_s=0).pcm), 0.9)
+    assert out.stopped == [True] and v.speaker.held()  # quiet at once, held while what cut in is written out
+    r.quiet(0.8)
+    (item,) = r.queued()
+    r.stt.said = "stop talking"
+    assert v._work_one(*item) is None
     t.join(5)
     assert not t.is_alive()
-    assert out.stopped == [True] and len(out.got) == 1 and v.speaker.player.got == []  # nothing more, nowhere else
+    assert len(out.got) == 1 and v.speaker.player.got == []  # nothing more, nowhere else
     for _ in range(100):
         if not v.speaker.busy:
             break
         time.sleep(0.01)
     assert not v.speaker.busy
+
+
+def test_a_cut_in_that_isnt_for_it_resumes_from_the_cut_sentence(vrig):
+    """(0.8.17) "mm", a cough, someone else: it said the cut sentence again from its start and went on, where it used
+    to stop for good and leave the answer half said."""
+    r = vrig
+    v = r.v
+    v.app.settings.set("voice.speak.join_sentences", False)
+    v.speaker.player = Speakers()
+    cut = threading.Event()
+    got = []
+
+    def out(pcm_, sr, stop):  # the first sentence plays until it's cut; the rest play out
+        got.append(pcm_)
+        if len(got) == 1:
+            cut.set()
+            assert stop.wait(5)
+        return True
+
+    v.add_output(out)
+    t = threading.Thread(target=v.say, args=("One. Two. Three.",), kwargs={"wait": True}, daemon=True)
+    t.start()
+    assert cut.wait(5)
+    r.echo(1.0)
+    r.quiet(0.8)
+    r.feed(bytes(pcm(1, 9, seconds=1.0, level=3000, pre_s=0).pcm), 0.9)
+    assert r.stops and v.speaker.held()
+    r.quiet(0.8)
+    (item,) = r.queued()
+    r.stt.said = "mm hmm"
+    assert v._work_one(*item) is None
+    t.join(5)
+    assert not t.is_alive()
+    assert len(got) == 4 and got[0] == got[1]  # "One" cut, "One" again from its start, then "Two" and "Three"
+    assert barges(v)[-1]["outcome"] == "resumed" and v.portal.send.got == []
+    assert not v.speaker.held()
+
+
+def test_held_and_never_settled_it_stops(vrig, monkeypatch):
+    from kurooto.modules import voice as voice_mod
+
+    monkeypatch.setattr(voice_mod, "HOLD_MAX_S", 0.05)
+    sp = vrig.v.speaker
+    sp.busy = True
+    sp.hold()
+    assert not sp._wait_held() and sp._cancel.is_set() and not sp.held()
 
 
 def test_its_own_voice_print_is_made_once_in_memory(vrig):

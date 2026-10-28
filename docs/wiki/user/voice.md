@@ -153,14 +153,15 @@ it, never your words) for the night's learning. `voice.listen.told_off` (on).
 
 ### Cutting in while it speaks
 
-You don't have to wait for a long answer to finish: talk over it. Kurooto keeps listening while it speaks, stops at
-once when it hears you, and then:
+You don't have to wait for a long answer to finish: talk over it. Kurooto keeps listening while it speaks, goes quiet
+at once when it hears you, and then:
 
 - **"Stop", "never mind", "not you"** and the like: it just stops and closes the conversation (as above).
 - **A question or a request** ("wait, what about Sunday?", "set it for six instead"): it stops and answers that, in the
   same conversation, so it knows what you were talking about.
-- **Anything else** ("hmm, hold on"): it stops and listens; what you say in the next `voice.listen.follow_s` seconds
-  goes to it without its name.
+- **Anything else** ("mm", "okay", a cough, a word to someone else): it wasn't for it, so it carries on, saying the
+  sentence it was cut in from its start (0.8.17; before, it stopped for good and the rest of the answer went unsaid).
+  If it can't tell within about 12 seconds, it stops.
 
 It never takes its own voice coming back through the room for you. It counts as you cutting in when:
 
@@ -353,7 +354,9 @@ downloaded to your computer as separate programs, not part of Kurooto.
 | `voice.listen.night` | on | keep listening during the night hours |
 | `voice.listen.calls` | off | keep listening during calls |
 | `voice.listen.stt_model` | `base` | `tiny`, `base` or `small` |
-| `voice.listen.language` | (worked out) | the language you speak, e.g. `en` or `hi` |
+| `voice.listen.language` | (worked out) | the language you speak, e.g. `en` or `hi`. Set it: worked out on each short clip, an Indian English accent is often taken for Hindi or Urdu and its name is missed |
+| `voice.listen.auto_gain` | on | hearing follows the room: speech must stand clearly above the room's noise to count, and a quiet or far voice is brought up to one level before it's written out. Inside Kurooto only: the system's microphone volume is never changed |
+| `voice.listen.auto_gain_snr_db` | `6` | how far above the room's noise speech must be, in dB (higher: stricter in a noisy room) |
 | `voice.audio.backend` | `auto` | how sound plays and records: `auto`, `pipewire` (`pw-play`/`pw-record`) or `portaudio` (sounddevice) |
 | `voice.addons.listen` | on | let an add-on take one thing said, written out here and never sent (mute still stops it) |
 | `voice.addons.chat` | on | let an add-on have Kurooto chat with someone the guest way: no tools, none of your data |

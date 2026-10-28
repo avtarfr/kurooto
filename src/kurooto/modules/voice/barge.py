@@ -13,10 +13,11 @@ in only when one of two checks says it isn't Kurooto's own voice coming back thr
   measured share of it), and its words, written out here, aren't just what Kurooto is saying (a told-off phrase is
   always taken).
 
-When a check passes, Kurooto stops speaking at once (Speaker.stop(): this computer's player and an add-on output's
-stop event); the rest of the stretch is still taken, and the whole of it then goes to Voice.barge_turn(): told off ->
-stop (the told-off path), a question or a request -> a new turn in the same conversation, anything else -> it stops
-and listens (the conversation stays open for voice.listen.follow_s).
+When a check passes, Kurooto goes quiet at once (Speaker.hold(): this computer's player and an add-on output's
+stop event for the piece playing); the rest of the stretch is still taken, and the whole of it then goes to
+Voice.barge_turn(): told off -> stop (the told-off path), a question or a request -> stop, and a new turn in the same
+conversation, anything else ("mm", a cough, no face) -> Speaker.release(): it says the cut piece again from its start
+and goes on (0.8.17; the conversation stays open for voice.listen.follow_s).
 
 Sound stays in memory, as everywhere in Voice: the stretch being cut and the pre-roll; levels of what's played are
 numbers only. Nothing here is logged but how it was noticed and what it led to (never words)."""
@@ -281,7 +282,7 @@ class Barge:
                 if got is not None:
                     self._confirmed = None if final else got
             if stop:
-                self.v.speaker.stop()  # at once: this computer's player and an output's stop event
+                self.v.speaker.hold()  # quiet at once; Voice.barge_turn() then stops it or carries on
                 self.v.publish("voice_state", state="hearing", portal=self.v.portal.open, listening=True,
                                why="barged in")  # fmt: skip
             if final and got is not None:

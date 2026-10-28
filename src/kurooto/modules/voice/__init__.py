@@ -122,6 +122,8 @@ register_defaults(
             "stt_model": "base",  # the transcriber's size: tiny (75 MB), base (145 MB) or small (484 MB, better)
             "language": "",  # the language you speak, e.g. en or hi; empty: worked out each time
             "device": "",  # the microphone: empty is the system's default; a name or number from sounddevice
+            "auto_gain": True,  # hearing follows the room: speech must stand above its noise; quiet voices evened up
+            "auto_gain_snr_db": 6,  # with auto_gain: how far above the room's noise speech must be (dB; higher: strict)
             "levels": True,  # send the microphone's loudness to the dashboard for its waveform (numbers only)
             "conversation_mode": True,  # with Voice ID: while another voice is here, only its name opens a talk
             "conversation_s": 60,  # conversation mode lasts this many seconds after the last other voice
@@ -178,6 +180,7 @@ JOB_WAIT_S = 600
 RETRY_S = 60  # a microphone that failed is tried again after this long
 ONCE_MAX_S = 60.0  # listen_once waits at most this long for speech to start
 ONCE_WORK_S = 30.0  # and this long more for a stretch it took to be written out
+HOLD_MAX_S = 12.0  # (barge-in) held this long without release() or stop(): it stops
 # voice.listen.need_face: who's in front of it
 FACE_HOLD = "voice: who's talking"  # the camera hold's reason, shown on Face presence's card
 FACE_HOLD_S = 30.0  # each hold lasts this long (a crash can't keep the camera), renewed every FACE_RENEW_S
@@ -203,7 +206,10 @@ class Speaker:
         self.busy = False
         self.until = 0.0  # it finished speaking at (monotonic) + a short tail: the microphone ignores until then
         self.player = None
-        self._cancel = threading.Event()  # stop()/mute: ends the sentence loop and is the stop an output is handed
+        self._cancel = threading.Event()  # stop()/mute: ends the sentence loop
+        self._held = threading.Event()  # (barge-in) hold(): quiet for now; release() says the cut piece again
+        self._go = threading.Event()  # release() or stop() while held
+        self._piece: threading.Event | None = None  # the piece playing now: the stop an output is handed
         self._outputs: list[list] = []  # [fn, failed already], newest first (add_output)
         self._out_lock = threading.Lock()  # registration only; never held while sound plays
         self.turn: dict | None = None  # (timing) the turn the next say() answers (Voice._portal_speak)
@@ -252,6 +258,7 @@ class Speaker:
         with self.lock:
             self.busy = True
             self._cancel.clear()
+            self._held.clear()
             self._turn, self.turn = self.turn, None
             pool = ThreadPoolExecutor(1, thread_name_prefix="voice-tts")
             base = getattr(tts, "rate", None)
@@ -267,8 +274,8 @@ class Speaker:
                         pcm += pause_after(tts, out[i], sr)
                     if self._cancel.is_set():
                         break
-                    self.v.publish("voice_speak", samples=shape_mod.from_pcm(pcm, sr), rate=shape_mod.RATE)
-                    self._play(pcm, sr)
+                    if not self.say_piece(pcm, sr):
+                        break
             except Exception as e:
                 self.v.app.events.emit("voice_failed", part="speaking", error=f"{type(e).__name__}: {e}"[:300])
             finally:
@@ -295,9 +302,38 @@ class Speaker:
             self.until = time.monotonic() + 0.4
             self.lock.release()
 
+    def say_piece(self, pcm: bytes, sr: int) -> bool:
+        """One piece of speech in a sentence loop (_speak, fast.Stream), its waveform shown as it plays. Cut off by
+        hold() (barge-in), it waits there: release() says the piece again from its start, stop() ends. False: stopped,
+        nothing more is said."""
+        while True:
+            if self._held.is_set() and not self._wait_held():
+                return False
+            if self._cancel.is_set():
+                return False
+            self.v.publish("voice_speak", samples=shape_mod.from_pcm(pcm, sr), rate=shape_mod.RATE)
+            self._play(pcm, sr)
+            if self._cancel.is_set():
+                return False
+            piece = self._piece
+            if not (self._held.is_set() and piece is not None and piece.is_set()):
+                return True  # played out (a hold that came after it is waited for before the next piece)
+
+    def _wait_held(self) -> bool:
+        """Held: wait for release() or stop(); never settled within HOLD_MAX_S, it ends as a stop would."""
+        if not self._go.wait(HOLD_MAX_S):
+            self._cancel.set()
+        self._held.clear()
+        self._go.clear()
+        return not self._cancel.is_set()
+
     def _play(self, pcm: bytes, sr: int) -> None:
         """One sentence: the newest output that takes it, else this computer's speakers. Runs inside _speak (busy),
         so holding() covers an output's whole play exactly as the Player's."""
+        piece = threading.Event()
+        if self._cancel.is_set() or self._held.is_set():
+            piece.set()
+        self._piece = piece
         with self._out_lock:
             outs = list(self._outputs)
         try:  # barge-in: what's played and when, for the echo's expected level (numbers only)
@@ -306,16 +342,16 @@ class Speaker:
             pass
         fast.stamp(self._turn, "play")  # (timing) handed to an output, or to this computer's player, now
         for entry in outs:
-            if self._cancel.is_set():
+            if piece.is_set():
                 return
             try:
-                if entry[0](pcm, sr, self._cancel):
+                if entry[0](pcm, sr, piece):
                     return
             except Exception as e:  # counts as "can't now"; told once per output, not per sentence
                 if not entry[1]:
                     entry[1] = True
                     self.v.app.events.emit("voice_failed", part="output", error=f"{type(e).__name__}: {e}"[:300])
-        if self._cancel.is_set():  # stopped while an output played: not finished here instead
+        if piece.is_set():  # stopped or held while an output played: not finished here instead
             return
         want = str(self.v.setting("audio.backend") or "auto")
         if self.player is None or getattr(self.player, "choice", want) != want:  # a changed backend: a new Player
@@ -326,6 +362,30 @@ class Speaker:
 
     def stop(self) -> None:
         self._cancel.set()
+        self._go.set()
+        self._cut_piece()
+
+    def hold(self) -> None:
+        """(barge-in) Quiet at once, but not over: release() says the piece that was cut again from its start and goes
+        on; stop() ends it. Nothing being said: nothing happens."""
+        if not self.busy:
+            return
+        self._go.clear()
+        self._held.set()
+        self._cut_piece()
+
+    def held(self) -> bool:
+        return self._held.is_set()
+
+    def release(self) -> None:
+        """(barge-in) What cut in wasn't for it: carry on from the piece that was cut."""
+        if self._held.is_set():
+            self._go.set()
+
+    def _cut_piece(self) -> None:
+        piece = self._piece
+        if piece is not None:
+            piece.set()
         if self.player is not None:
             self.player.stop()
 
@@ -660,6 +720,7 @@ class Voice(Module):
             },
             "learned": {**self.learner.status(), "on": bool(s("listen.learn_nightly")), "misfires_now": self.misfires},
             "barge_in": {"on": bool(s("listen.barge_in")), "since_start": self.barge.count},
+            "auto_gain": {"on": bool(s("listen.auto_gain")), **(g.status() if (g := self._gain()) else {})},
             "speed": {  # (0.8.16) the medians of the last turns' times, ms from your last word; the switches
                 **self.speed(),
                 "ack": s("speak.ack"),
@@ -1046,13 +1107,13 @@ class Voice(Module):
 
     def barge_turn(self, pcm: bytes, flags: bytes, how: dict, ended_at: float | None = None) -> str | None:
         """(barge.py) A stretch that talked over Kurooto; it has already stopped speaking. Written out here, then: a
-        told-off phrase -> the told-off path (no reply); a question or a request -> a new turn in the same
-        conversation (the chat's context carries); anything else -> it listens, the conversation open for
-        voice.listen.follow_s. Returns the reply when there was one. An event with how and what came of it, never
-        words."""
+        told-off phrase -> the told-off path (no reply); a question or a request -> it stops, and a new turn in the
+        same conversation (the chat's context carries); anything else -> it carries on from the cut piece
+        (Speaker.release, 0.8.17), the conversation open for voice.listen.follow_s. Returns the reply when there was
+        one. An event with how and what came of it, never words."""
         if self.blocked() or not self.app.is_on(self.id):
+            self.speaker.stop()
             return None
-        self.speaker.stop()  # already stopped; a piece that slipped through is ended too
         seconds = len(pcm) / 32000
         speech_s = sum(1 for f in flags if f) * 512 / 16000 if flags else seconds
         h = Heard(speech=True, seconds=seconds, speech_s=speech_s, ended_at=ended_at)
@@ -1079,19 +1140,23 @@ class Voice(Module):
                 else:  # never learned from: its own voice may be in it
                     who = vid.check(pcm, speech_s, adapt=False)
             d = self._timed_face_check(h, Decision(ADDRESSED, 0.9, "barged in"), turn) if said and asks(said) else None
-            if d is not None and not d.addressed:  # (need_face) nobody in front of it: chatter, the talk closes
+            if d is not None and not d.addressed:  # (need_face) nobody in front of it: chatter, it carries on
                 outcome = "no face"
+                self.speaker.release()
                 self.heard[CHATTER] = self.heard.get(CHATTER, 0) + 1
                 h.text = ""
                 self.portal.take(h, d)
             elif d is not None:
                 outcome = "turn"
+                self.speaker.stop()  # the new turn is answered instead
                 self.heard[ADDRESSED] = self.heard.get(ADDRESSED, 0) + 1
                 if who is not None:
                     self.publish("voice_state", state="addressed", portal=True, listening=True, why="barged in",
                                  who=who.word)  # fmt: skip
                 reply = self._take(h, Decision(ADDRESSED, 0.9, "barged in"), said, who, turn)
-            else:
+            else:  # not "stop", not a question or a request ("mm", a cough): it says the cut sentence again, on
+                outcome = "resumed" if self.speaker.held() else "listen"
+                self.speaker.release()
                 h.text = ""  # not sent: dropped here
                 self.portal.listen_on("barged in", who.decision if who is not None else "")
         del pcm
@@ -1566,10 +1631,22 @@ class Voice(Module):
             hold=lambda: self.speaker.holding() or self.portal.busy,
             wake_threshold=float(self.setting("listen.wake_threshold") or 0.5),
             barge=self.barge,
+            gain=self._new_gain(),
         )
         self.listener.start()
         self.portal.state("addressed" if self.portal.open else "listening")
         self._warm()
+
+    def _new_gain(self):
+        """(voice.listen.auto_gain, 0.8.17) The listener's audio.Gain, or None when it's off."""
+        from kurooto.modules.voice import audio
+
+        if not self.setting("listen.auto_gain"):
+            return None
+        return audio.Gain(float(self.setting("listen.auto_gain_snr_db") or 6))
+
+    def _gain(self):
+        return getattr(self.listener, "gain", None) if self.listener is not None else None
 
     def _stop_listening(self, why: str) -> None:
         self._face_release()

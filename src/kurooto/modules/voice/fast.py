@@ -236,6 +236,7 @@ class Stream:
         with sp.lock:
             sp.busy = True
             sp._cancel.clear()
+            sp._held.clear()
             sp._turn = self.turn
             pool = ThreadPoolExecutor(1, thread_name_prefix="voice-tts")
             try:
@@ -254,11 +255,9 @@ class Stream:
                         sp.v.barge.speaking([piece])
                     except Exception:
                         pass
-                    sp.v.publish("voice_speak", samples=shape_mod.from_pcm(pcm, sr), rate=shape_mod.RATE)
-                    sp._play(pcm, sr)
-                    self.spoke += 1
-                    if sp._cancel.is_set():
+                    if not sp.say_piece(pcm, sr):  # cut in on: said again from its start, unless stopped
                         break
+                    self.spoke += 1
                     if fut is None:
                         piece = self._next(first=False, block=True)
                         fut = pool.submit(tts.synth, piece) if piece else None
