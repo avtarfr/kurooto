@@ -6,6 +6,9 @@
   (`notify.app_chat`), a file it sends you (`kurooto send`, the AI's file, a long answer, a grocery order's screenshot
   from an add-on) comes to the chat as a link as well as to Telegram; one reply says both. A file too big for Telegram
   goes to the chat. Off: Telegram only, as before.
+- **Fix: the call line no longer drops for nothing.** A heartbeat that looked silent because this computer was busy
+  now gets one more ping and five seconds before the line is called dead (about 35 needless reconnects a day before);
+  a late heartbeat is logged with how late it was.
 
 ## 0.8.18 (2026-10-29)
 

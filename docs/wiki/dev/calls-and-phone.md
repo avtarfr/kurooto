@@ -98,7 +98,11 @@ one message (`why="calls.line_update"`). Tests: `tests/unit/test_apk_ship.py` (t
 - One outbound WebSocket to `wss://<worker>/connect` with header `x-connector-secret`; `max_size` 8 MB; the library's
   own pings off. Runs as `Calls.background(stop)`, started by `App.start_background`.
 - Heartbeat: text `"ping"` every `PING_S = 30` s; the Durable Object answers `"pong"` through
-  `setWebSocketAutoResponse` without waking. Nothing heard for `DEAD_S = 75` s ends the session and redials.
+  `setWebSocketAutoResponse` without waking. Nothing heard for `DEAD_S = 75` s ends the session and redials, but
+  only after `_still_there` (0.9.0, N3): it yields once so the reader can take frames that already came, sends one more
+  ping and waits up to `CONFIRM_S = 5` s for any frame. A heartbeat that wakes more than `LAG_S = 5` s late (a busy event
+  loop, a suspend) logs the lag at info, so the real cause of a drop shows (before, about 35 false drops a day, each a
+  2-16 s reconnect).
 - Reconnect back-off 2 s doubling to 60 s; failures go to `app.presence.net_failed("line", e)`. Link state:
   `<state>/calls/link.json`.
 - Computer to Worker: `hello` (`pull: true`: hand over what waited one item at a time), `state` (`Calls.state_message`: setup, tools, brief, schedule, texts, voices, presence
