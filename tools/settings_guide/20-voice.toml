@@ -384,6 +384,52 @@ values = "`voice` (default) or `none`."
 when = "Pick `none` if being answered when nobody's there is worse than not being answered."
 needs = "`voice.listen.need_face`."
 
+[s."voice.listen.look_to_talk"]
+tip = "Look at the camera for a second and Kurooto starts listening, as if you'd said its name."
+what = """With Face presence on and enrolled, your face (recognised as yours), close to the camera and turned to it
+within voice.listen.look_yaw_deg and voice.listen.look_pitch_deg, for voice.listen.look_dwell_s, opens the conversation
+the way its name alone does, without a sound: the next thing you say counts as said to it, no name needed. The camera
+sees which way your head points, not your eyes, so the angles are tighter than voice.listen.face_yaw_deg: looking at
+the screen beside the camera shouldn't count. It stays open while you keep looking; look away for
+voice.listen.look_away_s before saying anything and it closes. A conversation already going on is left alone. One look
+opens it once: after it closes (you said something not to it, "stop", or looked away) look away and back. It never
+opens while Voice is off or muted, on a call, at night with listening off, while Kurooto is asleep, or with Face
+presence off or paused. What you then say still goes through the other checks: with Voice ID, someone else's voice
+isn't even written out; two voices at once, or people talking here lately, need a question or a request. Only two
+times are kept, in memory: when you started looking and when you last did."""
+values = "`true` (default), `false` (only its name, the wake word and the usual follow-ups open it)."
+when = "Turn it off if it starts listening while you're only reading something near the camera."
+cost = "Like voice.listen.need_face, the camera stays looking while Voice listens (its light on), and a little processor time."
+needs = "Face presence on and enrolled; Voice listening."
+
+[s."voice.listen.look_dwell_s"]
+tip = "How long you look at the camera before it starts listening: a glance shorter than this doesn't count."
+what = """Face presence looks about once a second (every 3 seconds on battery), so the wait is this long or a little
+more."""
+values = "Seconds, 0 to 10 (default 1)."
+when = "Raise it if passing glances open it; lower it to have it react sooner."
+needs = "`voice.listen.look_to_talk`."
+
+[s."voice.listen.look_yaw_deg"]
+tip = "How straight at the camera your head must point, left or right: at most this many degrees (an estimate)."
+values = "Degrees, 5 to 35 (default 15)."
+when = "Raise it if looking at the camera doesn't open it; lower it if looking at the screen next to it does."
+needs = "`voice.listen.look_to_talk`."
+
+[s."voice.listen.look_pitch_deg"]
+tip = "How straight at the camera your head must point, up or down, judged against your face at enrolment."
+what = """Measured from the front step of your Face presence enrolment (where you looked straight at the camera). If
+that isn't on record, only the left-right angle counts."""
+values = "Degrees, 5 to 35 (default 15)."
+when = "Raise it if it misses you when the camera sits above the screen; lower it if looking down at the keyboard opens it."
+needs = "`voice.listen.look_to_talk`."
+
+[s."voice.listen.look_away_s"]
+tip = "Looking away this long, before you've said anything, closes it again."
+values = "Seconds, 0 to 30 (default 3)."
+when = "Raise it if it closes while you glance at your notes before asking."
+needs = "`voice.listen.look_to_talk`."
+
 [s."voice.listen.learn_nightly"]
 tip = "Every night Kurooto learns from how its voice turns went: ones you carried on with, and ones you told off."
 what = """Each turn the gate let through is labelled once it's known how it went: you went on talking to it (good), or

@@ -22,6 +22,12 @@ between people unless it's named. An event "nearby_others {on, source}" says whe
                                   and how many of them had a face close and facing it
     last_facing(app) -> float | None   when the last such face was seen (monotonic)
 
+    set_look(app, on)             (0.8.17, voice.listen.look_to_talk) Face presence, each frame it looks at: whether the
+                                  owner's face is close and turned to the camera within the tight look angles
+                                  (Face.looking). Two times only: when this run of such frames began, and the last one.
+    look(app) -> (since, last)    since: None when the last frame looked at didn't have him looking (or the camera
+                                  closed); last: when he was last seen looking (monotonic), None never
+
 Nothing here authorises anything by itself. The one narrow use of the view (Voice ID's face assist, 0.8.13,
 voice.speaker_id.face_assist): a voice already scored inside its "not sure" margin counts as the owner while his face
 is the only one in view. A face alone never makes Kurooto act.
@@ -85,6 +91,20 @@ def set_view(app: App, faces: int, owner_alone: bool) -> None:
 def clear_view(app: App) -> None:
     with _lock:
         app._nearby_view = None  # type: ignore[attr-defined]
+        app._nearby_look = (None, getattr(app, "_nearby_look", (None, None))[1])  # type: ignore[attr-defined]
+
+
+def set_look(app: App, on: bool, at: float | None = None) -> None:
+    """One frame looked at (at: its monotonic time, None: now): the owner looking at the camera in it or not."""
+    t = time.monotonic() if at is None else float(at)
+    with _lock:
+        since, last = getattr(app, "_nearby_look", (None, None))
+        app._nearby_look = (t if since is None else since, t) if on else (None, last)  # type: ignore[attr-defined]
+
+
+def look(app: App) -> tuple[float | None, float | None]:
+    with _lock:
+        return getattr(app, "_nearby_look", (None, None))
 
 
 def view(app: App) -> tuple[int, bool] | None:

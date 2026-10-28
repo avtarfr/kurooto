@@ -48,7 +48,17 @@ until it can). Told-off phrases are always heard; typed /voice commands never go
 Speed (0.8.16, fast.py): each turn is timed (voice.listen.timing: a voice_timing event, medians in /voice); a soft
 sound says it heard you while the AI thinks (voice.speak.ack); the answer is spoken a sentence at a time as the AI
 writes it, when it can stream (voice.speak.stream); plain chat may go to a quicker AI (voice.listen.fast_brain); the
-engines are warmed when listening starts (voice.listen.warm_up, voice.listen.warm_brain)."""
+engines are warmed when listening starts (voice.listen.warm_up, voice.listen.warm_brain).
+
+Look at it to talk (0.8.17, voice.listen.look_to_talk, on by default; like need_face it does something only while Face
+presence is on and enrolled): the owner's face, close and turned to the camera within look_yaw_deg and look_pitch_deg
+(tighter than face_yaw_deg), for look_dwell_s, opens the conversation as its name alone would, silently
+(Portal.look, gate rule 5b): what he says next counts without the name. YuNet gives the head's direction, not the
+eyes', so this is "your head turned to it". It stays open while he keeps looking; looking away for look_away_s before
+anything was said closes it (a conversation going on is left to close_s and follow_s). One look opens it once: after it
+closes, he looks away and back. Never while Voice is off, muted, blocked (a call, the night, paused), on any call, or
+while Kurooto is asleep; the stretch still goes through Voice ID (someone else's voice isn't written out, as when the
+conversation is closed) and the chatter rules. Only two times are kept, in memory (core/nearby.py)."""
 
 from __future__ import annotations
 
@@ -138,6 +148,11 @@ register_defaults(
             "face_near": 0.5,  # close: a face at least this share of your usual desk face height (0.5: twice as far)
             "face_yaw_deg": 35,  # facing: turned at most this many degrees away from the camera
             "need_face_fallback": "voice",  # the camera can't see (paused, covered, busy): voice (its rules) or none
+            "look_to_talk": True,  # with Face presence on: looking at the camera opens the conversation, no name needed
+            "look_dwell_s": 1.0,  # looking at it this long opens it (a glance doesn't)
+            "look_yaw_deg": 15,  # looking at it: head turned at most this many degrees left or right of the camera
+            "look_pitch_deg": 15,  # and nodded at most this many degrees up or down from your enrolment's front face
+            "look_away_s": 3.0,  # looking away this long, with nothing said to it yet, closes it again
             "timing": True,  # time each turn from your last word to its first sound (numbers only; medians in /voice)
             "fast_brain": "same",  # plain chat by voice: same (your AI), local (this computer's model) or fastest
             "warm_up": True,  # when listening starts, warm the transcriber and the voice so the first turn is quick
@@ -190,6 +205,7 @@ FACE_AFTER_S = 1.5  # a frame this soon after it ended counts
 FACE_SLOW_S = 2.0  # no frame in the stretch at all (3 s apart on battery): wait this much longer for one
 NO_FACE = "no one facing it nearby"
 BLIND = "the camera can't see: not answering by voice"
+LOOK_FRESH_S = 4.0  # (look_to_talk) a look counts as now this long after its frame (1 s apart, 3 s on battery)
 FACE_FREE = ("the wake word",)  # rules a face isn't needed for (told off never opens anything, so it needs none)
 WARM = ("warm",)  # (warm_up) the hearing thread's own item: warm the transcriber there, never beside a turn
 WARM_BRAIN_S = 600  # (warm_brain) at most this often
@@ -476,6 +492,8 @@ class Voice(Module):
         self._ack_sleep = time.sleep  # tests replace it
         self._warmed: set = set()  # (warm_up) the engines warmed since they were loaded
         self._brain_warm_at = 0.0
+        self._look_used: float | None = None  # (look_to_talk) the run of looks that opened it (or found it open)
+        self.look_count = 0  # (look_to_talk) conversations a look opened since start: a count
 
     # ------------------------------------------------------------------------------------------- the parts
     def wants(self) -> list[str]:
@@ -553,6 +571,8 @@ class Voice(Module):
         own = " or your wake word" if str(self.setting("listen.wake_word") or "").strip() else ""
         face = self.face_line()
         face = f"; {face}" if face else ""
+        if not self._look_why():
+            face += "; looking at it opens a conversation"
         return f"{speak}; listening here (its name{own} wakes it){face}{tail}"
 
     def face_line(self) -> str:
@@ -676,6 +696,7 @@ class Voice(Module):
             self.parts.importable()
             player = Player.detect()
         face_state, face_why = self.face_gate()
+        look_why = self._look_why()
         return {
             "on": self.app.is_on(self.id),
             **self.last_state,
@@ -735,6 +756,16 @@ class Voice(Module):
                 "held": bool(self._face_hold_at),
                 "seen_s": self._face_seen_s(),  # seconds since a face close and facing it was last seen
                 **self.face_counts,
+            },
+            "look_to_talk": {  # (0.8.17) words and numbers only
+                "on": bool(s("listen.look_to_talk")),
+                "state": "open" if self.portal.open and self.portal.looked else ("off" if look_why else "watching"),
+                "why": look_why,
+                "dwell_s": s("listen.look_dwell_s"),
+                "yaw_deg": s("listen.look_yaw_deg"),
+                "pitch_deg": s("listen.look_pitch_deg"),
+                "away_s": s("listen.look_away_s"),
+                "opened": self.look_count,
             },
         }
 
@@ -880,7 +911,8 @@ class Voice(Module):
         gate_first = bool(vid.s("gate", True))
         if on and (gate_first or self.setting("listen.conversation_mode")) and h.speech and audio is not None:
             who = vid.check(audio, h.speech_s, h.voices)  # (voice id) who, before the words
-            if gate_first and who.decision != "owner" and not h.wake and not self.portal.open:
+            closed = not self.portal.open or self.portal.looked  # a look stood in for the owner's call, no one else's
+            if gate_first and who.decision != "owner" and not h.wake and closed:
                 g = self.gate()
                 edges = _edges(audio)
                 heard = self._write_out(edges)
@@ -972,7 +1004,11 @@ class Voice(Module):
     # ------------------------------------------------------------------- need_face: only someone in front of it
     def _face(self):
         """Face presence, when need_face applies: the switch on, Face presence on and enrolled. Else None."""
-        if not self.setting("listen.need_face") or not self.app.is_on("face"):
+        return self._face_on() if self.setting("listen.need_face") else None
+
+    def _face_on(self):
+        """Face presence on and enrolled, whatever Voice's switches say; else None."""
+        if not self.app.is_on("face"):
             return None
         face = self.app.modules.get("face")
         try:
@@ -1041,8 +1077,9 @@ class Voice(Module):
         return out
 
     def _face_hold(self) -> None:
-        """(need_face) While Voice listens, keep Face presence's camera looking (renewed); released otherwise."""
-        face = self._face()
+        """(need_face, look_to_talk) While Voice listens, keep Face presence's camera looking (renewed); released
+        otherwise. Without the hold the camera rests while you type, and a look would go unseen."""
+        face = self._face() or (self._face_on() if self.setting("listen.look_to_talk") else None)
         listening = self.listener is not None and self.listener.running() and not self.blocked_why
         if face is None or not listening:
             self._face_release()
@@ -1065,6 +1102,50 @@ class Voice(Module):
                 face.release_watch(FACE_HOLD)
             except Exception:
                 pass
+
+    # ------------------------------------------------------------------- look_to_talk: look at it to talk (0.8.17)
+    def _look_why(self) -> str:
+        """Why a look can't open the conversation now ("" when it can)."""
+        if not self.setting("listen.look_to_talk"):
+            return "off"
+        if not self.app.is_on(self.id):
+            return "Voice is off"
+        why = self.blocked()  # listening off, muted, paused, a call, the night, not set up
+        if why:
+            return why
+        if self._on_call():  # even with voice.listen.calls on: a look mustn't open a talk in the middle of a call
+            return "you're on a call"
+        if _drowsing(self.app):
+            return "Kurooto is asleep"
+        if self._face_on() is None:
+            return "Face presence is off or not enrolled"
+        if self.listener is None or not self.listener.running():
+            return "not listening"
+        return ""
+
+    def look_tick(self) -> None:
+        """(look_to_talk) From Face presence each frame it looks at, and every second from background(): a steady look
+        (look_dwell_s of frames with the owner looking at it, core/nearby.py) opens the conversation (Portal.look);
+        while it's open by a look and nothing was said yet, looking keeps it open and looking away for look_away_s
+        closes it. One run of looks opens it once (or is spent when it finds it open already)."""
+        p = self.portal
+        since, last = nearby.look(self.app)
+        now = time.monotonic()
+        now_looking = since is not None and last is not None and now - last <= LOOK_FRESH_S
+        if p.open and p.looked:
+            if now_looking:
+                p.last = now  # close_s counts from when he looked away
+            elif not p.busy and (last is None or now - last >= _num(self.setting("listen.look_away_s"), 3.0)):
+                p.close("looked away")
+            return
+        dwell = _num(self.setting("listen.look_dwell_s"), 1.0)
+        if since is None or last is None or not now_looking or since == self._look_used or last - since < dwell:
+            return
+        if self._look_why():
+            return
+        self._look_used = since
+        if p.look():
+            self.look_count += 1
 
     def _went_well(self, who) -> None:
         """An addressed turn in the same conversation, from the same voice: the turn before it went well (a row
@@ -1584,6 +1665,7 @@ class Voice(Module):
                 if s is not None and self.muted():  # mute ends an enrolment
                     s.command("stop")
                 self.portal.tick()
+                self.look_tick()
                 self._face_hold()
                 try:
                     await asyncio.wait_for(stop.wait(), timeout=1)
@@ -1927,6 +2009,14 @@ class Voice(Module):
             + (f"\n{fast.line(self.speed())}" if self.setting("listen.timing") and self.timings else "")
             + "\n/voice mute, /voice unmute, /voice stop, /voice say <text>; /voice id (Voice ID), /voice enrol"
         )  # fmt: skip
+
+
+def _num(v, default: float) -> float:
+    """A number setting; 0 stays 0 (a dwell of 0 opens on the first look), anything unreadable is the default."""
+    try:
+        return default if v is None else float(v)
+    except (TypeError, ValueError):
+        return default
 
 
 def _drowsing(app) -> bool:

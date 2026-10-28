@@ -43,7 +43,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
 - [Brain](#brain): 124 settings
-- [Voice and voice notes](#voice-and-voice-notes): 67 settings
+- [Voice and voice notes](#voice-and-voice-notes): 72 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
@@ -6290,6 +6290,68 @@ face: camera paused (screen locked), using voice rules").
 - **Values:** `voice` (default) or `none`. **Default:** `voice`.
 - **When to change it:** Pick `none` if being answered when nobody's there is worse than not being answered.
 - **Depends on:** `voice.listen.need_face`.
+
+### `voice.listen.look_to_talk`
+
+Look at the camera for a second and Kurooto starts listening, as if you'd said its name.
+
+With Face presence on and enrolled, your face (recognised as yours), close to the camera and turned to it within
+voice.listen.look_yaw_deg and voice.listen.look_pitch_deg, for voice.listen.look_dwell_s, opens the conversation the way
+its name alone does, without a sound: the next thing you say counts as said to it, no name needed. The camera sees which
+way your head points, not your eyes, so the angles are tighter than voice.listen.face_yaw_deg: looking at the screen
+beside the camera shouldn't count. It stays open while you keep looking; look away for voice.listen.look_away_s before
+saying anything and it closes. A conversation already going on is left alone. One look opens it once: after it closes
+(you said something not to it, "stop", or looked away) look away and back. It never opens while Voice is off or muted,
+on a call, at night with listening off, while Kurooto is asleep, or with Face presence off or paused. What you then say
+still goes through the other checks: with Voice ID, someone else's voice isn't even written out; two voices at once, or
+people talking here lately, need a question or a request. Only two times are kept, in memory: when you started looking
+and when you last did.
+
+- **Values:** `true` (default), `false` (only its name, the wake word and the usual follow-ups open it). **Default:**
+  on.
+- **When to change it:** Turn it off if it starts listening while you're only reading something near the camera.
+- **Costs and what leaves this computer:** Like voice.listen.need_face, the camera stays looking while Voice listens
+  (its light on), and a little processor time.
+- **Depends on:** Face presence on and enrolled; Voice listening.
+
+### `voice.listen.look_dwell_s`
+
+How long you look at the camera before it starts listening: a glance shorter than this doesn't count.
+
+Face presence looks about once a second (every 3 seconds on battery), so the wait is this long or a little more.
+
+- **Values:** Seconds, 0 to 10 (default 1). **Default:** `1.0`.
+- **When to change it:** Raise it if passing glances open it; lower it to have it react sooner.
+- **Depends on:** `voice.listen.look_to_talk`.
+
+### `voice.listen.look_yaw_deg`
+
+How straight at the camera your head must point, left or right: at most this many degrees (an estimate).
+
+- **Values:** Degrees, 5 to 35 (default 15). **Default:** `15`.
+- **When to change it:** Raise it if looking at the camera doesn't open it; lower it if looking at the screen next to it
+  does.
+- **Depends on:** `voice.listen.look_to_talk`.
+
+### `voice.listen.look_pitch_deg`
+
+How straight at the camera your head must point, up or down, judged against your face at enrolment.
+
+Measured from the front step of your Face presence enrolment (where you looked straight at the camera). If that isn't on
+record, only the left-right angle counts.
+
+- **Values:** Degrees, 5 to 35 (default 15). **Default:** `15`.
+- **When to change it:** Raise it if it misses you when the camera sits above the screen; lower it if looking down at
+  the keyboard opens it.
+- **Depends on:** `voice.listen.look_to_talk`.
+
+### `voice.listen.look_away_s`
+
+Looking away this long, before you've said anything, closes it again.
+
+- **Values:** Seconds, 0 to 30 (default 3). **Default:** `3.0`.
+- **When to change it:** Raise it if it closes while you glance at your notes before asking.
+- **Depends on:** `voice.listen.look_to_talk`.
 
 ### `voice.listen.learn_nightly`
 

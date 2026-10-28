@@ -2,6 +2,12 @@
 
 ## 0.8.17 (unreleased)
 
+- **Look at it to talk** (`voice.listen.look_to_talk`, on; needs Face presence on and enrolled): look straight at the
+  camera for about a second and Kurooto starts listening as if you'd said its name, so the next thing you say needs no
+  "Kurooto". It's your head's direction, not your eyes, judged within tight angles (`voice.listen.look_yaw_deg`,
+  `voice.listen.look_pitch_deg`, 15 degrees) for `voice.listen.look_dwell_s`; looking away for
+  `voice.listen.look_away_s` before saying anything closes it again. Never while muted, asleep, on a call, or with
+  Voice or Face presence off; Voice ID and the chatter rules still apply to what you say.
 - **Voice says the whole answer.** Barge-in stopped an answer for good whenever a voice that passed as yours was
   heard over it, even an "mm", a cough or a word to someone else, and the rest went unsaid. Now it goes quiet at once,
   and unless what you said was "stop" or a new question or request, it carries on from the start of the sentence it

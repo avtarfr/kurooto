@@ -141,6 +141,13 @@ landmarks). `core/nearby.py` keeps `(time, faces, facing)` per frame for `FACING
 the last sighting time: times and counts only, never boxes, pictures, numbers or identity. A covered frame emits no
 `view`, so it counts as the camera not looking.
 
+0.8.17 (`voice.listen.look_to_talk`): `view` also carries `owner`, the best owner face's `(height_px, yaw, pitch)`
+(`watch._pitch`), or None. `Face.looking(owner)` (close as `close_facing`, `yaw_degrees <= voice.listen.look_yaw_deg`,
+`vision.pitch_degrees(pitch, template.baseline["pitch"]) <= voice.listen.look_pitch_deg`, yaw only without a front
+step; `pitch_degrees` is `atan(|pitch - front| / PITCH_K)`, `PITCH_K = 0.26`, an estimate) goes to
+`nearby.set_look(app, on)` (two times: the run's start and the last look), then `Voice.look_tick()` is called at once
+([voice.md](voice.md)). It's the head's direction from five landmarks, not gaze.
+
 ## Tracking every face (0.8.12)
 
 So the being's eye (and an add-on's) can follow anyone in view, not just the owner. Switch `face.track.on` (on); rate

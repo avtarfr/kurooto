@@ -16,6 +16,11 @@ whose turn it answered last (`opener`, `last_who`: decision words), whether its 
 (`answered`), and when speech that wasn't to it was last heard (the gate's chatter signal). After an answer it stays
 open for follow_s (voice.listen.follow_s) when that's longer than close_s, so the conversation can go on; the owner's
 last recognised turn counts from when Kurooto finished answering it, so carry follows the conversation.
+
+0.8.17 (voice.listen.look_to_talk): look() opens it because the owner looked at it, as its name alone would, but
+silently (no "Yes?") and with `looked` set until something is said to it: the gate then takes the next words as if its
+name came first (gate rule 5b). Voice keeps it open while he keeps looking, and closes it when he looks away before
+anything was said (Voice.look_tick).
 """
 
 from __future__ import annotations
@@ -24,7 +29,7 @@ import time
 from collections import deque
 from collections.abc import Callable
 
-from kurooto.modules.voice.gate import Context, Decision, Heard
+from kurooto.modules.voice.gate import LOOKED, Context, Decision, Heard
 
 GUEST_NOTICE = "You can chat with me, but only my owner's voice can make me do things."
 UNSURE_NOTICE = "I couldn't tell it was you, so I'm only chatting: say it again closer to the microphone, or type it."
@@ -72,6 +77,7 @@ class Portal:
         self.last_who = ""  # (voice id) the decision word of the turn it answered last
         self.answered = False  # its last words answered a turn in this conversation
         self._chatter_at: float | None = None  # speech that wasn't to it, last heard (a time only)
+        self.looked = False  # (0.8.17) opened by the owner looking at it, nothing said to it since
 
     # ---------------------------------------------------------------------------------------------- state
     def context(self) -> Context:
@@ -88,6 +94,7 @@ class Portal:
             since_chatter_s=None if self._chatter_at is None else now - self._chatter_at,
             answered=self.open and self.answered,
             since_open_s=None if not self.open or self.opened_at is None else now - self.opened_at,
+            looked=self.open and self.looked,
         )
 
     def state(self, state: str, why: str = "") -> None:
@@ -100,10 +107,12 @@ class Portal:
             self.opened_why, self.opened_at = why, self.clock()
             self.opener = self.last_who = ""
             self.answered = False
+            self.looked = False
         self.open = is_open
         if not is_open:
             self.awaiting = False
             self.answered = False
+            self.looked = False
             if self._close_s_before is not None:
                 self.close_s, self._close_s_before = self._close_s_before, None
         if self.on_change:
@@ -125,7 +134,7 @@ class Portal:
         no when what it said ended in "?" (rule 8), the local model as usual; anything not to it closes it at once."""
         if not self.open:
             self._set(True, "greeting")
-        self.awaiting = False
+        self.awaiting = self.looked = False
         self.answered = False  # a greeting answers nobody: the conversation window (follow_s) doesn't start
         if self._close_s_before is None:
             self._close_s_before = self.close_s
@@ -140,11 +149,23 @@ class Portal:
         if not self.open:
             self._set(True, why)
             self.opener = who
-        self.awaiting = False
+        self.awaiting = self.looked = False
         self.last_who = who
         self.answered = True
         self.last = self.spoke_at = self.clock()
         self.state("addressed", why)
+
+    def look(self) -> bool:
+        """(0.8.17, voice.listen.look_to_talk) The owner looked at it: open, as its name alone would, ready for what he
+        says next (gate rule 5b), but silently and with nothing sent. False when it was open already (a conversation
+        going on is left as it is)."""
+        if self.open:
+            return False
+        self._set(True, LOOKED)
+        self.looked = True
+        self.last = self.clock()
+        self.state("addressed", LOOKED)
+        return True
 
     def tick(self) -> None:
         """Called every second or so: close_s of nothing said to it closes it."""
@@ -180,7 +201,7 @@ class Portal:
             self._set(True, d.why)
             self.opener = who.decision if who is not None else ""
         self.last_who = who.decision if who is not None else ""
-        self.answered = False
+        self.answered = self.looked = False
         self.last = self.clock()
         if who is not None and who.decision == "owner":
             self.last_owner_at, self.last_owner_session = self.clock(), self.session
