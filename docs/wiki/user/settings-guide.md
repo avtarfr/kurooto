@@ -26,12 +26,12 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 
 - [You and how it talks to you](#you-and-how-it-talks-to-you): 11 settings
 - [Your AI](#your-ai): 34 settings
-- [Messages and where they reach you](#messages-and-where-they-reach-you): 31 settings
-- [When it may interrupt you](#when-it-may-interrupt-you): 13 settings
-- [Phone calls and the call line](#phone-calls-and-the-call-line): 35 settings
+- [Messages and where they reach you](#messages-and-where-they-reach-you): 39 settings
+- [When it may interrupt you](#when-it-may-interrupt-you): 14 settings
+- [Phone calls and the call line](#phone-calls-and-the-call-line): 37 settings
 - [Morning alarm](#morning-alarm): 11 settings
 - [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 34 settings
-- [Check-ins, journal and the week](#check-ins-journal-and-the-week): 18 settings
+- [Check-ins, journal and the week](#check-ins-journal-and-the-week): 19 settings
 - [Classes and timetable](#classes-and-timetable): 15 settings
 - [Calendar](#calendar): 11 settings
 - [Quiz and exams](#quiz-and-exams): 33 settings
@@ -41,13 +41,13 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Concept graph](#concept-graph): 26 settings
 - [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 49 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
-- [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
-- [Brain](#brain): 127 settings
-- [Voice and voice notes](#voice-and-voice-notes): 80 settings
+- [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 63 settings
+- [Brain](#brain): 137 settings
+- [Voice and voice notes](#voice-and-voice-notes): 83 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
-- [This computer](#this-computer): 11 settings
-- [Dashboard and terminal](#dashboard-and-terminal): 27 settings
+- [This computer](#this-computer): 12 settings
+- [Dashboard and terminal](#dashboard-and-terminal): 28 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 26 settings
 - [Face presence](#face-presence): 34 settings
@@ -637,6 +637,30 @@ Kinds of message you stopped with Less of this → Stop.
 - **When to change it:** Remove a kind to start getting it again (or use Undo on the message that stopped it).
 - **Depends on:** `notify.calm.on`. Used only for kinds whose feature has no switch of its own.
 
+### `notify.calm.recheck`
+
+A message that waited says what changed meanwhile when it goes out ("done 14:10", "class skipped").
+
+It applies wherever a message waited: the evening bundle, the end of focus time, the morning after Kurooto slept, the
+network coming back, Brain's door. It reads the deadline list and the day's skipped classes.
+
+- **Values:** `rewrite`: the line is added and the message still comes; `drop`: such a message is left out; `false`: it
+  comes as it was written. **Default:** `rewrite`.
+- **When to change it:** Set `drop` if you'd rather not see reminders about something already done; `false` for messages
+  exactly as they were.
+- **Depends on:** `notify.calm.on`.
+
+### `notify.calm.talk`
+
+Tune these messages in plain words: "why did you send that?", "less of this", "send me what's waiting".
+
+The same as the Why? and Less of this buttons, the evening bundle and /calm. A change made this way comes with an Undo
+on your chat. On a call the AI gets four tools for it.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if these words should go to your AI instead.
+- **Depends on:** `notify.calm.on`.
+
 ### `notify.calm.lighter_after`
 
 After an exam or a heavy day, the next day's limit is halved.
@@ -743,6 +767,69 @@ Everything not already in `notify.app_kinds`: reminders, results, information.
 - **When to change it:** Turn it on where Telegram is blocked or you'd rather use the app's chat.
 - **Costs and what leaves this computer:** Sealed with your phone's key through your call line.
 - **Depends on:** A paired phone app.
+
+### `notify.follow_me`
+
+Follow me: while Face presence says you've stepped away, messages that pop up on the desktop also go to the phone app.
+
+The desktop pop-up still waits for you when `face.away.hold_desktop` is on, and Telegram gets everything as usual. Kinds
+the app already gets (`notify.app_kinds`) don't come twice. With Face presence off it can't tell where you are, and
+nothing changes.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you walk away from the computer with the phone and want the desktop's messages
+  there too.
+- **Depends on:** Face presence (`face.away.on`) and a paired phone app.
+
+### `notify.desk_silent_phone`
+
+While you're at the desk, Telegram's copy comes without a sound (urgent ones, calls and approvals still ring).
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if the phone buzzing beside the screen that already shows the message bothers you.
+- **Depends on:** `notify.follow_me` and Face presence.
+
+### `notify.desk_first`
+
+While you're at the desk, every message also pops up on the desktop, not only `notify.desktop_kinds`.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on to see everything on the screen in front of you first.
+- **Depends on:** `notify.follow_me`, `notify.desktop` and Face presence.
+
+### `notify.guests_hold`
+
+With someone else at the desk, the desktop pop-up only says "A message from Kurooto".
+
+Someone else means two faces close and looking at the screen (Face presence) or a voice that isn't yours lately (Voice
+ID). Only counts are used, never who. Nothing is held or dropped.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if people often sit with you at this computer.
+- **Depends on:** Face presence or Voice ID to notice others.
+
+### `notify.respect_phone_dnd`
+
+While your phone is on Do Not Disturb, what isn't urgent waits (as during focus) and calls Kurooto places by itself wait
+too.
+
+From the phone's Do Not Disturb sense (Brain). What waited goes when Do Not Disturb ends, or when the phone stops saying
+so for 15 minutes. The alarm, your own reminders, approvals, deadlines under 12 hours and anything urgent still come.
+Used on this computer only.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on so Kurooto respects the phone's quiet.
+- **Depends on:** Brain and the phone's Do Not Disturb sense (`mind.senses.phone.dnd`).
+
+### `notify.desktop_retract`
+
+A desktop pop-up for a question closes once you've answered it anywhere, and one held while you were away doesn't show.
+
+On Linux the pop-up is closed through the desktop's notification service; on Windows and macOS pop-ups stay (best
+effort).
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep every pop-up until you close it.
 
 ### `ask.expire_hours`
 
@@ -873,6 +960,18 @@ Hold calls at night only on nights you've set a wake-up alarm.
 - **Values:** On or off. **Default:** off.
 - **When to change it:** Turn it on if you set the alarm every night you want quiet, and calls on other nights are fine.
 - **Depends on:** The Morning alarm.
+
+### `availability.night.phone_alarm`
+
+Your phone's own alarm ends the night's call hold, when it's earlier than the night's end (never later).
+
+With the phone's alarm sense on (Brain), a 06:00 alarm on the phone ends the night at 06:00 instead of 07:00, and once
+it has rung the night is over. When it and Kurooto's alarm disagree for the same morning, Kurooto asks once whether to
+keep both; neither alarm changes without your tap. The phone's alarm time is used on this computer only.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep the night hours as set, whatever the phone's alarm says.
+- **Depends on:** Brain and the phone's alarm sense (`mind.senses.phone.alarm`).
 
 ### `availability.learn_night`
 
@@ -1057,6 +1156,28 @@ Minutes after the first ring that an unanswered call rings again.
 
 - **Values:** A list of minutes, e.g. `[3, 6]`; `[]` rings once. **Default:** `[3, 6]`.
 - **When to change it:** Empty it if one ring is enough; add a later one if you sleep through calls you asked for.
+
+### `calls.hold_moving`
+
+Calls Kurooto places by itself wait while your phone says you're walking or in a vehicle.
+
+From the phone's motion sense (Brain), checked again every 10 minutes. Calls you asked for, the alarm and deadlines less
+than 12 hours away still ring. Headphones never hold a call. Used on this computer only, never sent to an AI.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if calls on the way to class or on the road are a nuisance.
+- **Depends on:** Brain and the phone's motion sense (`mind.senses.phone.motion`).
+
+### `calls.phone_busy`
+
+Calls Kurooto places by itself, and their retries, wait while the phone app says it's in another call (WhatsApp, Meet).
+
+The app sends only until when it's busy, never who you're talking to. Kept apart from Kurooto's own calls, so desk
+listening and the greeting go on unless `voice.listen.phone_call` is on.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on so Kurooto doesn't keep retrying while you're on another call.
+- **Depends on:** A phone app that reports being in another call.
 
 ### `calls.later_min`
 
@@ -1766,6 +1887,18 @@ With check-ins by call and an alarm set, the night check-in waits for the mornin
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off to be called anyway.
 - **Depends on:** `checkins.by_call` and the Morning alarm.
+
+### `checkins.asleep_follows_brain`
+
+When Brain's sleep says you're asleep, that counts as the night: check-ins and calls Kurooto places by itself wait.
+
+Brain's sleep follows the phone (screen off, dark, charging), Face presence and the bedside. While it says asleep, the
+night holds calls Kurooto starts by itself and check-ins as the night hours do; a night check-in by call moves to your
+wake-up call with the usual message. Calls you asked for, the alarm and your own reminders still come.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on so a goodnight call doesn't ring after you've already fallen asleep.
+- **Depends on:** Brain (its sleep part).
 
 ### `checkins.ai_notes`
 
@@ -4302,6 +4435,20 @@ What you say you'll do, and tasks you start, become open threads ("did I finish 
 - **When to change it:** Turn it off if you don't want that kept. `/threads` shows them.
 - **Depends on:** Nothing: core.
 
+### `memory.day_rows`
+
+Each night, one line about the day in the memory ledger: time at the desk, what you studied, classes you skipped.
+
+Made from what Kurooto already records: Face presence's comings and goings (rounded to the hour), your study sessions
+and your own class taps. Never a place and never read from the senses. Sealed like every ledger row; "what was I doing
+last Thursday?" and your AI's memory can use it (one-line items, like gists).
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you'd like Kurooto to remember the shape of your days. /memory forgets a row.
+- **Costs and what leaves this computer:** Like the rest of the ledger, a line may go to your AI with a request that
+  refers to that day.
+- **Depends on:** Nothing: core. It has something to say with Face presence, Study or Classes on.
+
 ### `memory.thread_days`
 
 Days an untouched open thread waits before it closes by itself.
@@ -4352,6 +4499,15 @@ When you correct a skill's answer, the skill keeps it as a lesson.
 - **When to change it:** Turn it off to keep skills exactly as written.
 - **Costs and what leaves this computer:** Your correction and the skill go to the second-look AI.
 - **Depends on:** Learns from its own work and Skills.
+
+### `learning.from_wrong`
+
+A Wrong on a skill's answer counts as a correction of that skill, as "that's wrong" said after it does.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to have Wrong keep only a test case.
+- **Costs and what leaves this computer:** As for corrections: the skill and the answer go to the second-look AI.
+- **Depends on:** `learning.corrections`, Skills and Wrong button and test cases.
 
 ### `learning.remember`
 
@@ -4418,6 +4574,29 @@ The same not-understood phrasing twice followed by the same request: it's learne
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off to learn only from test cases you make.
 - **Depends on:** Wrong button and test cases.
+
+### `cases.surfaces`
+
+Where else Wrong works besides Telegram and the terminal: the app's chat, the dashboard's chat, "that's wrong" said
+aloud.
+
+Requests from there are kept as cases like Telegram's. Said aloud, only your voice counts (Voice ID), and the words
+still go to your AI as before.
+
+- **Values:** A list of `app`, `dashboard`, `voice`; `[]`: Telegram and the terminal only, as before 0.9.0. **Default:**
+  `["app", "dashboard", "voice"]`.
+- **When to change it:** Remove one to leave it out.
+- **Depends on:** Wrong button and test cases.
+
+### `cases.to_dreaming`
+
+An answer from your notes or the concept graph you mark Wrong is listed in Dreaming's morning message as worth a look.
+
+Only that it happened and which kind of answer it was; nothing in your notes is changed.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep Wrong out of the morning message.
+- **Depends on:** Wrong button and test cases, and Dreaming.
 
 ### `cases.review`
 
@@ -4520,6 +4699,19 @@ Make data fixes it's sure of (two copies of one deadline become one), with Undo.
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off to be asked about every fix.
 - **Depends on:** The Nightly look back.
+
+### `retro.case_text`
+
+The nightly look back also reads the requests you marked Wrong (what you wrote, what Kurooto did, your note).
+
+Never one about health, money or other people (the same filter Remember uses). With `mind.dream.from_calls` and
+`mind.dream.from_proposals` on it also gets how many lessons the look back after calls found and how many proposals you
+discarded, as counts.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep those requests out of the look back.
+- **Costs and what leaves this computer:** They go to the AI the look back uses.
+- **Depends on:** The Nightly look back and Wrong button and test cases.
 
 ### `dreaming.when`
 
@@ -5001,6 +5193,18 @@ Make its trust verdicts bind: it asks first for what it isn't trusted with.
 - **When to change it:** Turn it on after the shadow weeks if you want its learned trust to take effect.
 - **Depends on:** `mind.autonomy.on`.
 
+### `mind.trust.from_wrong`
+
+A Wrong on what a request did counts as a complaint against that kind of action, so Kurooto asks first before doing it
+on its own.
+
+It only ever makes it ask more; nothing you asked for changes. Off: Wrong keeps a test case and nothing else changes in
+its trust.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if a Wrong should also make Kurooto more careful acting by itself.
+- **Depends on:** `mind.autonomy.on` and Wrong button and test cases.
+
 ### `mind.autonomy.shadow_days`
 
 Days its trust verdicts are only counted and shown, not used.
@@ -5124,6 +5328,19 @@ Hours a message may keep losing at the door before it goes into the evening bund
 - **When to change it:** Lower it to clear the door sooner; nothing is ever dropped, only moved to the bundle.
 - **Depends on:** `mind.workspace.arbiter` and Calm (`notify.calm.on`); with Calm off it simply goes.
 
+### `mind.workspace.item_fatigue`
+
+Deadline, class and quiz reminders also tire at the door, and need their item to be on Brain's mind, like its promises.
+
+These messages name their item for Brain's workspace (a deadline, a class or a quiz). By default that only makes one
+count double at the door while the item is on Brain's mind. On, it also counts toward the item's fatigue (told three
+times today, it drops out) and, with the door off, the gate holds one whose item didn't win.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if reminders about the same thing come too often; more of them then wait for the
+  evening bundle.
+- **Depends on:** `mind.workspace.on`.
+
 ### `mind.expect.on`
 
 Each message Kurooto starts says what it expects (a reply, or done within 2 hours), and what came of it is recorded.
@@ -5144,6 +5361,14 @@ It adds to Calm's Why? on Telegram, and puts a Why this? button on the phone app
 
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off to keep Calm's Why? as it was.
+
+### `mind.why.console_link`
+
+Why? ends with a link that opens that message's decision in the Brain console.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to leave the link out of Why?.
+- **Depends on:** `mind.why.on`; the link opens the dashboard on this computer.
 
 ### `mind.attention.on`
 
@@ -5492,6 +5717,18 @@ Its own promises ("I'll check back at 6") are noticed, kept, or owned up to firs
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off if you don't want them tracked. `/promises` lists them.
 
+### `mind.promises.answers`
+
+Promises in its answers to you, its side of a call and what it says at the desk are tracked too, not only in messages it
+starts.
+
+Read on this computer with the same rules (an "I'll" with a time); nothing is sent anywhere. A broken one is owned up to
+like the rest.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to track only the messages it starts by itself.
+- **Depends on:** `mind.promises.on`.
+
 ### `mind.story.on`
 
 One life story every part of Kurooto reads first: a fixed core, then its recent weeks.
@@ -5591,6 +5828,19 @@ The Brain console: a dashboard page (Alt+O) and the phone's Brain view showing w
   depends on it.
 - **Depends on:** Brain on.
 
+### `mind.console.edit`
+
+Wrong and Forget beside each row of the model of you on the dashboard's Brain console (the phone's view stays
+read-only).
+
+The same as `/model wrong` and `/model forget`, only on your click. A Wrong on a line Kurooto wrote in your
+how-to-help-me note offers to take the line out of the note as well, which happens only when you confirm; your own lines
+are never offered.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep the console read-only.
+- **Depends on:** `mind.console.on`.
+
 ### `mind.dream.on`
 
 Brain goes over the day at night and brings cards, how-to-help lines and a voice line to the morning message.
@@ -5639,6 +5889,30 @@ One morning line on what the nightly voice learning saw: turns it learned from a
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off if you don't need it. Counts and flags only, never words.
 - **Depends on:** Voice with `voice.listen.learn_nightly`.
+
+### `mind.dream.from_wrong`
+
+The nightly lessons also learn from your Wrong taps: two on the same kind of request suggest a how-to-help-me line.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to leave Wrong out of the lessons. A line is only written when you tap Keep.
+- **Depends on:** `mind.dream.lessons` and Wrong button and test cases.
+
+### `mind.dream.from_calls`
+
+The nightly lessons also count what the look back after calls flagged (counts only, never a call's words).
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to leave calls out of the lessons.
+- **Depends on:** `mind.dream.lessons` and Phone calls' look back (`calls.review`).
+
+### `mind.dream.from_proposals`
+
+The nightly lessons also count proposals you discarded: two from the same source suggest fewer of them.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to leave proposals out of the lessons.
+- **Depends on:** `mind.dream.lessons`.
 
 ### `mind.study_push.on`
 
@@ -5761,6 +6035,25 @@ its trust.
 - **Depends on:** `mind.autonomy.on`; each kind needs its feature (Deadlines, Start-by, Reminders, Skills, Quiz, Brain's
   dreaming).
 
+### `mind.act.record_asked`
+
+The Sunday list also shows what tools changed because you asked on a call or in a chat, with Undo.
+
+Never an order or anything about money. It doesn't change what needs your OK: these ran because you asked.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to list only what it did on its own.
+- **Depends on:** `mind.autonomy.on`.
+
+### `mind.trust.from_asked_undo`
+
+An Undo of a change you asked for also lowers its trust in that kind of action.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Leave it off: nothing it did on its own happened there. Turn it on if you'd rather every Undo
+  make it more careful.
+- **Depends on:** `mind.act.record_asked`.
+
 ### `mind.presence_forecast.on`
 
 Forecast, hour by hour for the next six hours, when you'll be at your desk and free; scored against what the senses then
@@ -5825,6 +6118,18 @@ For every setting in this group, unless its entry says otherwise:
 - **Costs and what leaves this computer:** Sound is handled on this computer and never touches the disk. Only turns said
   to Kurooto go to your AI, as a chat message would.
 - **Depends on:** The Voice feature.
+
+### `voice.answers_questions`
+
+After the greeting's "Want to go through them?", a yes said aloud reads the waiting questions one by one and takes your
+spoken answers.
+
+"skip" or "later" leaves one, "stop" ends it. Approvals are only counted; they still need your tap on the phone or
+Telegram. Only your voice counts (Voice ID), and nothing is read while someone else is here.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to have a yes go to your AI as before.
+- **Depends on:** Voice listening and Face presence's greeting with `face.greet.talk`.
 
 ### `voice.speak.on`
 
@@ -5982,6 +6287,14 @@ Keep listening while you're on a phone call (off: listening pauses during calls)
 - **Values:** On or off. **Default:** off.
 - **When to change it:** Turn it on only if your calls are on another device out of earshot.
 - **Depends on:** `voice.listen.on`.
+
+### `voice.listen.phone_call`
+
+Stop listening while the phone app says it's in another call (WhatsApp, Meet), not only during Kurooto's own calls.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on so the desk stays quiet while you're on a call on the phone.
+- **Depends on:** `voice.listen.on` and a phone app that reports being in another call.
 
 ### `voice.listen.stt_model`
 
@@ -6591,6 +6904,18 @@ it's done, as before. /voice stop, mute and talking over it stop it at once.
 - **When to change it:** Turn it off if you'd rather hear only the finished answer.
 - **Depends on:** `voice.speak.on`.
 
+### `voice.speak.guests_private`
+
+With someone else at the desk, an AI answer isn't read aloud by itself: it stays on screen, and a message offers Read it
+aloud.
+
+Only for answers read out because `voice.speak.what` is `all`. Someone else means two faces looking at the screen (Face
+presence) or a voice that isn't yours lately (Voice ID).
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if answers about your work shouldn't be heard by whoever is with you.
+- **Depends on:** `voice.speak.what` = `all`, and Face presence or Voice ID to notice others.
+
 ### `voice.listen.timing`
 
 Time each spoken turn from your last word to Kurooto's first sound, as numbers only.
@@ -7102,6 +7427,17 @@ When you turn a feature off, ask whether to remove what Kurooto installed for it
 - **Costs and what leaves this computer:** With it on, models you pulled through Kurooto are deleted and have to be
   downloaded again if you want them back.
 
+### `reserve.today`
+
+Keep today.md in the reserve folder: today's alarm, classes, what's due today and tomorrow and events, for every AI
+request to read.
+
+A plain file in Kurooto's state folder (`reserve/`), rewritten when its contents change. Lines about health or money are
+left out, and nothing about your mood or the senses is in it.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you'd rather your AI read only the separate files.
+
 ## Dashboard and terminal
 
 How the dashboard looks and what's on its board: the design, the board, colours, panes, the being, Study mode and the
@@ -7353,6 +7689,17 @@ As your default terminal, what a launch opens: one shell tab, or the whole windo
 - **Values:** One of: `shell` (one tab); `layout` (all tabs). **Default:** `shell`.
 - **When to change it:** Pick `layout` to get every tab each time.
 - **Depends on:** `terminal.default`.
+
+### `look.memory_page`
+
+The dashboard's Memory page (Alt+U): everything Kurooto keeps about you, side by side.
+
+The memory ledger, open threads, what was set up from what you said, what it learned from its own work, topics you
+aren't interested in, Brain's model of you (with Wrong and Forget) and what add-ons keep, as counts. It reads; each
+list's own command changes it, with Undo. Nothing on it is sent anywhere.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to hide the page.
 
 ## Add-ons
 
