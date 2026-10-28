@@ -191,10 +191,12 @@ def test_moving_and_a_phone_call_hold_only_what_is_switched_on(app, monkeypatch)
     until = (dt.datetime.now() + dt.timedelta(minutes=20)).timestamp() * 1000
     assert chat._busy({"until": until}) == (200, {"ok": True})
     assert av.phone_busy_until() is not None and av.on_call_until() is None  # apart from its own calls
-    noon = dt.datetime.now().replace(hour=12, minute=0)
-    assert av.call_block(noon, why="checkins.call") == (None, None)  # off: only noted
+    app.settings.set("availability.night.enabled", False)  # whatever the hour the test runs at
+    soon = dt.datetime.now() + dt.timedelta(minutes=1)
+    assert av.call_block(soon, why="checkins.call") == (None, None)  # off: only noted
     app.settings.set("calls.phone_busy", True)
-    assert av.call_block(noon, why="checkins.call")[0] == av_mod.PHONE_CALL
+    assert av.call_block(soon, why="checkins.call")[0] == av_mod.PHONE_CALL
+    assert av.call_block(soon, why="calls.own") == (None, None)  # a call you asked for goes on
     assert chat._busy({"until": 0})[0] == 200 and av.phone_busy_until() is None
 
 
