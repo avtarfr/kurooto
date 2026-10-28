@@ -646,6 +646,9 @@ class Vitals:
             for j in all_jobs[:40]
         ]
         own = self._cached("own", 10, self._own, {"pids": {}, "cells": {}, "watched": set()})
+        src = None
+        if app.settings.get("look.jobs_source"):  # (0.9.0) where each request came from (core/jobs.py: source)
+            from kurooto.core.jobs import source as src
         return {
             "t": "body",
             "sys": self.machine(),
@@ -662,6 +665,7 @@ class Vitals:
                     "brain": j.brain,
                     "model": j.model,  # the model that answered, and the run receipt (who decided, who answered)
                     "receipt": j.receipt or "",
+                    **({"source": src(app, j)} if src else {}),
                 }
                 for j in jobs
             ],

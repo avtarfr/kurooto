@@ -1403,6 +1403,37 @@ class Jobs:
         self._db.close()
 
 
+FROM = {  # Incoming.via -> the words the AI jobs tab shows (source)
+    "telegram": "Telegram",
+    "app": "phone chat",
+    "terminal": "talk box or terminal",
+    "setup": "setup page",
+    "voice": "voice at the desk",
+    "routine": "a routine",
+}
+
+
+def source(app, j: Job) -> dict:
+    """(0.9.0) Where a request came from, for the dashboard's AI jobs tab (look.jobs_source): {"from": words} and, for
+    the phone app's chat, {"session": its chat}, so the tab can jump there. From what Chat recorded (modules/chat.py:
+    job_via), else the job itself: an answer for the app's chat, work that started by itself."""
+    chat = app.modules.get("chat")
+    via, sid = ("", "")
+    if chat is not None and hasattr(chat, "job_via"):
+        try:
+            via, sid = chat.job_via(j.id)
+        except Exception:
+            pass
+    rt = str(j.reply_to or "")
+    if via == "app" or rt.startswith("app:"):
+        return {"from": FROM["app"], "session": sid or "main"}
+    if via in FROM:
+        return {"from": FROM[via]}
+    if j.background or j.lane != "you":
+        return {"from": "by itself"}
+    return {"from": "Telegram"} if rt else {"from": ""}
+
+
 def public(j: Job) -> dict:
     """A job for the dashboard and `kurooto jobs`: what it is and how it's going (not what was asked or answered)."""
     keys = ("id", "title", "status", "verdict", "effort", "seconds", "created", "started", "brain", "lane", "model")

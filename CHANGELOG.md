@@ -18,6 +18,12 @@
 - **Live turns count like typed ones** (`voice.listen.live_after`, on). A turn Gemini Live answered at the desk now
   opens and closes threads, sets up what you stated and reaches Brain's tone and reply tracking, as a typed message
   does; it always counts as a message from you (a fix: "first up today" missed it).
+- **Skip or go to a class from Today** (`look.today_class_actions`, on). Each of today's classes on the dashboard's
+  Today page has **skip**, or **going** on one you skip: the same as `/skip` and `/attend`.
+- **Open doubts and what to learn next in Study mode** (`look.study_extras`, on). The Study pane lists the subject's
+  open doubts and, with Brain's model of what you know on, the concept it thinks you're ready for next.
+- **Where each AI request came from** (`look.jobs_source`, on). The dashboard's AI jobs page has a **from** column:
+  Telegram, the phone chat (a link to that chat), the talk box, voice at the desk, or by itself.
 
 ## 0.8.18 (2026-10-29)
 

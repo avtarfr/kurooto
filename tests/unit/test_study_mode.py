@@ -183,3 +183,31 @@ def test_the_page_has_the_control_the_pane_and_the_key():
     assert "Alt+M study mode" in html
     assert 'e.code === "KeyM"' in js and 'key: "look.study_mode"' in js and 'w: "study"' in js
     assert "prefers-reduced-motion" in css and "cubic-bezier(0.23, 1, 0.32, 1)" in css
+
+
+def test_the_study_pane_lists_open_doubts_and_the_next_concept(study, monkeypatch):
+    """L133 (0.9.0): look.study_extras adds the subject's open doubts and Brain's frontier concept (only with the model
+    of what you know on); off, neither is given."""
+    from kurooto.mind import frontier
+    from kurooto.mind.tom import model
+
+    env, _ = study
+    env.on("doubts")
+    env.app.modules["doubts"].add("linear-algebra", "why does the rank not change?")
+    v = actions.study_view(env.app, "la")
+    assert v["doubts"] == ["why does the rank not change?"]
+    assert v["frontier"] == []  # Brain's model of what you know is off
+    notes = {
+        "zettel/rank": SimpleNamespace(title="Rank"),
+        "zettel/measure": SimpleNamespace(title="Measure"),
+    }
+    monkeypatch.setattr(model, "on", lambda app: True)
+    monkeypatch.setattr(frontier, "_load", lambda app: (notes, {"zettel/rank": 1.0, "zettel/measure": 1.0}))
+    assert frontier.next_up(env.app, ["zettel/rank"], n=2) == [
+        {"id": "zettel/rank", "title": "Rank", "subject": True},
+        {"id": "zettel/measure", "title": "Measure", "subject": False},
+    ]
+    assert actions.study_view(env.app, "la")["frontier"][0]["id"] == "zettel/measure"  # no subject note: another one
+    env.app.settings.set("look.study_extras", False)
+    v = actions.study_view(env.app, "la")
+    assert "doubts" not in v and "frontier" not in v

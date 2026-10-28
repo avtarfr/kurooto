@@ -1284,6 +1284,8 @@ best grade among the concept notes `knowledge.mentions` finds in the text. Grade
 (`masteries`): `FRONTIER` 1.0 (p < `SOLID_FROM` and every prerequisite solid; with no prerequisites only once a row exists),
 `NEAR` 0.5 (links to or from a frontier concept), `STARTED` 0.4, `SOLID` 0.1, `UNKNOWN` 0.0. The notes and grades are cached
 per app for `CACHE_S` (600 s), so an add-on may call it every few seconds. 0 with `mind.tom.on` off; never raises.
+`next_up(app, among, n)` (0.9.0): the `FRONTIER` concepts as `{"id", "title", "subject"}`, those in `among` (a subject's
+note ids) first, from the same cache; the dashboard's Study pane shows one (`look.study_extras`). Local only.
 
 **Dreaming** (`mind/dream.py`, `PART = "dream"`: `mind.dream.on`, then `cards`, `lessons`, `voice`; `frontier.py` is
 part of `tom`). `nightly(app)` runs at `WHEN` (`daily 00:15,...,06:15`, `modules/mind.py` job `mind:dream`,

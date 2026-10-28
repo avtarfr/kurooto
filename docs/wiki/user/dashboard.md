@@ -329,6 +329,10 @@ What it shows:
     ([Start-by dates](reminders-and-deadlines.md)).
   - **Recall:** with [Quiz](quiz-and-exams.md) on, up to three cards due for the subject from its exam-prep notes;
     click one to see it. `/quiz <subject>` practises them.
+  - **Open** (0.9.0, `look.study_extras`, on): the subject's open doubts from the [Doubt queue](classes-and-timetable.md)
+    (with it on), and with Brain's model of what you know on (`mind.tom.on`) the concept it thinks comes next for
+    you (a concept not mastered whose prerequisites are; one of this subject's first, else "another subject"). Click it
+    to find it on the map. Shown only when there's something to show.
   - **Notes:** the subject's course page, exam prep, doubts and class log, then its lecture and concept notes, newest
     first (wherever your notes layout keeps them).
 
@@ -338,6 +342,7 @@ What it shows:
 | `study.focus_min` | `25` | minutes of focus |
 | `study.break_min` | `5` | minutes of break |
 | `study.timer_ends_mode` | off | Study mode ends with the focus |
+| `look.study_extras` | on | the Open box: open doubts and the next concept (0.9.0) |
 
 The timer needs the Study tracker (and Subjects); without it, Study mode still shows your notes and what's due. A
 focus never shortens a `/focus` of yours that lasts longer. `/study stop` (or "done studying") during a focus ends the
@@ -411,7 +416,9 @@ The day, and the everyday things done right there.
   reminder (`! in 20m tea`, `! tomorrow 9am gym`; the time comes first). Press Enter or **↵**.
 - **Alarm** (needs the Morning alarm): what's set, a box to set one ("7:30", "tomorrow 6:45"), **skip tomorrow**,
   **turn this one off**, and **daily alarm…** / **change daily** (asks for a time, or `off`).
-- **Classes:** today's classes, "(skipping)" on ones you skip.
+- **Classes:** today's classes, "(skipping)" on ones you skip. Each has **skip** (you're not going: the same as
+  `/skip`, so calls may come then), or **going** on one you skip (the same as `/attend`); 0.9.0,
+  `look.today_class_actions` (on) hides them when off.
 - **Due:** the next three weeks; **done** ticks one off (and the `- [ ]` box in your notes when it came from one),
   **new date** asks for a date ("tomorrow 23:59"). An add box takes "essay draft fri 17:00" (when it's due goes last).
 - **Reminders:** each with **+10 min** and **cancel**.
@@ -469,7 +476,9 @@ tap reaches your phones through your call line, as when you use the app. `look.c
 - **Activity** lists the last 80 events as they happen. Events never hold what you typed, only names, counts and
   times.
 - **AI jobs** lists requests with **Cancel** on running and waiting ones (a running agent program is stopped with what
-  it started). The same as `/jobs` on Telegram.
+  it started). The same as `/jobs` on Telegram. Its **from** column (0.9.0, `look.jobs_source`, on) says where each
+  came from: Telegram, the phone chat (a link that opens that chat on the Chat page), the talk box or terminal, voice
+  at the desk, a routine, or "by itself" for work Kurooto started.
 - **Schedule** lists what's coming with its time.
 
 ### Features (Alt+F)

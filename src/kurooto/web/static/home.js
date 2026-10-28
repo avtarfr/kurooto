@@ -854,8 +854,12 @@ function renderPage(name, body) {
   if (name === "activity") activity(body);
   else if (name === "jobs" && last) {
     // running and waiting requests get a Cancel button (a running agent program stops with what it started)
-    body.innerHTML = last.jobs.length ? `<table><tr><th>when</th><th>request</th><th>effort</th><th>took</th><th>result</th><th></th></tr>${last.jobs.map((j) => `<tr><td>${ago(Date.now() / 1000 - j.created)} ago</td><td>${esc(j.title)}</td><td>${esc(j.effort || "")}</td><td>${j.seconds ? Math.round(j.seconds) + "s" : ""}</td><td class="${j.status === "ok" ? "ok2" : j.status === "failed" ? "bad2" : ""}" title="${esc(j.receipt || "")}">${esc(j.status)}${j.brain ? " · " + esc(j.brain) : ""}${j.model ? " " + esc(j.model) : ""}${j.verdict && j.verdict !== "ok" ? " · " + esc(j.verdict) : ""}</td><td>${j.status === "running" || j.status === "queued" ? `<button data-cancel="${esc(j.id)}">Cancel</button>` : ""}</td></tr>`).join("")}</table>` : "No AI requests yet.";
+    // (0.9.0, look.jobs_source) where each came from; one from the phone app's chat opens that chat on the Chat page
+    const src = last.jobs.some((j) => j.source), from = (j) => !j.source || !j.source.from ? "" : j.source.session ? `<a href="#" data-chat="${esc(j.source.session)}">${esc(j.source.from)}</a>` : esc(j.source.from);
+    body.innerHTML = last.jobs.length ? `<table><tr><th>when</th><th>request</th>${src ? "<th>from</th>" : ""}<th>effort</th><th>took</th><th>result</th><th></th></tr>${last.jobs.map((j) => `<tr><td>${ago(Date.now() / 1000 - j.created)} ago</td><td>${esc(j.title)}</td>${src ? `<td class="d">${from(j)}</td>` : ""}<td>${esc(j.effort || "")}</td><td>${j.seconds ? Math.round(j.seconds) + "s" : ""}</td><td class="${j.status === "ok" ? "ok2" : j.status === "failed" ? "bad2" : ""}" title="${esc(j.receipt || "")}">${esc(j.status)}${j.brain ? " · " + esc(j.brain) : ""}${j.model ? " " + esc(j.model) : ""}${j.verdict && j.verdict !== "ok" ? " · " + esc(j.verdict) : ""}</td><td>${j.status === "running" || j.status === "queued" ? `<button data-cancel="${esc(j.id)}">Cancel</button>` : ""}</td></tr>`).join("")}</table>` : "No AI requests yet.";
     body.onclick = async (e) => {
+      const c = e.target.closest("[data-chat]");
+      if (c) { e.preventDefault(); try { localStorage.setItem("kurooto.chat.session", c.dataset.chat); } catch { /* fine */ } openPage("chat"); return; }
       const b = e.target.closest("[data-cancel]"); if (!b) return;
       b.disabled = true;
       const r = await api("jobs/cancel", { id: b.dataset.cancel });
@@ -1101,7 +1105,9 @@ function tdDraw(el) {
       <p>${btn("skip tomorrow", "alarm.skip", { day: "tomorrow" })} ${a.next ? btn("turn this one off", "alarm.clear") : ""} ${btn(a.daily ? "change daily" : "daily alarm…", "alarm.daily", {}, ["Daily alarm time (or off):", "time", a.daily || "07:00"])}</p></section>`);
   } else sec.push(`<section class="td-sec"><h4>Alarm</h4>${off("The alarm (it needs Phone calls)")}</section>`);
   // classes
-  if ((t.classes || []).length) sec.push(`<section class="td-sec"><h4>Classes</h4>${t.classes.map((c) => `<p>${esc(c.time)} ${esc(c.name)}${c.skipping ? ' <span class="d">(skipping)</span>' : ""}</p>`).join("")}</section>`);
+  // (0.9.0) Skip / Going on each class (look.today_class_actions): the same as /skip and /attend
+  const clsBtn = (c) => (t.class_actions && c.subject ? " " + (c.skipping ? btn("going", "class.skip", { subject: c.subject, attend: true }) : btn("skip", "class.skip", { subject: c.subject })) : "");
+  if ((t.classes || []).length) sec.push(`<section class="td-sec"><h4>Classes</h4>${t.classes.map((c) => `<p>${esc(c.time)} ${esc(c.name)}${c.skipping ? ' <span class="d">(skipping)</span>' : ""}${clsBtn(c)}</p>`).join("")}</section>`);
   // deadlines
   if (on.has("deadlines")) {
     const ds = t.deadlines || [];
@@ -1861,6 +1867,7 @@ function smBuild() {
   <div class="box"><div class="lab"><span class="t">TODAY</span><span class="meta" id="sm-today-meta"></span></div><div id="sm-today"><span class="k">loading…</span></div></div>
   <div class="box"><div class="lab"><span class="t">DUE</span><span class="meta">two weeks</span></div><div id="sm-due"></div></div>
   <div class="box" id="sm-recall-box"><div class="lab"><span class="t">RECALL</span><span class="meta" id="sm-recall-meta"></span></div><div id="sm-recall"></div></div>
+  <div class="box hidden" id="sm-extra-box"><div class="lab"><span class="t">OPEN</span><span class="meta">doubts and what to learn next</span></div><div id="sm-extra"></div></div>
   <div class="box sm-course" id="sm-course-box"><div class="lab"><span class="t">COURSE</span><span class="meta">AI help, notes as a PDF, a draft to check</span></div>
     <div class="sm-sub"><label class="k" for="sm-policy">AI help</label><select id="sm-policy" title="the course's AI policy: Check my draft and the Hint ladder go by it"><option value="">not set (allowed)</option><option value="allowed">allowed</option><option value="hints">hints only</option><option value="off">off</option></select><button id="sm-pdf" title="this course's notes as one PDF (/notes pdf)">notes → pdf</button></div>
     <form class="sm-sub" id="sm-check"><input id="sm-draft" placeholder="a draft to check: its path, e.g. ~/proof.tex" autocomplete="off" spellcheck="false" aria-label="a draft's path to check"><button>check</button></form>
@@ -1965,6 +1972,11 @@ function smDraw() {
   $("#sm-recall").innerHTML = !rc ? `<div class="row"><span class="k">no exam-prep or quiz notes for ${esc(v.name || "this subject")} yet</span></div>` :
     rc.cards.map((c, i) => `<details class="sm-card"><summary><span class="k">${esc(c.section || "card")} · ${i + 1}</span></summary><p>${mathHtml(c.text, smRecallAgain)}</p></details>`).join("") +
     `<div class="row"><span class="k">${rc.due ? `practise them: /quiz ${esc(v.subject)}` : "nothing to go over today"}</span></div>`;
+  // (0.9.0, look.study_extras) the subject's open doubts, and the concept Brain thinks comes next (mind.tom)
+  const dq = v.doubts, fr = v.frontier || [];
+  $("#sm-extra-box").classList.toggle("hidden", !(dq && dq.length) && !fr.length);
+  $("#sm-extra").innerHTML = (dq || []).map((d) => `<div class="row"><span class="sm-kind">doubt</span><span class="v grow sm-t">${esc(d)}</span></div>`).join("") +
+    fr.map((f) => `<button class="sm-note" data-note="${esc(f.id)}" title="${esc(f.id)}"><span class="k sm-nk">next</span><span class="v sm-t">${esc(f.title)}</span><span class="k r">${f.subject ? "" : "another subject"}</span></button>`).join("");
   smNotes();
   smTick();
 }

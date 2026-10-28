@@ -125,7 +125,12 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   `Live.stop()` unsubscribes it.
 - `Live._loop` runs only while a page is open and in sight (`Live.watched()`): a `Vitals.snapshot()` (`body`: machine
   vitals from `core/vitals.py`, feature cells, jobs, schedule, updates, power, processes) every 2 s, and the notes
-  graph (`Graph.scan()`) every 5 s when notes changed. Errors emit `dashboard_error`.
+  graph (`Graph.scan()`) every 5 s when notes changed. Errors emit `dashboard_error`. With `look.jobs_source` (0.9.0,
+  L131) each job row carries `source` from `core/jobs.py:source(app, j)`: what `modules/chat.py:Chat.job_via` recorded
+  at submit (`<state>/chat/job-via.json`, the last `JOBS_KEEP`: `Incoming.via` only) mapped through `jobs.FROM`, plus
+  the phone chat's session (`_job_session`) for a jump; else `reply_to` `app:` (the app's main chat), background or a
+  non-`you` lane ("by itself"), any other `reply_to` (Telegram). The AI jobs tab adds a **from** column; a phone-chat
+  one sets `kurooto.chat.session` and opens the Chat page.
 - Out of sight (0.6.1): `static/home.js` posts `stream/seen` `{cid, visible: !document.hidden}` on every
   `visibilitychange` (and on `hello` if it starts hidden). `Live.seen(cid, visible)` keeps `Live.hidden`; while every
   open page is hidden the loop reads nothing (a dashboard left in a background tab kept the daemon at 13-30% of a
@@ -324,9 +329,14 @@ An action is a function `fn(app, args) -> dict` in `ACTIONS`: `journal.add`, `no
 Today page's **+30 min**), `checkin.defer` (to tomorrow morning), `ask`, `question.answer`, `study.mode` (`{on}`:
 `study_mode`, which `/study mode on|off` and its intent call too: it sets `look.study_mode` and emits `study_mode`),
 `study.timer` (`{do: start|pause|reset, subject}`: `modules/study.py:Study.timer_start`, `timer_pause`,
-`timer_reset`), and the Study pane's COURSE box (0.6.0): `subject.policy` (`{subject, policy}`:
+`timer_reset`), the Study pane's OPEN box (0.9.0, L133, `look.study_extras`: `study_view` adds `doubts` from
+`Doubts.open(slug)` (None with Doubts off) and `frontier` from `mind/frontier.py:next_up(app, the subject's note ids)`,
+[] with `mind.tom` off; off, neither key is there), and the Study pane's COURSE box (0.6.0): `subject.policy` (`{subject, policy}`:
 `Subjects.set_ai_policy`), `notes.pdf` (`{subject}`: `core/coursepdf.command`), `draft.check` (`{path, subject?,
-text?}`: `Drafts.check(..., via="dashboard")`; the comments come as a message).
+text?}`: `Drafts.check(..., via="dashboard")`; the comments come as a message), and (0.9.0, L130) `class.skip`
+(`{subject, attend?}`: `Subjects._skip`, so `class_skip` / `class_attend` are emitted as with `/skip` and `/attend`;
+refused with `look.today_class_actions` off). `today()` says `class_actions` and each class row carries its `subject`
+slug (`modules/daily.py:morning_view`); home.js draws **skip** / **going** only when both are there.
 
 Study mode's timer (`modules/study.py`, state `<state>/study/timer.json`): a focus writes a study session marked
 `timer` (so the window sampler doesn't count twice, and a stop by hand ends the timer: `stop_session`), sets focus

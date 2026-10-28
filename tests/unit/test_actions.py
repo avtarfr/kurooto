@@ -101,3 +101,27 @@ def test_the_check_in_plus_30_button_pushes_it_later_today_not_to_tomorrow(env, 
     ck = env.app.modules["checkins"]
     assert ck.today(day)["evening"]["time"] == "20:30" and ck.deferred() is None
     assert "checkin.postpone" in (Path(actions.__file__).parents[1] / "web/static/home.js").read_text(encoding="utf-8")
+
+
+def test_todays_class_skip_and_going(env):
+    """L130 (0.9.0): Today's classes carry Skip / Going, the same as /skip and /attend (look.today_class_actions)."""
+    app = env.app
+    app.settings.set("subjects.list", [{"slug": "linear-algebra", "name": "Linear Algebra", "aliases": ["la"]}])
+    day = now().strftime("%a").lower()[:3]
+    row = {"day": day, "start": "23:58", "end": "23:59", "subject": "linear-algebra"}
+    app.settings.set("subjects.timetable", [row])
+    env.on("subjects")
+    t = actions.today(app)
+    assert t["class_actions"] is True and t["classes"][0]["subject"] == "linear-algebra"
+    r = actions.act(app, "class.skip", {"subject": "linear-algebra"})
+    assert r["ok"] and "skipping: Linear Algebra" in r["message"]
+    assert actions.today(app)["classes"][0]["skipping"] is True
+    assert app.events.tail(5)[-1]["kind"] in ("class_skip", "action") or any(
+        e["kind"] == "class_skip" for e in app.events.tail(20)
+    )
+    assert actions.act(app, "class.skip", {"subject": "linear-algebra", "attend": True})["ok"]
+    assert actions.today(app)["classes"][0]["skipping"] is False
+    assert actions.act(app, "class.skip", {"subject": "nope"})["ok"] is False
+    app.settings.set("look.today_class_actions", False)
+    assert actions.today(app)["class_actions"] is False
+    assert actions.act(app, "class.skip", {"subject": "linear-algebra"})["ok"] is False

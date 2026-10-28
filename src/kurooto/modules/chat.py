@@ -65,6 +65,19 @@ class Chat(Module):
         jsave(f, dict(list(rows.items())[-JOBS_KEEP:]))
         return sid
 
+    def _vias_file(self):
+        return self.dir / "job-via.json"
+
+    def job_via(self, jid: str, via: str | None = None) -> tuple[str, str]:
+        """(0.9.0) Where a request was asked (Incoming.via: telegram, app, terminal, voice, ...) and its phone app chat:
+        set with via, read without. Ids and words of a few letters only, for the AI jobs tab (core/jobs.py:source)."""
+        f = self._vias_file()
+        rows = jload(f, {}) or {}
+        if via is not None:
+            rows[jid] = via
+            jsave(f, dict(list(rows.items())[-JOBS_KEEP:]))
+        return str(rows.get(jid) or ""), self._job_session(jid)
+
     def forget_session(self, sid: str) -> None:
         """A phone app chat was deleted: its context goes too."""
         if sid and sid != MAIN:
@@ -155,6 +168,10 @@ class Chat(Module):
         self.mine = {*list(self.mine)[-50:], jid}
         if sid:
             self._job_session(jid, sid)
+        try:
+            self.job_via(jid, str(msg.via or ""))  # the AI jobs tab says where it came from (look.jobs_source)
+        except Exception:
+            pass
         if not terminal:
             self.turns = {**dict(list(self.turns.items())[-50:]), jid: sid or MAIN}
         return helper.waiting_line() if waits else "On it."

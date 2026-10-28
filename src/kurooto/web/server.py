@@ -61,6 +61,14 @@ register_defaults(
 )
 # Settings: each setting's guide line under it, which opens its whole entry, and a search through the entries (0.8.10)
 register_defaults("look", {"settings_guide": True})
+register_defaults(
+    "look",
+    {
+        "today_class_actions": True,  # (0.9.0) Today's classes get Skip / Going buttons (Subjects' /skip, /attend)
+        "study_extras": True,  # (0.9.0) the Study pane lists the subject's open doubts and Brain's next concept
+        "jobs_source": True,  # (0.9.0) the AI jobs tab says where each request came from, with a jump to its chat
+    },
+)
 LAYOUTS = ("dense", "roomy")
 DESIGNS = ("new", "classic")
 CSP = (
