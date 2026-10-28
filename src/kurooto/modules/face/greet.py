@@ -13,6 +13,11 @@ Your name (0.9.0, persona.templates): with "what to call you" on your persona ca
 back, Sam.") only while nobody else is in view; it doesn't count toward the 220 characters, so it never pushes a part
 out. The card's avoid line applies as punctuation only (core/persona.py:template).
 
+Add-ons' lines (0.9.0, face.greet.addons, off): an add-on may add one short line of its own (Face.greet_part), said
+after every part above, so it's the first to go at the length limit and never pushes one of them out; only with nobody
+else in view. Known guests (0.9.0, face.addons.known_guests): an add-on may say, as a yes or no only, that everyone
+else in view is someone it knows (Face.known_guests); then "skip" greets them "short" instead.
+
 Someone else in view (face.greet.with_others): skip (the default: no greeting at all), short ("Welcome back." only,
 no conversation), or full. Class and deadline names are never spoken in front of someone else unless you chose full.
 
@@ -63,6 +68,7 @@ def compose(
     with_others: str = "skip",
     talk: bool = True,
     name: str = "",
+    extra: list[tuple[str, str]] | tuple = (),
 ) -> tuple[str, list[str]]:
     """The greeting's text and the names of the parts said (the event carries the names, never the text). name: what
     to call you, said only with nobody else in view and not counted toward MAX_CHARS."""
@@ -70,7 +76,7 @@ def compose(
     if others and with_others != "full":
         return "Welcome back.", []
     named = f"{opening[:-1]}, {name.strip()}." if name.strip() and not others else opening
-    extra = len(named) - len(opening)
+    name_len = len(named) - len(opening)  # not counted toward MAX_CHARS
     said: list[tuple[str, str]] = []
     for p in parts or ():
         if p == "next":
@@ -93,11 +99,14 @@ def compose(
             said.append((p, f"{title.strip()[:60]} is due{day} at {due:%H:%M}."))
         elif p == "held" and held:
             said.append((p, f"{plural(held, 'message waits', 'messages wait').capitalize()} for this evening."))
+    for p, line in extra:  # (0.9.0) add-ons' lines last: the first to go at the limit
+        if line.strip():
+            said.append((p, line.strip()))
     waits = any(p in ("waiting", "held") for p, _ in said)
     ending = " Want to go through them?" if waits and talk else ""
     while said:
         text = " ".join([named, *[t for _, t in said]]) + ending
-        if len(text) - extra <= MAX_CHARS:
+        if len(text) - name_len <= MAX_CHARS:
             return text, [p for p, _ in said]
         said.pop()  # the last part goes first
         waits = any(p in ("waiting", "held") for p, _ in said)
@@ -129,7 +138,7 @@ def may_greet(app: App, face, others: bool, now: dt.datetime | None = None) -> t
         return False, str(reason)
     if app.power.current == "paused":
         return False, "Kurooto is paused"
-    if others and str(s("greet.with_others") or "skip") == "skip":
+    if others and str(s("greet.with_others") or "skip") == "skip" and not face.known_guest():
         return False, "someone else is here"
     g = face.greets()
     gap = float(s("greet.gap_min") or 60) * 60

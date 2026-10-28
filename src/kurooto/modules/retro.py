@@ -112,6 +112,7 @@ DETAIL = (
     "intent",
     "voice_note",
 )
+GREET = "face_greet"  # (0.9.0, face.greet.records) each greeting: the parts said, skipped and why, answered or not
 QUIET = {"call_transcript"}  # the transcripts themselves are read below
 FALLBACK_INSTRUCTIONS = """You are the learning loop of a personal assistant. From the input below, propose at most
 `max_proposals` small, evidence-backed changes (types: setting, profile, observe, skill, idea), and report what you
@@ -412,7 +413,8 @@ class Retro(Module):
                 f"AI requests: {len(jobs)} ({fails} failed), median {med:.0f} s"
                 + (f"; latest: {' | '.join(titles[:10])}" if titles else "")
             )
-        detail = [e for e in evs if e["kind"].startswith(DETAIL) and e["kind"] not in QUIET]
+        shown = DETAIL + ((GREET,) if self.app.settings.get("face.greet.records", True) else ())
+        detail = [e for e in evs if e["kind"].startswith(shown) and e["kind"] not in QUIET]
         for e in detail[-60:]:
             fields = " ".join(
                 f"{k}={str(v)[:60]}" for k, v in e.items() if k not in ("ts", "kind") and v not in (None, "", [], {})

@@ -47,6 +47,7 @@ SENSORS = {
 LABEL = re.compile(r"^[\w .'-]{1,30}$")
 HASH = re.compile(r"^[0-9a-f]{8,16}$")
 BINS_MAX = 300
+PLACE_FRESH_S = 1800  # (0.9.0) a place's arrive or leave older than this is history, not news for the desk
 
 register_defaults(
     "mind", {"senses": {"phone": {s: False for s in SENSORS}}}
@@ -108,12 +109,28 @@ def ingest(app: App, payload: dict) -> tuple[int, dict]:
             continue
         store.add(app, f"phone:{sensor}", c[0], c[1], c[2], t=t / 1000)
         kept += 1
+        if sensor == "places" and b.get("event") in ("arrive", "leave") and time.time() - t / 1000 <= PLACE_FRESH_S:
+            _place(app, str(b["event"]), t / 1000)
     app.events.emit("senses_phone", kept=kept, dropped=dropped)
     if any(_picked_up(b) for b in bins[:BINS_MAX] if isinstance(b, dict) and enabled(app, "screen")):
         from kurooto.mind import stimulation
 
         stimulation.jolt(app, "pickup")  # (0.8.14) the phone just picked up: an orienting jolt
     return 200, {"ok": True, "kept": kept}
+
+
+def _place(app: App, event: str, at: float) -> None:
+    """(0.9.0) The phone left a saved place or arrived at one: core/nearby.py's phone_out (a time only, never the
+    label), then Face presence (face.away.use_places). Never raises."""
+    from kurooto.core import nearby
+
+    try:
+        nearby.set_phone_out(app, event == "leave", at=at)
+        face = app.modules.get("face")
+        if face is not None and app.is_on("face"):
+            face.phone_place(event)
+    except Exception as e:
+        app.events.emit("senses_failed", error=type(e).__name__)
 
 
 def _picked_up(b: dict) -> bool:

@@ -252,6 +252,13 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `cases.review_days` | `28` | Days at least between two such lists. ([guide](wiki/user/settings-guide.md#casesreviewdays)) |
 | `cases.review_max` | `5` | Phrasings in one list. ([guide](wiki/user/settings-guide.md#casesreviewmax)) |
 
+### `chat`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `chat.context_line` | `true` | Each message carries one line for your AI on how it came: typed where, a call, stepped away from the desk. ([guide](wiki/user/settings-guide.md#chatcontextline)) |
+| `chat.context_places` | `false` | Add your phone's last saved place and the Wi-Fi's name you gave it to that line. ([guide](wiki/user/settings-guide.md#chatcontextplaces)) |
+
 ### `checkins`
 
 | Setting | Default | What it does |
@@ -390,29 +397,37 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | Setting | Default | What it does |
 |---|---|---|
 | `face.addons.hold` | `true` | Let an add-on keep the camera looking while you type (never past a pause, the night, a call or a switch). ([guide](wiki/user/settings-guide.md#faceaddonshold)) |
+| `face.addons.known_guests` | `true` | An add-on may say that everyone else in view is someone it knows: they get the short greeting instead of none. ([guide](wiki/user/settings-guide.md#faceaddonsknownguests)) |
 | `face.addons.watch` | `true` | Let an add-on see who's in view: each face's place, size and numbers, in memory only, never a picture. ([guide](wiki/user/settings-guide.md#faceaddonswatch)) |
 | `face.away.after_min` | `5` | No sign of you (your face or the keyboard) this long means you've left, in minutes. ([guide](wiki/user/settings-guide.md#faceawayaftermin)) |
 | `face.away.hold_calls` | `false` | While you're away, calls Kurooto would start by itself wait for you (up to the longest wait below). ([guide](wiki/user/settings-guide.md#faceawayholdcalls)) |
 | `face.away.hold_desktop` | `false` | Hold desktop pop-ups and spoken answers until you're back at the desk. ([guide](wiki/user/settings-guide.md#faceawayholddesktop)) |
 | `face.away.hold_max_min` | `60` | The longest a call waits while you're away, in minutes. ([guide](wiki/user/settings-guide.md#faceawayholdmaxmin)) |
 | `face.away.on` | `false` | Notice when you leave the desk and come back. ([guide](wiki/user/settings-guide.md#faceawayon)) |
+| `face.away.places_close_camera` | `false` | While your phone is out, keep the camera closed. ([guide](wiki/user/settings-guide.md#faceawayplacesclosecamera)) |
 | `face.away.report_others` | `false` | While you're away, note the times someone else's face was in view at your desk, and tell you once when you're back. ([guide](wiki/user/settings-guide.md#faceawayreportothers)) |
+| `face.away.use_places` | `false` | Your phone leaving a place you saved marks you away from the desk at once. ([guide](wiki/user/settings-guide.md#faceawayuseplaces)) |
 | `face.camera.device` | `""` | The camera to use: empty for the first ordinary one (infrared ones are skipped), or a number or part of its name. ([guide](wiki/user/settings-guide.md#facecameradevice)) |
 | `face.camera.height` | `480` | The picture height asked of the camera. ([guide](wiki/user/settings-guide.md#facecameraheight)) |
 | `face.camera.width` | `640` | The picture width asked of the camera (it may give another). ([guide](wiki/user/settings-guide.md#facecamerawidth)) |
 | `face.camera.yaw_offset_deg` | `0.0` | How far beside the camera's lens the spot you look at sits, in degrees (+: to your right); look to talk centres there. ([guide](wiki/user/settings-guide.md#facecamerayawoffsetdeg)) |
+| `face.greet.addons` | `false` | An add-on may add one short line of its own to the desk greeting. ([guide](wiki/user/settings-guide.md#facegreetaddons)) |
 | `face.greet.after_absent_min` | `20` | Greet you only after you've been away at least this long, in minutes. ([guide](wiki/user/settings-guide.md#facegreetafterabsentmin)) |
 | `face.greet.gap_min` | `60` | The fewest minutes between two greetings. ([guide](wiki/user/settings-guide.md#facegreetgapmin)) |
 | `face.greet.listen_s` | `12` | How long that conversation stays open with nothing said, in seconds. ([guide](wiki/user/settings-guide.md#facegreetlistens)) |
 | `face.greet.on` | `true` | Greet you by voice when you arrive at the desk. ([guide](wiki/user/settings-guide.md#facegreeton)) |
 | `face.greet.per_day` | `3` | A daily cap on greetings. ([guide](wiki/user/settings-guide.md#facegreetperday)) |
+| `face.greet.records` | `true` | With Brain on, each greeting is one of its decision records, closed by whether you answered it. ([guide](wiki/user/settings-guide.md#facegreetrecords)) |
 | `face.greet.say` | `["next", "waiting", "deadline"]` | What the greeting tells you: what's next today, what's waiting, deadlines in 24 h, what was held while you were away. ([guide](wiki/user/settings-guide.md#facegreetsay)) |
 | `face.greet.talk` | `true` | After the greeting, listen for a reply without its name being said. ([guide](wiki/user/settings-guide.md#facegreettalk)) |
+| `face.greet.tell_ai` | `true` | When you answer the desk greeting, your AI is told what it had just said, so "yes" carries on from it. ([guide](wiki/user/settings-guide.md#facegreettellai)) |
 | `face.greet.with_others` | `"skip"` | When someone else is in view too: skip the greeting, say just "Welcome back.", or the full greeting. ([guide](wiki/user/settings-guide.md#facegreetwithothers)) |
 | `face.learn.every_h` | `6` | At most one new sample this often, in hours. ([guide](wiki/user/settings-guide.md#facelearneveryh)) |
+| `face.learn.from_voice` | `false` | A turn Voice ID is sure is your voice, with only your face in view, may teach the face model too. ([guide](wiki/user/settings-guide.md#facelearnfromvoice)) |
 | `face.learn.margin` | `0.08` | How far above your threshold a frame's score must be before it may refine your template. ([guide](wiki/user/settings-guide.md#facelearnmargin)) |
 | `face.learn.max` | `30` | At most this many learned samples (the oldest goes first); the enrolled ones are never replaced. ([guide](wiki/user/settings-guide.md#facelearnmax)) |
 | `face.learn.on` | `false` | Slowly refine your face template from times it was very sure it was you (never unsure ones), with Undo. ([guide](wiki/user/settings-guide.md#facelearnon)) |
+| `face.light_sense` | `false` | Read the room's light from the camera's frames, as one smoothed number, for Brain and add-ons. ([guide](wiki/user/settings-guide.md#facelightsense)) |
 | `face.recognise.frames` | `3` | Recognised in this many of the last 4 frames means you're here. ([guide](wiki/user/settings-guide.md#facerecogniseframes)) |
 | `face.recognise.min_face_px` | `60` | Faces smaller than this many pixels are ignored: too far away to judge. ([guide](wiki/user/settings-guide.md#facerecogniseminfacepx)) |
 | `face.recognise.strictness` | `"normal"` | How rarely a stranger may pass: loose (1 in 100 frames), normal (1 in 1,000) or strict (1 in 10,000). ([guide](wiki/user/settings-guide.md#facerecognisestrictness)) |
@@ -806,6 +821,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.values.on` | `true` | Brain learns which kinds of things help (values), never affecting a choice in the shadow days. ([guide](wiki/user/settings-guide.md#mindvalueson)) |
 | `mind.values.shadow_days` | `21` | Days learned values are only counted, never used for a choice. ([guide](wiki/user/settings-guide.md#mindvaluesshadowdays)) |
 | `mind.why.on` | `true` | "Why this?" under a message Kurooto started says what Brain's gate and door did with it, what it expected, and how many it has sent today. ([guide](wiki/user/settings-guide.md#mindwhyon)) |
+| `mind.why.to_ai` | `true` | A message that asks why also gives your AI the plain reasons for Kurooto's own last few messages. ([guide](wiki/user/settings-guide.md#mindwhytoai)) |
 | `mind.workspace.arbiter` | `true` | One door for everything Kurooto says by itself: each message bids, and only winners are sent. ([guide](wiki/user/settings-guide.md#mindworkspacearbiter)) |
 | `mind.workspace.break_after_min` | `25` | Minutes in one window before switching to another counts as a natural break. ([guide](wiki/user/settings-guide.md#mindworkspacebreakaftermin)) |
 | `mind.workspace.breaks` | `true` | A winner that isn't urgent waits for a natural break: a window switch after a long stretch, a phone pickup, a session ending. ([guide](wiki/user/settings-guide.md#mindworkspacebreaks)) |
@@ -1256,6 +1272,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.need_face_fallback` | `"voice"` | What happens when the camera can't see (paused, covered, busy, no camera): the voice rules alone, or nothing. ([guide](wiki/user/settings-guide.md#voicelistenneedfacefallback)) |
 | `voice.listen.night` | `true` | Keep listening during the night hours. ([guide](wiki/user/settings-guide.md#voicelistennight)) |
 | `voice.listen.on` | `false` | Listen through the microphone, all on this computer; only what's said to Kurooto leaves it. ([guide](wiki/user/settings-guide.md#voicelistenon)) |
+| `voice.listen.phone_away` | `false` | Stop listening while your phone is out (it left a place you saved). ([guide](wiki/user/settings-guide.md#voicelistenphoneaway)) |
 | `voice.listen.stt_model` | `"base"` | How big the speech-to-text model is: tiny (75 MB), base (145 MB) or small (484 MB, more accurate). ([guide](wiki/user/settings-guide.md#voicelistensttmodel)) |
 | `voice.listen.threshold` | `0.7` | How sure the local model must be (0 to 1) that speech is said to Kurooto. ([guide](wiki/user/settings-guide.md#voicelistenthreshold)) |
 | `voice.listen.timing` | `true` | Time each spoken turn from your last word to Kurooto's first sound, as numbers only. ([guide](wiki/user/settings-guide.md#voicelistentiming)) |

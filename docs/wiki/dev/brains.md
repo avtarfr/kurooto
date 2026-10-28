@@ -358,7 +358,8 @@ boundaries rule (`core/persona.py:card_text`, `rule`), the notes layout (`core/l
 at `kurooto_self` / `reserve/self.md` for questions about Kurooto itself; a request about Kurooto
 (`core/selfdoc.py:wanted`) also gets `self.md` itself in its context (`for_request`, at most `CONTEXT_MAX`). Chat's own
 requests also end with one register line (`core/persona.py:register_line`, marked `[Reply style]`, left out of chat
-history by `strip_register`).
+history by `strip_register`). Before it (0.9.0) come the typed turn's `[How it came]` line (`chat.context_line`) and,
+for a turn asking why, `[Why it did things lately]` (`mind.why.to_ai`); see voice.md's chat section.
 
 Rule-made words (0.9.0, `persona.templates`, on): `persona.address(app)` (the card's `call_me`, "" when off) and
 `persona.template(app, text)` (the avoid line read for what a template can honour, `AVOID`: "exclamation" turns `!`

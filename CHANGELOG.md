@@ -2,6 +2,34 @@
 
 ## 0.9.0 (unreleased)
 
+- **Add-ons and the desk greeting** (each behind its switch). An add-on may add one short line to the greeting
+  (`face.greet.addons`, off; said last, alone in view, never pushing a part out, and it tells the add-on whether it was
+  said), and may say everyone else in view is someone it knows (`face.addons.known_guests`), so a remembered friend
+  gets the short greeting instead of none; Face presence still never works out who anyone is.
+- **The room's light from the camera** (`face.light_sense`, off). While the camera looks anyway, the frames' average
+  brightness becomes one smoothed number for Brain's body and add-ons; never a frame.
+
+- **Your AI knows how a message came** (`chat.context_line`, on). Typed on Telegram, in the phone app or on this
+  computer, on a call, or that you stepped away from the desk and when, in plain words. Your phone's saved place and
+  Wi-Fi name go along only with `chat.context_places` (off).
+- **"Yes" to the desk greeting continues it** (`face.greet.tell_ai`, on). Answering the greeting, your AI is told what
+  Kurooto had just said.
+- **"Why did you...?" gets the real reason** (`mind.why.to_ai`, on; with Brain). A message that asks why carries the
+  plain reasons for Kurooto's own last few messages, never a sense, a mood or a tone.
+
+- **Greetings learn from how they went** (`face.greet.records`, on; with Brain). Each desk greeting is a decision record
+  (the parts it said, never the words) closed by whether you answered it, and the nightly look back may suggest a
+  different gap between greetings from them, with your tap.
+
+- **Your voice can confirm your face** (`face.learn.from_voice`, off, under `face.learn.on`). A turn Voice ID is sure is
+  yours, with only your face in view, lets Face presence learn from that moment's clear frame, as typing after you sit
+  down does; the same spacing, cap and Undo.
+
+- **Your phone leaving home tells the desk** (each off). With Brain's phone places sensor, your phone leaving a place
+  you saved marks you away at once (`face.away.use_places`), so held calls and pop-ups wait sooner; the camera can
+  stay closed while you're out (`face.away.places_close_camera`) and Voice can stop listening
+  (`voice.listen.phone_away`). Only the fact and its time are used, never the place.
+
 - **Who was at your desk while you were out** (`face.away.report_others`, off). With Face presence noticing when you
   leave, it notes the minutes someone else's face was in view and tells you once you're back ("at 14:10 and 14:25 (2
   faces)"). Times and counts only, in memory, then forgotten; never a picture, never who, never to your AI.

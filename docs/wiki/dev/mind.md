@@ -106,6 +106,14 @@ calls it from three places, each **before** acting:
 - `core/notify.py:Notifier.send`, once Calm says send, for a message with a `why` other than `asked`: `message:<kind>`;
 - `core/jobs.py:Jobs.submit`, for a job with a `why` (work Kurooto starts by itself): `job:<why>`;
 - `core/proposals.py:make`, for a proposal made at night: `proposal:<source>`.
+- (0.9.0, `face.greet.records`) `Face._record_greeting`, for a spoken desk greeting: `speak:face.greet`, source
+  `rules`, the parts' names in `scored_reason` (never the words), and with the conversation open an expectation of a
+  reply within `GREET_EXPECT_H` (3 min) tracked like a message's (`records.track`, why `face.greet`). Voice's
+  `_portal_changed` calls `Face.greet_closed(portal.turns > 0)` when the greeting's conversation closes:
+  `records.outcome(app, id, "replied" | "missed")` and the event `face_greet_outcome {result}`. The nightly look back
+  reads `face_greet*` events one by one (`retro.GREET`, only with the switch on) and gets `face.greet.gap_min` as a
+  tunable (`Face.tunable`, a property: nothing with the switch off); `face.greet.say` is a list, which the look back's
+  setting proposals can't carry, so it isn't offered.
 
 Stage 03 moves the message one into the outbound gate, and stage 06 routes actions through `act.decide`.
 
@@ -1121,7 +1129,7 @@ a non-number, NaN or out of range is dropped) and makes each a channel of region
 
 | Reading (unit) | Channel | Region | Kind | x |
 |---|---|---|---|---|
-| `light_lux` | `brightness` | face | tonic | `log10(1 + lux)`: 0 dark, 2 a room, 5 sunlight (comfort 2.3) |
+| `light_lux` | `brightness` | face | tonic | `log10(1 + lux)`: 0 dark, 2 a room, 5 sunlight (comfort 2.3); (0.9.0, `face.light_sense`) with none fed, Face presence's `light_level()` x 2.5 |
 | `proximity_cm`, or `near` (0/1) | `closeness` | face | phasic | `1 - cm / 10` clipped to [0, 1], or `near` |
 | `accel_x/y/z` (m/s^2, all three) | `sway` | face | phasic | `abs(abs(a) - g)`: being moved (the otoliths) |
 | `accel_x/y/z` | `tilt` | face | tonic | degrees between gravity and the device's y axis (upright 0); none while falling |

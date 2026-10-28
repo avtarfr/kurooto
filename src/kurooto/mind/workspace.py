@@ -76,7 +76,9 @@ register_defaults(
         "attention": {"on": True},  # a model of its own attention; "what are you thinking about?" is answered from it
         # 0.8.14 (mind/records.py; registered here, as records.py is also the scorekeeper's and stays lean):
         "expect": {"on": True},  # what it expects of each message it starts (a reply, done in 2 h), and what came
-        "why": {"on": True},  # "Why this?" under its own messages says what the gate and the door did with it
+        # "Why this?" under its own messages says what the gate and the door did with it; to_ai (0.9.0): a turn that
+        # asks you why also gives your AI the plain reasons for its last few messages (never a sense, mood or tone)
+        "why": {"on": True, "to_ai": True},
         "beliefs": {"on": True},  # every belief keeps its source (said, saw, inferred, imagined) and a confidence
     },
 )

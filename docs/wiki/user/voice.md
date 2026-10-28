@@ -351,6 +351,9 @@ turns too ("sent" is when your sound went, "first sound made" when Live's answer
 - **At night:** it keeps listening by default; turn `voice.listen.night` off and it stops during your night hours
   (`availability.night`).
 - **Paused:** while Kurooto is paused, and on battery in saver mode.
+- **Your phone is out** (0.9.0, `voice.listen.phone_away`, off): with Brain's phone places sensor on, it stops
+  listening when your phone leaves a place you saved, and starts again when it arrives at one or someone is back at
+  the desk (a face Face presence knows, or the keyboard). Only that the phone left goes anywhere, never the place.
 
 ## Sound: how it plays and records
 

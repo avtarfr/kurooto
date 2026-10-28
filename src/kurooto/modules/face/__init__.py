@@ -112,6 +112,14 @@ register_defaults(
             "with_others": "skip",  # someone else in view too: skip (no greeting), short ("Welcome back." only) or full
             "talk": True,  # then open the conversation: answer without saying its name (needs Voice listening)
             "listen_s": 12,  # how long that conversation stays open with nothing said (seconds)
+            # (0.9.0) each greeting is a Brain decision record (the parts said, never the words) closed by whether you
+            # answered it, and the nightly look back may propose a different gap_min from them (your tap applies it)
+            "records": True,
+            # (0.9.0) when you answer the greeting, your AI is told what it had just said (rule-made words: counts, a
+            # class's or a deadline's title), so "yes" continues it
+            "tell_ai": True,
+            # (0.9.0) an add-on may add one short line of its own to the greeting (said last, alone in view only)
+            "addons": False,
         },
         "away": {
             "on": False,  # notice when you leave the desk (events "left" and "back")
@@ -122,20 +130,33 @@ register_defaults(
             # (0.9.0) while you're away, note the times someone else's face was in view (times and counts only, in
             # memory, never a picture or who) and tell you once you're back
             "report_others": False,
+            # (0.9.0) with Brain's phone places sensor: your phone leaving a place you saved marks you away at once
+            "use_places": False,
+            # (0.9.0) and while your phone is out, the camera stays closed (a look, an arrival: none till it's back)
+            "places_close_camera": False,
         },
         "track": {
             "on": True,  # while the camera is open, follow every face in view (places only) for the being's eye
             "fps": 10,  # detection frames a second while a dashboard is in sight or an add-on tracks (1 to 15)
         },
+        # (0.9.0) the room's light from the camera's frames, a smoothed number only (never a frame), for Brain's body
+        # and add-ons (light_level()); only while the camera looks anyway
+        "light_sense": False,
         "addons": {
             "watch": True,  # an add-on may see who's in view (faces' places and numbers, in memory; never pictures)
             "hold": True,  # an add-on may keep the camera looking while you type (never past a pause or a switch)
+            # (0.9.0) an add-on may say "everyone else in view is someone I know" (a yes or no, never who): with
+            # face.greet.with_others skip, they get the short greeting instead of none
+            "known_guests": True,
         },
         "learn": {
             "on": False,  # refine your template slowly from confident recognitions (never unsure ones), with Undo
             "every_h": 6,  # at most one new sample this often (hours)
             "max": 30,  # at most this many learned samples (the oldest goes first); enrolled samples are never replaced
             "margin": 0.08,  # a frame must beat your threshold by this much to be learned from
+            # (0.9.0) Voice ID sure a turn was your voice, with only your face in view: a sample may be learned from
+            # that frame too, not only after an arrival and typing (the same caps, spacing and Undo)
+            "from_voice": False,
         },
     },
 )
@@ -149,6 +170,10 @@ BLINK_HOLD_S = 1.0  # (look by the eyes) a frame whose eyes can't be read keeps 
 EYE_MB = 2.64  # the eye model (parts.py's iris)
 CONFIRM_FORGET_S = 7 * 86400  # Delete my face data, offered when Face presence is turned off, works this long
 IMPOSTORS = "face-impostors.npz"
+GREET_EXPECT_H = 0.05  # (greet.records) a greeting that opened the conversation expects an answer within 3 minutes
+ADDON_LINE_MAX = 120  # (greet.addons) an add-on's greeting line is cut to this many characters
+LIGHT_ALPHA = 0.2  # (light_sense) each frame moves the smoothed level this share of the way
+LIGHT_STALE_S = 120.0  # ...and a level older than this isn't the room's any more (the camera closed)
 OTHERS_MAX = 120  # (away.report_others) at most this many minutes with someone else in view are noted while away
 OTHERS_SAID = 6  # ...and the message names at most this many of them
 SIZE_GB = 0.18
@@ -199,7 +224,7 @@ def _event_safe(**fields) -> dict:
     return {k: v for k, v in fields.items() if k in ALLOWED_FIELDS}
 
 
-ALLOWED_FIELDS = {"on", "why", "away_min", "parts", "talk", "samples", "grade", "count", "part", "error"}
+ALLOWED_FIELDS = {"on", "why", "away_min", "parts", "talk", "samples", "grade", "count", "part", "error", "result"}
 
 
 class Face(Module):
@@ -260,6 +285,11 @@ class Face(Module):
         self._gazer: object | None = None  # (0.8.17) the eye model, loaded once it's wanted (gaze.CvGazer)
         self._gazer_failed = -1e9  # when loading it last failed (monotonic): not tried again for a minute
         self._gaze_last: dict = {}  # the last frame's gaze: degrees and the verdict, numbers only, in memory
+        self._greet_parts: dict[str, object] = {}  # (0.9.0, greet.addons) an add-on's name -> its line's callable
+        self._carried: dict[str, float] = {}  # ...and when the greeting last said its line (time.time())
+        self._known: list = []  # (0.9.0, addons.known_guests) add-ons' "everyone else here is known" callables
+        self._light: tuple[float, float] | None = None  # (0.9.0, light_sense) (level 0..1, monotonic time)
+        self._greet_rec = ""  # (0.9.0, greet.records) the open greeting's decision record id, until its talk closes
         self._others_away: dict[int, int] = {}  # (0.9.0, away.report_others) minute (epoch // 60) -> most faces seen
 
     # ------------------------------------------------------------------------------------------- the parts
@@ -419,6 +449,7 @@ class Face(Module):
             ("focus", focus),
             ("night hours", night),
             ("Kurooto is asleep", lambda: _sleeping(app)),  # (0.8.18, mind.sleep.senses_off): /wake wakes it
+            ("your phone is out", self._phone_out),  # (0.9.0, face.away.places_close_camera)
             ("enrolling", lambda: self.session is not None and self.session.state != "ended"),
             ("camera in use by another program", problem("camera in use by another program")),
             ("no camera", problem("no camera")),
@@ -488,6 +519,7 @@ class Face(Module):
             "look_fps": s("watch.look_fps") if self._look_listening() else 0,
             # (0.8.18) every close face's look, not only yours, while Voice listens for one
             "look_anyone": bool(self.app.settings.get("voice.listen.look_anyone", True)) and self._look_listening(),
+            "light": bool(self.setting("light_sense")),  # (0.9.0) each frame's mean brightness, a number only
         }
 
     def _classify(self, e) -> tuple[str, float]:
@@ -619,6 +651,7 @@ class Face(Module):
         elif kind == "left":
             self.app.events.emit("face_left")
         elif kind == "back":
+            nearby.set_phone_out(self.app, False)  # (0.9.0) somebody's at the desk: the phone's "out" is over
             self.app.events.emit("face_back")
             self.flush_desktop()
             self.report_others()
@@ -638,6 +671,8 @@ class Face(Module):
                     voice.look_tick()  # at once, not at Voice's next second: a look should feel instant
                 except Exception as e:
                     self._failed("telling Voice it's looked at", e)
+        elif kind == "light":  # (0.9.0, face.light_sense) a frame's mean brightness: smoothed, in memory only
+            self._light_seen(float(f.get("mean") or 0.0))
         elif kind == "learn":
             self.learn(f.get("e"))
         elif kind == "failed":
@@ -1011,6 +1046,32 @@ class Face(Module):
             return None
         return time.time() - max(0.0, w.clock() - w.present_at)
 
+    # --------------------------------------------------------------------- your phone's places (0.9.0)
+    def phone_place(self, event: str) -> bool:
+        """(face.away.use_places) Brain's phone senses: the phone left a place you saved ("leave": you're away at once,
+        as if no sign of you for face.away.after_min, so face.away.hold_* apply) or arrived at one (nothing more: your
+        face or your keyboard says you're back). True when it marked you away."""
+        if event != "leave" or not self.setting("away.on") or not self.setting("away.use_places"):
+            return False
+        w = self.watcher
+        if w is None or w.away:
+            return False
+        w.mark_away()
+        return True
+
+    def _phone_out(self) -> bool:
+        """(face.away.places_close_camera) The camera stays closed while the phone is out (core/nearby.py)."""
+        if not self.setting("away.use_places") or not self.setting("away.places_close_camera"):
+            return False
+        return nearby.phone_out(self.app) is not None
+
+    def left_at(self) -> dt.datetime | None:
+        """(0.9.0) When you stepped away from the desk, while you're away (face.away.on); else None."""
+        w = self.watcher
+        if not self.away_now() or w is None or w.left_at is None:
+            return None
+        return dt.datetime.fromtimestamp(time.time() - max(0.0, w.clock() - w.left_at))
+
     def _away_block(self, t: dt.datetime):
         if not self.setting("away.hold_calls") or not self.away_now():
             return None
@@ -1035,6 +1096,91 @@ class Face(Module):
             except Exception:
                 pass
         return n
+
+    # ---------------------------------------------------------------- add-ons and the greeting (0.9.0)
+    def greet_part(self, name: str, line) -> object:
+        """(face.greet.addons) line(): one short sentence the add-on wants said in the next greeting, or None. Called
+        on the greeting's thread, only with nobody else in view; at most ADDON_LINE_MAX characters are said, after
+        every built-in part, so it's the first to go at the length limit. greet_carried(name, since) says whether it
+        was said. Returns the unsubscribe."""
+        key = re.sub(r"[^a-z0-9_-]", "", str(name or "").lower())[:30] or "addon"
+        with self._hooks_lock:
+            self._greet_parts[key] = line
+
+        def unsubscribe() -> None:
+            with self._hooks_lock:
+                if self._greet_parts.get(key) is line:
+                    del self._greet_parts[key]
+
+        return unsubscribe
+
+    def greet_carried(self, name: str, since: float = 0.0) -> bool:
+        """Whether a greeting said this add-on's line at or after `since` (time.time()): if not, the add-on says it
+        its own way, as before."""
+        key = re.sub(r"[^a-z0-9_-]", "", str(name or "").lower())[:30] or "addon"
+        return self._carried.get(key, -1.0) >= since
+
+    def _addon_lines(self) -> list[tuple[str, str]]:
+        if not self.setting("greet.addons"):
+            return []
+        with self._hooks_lock:
+            parts = list(self._greet_parts.items())
+        out = []
+        for key, line in parts:
+            try:
+                text = " ".join(str(line() or "").split())[:ADDON_LINE_MAX]  # type: ignore[operator]
+            except Exception as e:
+                self._failed("an add-on's greeting line", e)
+                continue
+            if text:
+                out.append((f"addon:{key}", text if text[-1] in ".?!" else text + "."))
+        return out
+
+    def known_guests(self, check) -> object:
+        """(face.addons.known_guests) check() -> True when everyone in view besides you is someone the add-on knows. A
+        yes or no only: Face presence never learns who, and nothing of it is kept. Returns the unsubscribe."""
+        with self._hooks_lock:
+            self._known.append(check)
+
+        def unsubscribe() -> None:
+            with self._hooks_lock:
+                if check in self._known:
+                    self._known.remove(check)
+
+        return unsubscribe
+
+    def known_guest(self) -> bool:
+        """An add-on says everyone else in view is known (face.addons.known_guests); False with none."""
+        if not self.setting("addons.known_guests"):
+            return False
+        with self._hooks_lock:
+            checks = list(self._known)
+        for check in checks:
+            try:
+                if check() is True:
+                    return True
+            except Exception as e:
+                self._failed("an add-on's known guests", e)
+        return False
+
+    # ------------------------------------------------------------------- the room's light (0.9.0)
+    def _light_seen(self, mean: float) -> None:
+        """(face.light_sense) One frame's mean brightness (0..255) into a smoothed level (0..1, LIGHT_ALPHA)."""
+        if not self.setting("light_sense"):
+            self._light = None
+            return
+        x = max(0.0, min(1.0, mean / 255.0))
+        old = self._light[0] if self._light is not None and time.monotonic() - self._light[1] <= LIGHT_STALE_S else x
+        self._light = (old + LIGHT_ALPHA * (x - old), time.monotonic())
+
+    def light_level(self) -> float | None:
+        """(face.light_sense) The room's light as the camera saw it lately: 0 (dark) to 1 (blown out), smoothed, or
+        None (off, or the camera hasn't looked for LIGHT_STALE_S). A webcam adjusts its exposure, so this is a rough
+        dark-to-lit signal, not lux: whoever uses it maps it onto its own scale. A number only, never kept or sent."""
+        if self._light is None or not self.setting("light_sense") or not self.app.is_on(self.id):
+            return None
+        level, at = self._light
+        return round(level, 3) if time.monotonic() - at <= LIGHT_STALE_S else None
 
     # ------------------------------------------------------------- someone else while you're away (0.9.0)
     def _stranger_seen(self, n: int) -> None:
@@ -1072,6 +1218,7 @@ class Face(Module):
         return True
 
     def _arrived(self, away_min: int, others: bool) -> None:
+        nearby.set_phone_out(self.app, False)  # (0.9.0) your face is here: the phone's "out" is over
         self.app.events.emit("face_arrived", **_event_safe(away_min=away_min))
         self.flush_desktop()
         self.report_others()
@@ -1087,6 +1234,10 @@ class Face(Module):
             self.app.events.emit("face_greet_skipped", **_event_safe(why=why))
             return False
         talk = bool(self.setting("greet.talk")) and not others
+        with_others = str(self.setting("greet.with_others") or "skip")
+        if others and with_others == "skip":  # (0.9.0) may_greet let it through: everyone else here is known
+            with_others = "short"
+        extra = self._addon_lines() if not others and not nearby.others(self.app) else []
         text, parts = g.compose(
             [p for p in (self.setting("greet.say") or []) if p in SAY_PARTS],
             self._today(),
@@ -1096,8 +1247,9 @@ class Face(Module):
             others,
             t,
             first_today=self.greets().get("day") != t.date().isoformat(),
-            with_others=str(self.setting("greet.with_others") or "skip"),
+            with_others=with_others,
             talk=talk,
+            extra=extra,
             name="" if others or nearby.others(self.app) else persona.address(self.app),  # (0.9.0) alone in view only
         )
         text = persona.template(self.app, text)  # (0.9.0, persona.templates) the avoid line, as punctuation
@@ -1110,8 +1262,55 @@ class Face(Module):
         gr = self.greets()
         gr.update({"day": day, "n": (int(gr.get("n") or 0) if gr.get("day") == day else 0) + 1, "last": t.timestamp()})
         self._write_status()
+        for p in parts:  # (0.9.0, greet.addons) which add-ons' lines went out, for greet_carried()
+            if p.startswith("addon:"):
+                self._carried[p[6:]] = time.time()
         self.app.events.emit("face_greeted", **_event_safe(parts=parts, talk=opened == "talk"))
+        self._record_greeting(parts, opened == "talk")
         return True
+
+    # ----------------------------------------------------------------------- the greeting's records (0.9.0)
+    @property
+    def tunable(self) -> dict:
+        """(face.greet.records) What the nightly look back (modules/retro.py) may propose from the greetings' outcomes:
+        the gap between greetings only, and only with a tap."""
+        if not self.setting("greet.records"):
+            return {}
+        return {"face.greet.gap_min": "minutes at least between two desk greetings (number)"}
+
+    def _record_greeting(self, parts: list[str], talk: bool) -> None:
+        """A decision record for a greeting said (mind/records.py; nothing with Brain off): the parts' names, never
+        the words or the frame. With the conversation open it expects an answer within GREET_EXPECT_H, closed by
+        greet_closed() when the conversation does (or as missed by records.sweep)."""
+        if not self.setting("greet.records"):
+            return
+        from types import SimpleNamespace
+
+        from kurooto.mind import records
+
+        try:
+            expect = {"what": "reply", "within_h": GREET_EXPECT_H} if talk else None
+            said = ", ".join(parts) or "the opening only"
+            rid = records.decide(self.app, "speak:face.greet", scored_reason=f"a greeting at the desk: {said}",
+                                 source="rules", expect=expect)  # fmt: skip
+            if not rid:
+                return
+            msg = SimpleNamespace(rid=rid, why="face.greet", kind="spoken", buttons=[], map_kind="", tail="")
+            records.track(self.app, rid, msg, expect)
+            self._greet_rec = rid if talk else ""
+        except Exception as e:
+            self._failed("recording the greeting", e)
+
+    def greet_closed(self, answered: bool) -> None:
+        """(face.greet.records) Voice: the greeting's conversation closed, answered (a turn in it) or not."""
+        rid, self._greet_rec = self._greet_rec, ""
+        if not rid:
+            return
+        from kurooto.mind import records
+
+        result = "replied" if answered else "missed"
+        records.outcome(self.app, rid, result, 1.0 if answered else 0.0)
+        self.app.events.emit("face_greet_outcome", **_event_safe(result=result))
 
     def _write_status(self) -> None:
         st = self.store.status()
@@ -1164,6 +1363,18 @@ class Face(Module):
         self._retrain(t)
         self.app.events.emit("face_learned", **_event_safe(count=n))
         return True
+
+    def learn_from_voice(self) -> bool:
+        """(face.learn.from_voice, under face.learn.on) Voice ID was sure a turn was yours: with exactly one face in
+        view, yours, nobody else nearby and a confident clear frame of it from the last few seconds, learn() from it
+        (its spacing, cap and Undo apply). The voice confirms the face, as typing after an arrival does."""
+        if not self.setting("learn.on") or not self.setting("learn.from_voice") or nearby.others(self.app):
+            return False
+        if nearby.view(self.app) != (1, True):
+            return False
+        w = self.watcher
+        e = w.voice_candidate() if w is not None else None
+        return self.learn(e) if e else False
 
     def learn_undo(self) -> str:
         t = self._template_or_none()

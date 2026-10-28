@@ -27,6 +27,7 @@ stranger frames count for nothing and reset nothing.
 
 Away (face.away.on): no sign of you for away.after_min while unlocked and watching, or locked that long. "left" once;
 it ends with an arrival or with input ("back": somebody is using the computer, though it never greets for that).
+(0.9.0, face.away.use_places) mark_away(): your phone left a place you saved, so away at once.
 
 Strangers: their numbers are dropped with the frame; only counts since start are kept (you, unsure, not you). (0.9.0,
 face.away.report_others) While you're away, a frame with faces judged not yours emits "strangers" with how many: the
@@ -82,6 +83,7 @@ BLOCKED_RECHECK_S = 300
 JUMP_S = 30  # the clock moved this far between two ticks: the computer slept
 STILL_COS, STILL_PX = 0.995, 0.5
 LEARN_INPUT_S = 60  # learning needs input within this after the arrival (someone who sits down and types)
+VOICE_LEARN_S = 3.0  # (0.9.0, face.learn.from_voice) a frame of you this recent counts with a Voice ID turn of yours
 TRACK_OFF, TRACK_SLOW, TRACK_FAST = 0, 1, 2  # tracking(): no faces; faces at the recognition rate; at face.track.fps
 TRACK_MAX_FPS = 15.0
 TRACK_SLOW_S = 0.06  # a detection-only frame taking longer than this halves the tracking rate (down to 8 times)
@@ -103,6 +105,7 @@ class Seen:
     e: list[float] | None = None  # only an owner frame's numbers, kept for the still-picture check and learning
     face: Any = None
     others: bool = False
+    good: bool = False  # (0.9.0) clear enough to learn from (sharp, well lit, not blown out)
 
 
 @dataclass
@@ -369,6 +372,26 @@ class Watcher:
             self.returning = {"since": at, "gap": gap}
         self.present_at = max(self.present_at, at)
 
+    def mark_away(self) -> None:
+        """(0.9.0, face.away.use_places) Your phone left a place you saved: away now, as the rule below would decide
+        after away_after_min. It ends the same way: an arrival or input."""
+        if not self.away:
+            self.away = True
+            self.left_at = self.clock()
+            self.emit("left")
+
+    def voice_candidate(self, within_s: float = VOICE_LEARN_S) -> list[float] | None:
+        """(0.9.0, face.learn.from_voice) Your face's numbers from the newest frame of the last within_s seconds, when
+        it was yours, alone in view, clear and confident enough to learn from (learnable); else None. Voice ID just
+        heard your voice: that's the confirmation typing after an arrival gives."""
+        now = self.clock()
+        for s in reversed(self.recent):
+            if now - s.t > within_s:
+                break
+            if s.owner and s.e is not None:
+                return list(s.e) if s.good and not s.others and self.learnable(s.e) else None
+        return None
+
     def _check_away(self, now: float, locked: bool, c: dict) -> None:
         if self.returning is not None and now - self.returning["since"] > RETURN_S:
             self.returning = None  # presence came back without your face: someone else, or bad light
@@ -406,7 +429,10 @@ class Watcher:
             self.emit("slow", factor=self.slow)
 
     def _look(self, frame, now: float, c: dict) -> None:
-        if self.frames.mean(frame) < COVERED:
+        mean = self.frames.mean(frame)
+        if c.get("light"):  # (0.9.0, face.light_sense) the frame's mean brightness: a number, never the frame
+            self.emit("light", mean=round(float(mean), 1))
+        if mean < COVERED:
             self._dark += 1
             if self._dark >= COVERED_FRAMES:
                 self.problem = ("camera covered", self.clock() + COVERED_RECHECK_S)
@@ -500,7 +526,7 @@ class Watcher:
             self.recent.append(Seen(now, False))
             return
         _s, e, f, q = best
-        self.recent.append(Seen(now, True, e, f, n_other > 0))
+        self.recent.append(Seen(now, True, e, f, n_other > 0, bool(q["good"])))
         # where your face is in the frame (its box's centre, -1..1, and width 0..1), for the being's eyes to find you:
         # the box only, never the picture or the numbers
         fw, fh = full
@@ -695,6 +721,7 @@ PAUSES = (
     "focus",
     "night hours",
     "Kurooto is asleep",  # (0.8.18, mind.sleep.senses_off)
+    "your phone is out",  # (0.9.0, face.away.places_close_camera)
     "enrolling",
     "camera in use by another program",
     "no camera",

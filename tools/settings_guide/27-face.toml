@@ -9,6 +9,18 @@ needs = "The Face presence feature, a camera, and Voice speaking for the greetin
 [parent."face.addons"]
 tip = "What add-ons may do with Face presence: see who's in view, and keep the camera looking while you type."
 
+[s."face.addons.known_guests"]
+tip = "An add-on may say that everyone else in view is someone it knows: they get the short greeting instead of none."
+what = "A yes or no only: Face presence never learns who, and keeps nothing of it. With face.greet.with_others at skip, a remembered friend at the desk then gets \"Welcome back.\" with no details and no conversation."
+when = "Turn it off to keep skipping the greeting whenever anyone else is in view."
+needs = "An add-on that remembers people (with its own switch)."
+
+[s."face.light_sense"]
+tip = "Read the room's light from the camera's frames, as one smoothed number, for Brain and add-ons."
+what = "Only while the camera looks anyway: each frame's average brightness, smoothed, kept in memory as one number (dark to lit) and never a frame. A webcam adjusts its exposure, so it's a rough signal, not a light meter. Brain's sense of its body uses it when no other device reports its light; an add-on may use it to set a screen's brightness."
+when = "Turn it on if you have no phone or other device reporting the room's light."
+needs = "Face presence watching."
+
 [parent."face.track"]
 tip = "Follow every face in view while the camera is open, so the being's eye can look at whoever is there."
 
@@ -37,6 +49,18 @@ when = "Turn it on if you want calls and pop-ups held while you're away from the
 [s."face.away.after_min"]
 tip = "No sign of you (your face or the keyboard) this long means you've left, in minutes."
 when = "Lengthen it if it decides you've left while you're reading."
+
+[s."face.away.use_places"]
+tip = "Your phone leaving a place you saved marks you away from the desk at once."
+what = "Uses Brain's phone places sensor (the places you saved in the phone app). Leaving one makes Face presence decide you've left now instead of after a few minutes with no sign of you, so held calls and pop-ups start waiting sooner. Arriving somewhere doesn't mark you back: your face or your keyboard does. Only that the phone left and when are used, in memory; the place's name stays in the senses' store."
+when = "Turn it on if you walk away from the desk with your phone and want Kurooto to know straight away."
+needs = "Noticing when you leave (face.away.on), Brain on and its phone places sensor (mind.senses.phone.places)."
+
+[s."face.away.places_close_camera"]
+tip = "While your phone is out, keep the camera closed."
+what = "With use_places: from the phone leaving a saved place until it arrives at one, or someone types at the computer, Face presence pauses (\"your phone is out\"). Nothing watches an empty room then, so no arrival is seen by the camera and nobody else at the desk is noted."
+when = "Turn it on if you'd rather the camera rested while you're out."
+needs = "face.away.use_places."
 
 [s."face.away.report_others"]
 tip = "While you're away, note the times someone else's face was in view at your desk, and tell you once when you're back."
@@ -91,6 +115,24 @@ when = "Lower it to one for just a morning greeting."
 tip = "What the greeting tells you: what's next today, what's waiting, deadlines in 24 h, what was held while you were away."
 when = "Trim it to what you want to hear first when you sit down."
 
+[s."face.greet.tell_ai"]
+tip = "When you answer the desk greeting, your AI is told what it had just said, so \"yes\" carries on from it."
+what = "Only with the first thing you say in the conversation the greeting opened, as a line of that turn's context. The greeting is rule-made: counts, and the title of your next class or a deadline (which your AI can read anyway); never anything the camera saw."
+when = "Turn it off if you'd rather the greeting's words never leave the computer; a bare \"yes\" may then need more words."
+cost = "A few dozen more words in that one request to the AI you picked."
+
+[s."face.greet.records"]
+tip = "With Brain on, each greeting is one of its decision records, closed by whether you answered it."
+what = "It records which parts the greeting said (never its words or anything the camera saw) and, when the conversation opened, whether you said anything in it. The nightly look back reads how greetings went and may suggest a different gap between them (face.greet.gap_min); nothing changes without your tap."
+when = "Turn it off if you don't want greetings in Brain's records or the look back's suggestions."
+needs = "Brain, for the records; the nightly look back, for the suggestions."
+
+[s."face.greet.addons"]
+tip = "An add-on may add one short line of its own to the desk greeting."
+what = "Said after everything else, only with nobody else in view, and at most 120 characters. At the greeting's length limit it's the first to go, so it never pushes out what's next or what waits. If the greeting didn't say it, the add-on says it its own way, as before."
+when = "Turn it on to hear an add-on's news (something it noticed while you were away) in the one welcome rather than separately."
+needs = "An add-on that uses it."
+
 [s."face.greet.talk"]
 tip = "After the greeting, listen for a reply without its name being said."
 when = "Turn it off if you'd rather start every talk by saying its name."
@@ -143,6 +185,12 @@ needs = "An add-on that uses it; Face presence watching."
 [s."face.learn.on"]
 tip = "Slowly refine your face template from times it was very sure it was you (never unsure ones), with Undo."
 when = "Turn it on if your look changes (glasses, a beard, the light at your desk) and you'd rather it keeps up."
+
+[s."face.learn.from_voice"]
+tip = "A turn Voice ID is sure is your voice, with only your face in view, may teach the face model too."
+what = "Learning otherwise needs you to type within a minute of being recognised on arrival. With Voice ID on, a turn it is sure is your voice by the voice alone (not one your face helped decide), while exactly one face is in view, yours, and nobody else is about, is the same kind of confirmation: the clear, confident frame of you from the last 3 seconds may be learned from, with the same spacing, cap and Undo."
+when = "Turn it on if you mostly talk to Kurooto at the desk rather than type after sitting down."
+needs = "Learning (face.learn.on) and Voice ID."
 
 [s."face.learn.every_h"]
 tip = "At most one new sample this often, in hours."

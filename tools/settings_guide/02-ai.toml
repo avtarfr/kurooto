@@ -223,3 +223,16 @@ needs = "`local_helper.offline`."
 tip = "Offer the offline helper once if your free limit keeps running short or the internet often drops."
 when = "Turn it off if you never want to be asked. `/helper on` works either way."
 cost = "Nothing: one message with Install / Not now, two weeks after setup, and only when it fits."
+
+[s."chat.context_line"]
+tip = "Each message carries one line for your AI on how it came: typed where, a call, stepped away from the desk."
+what = "Plain words only: typed on Telegram, in the phone app or on this computer; whether you're on a call; and, with Face presence noticing when you leave, that you stepped away from the desk and when. Spoken turns have their own line (who Kurooto recognised). Never a place unless chat.context_places is on."
+when = "Turn it off to send only what you typed."
+cost = "One line more in each request to the AI you picked."
+
+[s."chat.context_places"]
+tip = "Add your phone's last saved place and the Wi-Fi's name you gave it to that line."
+what = "From Brain's phone senses (the places you saved in the phone app, and Wi-Fi codes you labelled with /senses wifi label): \"Their phone left the place they saved as home (14:10)\". Labels only, never a position. Off by default: the place names go to the AI you picked."
+when = "Turn it on if you want answers that know where you are, and are happy for your AI to see those labels."
+cost = "Your place and Wi-Fi labels go to the AI you picked with each message."
+needs = "Brain, and its phone places or Wi-Fi sensor."

@@ -358,6 +358,13 @@ tip = "\"Why this?\" under a message Kurooto started says what Brain's gate and 
 what = "It adds to Calm's Why? on Telegram, and puts a Why this? button on the phone app chat's copy."
 when = "Turn it off to keep Calm's Why? as it was."
 
+[s."mind.why.to_ai"]
+tip = "A message that asks why also gives your AI the plain reasons for Kurooto's own last few messages."
+what = "For a message with the word why: the last three messages Kurooto started by itself in the last day, each with its time, the plain reason, the setting, whether Brain's gate made it quieter, and what it expected and what came of it. Never a sense, the read, a mood or a tone, and not the door's own words. \"Why did you greet me?\" then gets the real reason."
+when = "Turn it off if you don't want those reasons in requests to your AI."
+cost = "A few lines more in requests that ask why."
+needs = "Brain and mind.why.on."
+
 [s."mind.attention.on"]
 tip = "A model of its own attention: \"what are you thinking about?\" is answered from it."
 when = "Turn it off if you don't ask."
