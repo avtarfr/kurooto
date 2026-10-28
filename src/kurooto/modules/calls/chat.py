@@ -47,6 +47,7 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock
 from kurooto.core.notify import counts
 from kurooto.core.state import jload, jsave
@@ -83,6 +84,9 @@ BEING_OPS = (
     "voice.mute",
 )  # the being on the phone (Views): only sealed, only now
 OFF_NOW = "Your computer was off when you sent that, so it wasn't done. Try again now that it's on."
+# (0.9.0) bedside mode opening or closing on a paired phone reaches this computer as a flag (no sensor): the event
+# phone_bedside and calls/bedside.json; what may follow it (sleep, Calm's night) has its own switches, off
+register_defaults("phone", {"bedside": {"signal": True}})
 WORKING_S = 3 * 3600  # a chat shows "working" at most this long without hearing the request ended
 
 
@@ -540,6 +544,8 @@ class PhoneChat:
         if isinstance(fields.get("args"), dict):
             args.update(fields["args"])
         self.app.events.emit("phone_chat_op", op=op[:20])
+        if op == "bedside":
+            return self._bedside(bool(args.get("on")), sealed, queued)
         if op in BEING_OPS:
             return self._being(op, args, sealed, queued, device)
         if op in SESSION_OPS:
@@ -547,6 +553,22 @@ class PhoneChat:
         if op in MSG_OPS:
             return self._msg_op(op, args)
         return 400, {"ok": False, "op": op[:20], "note": "This computer doesn't know that yet. Update Kurooto."}
+
+    def _bedside(self, on: bool, sealed: bool, queued: bool) -> tuple[int, dict]:
+        """(0.9.0, phone.bedside.signal) A paired phone opened or closed bedside mode. One kept on the line while this
+        computer was off is stale: dropped. Kept as {on, at} in calls/bedside.json, and the event phone_bedside."""
+        if not sealed:
+            return 403, {"ok": False, "op": "bedside", "note": "Only your paired Android phone can do that."}
+        if queued or not self.app.settings.get("phone.bedside.signal"):
+            return 200, {"ok": False, "op": "bedside"}
+        jsave(self.calls.dir / "bedside.json", {"on": on, "at": time.time()})
+        self.app.events.emit("phone_bedside", on=on)
+        return 200, {"ok": True, "op": "bedside"}
+
+    def bedside(self, max_age_h: float = 12) -> bool:
+        """Is bedside mode open on a paired phone (said within max_age_h)? For what may follow it later."""
+        st = jload(self.calls.dir / "bedside.json", {}) or {}
+        return bool(st.get("on")) and time.time() - float(st.get("at") or 0) < max_age_h * 3600
 
     def _session_op(self, op: str, a: dict) -> tuple[int, dict]:
         ss = self.sessions

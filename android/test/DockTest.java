@@ -38,6 +38,12 @@ public class DockTest {
         check(Dock.when(now / 1000 + 22 * 3600, now, true, tz).equals("Fri 07:00"), "tomorrow: with its day");
         check(Dock.when(now / 1000 - 9 * 3600, now, false, tz).equals("12:00 AM"), "midnight on a 12-hour clock");
         check(Dock.toNextMinute(60_000L * 5 + 59_000) <= 1_050 && Dock.toNextMinute(60_000L * 5) > 59_000, "the clock turns on the minute");
+        java.util.Calendar c = java.util.Calendar.getInstance(); // (0.9.0) bedside's "due within a day", local time
+        c.clear(); c.set(2026, 9, 30, 10, 0);
+        long t = c.getTimeInMillis();
+        check(Dock.withinDay("2026-10-30T23:59", t) && Dock.withinDay("2026-10-31T09:00", t), "due within a day");
+        check(!Dock.withinDay("2026-11-02T09:00", t) && !Dock.withinDay("", t) && !Dock.withinDay(null, t), "later or unreadable: no");
+        check(Dock.withinDay("2026-10-30T01:00", t) && !Dock.withinDay("2026-10-29T09:00", t), "overdue under 12 hours only");
 
         // 0.8.7 (the Compose bedside screen): a tap's brightness, the alarm line, the waiting line
         check(Dock.brightness(23, true) == 0.3f && Dock.brightness(20, true) == 0.35f, "a tap brightens the night to 0.3, never dims");

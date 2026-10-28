@@ -37,6 +37,10 @@
 - **Brain hears goals and due dates you state** (`mind.tom.from_chat`, on with its model of you). "My goal is to
   finish the draft by Friday" and "the essay is due Monday" become rows you can see and correct in `/model`; never
   health, money or the deny-list's topics.
+- **Reminders, deadlines and sleep on the bedside screen** (phone app: Settings → Bedside, on). Bedside mode shows
+  today's reminders, what's due within a day and that Kurooto is asleep; locked, only how many.
+- **The computer hears when bedside mode opens** (`phone.bedside.signal`, on). A flag, no sensor; nothing acts on it
+  yet unless a feature that uses it is turned on.
 
 ## 0.8.18 (2026-10-29)
 

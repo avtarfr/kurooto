@@ -45,7 +45,7 @@ CHANGES = {
     "action", "deadline_added", "deadline_done", "deadline_ignore", "deadline_moved", "deadline_progress",
     "deadline_undo", "deadline_merged", "alarm_set", "alarm_cleared", "alarm_skipped", "alarm_daily", "alarm_rang",
     "reminder_set", "reminder_fired", "button_tapped", "thread_opened", "thread_closed", "thread_reopened",
-    "calls_device_paired",
+    "calls_device_paired", "mind_sleep",  # (0.9.0) asleep or awake: bedside mode says so
 }  # fmt: skip
 
 
@@ -87,7 +87,18 @@ class PhoneToday:
         out["alarm"] = self._alarm(t.get("alarm_state"))
         out["threads"] = self._threads()
         out["questions"] = len(t.get("questions_full") or [])
+        if self._asleep():  # (0.9.0) bedside mode says so (Prefs.bedsideToday on the phone); absent while awake
+            out["asleep"] = True
         return out
+
+    def _asleep(self) -> bool:
+        """Is Kurooto asleep (Brain, mind/sleep.py)? False with Brain off or on any failure."""
+        try:
+            from kurooto.mind import sleep
+
+            return bool(sleep.asleep(self.app))
+        except Exception:
+            return False
 
     def _due(self, rows: list[dict]) -> list[dict]:
         dl = self.app.modules.get("deadlines")

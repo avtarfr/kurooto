@@ -81,6 +81,20 @@ public class BedsideActivity extends ComponentActivity {
         overLockScreen();
         build();
         ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).cancel(ID_BEDSIDE);
+        signal(true);
+    }
+
+    @Override protected void onDestroy() {
+        if (isFinishing()) signal(false);
+        super.onDestroy();
+    }
+
+    /** (0.9.0) Tell your computer bedside mode opened or closed (a flag, no sensor; phone.bedside.signal there).
+     *  Quiet: an older computer, or none reachable, just doesn't hear it. */
+    private void signal(boolean on) {
+        if (demo || !Prefs.paired(this)) return;
+        final Context c = getApplicationContext();
+        new Thread(() -> Chat.signal(c, "bedside", on)).start();
     }
 
     @Override protected void onNewIntent(Intent i) {
@@ -210,9 +224,38 @@ public class BedsideActivity extends ComponentActivity {
             if (a != null) phone = a.getTriggerTime() / 1000;
         } catch (Exception ignored) { }
         st.setCalls(next);
+        showToday(hide);
         st.setAlarm(Dock.alarmLine(wake, phone, upcoming != null, now, h24, tz));
         st.setWaiting(Dock.waitingLine(upcoming == null ? 0 : upcoming.optInt("waiting", 0))); // none: hidden
         if (upcoming != null && "offline".equals(upcoming.optString("computer")) && !busy) st.setStatus("Your computer is off: calls still work.");
+    }
+
+    /** (0.9.0, Prefs.bedsideToday) Today's reminders and what's due within a day, from the Today list your computer
+     *  sealed for this phone (Today.java), and whether your assistant is asleep. Locked with a secure lock: counts
+     *  only, as for the calls. */
+    private void showToday(boolean hide) {
+        if (!Prefs.bedsideToday(this) || demo) { st.setToday(new ArrayList<>()); st.setAsleep(""); return; }
+        JSONObject list = Today.load(this).optJSONObject("list");
+        List<String> rows = new ArrayList<>();
+        int n = 0;
+        JSONArray rem = list == null ? null : list.optJSONArray("reminders");
+        for (int i = 0; rem != null && i < rem.length(); i++) {
+            JSONObject r = rem.optJSONObject(i);
+            if (r == null) continue;
+            n++;
+            if (rows.size() < 3) rows.add(r.optString("when") + "   " + r.optString("what"));
+        }
+        JSONArray due = list == null ? null : list.optJSONArray("due");
+        int dues = 0;
+        for (int i = 0; due != null && i < due.length(); i++) {
+            JSONObject d = due.optJSONObject(i);
+            if (d == null || !Dock.withinDay(d.optString("due"), System.currentTimeMillis())) continue;
+            n++;
+            if (dues++ < 2) rows.add("due " + d.optString("when") + "   " + d.optString("title"));
+        }
+        if (hide && n > 0) { rows.clear(); rows.add(n + (n == 1 ? " reminder or deadline" : " reminders and deadlines") + " (unlock to see)"); }
+        st.setToday(rows);
+        st.setAsleep(list != null && list.optBoolean("asleep") ? Prefs.assistant(this) + " is asleep" : "");
     }
 
     /** What's coming, from the call line (off the main thread). */

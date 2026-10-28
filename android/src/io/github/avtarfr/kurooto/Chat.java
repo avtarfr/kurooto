@@ -694,6 +694,17 @@ final class Chat {
         }
     }
 
+    /** (0.9.0) A one-way flag for your computer (bedside mode on or off): sealed like a message, never kept on the call
+     *  line for later (stale by then), never a toast. True when your computer took it. Call off the main thread. */
+    static boolean signal(Context c, String op, boolean on) {
+        try {
+            Sent s = post(c, newId(), new JSONObject().put("op", op).put("args", new JSONObject().put("on", on)));
+            return s.ok && !s.queued;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     /** A new chat: here at once (untitled till its first message), and on your computer. Returns its id. */
     static String newSession(Context c, String title) {
         String sid = newId();

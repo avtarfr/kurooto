@@ -1002,7 +1002,15 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
 - Bedside mode (0.6.0): `BedsideActivity` (theme `Kurooto.Call`, `showWhenLocked`, immersive): clock, date, next
   alarm (the first `alarm` call from `GET /upcoming`, or `AlarmManager.getNextAlarmClock()` if earlier), up to three
   calls (reasons hidden while a secure keyguard is locked), the waiting count, and the Talk button (`Line.callLink` then
-  `CallActivity`, which shows over the lock screen itself); Chat and the main screen go through
+  `CallActivity`, which shows over the lock screen itself). (0.9.0, L135, `Prefs.bedsideToday`, on) `showToday`
+  adds up to three reminders and two deadlines whose `due` is within a day (`Dock.withinDay`, past by under 12 h) from
+  `Today.load()`'s list (counts only behind a secure keyguard) and "<assistant> is asleep" from the list's `asleep`
+  (`calls/today.py` sets it while `mind/sleep.asleep`; `mind_sleep` is in `CHANGES`, so it's pushed when it turns).
+  (0.9.0, L11) `onCreate` / `onDestroy` (finishing) send `Chat.signal(c, "bedside", on)`: op `bedside` `{on}` through
+  `/chat`, quiet (no toast); `PhoneChat._bedside` takes it only sealed and not `queued` (stale) with
+  `phone.bedside.signal` on, keeps `calls/bedside.json` `{on, at}` and emits `phone_bedside`; `PhoneChat.bedside()`
+  reads it (12 h at most). Its consumers (sleep onset `mind.sleep.follow_bedside`, Calm's night `calm.night.bedside`)
+  aren't built: they wait for L10's external-asleep hook. Chat and the main screen go through
   `requestDismissKeyguard` (8+). `/upcoming` (device key) answers `{calls: [{at, reason, alarm}] from the pushed
   schedule (next day, at most 8), waiting, computer, assistant}`; read every 5 minutes. Window brightness and colours
   by the hour come from `Dock` (pure Java, `test/DockTest.java`); a tap sets 0.3 for 15 s; `FLAG_KEEP_SCREEN_ON` while
