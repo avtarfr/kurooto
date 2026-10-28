@@ -9,7 +9,8 @@ ones you approve, or, with Learns from its own work on, facts you stated (keep()
 It won't keep health, money or password details: those would travel with every AI request. Reminders and your own
 notes are the place for them.
 
-Rechecking (remember.recheck_days, 90): a line Kurooto wrote in its own sections (TOLD, PICKED, LEARNED; lines you
+Rechecking (remember.recheck_days, 90): a line Kurooto wrote in its own sections (TOLD, PICKED, LEARNED, and since 0.9.0
+LEARNED_CALLS: the call lessons copied by calls/review.py; lines you
 wrote anywhere else are never touched) that hasn't come up in that many days (not in what you asked or said on a
 call, not said again, not kept with Keep; an edited line counts as new) gets a quiet "Still true?" with Keep, Change
 and Forget, at most two a week. Forget takes the line out, Change asks for the new wording by reply; each has an
@@ -50,7 +51,7 @@ TOLD = "You told me"
 PICKED = "Picked up from your chats and calls"  # what Learns from its own work keeps by itself (modules/learning.py)
 LEARNED = "Learned in the nightly look back"  # what you approved from the nightly look back (modules/retro.py)
 LEARNED_CALLS = "Learned on calls"  # (0.9.0, calls.lessons_everywhere) each call lesson, copied (calls/review.py)
-MANAGED = (TOLD, PICKED, LEARNED)  # the sections Kurooto writes in; only their dated lines are ever rechecked
+MANAGED = (TOLD, PICKED, LEARNED, LEARNED_CALLS)  # the sections Kurooto writes in; only their dated lines are rechecked
 RECHECK_WHEN = "daily 18:30"
 RECHECK_WEEK = 2  # at most this many "Still true?" in 7 days...
 RECHECK_GAP_DAYS = 3  # ...this many days apart

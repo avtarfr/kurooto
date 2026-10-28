@@ -75,6 +75,9 @@ register_defaults(
         "review_effort": "high",  # how hard that look back thinks (low, medium, high)
         "review_brain": "",  # which AI does the look back ("" = your main one)
         "lessons_max": 12,  # the most lessons every call is told; a new one that says the same replaces the old
+        # (0.9.0) each call lesson is also a dated line under "Learned on calls" in your how-to-help-me note, so every
+        # AI request follows it (calls/review.py); a replaced or forgotten lesson's line goes with it
+        "lessons_everywhere": True,
         "today": True,  # the Android app's Today screen and its copy of your alarm, sealed for each phone (today.py)
         "views": False,  # Systems and the Notes map on the Android app (notes' titles, features' health; views.py)
         "views_being": True,  # the being in the app's Views (with calls.views): its readings, settings, no note text
@@ -88,6 +91,26 @@ register_defaults(
         # (0.9.0) what every AI request is told goes to calls and desk Live talks too: your profile's brief, how to help
         # you, your not-interested topics, Brain's state (never the read, mood, tone or senses; providers/context.py)
         "context_brief": True,
+        # (0.9.0) a call's brief says which senses are on (Face presence, Voice ID) and when you were last at the desk:
+        # names, a coarse word and a time only, never frames or scores
+        "tell_senses": True,
+        # (0.9.0) calls and desk Live talks also get the read-only tools features give your AI (the concept graph's
+        # graph_search and concept_card, books' read_book, learning's search_history, a Classroom file's text)
+        "read_agent_tools": True,
+        "read_tools": {},  # one feature's read-only tools left off calls: {"books": false}
+        # (0.9.0) the phone app's Today also says how many messages Calm holds (with Send now), how many proposals
+        # wait for your tap, and whether the Brain is awake, asleep or in focus time (counts and a word only)
+        "today_waiting": True,
+        # (0.9.0) the phone app's Today also shows the day's plan (its first lines), what to start (Start-by and
+        # revision blocks) and the hours studied today
+        "today_plan": True,
+        # (0.9.0) after a call, what you said on it is read like a message: "I got a project under Prof X" sets it up
+        # (core/infer.py, one line each with Undo) and "remember that ..." is kept in how-to-help-me
+        "after_infer": True,
+        "threads_live": True,  # (0.9.0) a call can close an open thread while it's on ("I sent it"): close_thread
+        # (0.9.0) a call Kurooto places by itself while your phone says you're walking or in a vehicle uses the phone's
+        # own speech (voice mode "phone") instead of Live; never holds it. Needs Brain's phone motion sense on
+        "mode_when_moving": False,
     },
 )
 
@@ -100,6 +123,17 @@ APP_LINE_SOON_MIN = 1  # a new phone app goes to the call line this soon after i
 APP_LINE_BUSY_MIN = 10  # on a call, or another deploy running: looked at again this much later
 APP_LINE_RETRY_MIN = 30  # a deploy that failed (offline, Cloudflare): tried again this much later
 APP_LINE_TRIES = 6  # then the 05:10 line update takes it
+# (0.9.0) tools that change what the call started from (its brief, the morning's plan): the result says so in a line
+RESHAPES = {
+    "move_deadline": "a deadline moved",
+    "add_deadline": "a deadline added",
+    "remove_deadline": "a deadline removed",
+    "skip_class": "a class skipped",
+    "skip_commitment": "a commitment skipped",
+    "reschedule_day": "the day's plan rescheduled",
+    "plan_block": "a block planned",
+    "remove_blocks": "blocks removed from the plan",
+}
 PHONES_FRESH_S = 1800  # the health check trusts the last device list (who's connected straight to the line) this long
 
 
@@ -483,6 +517,28 @@ class Calls(Module):
                     out += m.call_tools()
                 except Exception as e:
                     self.app.events.emit("calls_tools_failed", module=m.id, error=str(e)[:200])
+        if self.setting("read_agent_tools"):
+            out += self._read_agent_tools({t.name for t in out})
+        return out
+
+    def _read_agent_tools(self, have: set[str]) -> list[Tool]:
+        """(0.9.0, calls.read_agent_tools) The tools features give unattended AI requests (Module.agent_tools) that only
+        read (Tool.writes is False: never None, which isn't known), aren't guarded and aren't on the call already.
+        calls.read_tools {"<feature>": false} leaves one feature's out. Guests never reach a call's tools."""
+        from kurooto.core.tools import CALL_ONLY
+
+        off = {str(k) for k, v in (self.setting("read_tools") or {}).items() if v is False}
+        out: list[Tool] = []
+        for m in self.app.enabled():
+            if m.id == self.id or m.id in off or not hasattr(m, "agent_tools"):
+                continue
+            try:
+                for t in m.agent_tools():
+                    if t.writes is False and not t.guarded and t.name not in have and t.name not in CALL_ONLY:
+                        out.append(t)
+                        have.add(t.name)
+            except Exception as e:
+                self.app.events.emit("calls_tools_failed", module=m.id, error=str(e)[:200])
         return out
 
     def _own_tools(self, live: bool = True) -> list[Tool]:
@@ -554,6 +610,28 @@ class Calls(Module):
                 offline="queue",
             ),
         ]
+        from kurooto.core import threads
+
+        if self.setting("threads_live") and threads.on(self.app):  # (0.9.0) closed during the call, not after it
+            t.append(
+                Tool(
+                    "close_thread",
+                    "Close one of their open threads (something they said they'd do, from pending_items' "
+                    "open_threads) when they say it's done or no longer happening.",
+                    lambda a: threads.close_said(
+                        self.app, str(a.get("what") or ""), "dropped" if a.get("dropped") in (True, "true") else "done"
+                    ),
+                    {
+                        "what": arg("the thread, in its own words"),
+                        "dropped": arg('"true" when it isn\'t happening, else leave it out'),
+                    },
+                    ("what",),
+                    offline="queue",
+                    writes=True,
+                    hint="When they say something on their open threads is done ('I sent the draft'), call "
+                    "close_thread with it.",
+                )
+            )
         if on("chat"):
             t.append(
                 Tool(
@@ -590,11 +668,28 @@ class Calls(Module):
             out = tool.run(args or {})
         except Exception as e:
             out = f"That failed: {type(e).__name__}: {e}"[:300]
+        else:
+            out = self._reshaped(name, out)
         log = self.tool_log.setdefault(str(since or ""), [])
         log[:] = [*log[-59:], {"name": name, "args": str(args or {})[:300], "result": str(out)[:300]}]
         for old in list(self.tool_log)[:-10]:  # calls that never sent a transcript don't pile up
             self.tool_log.pop(old, None)
         return out
+
+    def _reshaped(self, name: str, out):
+        """(0.9.0) After a tool that changes the day (RESHAPES), its result ends with one short line: what the call
+        started from (pending_items, the morning's plan) is out of date there, and the day's drafted plan is marked so
+        (modules/daily.py mark_plan_stale). A failed one ("That failed", "I don't know", "No ...") changes nothing."""
+        what = RESHAPES.get(name)
+        if not what or not isinstance(out, str) or re.match(r"(?:that failed|i don't know|no |there's no)", out, re.I):
+            return out
+        try:
+            from kurooto.modules import daily
+
+            daily.mark_plan_stale(self.app, what)
+        except Exception:
+            pass
+        return f"{out}\n(Changed since this call's brief and today's plan: {what}. Go by this, not the brief.)"
 
     def _tool_message(self, a: dict) -> str:
         text = str(a.get("text") or "").strip()[:3500]
@@ -657,7 +752,38 @@ class Calls(Module):
             about = call_context(self.app)
             if about:
                 out["about_them"] = about
+            senses = self.senses_line()
+            if senses:
+                out["senses"] = senses
         return out
+
+    def senses_line(self) -> str:
+        """(0.9.0, calls.tell_senses) Which of the computer's senses are on and when Face presence last had them at
+        the desk: "Face presence is on (at the desk 12 minutes ago, 14:05); Voice ID is off." Sense names, a coarse
+        word and a time only: never frames, scores or who else was seen (R7). "" with the switch off."""
+        if not self.setting("tell_senses"):
+            return ""
+        try:
+            face = self.app.modules.get("face") if self.app.is_on("face") else None
+            parts = []
+            if face is None:
+                parts.append("Face presence is off")
+            else:
+                seen = face.desk_seen_at()
+                if seen is None:
+                    where = "they're away from the desk" if face.away_now() else "not seen at the desk lately"
+                else:
+                    mins = max(0, int((time.time() - seen) // 60))
+                    at = dt.datetime.fromtimestamp(seen)
+                    where = "at the desk now" if mins < 2 else f"at the desk {mins} minutes ago, {at:%H:%M}"
+                parts.append(f"Face presence is on ({where})")
+            voice = self.app.modules.get("voice") if self.app.is_on("voice") else None
+            vid = voice is not None and voice.voiceid.on()
+            parts.append("Voice ID is on" if vid else "Voice ID is off")
+            return "; ".join(parts) + "."
+        except Exception as e:
+            self.app.events.emit("calls_brief_failed", module="senses", error=type(e).__name__)
+            return ""
 
     def _search(self, a: dict):
         q = str(a.get("query", ""))
@@ -942,6 +1068,12 @@ class Calls(Module):
             rings[since]["buttons"] = [list(b) for b in buttons]
         jsave(self.dir / "rings.json", dict(list(rings.items())[-100:]))
         voice = self.voice_for(key)
+        if automatic and not alarm and self.setting("mode_when_moving"):  # (0.9.0) on the move: the phone's speech
+            from kurooto.mind.senses import phone as phone_sense
+
+            if phone_sense.moving(self.app):
+                voice = "phone"
+                self.app.events.emit("call_mode_moving", key=key)
         push = {
             "title": "Wake-up call" if alarm else "Incoming call",
             "message": str(reason)[:300],
@@ -1188,7 +1320,8 @@ class Calls(Module):
             self.app.scheduler.cancel(f"calls:realert:{(r or {}).get('first') or since}")
             if r and not self._tell_owner_module(r, act) and act == "later":
                 self._button(since, "later")
-            self.app.events.emit("call_" + (act or "reply"))
+            # which call it was ("alarm:next" for the wake-up alarm): a "later" on it is a snooze (mind/signals.py)
+            self.app.events.emit("call_" + (act or "reply"), key=str((r or {}).get("key") or "")[:60])
         elif name == "device_paired":
             self.app.notify(
                 f"A device was paired with your call line: {m.get('device_name')} ({m.get('kind')}). If that wasn't "
@@ -1354,11 +1487,52 @@ class Calls(Module):
         from kurooto.core import threads
 
         threads.from_call(self.app, lines)  # "I'll send the draft tonight" said on the call: an open thread
+        from kurooto.mind import tone
+
+        tone.from_call(self.app, lines)  # (0.9.0, mind.tone.calls) the day's tone counts your call lines too, locally
+        try:  # (0.9.0, calls.after_infer) never in the way of keeping the transcript
+            self._after_infer(lines)
+        except Exception as e:
+            self.app.events.emit("calls_after_infer_failed", error=type(e).__name__)
         try:  # the look back never stands in the way of keeping the transcript
             review.review(self, lines, used, purpose)
         except Exception as e:
             self.app.events.emit("call_review_failed", error=f"{type(e).__name__}: {e}"[:200])
         return {"ok": True}
+
+    def _after_infer(self, lines: list[dict]) -> int:
+        """(calls.after_infer) Your lines on a call (not Kurooto's, not "(note)" ones), read like a typed message:
+        core/infer.py sets up what they state (it tells each with its Undo, and keeps its own filters), and a
+        "remember that ..." line is kept by Remember's rules (never health, money or passwords; a line the call's own
+        remember tool kept already is "known" and said nothing of). How many things were set up or kept."""
+        if not self.setting("after_infer"):
+            return 0
+        yours = [str(x.get("text") or "").strip() for x in lines if x.get("who") not in (self.app.name, "(note)")]
+        yours = [t for t in yours if t]
+        if not yours:
+            return 0
+        from kurooto.core import infer
+
+        n = len(infer.observe(self.app, "\n".join(yours), via="call"))
+        rem = self.app.modules.get("remember")
+        if rem is not None and self.app.is_on("remember"):
+            from kurooto.modules import remember
+
+            kept = []
+            for t in yours:
+                m = remember.REMEMBER.match(t)
+                if m and not re.match(r"(?i)to\b", m["fact"]):
+                    status, line = remember.keep(self.app, m["fact"], via="call")
+                    if status == "kept":
+                        kept.append(line.rsplit(" (", 1)[0])
+            if kept:
+                self.app.notify(
+                    f"From your call, noted in {remember.help_rel(self.app)}: " + "; ".join(kept) + ".",
+                    kind="info",
+                    why="calls.after_infer",
+                )
+            n += len(kept)
+        return n
 
     def _upload(self, q: dict, body: bytes) -> tuple[int, dict]:
         name = re.sub(r"[^\w.-]+", "-", (q.get("name") or ["shared"])[0])[:80] or "shared"

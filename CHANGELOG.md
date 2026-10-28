@@ -10,6 +10,25 @@
 - **More features can use the not-interested list** (`notinterested.filter.research`, `integrate`, `quiz_links`,
   `retro`, `frontier`, each off). Turned on, a matching paper, class reading, link card, nightly idea or frontier card
   comes last, tagged "you said not interested in X". Nothing is hidden.
+- **Call lessons reach every request** (`calls.lessons_everywhere`, on). Each lesson from the look back after a call is
+  also a dated line under "Learned on calls" in your how-to-help-me note; a replaced or forgotten lesson takes its line
+  out too.
+- **Calls know which senses are on** (`calls.tell_senses`, on): Face presence and Voice ID, and when you were last at
+  the desk. Words and a time only.
+- **Calls can look more up** (`calls.read_agent_tools`, on). Calls and desk Live talks also get your AI's read-only
+  tools: the concept graph's search and cards, Books' pages, chat history search, a Classroom file's text.
+- **A call says when the day changed under it.** After a deadline, class, commitment or plan change, the tool's answer
+  says the brief and today's plan are out of date there, and the phone's Today marks the plan.
+- **What you say on a call counts** (`calls.after_infer`, on): it's read like a typed message ("I got a project under
+  Prof X", "remember that ..."). With tone on, your call lines count toward the day's tone too (`mind.tone.calls`).
+- **"I sent it" closes a thread during the call** (`calls.threads_live`, on).
+- **Calls on the move** (`calls.mode_when_moving`, off). A call Kurooto places by itself while your phone says you're
+  walking or in a vehicle uses the phone's own speech. It never holds the call.
+- **More on the phone's Today:** the plan's first lines, what to start and hours studied (`calls.today_plan`); held
+  messages with Send now, waiting proposals and the Brain's state (`calls.today_waiting`); whether the laptop's camera
+  is on and why (`face.phone_badge`).
+- **The read counts alarm snoozes and skipped class hours** (`mind.read.snoozes`, `mind.read.skipped_classes`, on).
+  A "Later" on the wake-up call now names the call it was on (a fix).
 
 ## 0.8.18 (2026-10-29)
 

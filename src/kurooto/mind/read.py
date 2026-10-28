@@ -38,6 +38,7 @@ SIGNALS = (
     "reply_band",
     "deadline_moves",
     "classes_attended",
+    "class_skip_h",
     "tone_mean",
 )
 LOAD_SIGNALS = ("load_deadlines_w", "load_deadlines_n", "load_class_h", "load_exam")  # what the day asked (signals.py)
@@ -45,7 +46,7 @@ SLEEP_CLUSTER = ("sleep_min", "wake_min", "snoozes")
 # +1: a higher number reads as more stretched or low (later, more snoozes, more moves, slower); -1: a lower one does
 DIRECTION = {
     "wake_min": 1, "sleep_min": 1, "snoozes": 1, "study_min": -1, "reply_band": 1, "deadline_moves": 1,
-    "classes_attended": -1, "tone_mean": -1,
+    "classes_attended": -1, "class_skip_h": 1, "tone_mean": -1,
 }  # fmt: skip
 LABELS = ("steady", "stretched", "low", "buoyant")
 

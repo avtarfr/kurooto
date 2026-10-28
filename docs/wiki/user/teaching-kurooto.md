@@ -409,6 +409,11 @@ After every call, Kurooto looks back at the transcript with a stronger AI: it do
 is told them. `/lessons` lists them; `/lessons forget 2` removes the second, `/lessons clear` all of them. Details are
 in [calls.md](calls.md).
 
+Since 0.9.0 (`calls.lessons_everywhere`, on) each lesson is also a dated line under **Learned on calls** in your
+how-to-help-me note, so every AI request follows it, not only calls. The 90-day "Still true?" asks about these lines
+too (Forget there takes the line out of the note; `/lessons` keeps the call's own list). And with `calls.after_infer`
+on, "remember that ..." said on a call is kept like a typed one.
+
 ---
 
 ## Messages these features send by themselves

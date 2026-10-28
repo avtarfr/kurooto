@@ -1930,6 +1930,19 @@ asked right away.
 your profile's brief, your how-to-help-me note, your not-interested topics and the Brain's own state (never your read,
 mood, tone or senses). *Undo:* `calls.context_brief` = `false`.
 
+**More on calls (0.9.0).** Each its own switch in Settings → calls, with its *Undo* the same setting back:
+- the brief says whether Face presence and Voice ID are on and when you were last at the desk (`calls.tell_senses`);
+- calls and desk talks get your AI's read-only tools (`calls.read_agent_tools`; `calls.read_tools` `{"books": false}`
+  leaves one feature's out);
+- after a deadline, class or plan change the tool's answer says the brief and today's plan are out of date (no switch);
+- "I sent it" closes an open thread during the call (`calls.threads_live`);
+- after a call, what you said is read like a typed message (`calls.after_infer`) and its lessons are copied into
+  how-to-help-me under "Learned on calls" (`calls.lessons_everywhere`);
+- with Brain's phone motion sense, a call Kurooto places itself while you're moving uses the phone's speech
+  (`calls.mode_when_moving`, off);
+- the phone's Today adds the plan, held messages with Send now, proposals, the Brain's state (`calls.today_plan`,
+  `calls.today_waiting`) and the laptop camera's state (`face.phone_badge`).
+
 **Questions on your phone:** with Phone calls on, your paired phones also get Kurooto's questions and approvals (from
 any feature: a check-in, after-class notes, a quiz, a suggestion to approve), as well as Telegram. Answer wherever is
 handy; the first answer counts and the others go away.

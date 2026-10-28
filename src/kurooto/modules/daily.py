@@ -67,6 +67,31 @@ def plan(app: App, day: dt.date | None = None, limit: int = 4000) -> str:
     return found[-1][:limit] if found else ""
 
 
+def mark_plan_stale(app: App, what: str) -> None:
+    """(0.9.0) Something changed the day after its plan was drafted (a call moved a deadline, skipped a class): kept
+    for today in state (never written into the note), so Today and the dashboard can say so."""
+    from kurooto.core.state import jload, jsave
+
+    f = app.paths.state / "daily" / "plan-stale.json"
+    today = now().date().isoformat()
+    st = jload(f, {}) or {}
+    items = st.get("what", []) if st.get("date") == today else []
+    if what not in items:
+        items = [*items, what][-6:]
+    f.parent.mkdir(parents=True, exist_ok=True)
+    jsave(f, {"date": today, "what": items, "at": now().isoformat(timespec="minutes")})
+
+
+def plan_stale(app: App, day: dt.date | None = None) -> str:
+    """What changed today since the plan was drafted ("a deadline moved; a class skipped"), or ""."""
+    from kurooto.core.state import jload
+
+    st = jload(app.paths.state / "daily" / "plan-stale.json", {}) or {}
+    if st.get("date") != (day or now().date()).isoformat():
+        return ""
+    return "; ".join(str(x) for x in st.get("what") or [])
+
+
 def ai_on(app: App) -> bool:
     """Is there an AI to hand work to? (Chat is on.)"""
     return app.is_on("chat")
@@ -201,4 +226,5 @@ def morning_view(app: App) -> dict:
     if app.is_on("study"):
         part("study_h", lambda: round(sum(app.modules["study"].totals(1).values()) / 3600, 1))
     part("questions", lambda: [q["text"][:200] for q in app.ask.pending()[:5]])
+    part("plan_stale", lambda: plan_stale(app, today) if out.get("plan") else "")  # (0.9.0) changed since drafted
     return out

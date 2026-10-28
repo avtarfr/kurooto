@@ -207,3 +207,60 @@ tip = "Calls and desk Live talks hear what every AI request is told: your profil
 what = "Only text your AI already gets with every request. Never your read, mood, tone or senses; the call's lessons go once, as before."
 when = "Turn it off if you'd rather calls knew only what's due and the persona. Takes effect on the next call or desk talk."
 cost = "That text goes to Google's Gemini Live with each call or desk talk, and to your call line in the offline brief."
+
+[s."calls.lessons_everywhere"]
+tip = "Each lesson from the look back after a call is also a dated line in your how-to-help-me note, so every AI request follows it."
+what = "The lines go under \"Learned on calls\". A lesson replaced, dropped or forgotten with /lessons takes its line out too. The 90-day \"Still true?\" asks about them like your other kept lines."
+when = "Turn it off if you'd rather keep call lessons to calls. Lines already copied stay until you remove them."
+cost = "The lines go with every AI request to the AI you picked, as the rest of the note does."
+needs = "`calls.review`."
+
+[s."calls.tell_senses"]
+tip = "A call's brief says whether Face presence and Voice ID are on, and when you were last at the desk."
+what = "Sense names, a word (at the desk, away) and a time only: never camera frames, scores or anyone else seen."
+when = "Turn it off if calls needn't know whether you're at your computer."
+cost = "Those few words go to Gemini Live with the call's brief."
+
+[s."calls.read_agent_tools"]
+tip = "Calls and desk Live talks also get the read-only tools your AI has, like the concept graph's search and books' pages."
+what = "Only tools that only read (never one that writes, sends or needs your tap). Guests never get tools."
+when = "Turn it off if calls feel slower to start: each tool makes the call's instructions longer."
+cost = "What those tools read goes to Gemini Live when the call uses them."
+needs = "The features that give the tools (concept graph, Books, Learns from its own work, Classroom)."
+
+[s."calls.read_tools"]
+tip = "One feature's read-only tools left off calls, e.g. {\"books\": false}."
+values = "A JSON object, feature → `false`."
+when = "When one feature's tools aren't useful on calls but the others are."
+needs = "`calls.read_agent_tools`."
+
+[s."calls.today_waiting"]
+tip = "The phone app's Today says how many messages are held, how many proposals wait, and whether the Brain is awake."
+what = "Counts and a word only. Tapping the held line sends today's held messages now."
+when = "Turn it off if you'd rather not see those on the phone."
+cost = "Sealed for each phone, with the rest of Today."
+needs = "`calls.today`."
+
+[s."calls.today_plan"]
+tip = "The phone app's Today also shows the first lines of today's plan, what to start, and the hours studied."
+what = "The plan's first lines from your daily note (with what a call changed since it was drafted), Start-by's and revision's rows."
+when = "Turn it off if Today should stay as short as before."
+cost = "Sealed for each phone, with the rest of Today."
+needs = "`calls.today`."
+
+[s."calls.after_infer"]
+tip = "After a call, what you said on it is read like a typed message: stated facts are set up, \"remember that\" is kept."
+what = "Your lines only, not Kurooto's. Each thing set up is told once with its Undo, as for typed messages."
+when = "Turn it off if calls should only do what their tools did."
+needs = "Set up from what you say (`infer.on`) and Remember, for each part."
+
+[s."calls.threads_live"]
+tip = "A call can close one of your open threads while it's on, when you say it's done."
+when = "Turn it off if threads should close only after the call, from its transcript."
+needs = "`memory.threads`."
+
+[s."calls.mode_when_moving"]
+tip = "A call Kurooto places by itself while your phone says you're walking or in a vehicle uses the phone's own speech."
+what = "It never holds or delays the call; calls you ask for and the alarm are unchanged. The motion reading stays on this computer."
+when = "Turn it on if Live calls on the move keep breaking up."
+needs = "Brain's phone motion sense (`mind.senses.phone.motion`)."

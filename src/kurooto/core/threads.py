@@ -154,6 +154,28 @@ def close(app: App, r: dict, how: str = "done") -> None:
     app.events.emit("thread_closed", how=how)
 
 
+def close_said(app: App, what: str, how: str = "done") -> str:
+    """(0.9.0, calls.threads_live) A call's close_thread tool: the open thread these words are about (the most shared
+    words, at least two, or all of a short one), closed now instead of after the call. What to say back."""
+    if ledger.locked(app):
+        return ledger.LOCKED
+    said = ledger.words(what or "")
+    scored = []
+    for r in open_threads(app):
+        want = ledger.words(r["text"])
+        hit = len(said & want)
+        if want and hit >= min(2, len(want)):
+            scored.append((hit, r))
+    if not scored:
+        return "No open thread matches that; nothing was closed."
+    scored.sort(key=lambda x: -x[0])
+    if len(scored) > 1 and scored[0][0] == scored[1][0]:
+        return "More than one open thread matches: " + "; ".join(r["text"] for _, r in scored[:3]) + ". Which one?"
+    r = scored[0][1]
+    close(app, r, "dropped" if how == "dropped" else "done")
+    return f'Closed: "{r["text"]}". /threads on Telegram has Undo.'
+
+
 def _sentences(text: str) -> list[str]:
     return [s.strip() for s in re.split(r"(?<=[.!?])\s+|\n+", text or "") if s.strip()]
 

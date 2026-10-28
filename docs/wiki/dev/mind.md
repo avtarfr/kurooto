@@ -1427,3 +1427,14 @@ the switches, the surprise check-in and its exclusions, the late-wake rule).
   when there are buttons. Event `mind_register_shortened` (the reason id and characters cut).
 - Tests: `tests/unit/test_mind_trust_presence.py`.
 
+
+## 0.9.0: calls feed the tone and the read
+
+- **Tone from calls** (`mind.tone.calls`, on, under `mind.tone.on`): `tone.from_call(app, lines)` from
+  `Calls.save_transcript` hands the owner's lines (not Kurooto's, not "(note)") to `tone.seen`, so the same tiers and
+  local model apply; words are never kept and no tone reaches an AI.
+- **Snoozes** (`mind.read.snoozes`, on): `signals.collect` counts `call_later` events whose `key` is `alarm:next`
+  (the key on that event is a 0.9.0 fix in `Calls.on_event`). The phone's own alarm snoozes aren't reported yet.
+- **Skipped class hours** (`mind.read.skipped_classes`, on): `class_skip_h`, the hours of that day's classes in
+  `Subjects.skipped(day)` (only the owner's own `/skip` or `skip_class`, R11), added to `read.SIGNALS` with
+  direction +1. A constant zero is harmless: `robust_z` is 0 when the scale is 0.

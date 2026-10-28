@@ -14,8 +14,11 @@ already sees of your day and handed to the scorekeeper as plain facts (`signal`)
     plain count),
                       class hours, exam season. These are what the other numbers are explained by.
 
-Not collected yet: snoozes (the alarm doesn't say it) and classes attended (only skips are known). Kept 30 days by the
-scorekeeper. A day is 04:00 to 04:00.
+    snoozes           (0.9.0, mind.read.snoozes) "Later" on the ringing wake-up alarm (call_later with the alarm's key)
+    class_skip_h      (0.9.0, mind.read.skipped_classes) hours of that day's classes you said you'd skip (your own
+                      /skip or skip_class, never a guess from where you are)
+
+Not collected: classes attended (only skips are known). Kept 30 days by the scorekeeper. A day is 04:00 to 04:00.
 """
 
 from __future__ import annotations
@@ -25,11 +28,23 @@ from typing import TYPE_CHECKING
 
 from kurooto import mind
 from kurooto.core.clock import now
+from kurooto.core.config import register_defaults
 
 if TYPE_CHECKING:
     from kurooto.app import App
 
 PART = "read"  # its switch: mind.read.on
+
+register_defaults(
+    "mind",
+    {
+        "read": {
+            "snoozes": True,  # (0.9.0) the read counts snoozes of the wake-up alarm ("Later" on its call)
+            "skipped_classes": True,  # (0.9.0) and the hours of classes you said you'd skip (only your own taps)
+        }
+    },
+)
+ALARM_KEY = "alarm:next"  # the wake-up alarm's call (modules/alarm.py KEY)
 
 DAY_STARTS = 4  # hours: the day turns at 04:00
 # a sign that you're up and about, with Kurooto (not something it did by itself)
@@ -137,6 +152,23 @@ def collect(app: App, day: dt.date, final: bool = False) -> dict[str, float]:
     if gaps:
         gaps.sort()
         out["reply_band"] = float(band(gaps[len(gaps) // 2]))
+    if app.settings.get("mind.read.snoozes"):
+        later = _events(app, lo, hi, {"call_later"})
+        out["snoozes"] = float(sum(1 for _, r in later if r.get("key") == ALARM_KEY))
+    if app.settings.get("mind.read.skipped_classes") and sub is not None and app.is_on("subjects"):
+        try:
+            skip = sub.skipped(day)
+            out["class_skip_h"] = round(
+                sum(
+                    (c["end_dt"] - c["start_dt"]).total_seconds()
+                    for c in sub.classes_on(day, include_skipped=True)
+                    if c.get("subject") in skip
+                )
+                / 3600,
+                2,
+            )
+        except Exception:
+            pass
     from kurooto.mind import tone
 
     tm = tone.daily_mean(app, day)

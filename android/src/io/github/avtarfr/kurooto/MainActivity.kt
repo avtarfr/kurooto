@@ -221,7 +221,7 @@ class MainActivity : ComponentActivity() {
     internal fun dueAct(id: String, act: String, title: String) {
         ui.openDue = ""
         if (ui.demo) { ui.todaySaid = Said("Demo: nothing was sent.", Said.DIM); return }
-        val label = (if (act == "done") "Done" else act) + ": " + title
+        val label = if (act == "send_held") title else (if (act == "done") "Done" else act) + ": " + title
         ui.todaySaid = Said("Sending…")
         thread {
             val s = Today.act(applicationContext, id, act, label)

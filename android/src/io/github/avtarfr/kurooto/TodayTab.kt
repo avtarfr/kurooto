@@ -135,6 +135,26 @@ fun TodayPane(a: MainActivity, ui: HomeState, room: PaddingValues) {
             if (rem.isNotEmpty()) add("reminders", "section") { Section("Reminders", R.drawable.ic_bell) { Group(rem) } }
             val th = objects(t.optJSONArray("threads")).map { Item(it.optString("text")) }
             if (th.isNotEmpty()) add("threads", "section") { Section("Open threads", R.drawable.ic_nav_chat) { Group(th) } }
+            // (0.9.0) the day's plan and what to start (calls.today_plan)
+            val plan = t.optJSONArray("plan")
+            val planRows = (0 until (plan?.length() ?: 0)).map { Item(plan!!.optString(it)) } +
+                objects(t.optJSONArray("start")).map { Item(it.optString("title"), it.optString("when")) }
+            if (planRows.isNotEmpty()) add("plan", "section") { Section("Plan", R.drawable.ic_clock) { Group(planRows) } }
+            // (0.9.0) what waits on the computer (calls.today_waiting), hours studied, the laptop's camera (face.phone_badge)
+            val w = t.optJSONObject("waiting")
+            val cam = t.optJSONObject("camera")
+            val more = ArrayList<Item>()
+            if (w != null) {
+                val held = w.optInt("held")
+                if (held > 0) more.add(Item("$held held " + (if (held == 1) "message" else "messages"), "Tap to send today's now", onClick = { a.dueAct("", "send_held", "Send held messages") }))
+                val props = w.optInt("proposals")
+                if (props > 0) more.add(Item("$props " + (if (props == 1) "proposal waits" else "proposals wait") + " for your tap", "On the dashboard, or /proposals"))
+                val brain = w.optString("brain")
+                if (brain.isNotEmpty()) more.add(Item("Brain: $brain"))
+            }
+            if (t.has("study_h")) more.add(Item("Studied today", t.optString("study_h") + " h"))
+            if (cam != null) more.add(Item(if (cam.optBoolean("on")) "Laptop camera on" else "Laptop camera off", cam.optString("why")))
+            if (more.isNotEmpty()) add("computer", "section") { Section("On your computer", R.drawable.ic_hourglass) { Group(more) } }
         }
         add("foot") { Foot(a, ui, d, t) }
     }

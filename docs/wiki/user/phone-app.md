@@ -402,6 +402,11 @@ computer last sent them, as cards (see [The app's panes](#the-apps-panes-0810)).
   counts when it's back; "Waiting for your computer" lists it meanwhile. Quizzes and exams have no buttons.
 - **Reminders** and **open threads** (what you're in the middle of, with memory threads on).
 - **Waiting** (how many things wait for you) and **Asked you**, where you answer them.
+- **Plan** (0.9.0, `calls.today_plan`, on): the first lines of today's plan from your daily note ("Changed since it
+  was drafted: a deadline moved" above them when a call changed the day), then what to start (Start-by, revision).
+- **On your computer** (0.9.0): how many messages are held by the daily limit (tap it to send today's now), how many
+  proposals wait for your tap, the Brain's state (`calls.today_waiting`); the hours studied today; and whether the
+  laptop's camera is on and why (`face.phone_badge`, with Face presence on: words only, never a picture).
 
 Your computer sends a new list within seconds of a change on it (a deadline done on Telegram, an alarm set) and looks
 for changes every 5 minutes; the phone fetches it when it's told, when you open the app, and when it reconnects. Turn it off with `calls.today` (Dashboard → Settings → calls): the app then says "Turned off

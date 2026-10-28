@@ -270,9 +270,32 @@ transcripts, events and answers until the computer takes them (`Calls.take_queue
   `providers/context.py:call_context`, the parts of `headless_context` a call didn't hear (profile brief, how-to-help-me
   without "Learned on calls", not-interested topics, `feelings.prompt(read_hint=False)`, `held_part`). The look back and
   `fallback.turn_prompt` call `pending()` without it (they get `headless_context`). Desk Live gets the same text in its
-  setup ([brains.md](brains.md#headless-context)).
+  setup ([brains.md](brains.md#headless-context)). It also adds `senses` (`Calls.senses_line`, `calls.tell_senses`):
+  Face presence on/off with `Face.desk_seen_at` / `away_now` as a word and a time, Voice ID on/off.
+- (0.9.0) `Calls.tools()` ends with `_read_agent_tools` (`calls.read_agent_tools`): each enabled module's
+  `agent_tools()` with `Tool.writes is False` (None doesn't count: `classroom_notes`' `read_course_file` is tagged
+  `writes=False` for this), not guarded, not in `CALL_ONLY`, not already on the call; `calls.read_tools`
+  `{"<module>": false}` drops one module's. Desk Live gets them through `config_template` (still minus `DESK_NEVER`).
+- (0.9.0) `Calls.run_tool` passes a successful result of a `RESHAPES` tool (`move_deadline`, `add_deadline`,
+  `remove_deadline`, `skip_class`, `skip_commitment`, `reschedule_day`, `plan_block`, `remove_blocks`) through
+  `_reshaped`: one line "Changed since this call's brief and today's plan: ..." and `daily.mark_plan_stale` (state
+  `daily/plan-stale.json`, never the note; `morning_view` carries it as `plan_stale`, Today shows it). A result starting
+  "That failed", "I don't know", "No ", "There's no" is left alone. No switch: a fix.
+- (0.9.0) `close_thread` (`calls.threads_live`, with `memory.threads`): `core/threads.py:close_said` closes the open
+  thread sharing the most words (at least two, or all of a short one); a tie asks which.
+- (0.9.0) `ring` with `calls.mode_when_moving` (off): an automatic call (not `calls.own`, not the alarm) while
+  `mind/senses/phone.py:moving` says walking or vehicle (a motion bin from the last `MOVING_FRESH_S`, 600 s, with
+  `mind.senses.phone.motion` on) rings with voice `"phone"`; event `call_mode_moving`. It never holds.
+- (0.9.0) `ring_reply`'s `call_<act>` event carries `key` (the ring's key, `alarm:next` for the alarm): a fix, so
+  `mind/signals.py` can count snoozes.
   `save_transcript` also hands the user's lines to `core/threads.py:from_call` ("I'll send the draft tonight" opens a
-  thread).
+  thread), (0.9.0) to `mind/tone.py:from_call` (`mind.tone.calls`, under `mind.tone.on`) and to `_after_infer`
+  (`calls.after_infer`): `core/infer.py:observe(via="call")` on the joined lines and `remember.REMEMBER` lines through
+  `remember.keep`, told in one message (`why="calls.after_infer"`). (0.9.0) `review.reviewed` calls
+  `review.everywhere(before, after)` (`calls.lessons_everywhere`): new lessons via `remember.keep(section=
+  LEARNED_CALLS)`, gone ones (replaced, past the cap, `/lessons forget`/`clear`) take their own dated line out
+  (`fact_key` match, `remove_line`). `LEARNED_CALLS` is in `remember.MANAGED`, so the recheck covers it, and
+  `call_context` skips that section.
 - Module hooks the calls module looks for (`hasattr` in `modules/calls/__init__.py`): `call_tools`, `call_brief`,
   `call_schedule`, `call_outcome`, `call_transcript`, `call_reschedule`. `Calls.agent_tools` gives unattended AI runs
   only `schedule_call` and `hold_calls`.
@@ -631,7 +654,11 @@ Today API) plus the deadlines' parts and kinds and `core/threads.py:open_threads
 ["done", "+1"?] | "exam": true}], "reminders": [{"when", "what"}], "alarm": {"next", "daily", "at": [s...] (every
 alarm still to ring: `Alarm.upcoming()`), "snooze_min", "reason"} | {}, "threads": [{"text"}], "questions": n}`. No
 relative times ("in 3 hours"), so an unchanged day is byte-for-byte the same; cut to `TODAY_MAX` (40 000 bytes) by
-dropping the longest list's last rows.
+dropping the longest list's last rows. (0.9.0) Optional keys: `"camera": {"on", "why"}` (`face.phone_badge`, from
+`Face.line()`), `"waiting": {"held", "proposals", "brain"?}` (`calls.today_waiting`; `act({"do": "send_held"})` runs
+`calm.release()`), `"plan": [line]`, `"start": [{"title", "when"}]`, `"study_h"` (`calls.today_plan`; the plan's
+first lines, `plan_stale` first). `CHANGES` also has the class, Start-by, revision (`revision_planned`, new) and plan
+events. The Android side is `TodayTab.kt`'s "Plan" and "On your computer" sections; `dueAct("", "send_held", ...)`.
 
 **Handing it over.** `Connector.push_state` calls `PhoneToday.push(connector)` after each state push (every 5 minutes,
 and on `poke()`). It asks the line for its devices, seals the list (plus `"made"`) for each Android device with a

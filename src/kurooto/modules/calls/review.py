@@ -8,6 +8,12 @@ was asked but slipped through (misheard, forgotten, a tool that failed), and wri
 Safe things it does by itself (a reminder, a note, a deadline, a journal line), like any request of yours; anything that
 sends, calls or spends it only lists. The lessons are a plain file you can read and edit (/lessons; /lessons forget 2),
 at most calls.lessons_max of them: a new one that says the same as an old one replaces it.
+
+(0.9.0, calls.lessons_everywhere) Each lesson is also copied as a dated line under "Learned on calls" in the
+how-to-help-me note (modules/remember.py LEARNED_CALLS), so every AI request follows it; lessons.md stays the call's
+source. A lesson replaced, dropped past the cap or forgotten with /lessons takes its own line out too (only a line
+still as Kurooto wrote it). The note's 90-day "Still true?" asks about these lines like the others; Forget there takes
+the line out of the note only.
 """
 
 from __future__ import annotations
@@ -44,6 +50,26 @@ def save_lessons(app: App, items: list[str]) -> None:
     f.parent.mkdir(parents=True, exist_ok=True)
     head = "# What calls have learned\n\nEvery call is told these. Edit or delete lines freely.\n\n"
     f.write_text(head + "".join(f"- {x}\n" for x in items), encoding="utf-8")
+
+
+def everywhere(app: App, before: list[str], after: list[str]) -> int:
+    """(calls.lessons_everywhere) Keep the note's "Learned on calls" lines in step with lessons.md: a lesson that's gone
+    takes its line out, a new one is added with today's date (Remember's rules: never health, money or passwords).
+    How many lines were added."""
+    if not app.settings.get("calls.lessons_everywhere"):
+        return 0
+    from kurooto.modules import remember
+
+    gone = {remember.fact_key(x.rstrip(".")) for x in before if x not in after}
+    if gone:
+        for rec in remember.kept_lines(app):
+            if rec["section"] == remember.LEARNED_CALLS and rec["key"] in gone:
+                remember.remove_line(app, rec["line"])
+    added = 0
+    for x in after:
+        if x not in before:
+            added += remember.keep(app, x, via="call", section=remember.LEARNED_CALLS)[0] == "kept"
+    return added
 
 
 def _key(s: str) -> set[str]:
@@ -141,7 +167,13 @@ def reviewed(calls, job, result, payload: dict) -> None:
     new = [ln.strip()[2:].strip() for ln in (m.group(1) if m else "").splitlines() if ln.strip().startswith("- ")]
     body = FENCE.sub("", text).strip()
     if new:
-        save_lessons(app, merge(lessons(app), new, int(calls.setting("lessons_max") or 12)))
+        before = lessons(app)
+        after = merge(before, new, int(calls.setting("lessons_max") or 12))
+        save_lessons(app, after)
+        try:  # the copy in how-to-help-me never stands in the way of the lessons themselves
+            everywhere(app, before, after)
+        except Exception as e:
+            app.events.emit("call_lessons_copy_failed", error=type(e).__name__)
     app.events.emit("call_reviewed", lessons=len(new))
     quiet = not new and (not body or body.lower().startswith("nothing slipped"))
     if quiet:
@@ -160,11 +192,14 @@ def command(app: App, arg: str) -> str:
         i = int(m.group(1))
         if not 1 <= i <= len(items):
             return f"There's no lesson {i}." if items else "Calls haven't learned anything yet."
+        before = list(items)
         gone = items.pop(i - 1)
         save_lessons(app, items)
+        everywhere(app, before, items)
         return f"Forgot: {gone}"
     if arg.strip().lower() == "clear":
         save_lessons(app, [])
+        everywhere(app, items, [])
         return "Forgot every lesson."
     if not items:
         return "Calls haven't learned anything yet. After each call Kurooto looks back and keeps what would help."

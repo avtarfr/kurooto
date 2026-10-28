@@ -646,6 +646,7 @@ class ClassroomNotes(GooglePart):
                 self._tool_read,
                 {"file": arg("the file id from the batch"), "start": arg("character offset, default 0")},
                 ("file",),
+                writes=False,  # (0.9.0) only reads: offered on calls too (calls.read_agent_tools)
             ),
             Tool(
                 "update_exam_prep",

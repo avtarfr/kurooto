@@ -196,3 +196,10 @@ when = "Turn it on if you work at your desk at night and want the greeting then 
 [s."face.watch.when_locked"]
 tip = "Also look while the screen is locked; off pauses it while locked."
 when = "Turn it on if you want it to notice you arriving at a locked computer."
+
+[s."face.phone_badge"]
+tip = "The phone app's Today shows whether this computer's camera is on, and why."
+what = "Face presence's own line (looking for you, an add-on's hold by name, resting): words only, never a frame."
+when = "Turn it off if you don't want that on your phone."
+cost = "Sealed for each phone, with the rest of Today."
+needs = "Face presence and `calls.today`."

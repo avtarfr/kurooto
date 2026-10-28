@@ -125,6 +125,22 @@ def _picked_up(b: dict) -> bool:
     return used and abs(time.time() - t / 1000) <= 600
 
 
+MOVING_FRESH_S = 600  # (0.9.0) a motion bin this old or newer still says how the phone is moving
+
+
+def moving(app: App, now: float | None = None) -> str:
+    """(0.9.0, calls.mode_when_moving) "walking" or "vehicle" when the phone's newest motion bin (from the last
+    MOVING_FRESH_S) says so, else "". Read here only, to pick a call's voice mode; never told to an AI (R7)."""
+    if not enabled(app, "motion"):
+        return ""
+    t = now or time.time()
+    rows = [r for r in store.events(app, "phone:motion", t - MOVING_FRESH_S) if r.get("t", 0) <= t + 60]
+    if not rows:
+        return ""
+    last = max(rows, key=lambda r: r.get("t", 0))
+    return str(last.get("target") or "") if last.get("target") in ("walking", "vehicle") else ""
+
+
 def today(app: App, sensor: str) -> str:
     rows = store.events(app, f"phone:{sensor}", store.day_start())
     if not rows:

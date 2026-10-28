@@ -35,7 +35,10 @@ PART = "tone"  # its switch: mind.tone.on
 register_defaults(
     "mind",
     {
-        "tone": {"on": False},  # tag each message you write with one word, with the model on this computer only
+        "tone": {
+            "on": False,  # tag each message you write with one word, with the model on this computer only
+            "calls": True,  # (0.9.0) with that on, what you said on a call is tagged too (words never kept)
+        },
         "read": {
             "on": True,  # Brain's read of how you're doing, from numbers about your days (it only watches for now)
             "asks_per_week": 2,  # the most times a week it asks whether the week felt heavier than usual
@@ -141,6 +144,22 @@ def seen(app: App, text: str) -> None:
                 del _waiting[:-WAIT_MAX]
     except Exception:
         pass
+
+
+def from_call(app: App, lines: list[dict]) -> int:
+    """(0.9.0, mind.tone.calls) What you said on a call (Calls.save_transcript), each line as a message would be: same
+    tiers, same local model, nothing kept but the day's numbers. Kurooto's own lines and "(note)" lines are left out.
+    How many lines were handed on (0 with the switch, or tone, off)."""
+    try:
+        if not app.settings.get("mind.tone.calls") or tier(app) not in ("gpu", "cpu"):
+            return 0
+        yours = [str(x.get("text") or "").strip() for x in lines if x.get("who") not in (app.name, "(note)")]
+        yours = [t for t in yours if t][:WAIT_MAX]
+        for t in yours:
+            seen(app, t)
+        return len(yours)
+    except Exception:
+        return 0
 
 
 def _one(app: App, text: str) -> None:

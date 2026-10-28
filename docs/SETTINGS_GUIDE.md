@@ -198,25 +198,34 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 
 | Setting | Default | What it does |
 |---|---|---|
+| `calls.after_infer` | `true` | After a call, what you said on it is read like a typed message: stated facts are set up, "remember that" is kept. ([guide](wiki/user/settings-guide.md#callsafterinfer)) |
 | `calls.chat_edit` | `true` | Edit your own messages in the app's chat for 15 minutes after sending. ([guide](wiki/user/settings-guide.md#callschatedit)) |
 | `calls.chat_files_inline` | `true` | Files in the app's chat show inline and open in the app. ([guide](wiki/user/settings-guide.md#callschatfilesinline)) |
 | `calls.chat_sessions` | `true` | Separate chats in the phone app, each its own conversation whose context carries over. ([guide](wiki/user/settings-guide.md#callschatsessions)) |
 | `calls.chat_titles` | `"first words"` | How a new chat gets its title: its first words, or a short title from your AI. ([guide](wiki/user/settings-guide.md#callschattitles)) |
 | `calls.context_brief` | `true` | Calls and desk Live talks hear what every AI request is told: your profile's brief, how to help you, topics you skip. ([guide](wiki/user/settings-guide.md#callscontextbrief)) |
 | `calls.later_min` | `30` | Minutes until it calls back after you tap Later on a ringing call. ([guide](wiki/user/settings-guide.md#callslatermin)) |
+| `calls.lessons_everywhere` | `true` | Each lesson from the look back after a call is also a dated line in your how-to-help-me note, so every AI request follows it. ([guide](wiki/user/settings-guide.md#callslessonseverywhere)) |
 | `calls.lessons_max` | `12` | How many lessons from past calls every call is told; a repeat replaces the older one. ([guide](wiki/user/settings-guide.md#callslessonsmax)) |
 | `calls.live_model` | `"gemini-3.8-live"` | The Gemini Live model calls try first. ([guide](wiki/user/settings-guide.md#callslivemodel)) |
 | `calls.live_models` | `["gemini-3.1-flash-live-preview", "gemini-2.5-flash-nativ…` | Other Live models to try, in order, when the first one is down. ([guide](wiki/user/settings-guide.md#callslivemodels)) |
+| `calls.mode_when_moving` | `false` | A call Kurooto places by itself while your phone says you're walking or in a vehicle uses the phone's own speech. ([guide](wiki/user/settings-guide.md#callsmodewhenmoving)) |
 | `calls.notes_repo` | `""` | Your notes' repository on GitHub, so calls can read whole notes while this computer is off. ([guide](wiki/user/settings-guide.md#callsnotesrepo)) |
 | `calls.ntfy_server` | `"https://ntfy.sh"` | The push server the phone app listens on. Change it only if you run your own. ([guide](wiki/user/settings-guide.md#callsntfyserver)) |
 | `calls.persona` | `""` | Your own words on how calls should sound, such as "be brief and a bit cheeky". ([guide](wiki/user/settings-guide.md#callspersona)) |
+| `calls.read_agent_tools` | `true` | Calls and desk Live talks also get the read-only tools your AI has, like the concept graph's search and books' pages. ([guide](wiki/user/settings-guide.md#callsreadagenttools)) |
+| `calls.read_tools` | `{}` | One feature's read-only tools left off calls, e.g. {"books": false}. ([guide](wiki/user/settings-guide.md#callsreadtools)) |
 | `calls.realert_min` | `[3, 6]` | Minutes after the first ring that an unanswered call rings again. ([guide](wiki/user/settings-guide.md#callsrealertmin)) |
 | `calls.review` | `true` | After every call, an AI request looks back at it: does what slipped through and keeps lessons. ([guide](wiki/user/settings-guide.md#callsreview)) |
 | `calls.review_brain` | `""` | Which AI does the look back after a call; empty is your main one. ([guide](wiki/user/settings-guide.md#callsreviewbrain)) |
 | `calls.review_effort` | `"high"` | How hard the look back after a call thinks. ([guide](wiki/user/settings-guide.md#callsrevieweffort)) |
 | `calls.ring_s` | `60` | Seconds a call rings before it counts as missed (a wake-up call rings 5 minutes). ([guide](wiki/user/settings-guide.md#callsrings)) |
+| `calls.tell_senses` | `true` | A call's brief says whether Face presence and Voice ID are on, and when you were last at the desk. ([guide](wiki/user/settings-guide.md#callstellsenses)) |
 | `calls.text_model` | `"gemini-flash-latest"` | The Gemini model that answers turn-by-turn calls (here, or on your call line while the computer is off). ([guide](wiki/user/settings-guide.md#callstextmodel)) |
+| `calls.threads_live` | `true` | A call can close one of your open threads while it's on, when you say it's done. ([guide](wiki/user/settings-guide.md#callsthreadslive)) |
 | `calls.today` | `true` | Your phone app's Today screen and its copy of your alarm, kept up to date from this computer. ([guide](wiki/user/settings-guide.md#callstoday)) |
+| `calls.today_plan` | `true` | The phone app's Today also shows the first lines of today's plan, what to start, and the hours studied. ([guide](wiki/user/settings-guide.md#callstodayplan)) |
+| `calls.today_waiting` | `true` | The phone app's Today says how many messages are held, how many proposals wait, and whether the Brain is awake. ([guide](wiki/user/settings-guide.md#callstodaywaiting)) |
 | `calls.turn_brain` | `"gemini"` | Who answers turn-by-turn calls on your computer: Gemini with your key, or a local model. ([guide](wiki/user/settings-guide.md#callsturnbrain)) |
 | `calls.views` | `false` | Systems and the Notes map in the phone app: your notes' titles and links, and each feature's health. ([guide](wiki/user/settings-guide.md#callsviews)) |
 | `calls.views_being` | `true` | Show the being in the phone app's Views: the dashboard's own body of Kurooto, drawn on the phone from a sealed copy. ([guide](wiki/user/settings-guide.md#callsviewsbeing)) |
@@ -412,6 +421,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `face.learn.margin` | `0.08` | How far above your threshold a frame's score must be before it may refine your template. ([guide](wiki/user/settings-guide.md#facelearnmargin)) |
 | `face.learn.max` | `30` | At most this many learned samples (the oldest goes first); the enrolled ones are never replaced. ([guide](wiki/user/settings-guide.md#facelearnmax)) |
 | `face.learn.on` | `false` | Slowly refine your face template from times it was very sure it was you (never unsure ones), with Undo. ([guide](wiki/user/settings-guide.md#facelearnon)) |
+| `face.phone_badge` | `true` | The phone app's Today shows whether this computer's camera is on, and why. ([guide](wiki/user/settings-guide.md#facephonebadge)) |
 | `face.recognise.frames` | `3` | Recognised in this many of the last 4 frames means you're here. ([guide](wiki/user/settings-guide.md#facerecogniseframes)) |
 | `face.recognise.min_face_px` | `60` | Faces smaller than this many pixels are ignored: too far away to judge. ([guide](wiki/user/settings-guide.md#facerecogniseminfacepx)) |
 | `face.recognise.strictness` | `"normal"` | How rarely a stranger may pass: loose (1 in 100 frames), normal (1 in 1,000) or strict (1 in 10,000). ([guide](wiki/user/settings-guide.md#facerecognisestrictness)) |
@@ -772,6 +782,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.promises.on` | `true` | Its own promises ("I'll check back at 6") are noticed, kept, or owned up to first. ([guide](wiki/user/settings-guide.md#mindpromiseson)) |
 | `mind.read.asks_per_week` | `2` | How many times a week, at most, it may ask whether the week felt heavier than usual. ([guide](wiki/user/settings-guide.md#mindreadasksperweek)) |
 | `mind.read.on` | `true` | Brain's read of how you're doing, from numbers about your days; in shadow mode it only watches. ([guide](wiki/user/settings-guide.md#mindreadon)) |
+| `mind.read.skipped_classes` | `true` | The read counts the hours of classes you said you'd skip that day. ([guide](wiki/user/settings-guide.md#mindreadskippedclasses)) |
+| `mind.read.snoozes` | `true` | The read counts how often you snoozed the wake-up alarm (Later on its call). ([guide](wiki/user/settings-guide.md#mindreadsnoozes)) |
 | `mind.register.on` | `true` | One temperament: its mood and arousal set how long its unprompted words are, its call openers and Voice's pace. ([guide](wiki/user/settings-guide.md#mindregisteron)) |
 | `mind.register.templates` | `true` | Its ready-made unprompted messages keep the register's 2, 3 or 4 sentences too, not only what the AI writes. ([guide](wiki/user/settings-guide.md#mindregistertemplates)) |
 | `mind.senses.activity` | `false` | The activity stream: the app in front, hashed window titles, saves and commits (never keystrokes, the screen or URLs). ([guide](wiki/user/settings-guide.md#mindsensesactivity)) |
@@ -801,6 +813,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.tom.attention` | `false` | Hold a message (at most 15 minutes) while you're deep in one project. ([guide](wiki/user/settings-guide.md#mindtomattention)) |
 | `mind.tom.false_beliefs` | `true` | When something you were told turns out wrong, tell you once, with the evidence. ([guide](wiki/user/settings-guide.md#mindtomfalsebeliefs)) |
 | `mind.tom.on` | `true` | A model of what you know, believe, want and prefer, each row with its source (`/model`). ([guide](wiki/user/settings-guide.md#mindtomon)) |
+| `mind.tone.calls` | `true` | With tone on, what you say on a call is tagged too, by the model on this computer. ([guide](wiki/user/settings-guide.md#mindtonecalls)) |
 | `mind.tone.on` | `false` | Tag each message you write with one word (calm, tired…), using the model on this computer only. ([guide](wiki/user/settings-guide.md#mindtoneon)) |
 | `mind.values.on` | `true` | Brain learns which kinds of things help (values), never affecting a choice in the shadow days. ([guide](wiki/user/settings-guide.md#mindvalueson)) |
 | `mind.values.shadow_days` | `21` | Days learned values are only counted, never used for a choice. ([guide](wiki/user/settings-guide.md#mindvaluesshadowdays)) |

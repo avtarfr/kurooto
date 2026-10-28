@@ -767,6 +767,7 @@ REASONS: dict[str, Reason] = {
         R("calls.rang_offline", "a call your call line placed while this computer was off"),
         R("calls.held", "a call that waits for a better time"),
         R("calls.review", "what Kurooto fixed and learned looking back at a call", setting="calls.review"),
+        R("calls.after_infer", "what Kurooto noted from what you said on a call", setting="calls.after_infer"),
         R("local_models.spill", "a local model that doesn't fit your graphics card", setting="local_models"),
         R(
             "local_helper.offer",

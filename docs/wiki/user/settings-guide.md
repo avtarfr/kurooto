@@ -28,7 +28,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Your AI](#your-ai): 34 settings
 - [Messages and where they reach you](#messages-and-where-they-reach-you): 31 settings
 - [When it may interrupt you](#when-it-may-interrupt-you): 13 settings
-- [Phone calls and the call line](#phone-calls-and-the-call-line): 36 settings
+- [Phone calls and the call line](#phone-calls-and-the-call-line): 45 settings
 - [Morning alarm](#morning-alarm): 11 settings
 - [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 40 settings
 - [Check-ins, journal and the week](#check-ins-journal-and-the-week): 18 settings
@@ -42,7 +42,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 49 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
-- [Brain](#brain): 127 settings
+- [Brain](#brain): 130 settings
 - [Voice and voice notes](#voice-and-voice-notes): 80 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
@@ -50,7 +50,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Dashboard and terminal](#dashboard-and-terminal): 27 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 26 settings
-- [Face presence](#face-presence): 34 settings
+- [Face presence](#face-presence): 35 settings
 
 ## You and how it talks to you
 
@@ -1286,6 +1286,102 @@ before.
   next call or desk talk.
 - **Costs and what leaves this computer:** That text goes to Google's Gemini Live with each call or desk talk, and to
   your call line in the offline brief.
+
+### `calls.lessons_everywhere`
+
+Each lesson from the look back after a call is also a dated line in your how-to-help-me note, so every AI request
+follows it.
+
+The lines go under "Learned on calls". A lesson replaced, dropped or forgotten with /lessons takes its line out too. The
+90-day "Still true?" asks about them like your other kept lines.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you'd rather keep call lessons to calls. Lines already copied stay until you
+  remove them.
+- **Costs and what leaves this computer:** The lines go with every AI request to the AI you picked, as the rest of the
+  note does.
+- **Depends on:** `calls.review`.
+
+### `calls.tell_senses`
+
+A call's brief says whether Face presence and Voice ID are on, and when you were last at the desk.
+
+Sense names, a word (at the desk, away) and a time only: never camera frames, scores or anyone else seen.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if calls needn't know whether you're at your computer.
+- **Costs and what leaves this computer:** Those few words go to Gemini Live with the call's brief.
+
+### `calls.read_agent_tools`
+
+Calls and desk Live talks also get the read-only tools your AI has, like the concept graph's search and books' pages.
+
+Only tools that only read (never one that writes, sends or needs your tap). Guests never get tools.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if calls feel slower to start: each tool makes the call's instructions longer.
+- **Costs and what leaves this computer:** What those tools read goes to Gemini Live when the call uses them.
+- **Depends on:** The features that give the tools (concept graph, Books, Learns from its own work, Classroom).
+
+### `calls.read_tools`
+
+One feature's read-only tools left off calls, e.g. {"books": false}.
+
+- **Values:** A JSON object, feature → `false`. **Default:** none.
+- **When to change it:** When one feature's tools aren't useful on calls but the others are.
+- **Depends on:** `calls.read_agent_tools`.
+
+### `calls.today_waiting`
+
+The phone app's Today says how many messages are held, how many proposals wait, and whether the Brain is awake.
+
+Counts and a word only. Tapping the held line sends today's held messages now.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you'd rather not see those on the phone.
+- **Costs and what leaves this computer:** Sealed for each phone, with the rest of Today.
+- **Depends on:** `calls.today`.
+
+### `calls.today_plan`
+
+The phone app's Today also shows the first lines of today's plan, what to start, and the hours studied.
+
+The plan's first lines from your daily note (with what a call changed since it was drafted), Start-by's and revision's
+rows.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if Today should stay as short as before.
+- **Costs and what leaves this computer:** Sealed for each phone, with the rest of Today.
+- **Depends on:** `calls.today`.
+
+### `calls.after_infer`
+
+After a call, what you said on it is read like a typed message: stated facts are set up, "remember that" is kept.
+
+Your lines only, not Kurooto's. Each thing set up is told once with its Undo, as for typed messages.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if calls should only do what their tools did.
+- **Depends on:** Set up from what you say (`infer.on`) and Remember, for each part.
+
+### `calls.threads_live`
+
+A call can close one of your open threads while it's on, when you say it's done.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if threads should close only after the call, from its transcript.
+- **Depends on:** `memory.threads`.
+
+### `calls.mode_when_moving`
+
+A call Kurooto places by itself while your phone says you're walking or in a vehicle uses the phone's own speech.
+
+It never holds or delays the call; calls you ask for and the alarm are unchanged. The motion reading stays on this
+computer.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if Live calls on the move keep breaking up.
+- **Depends on:** Brain's phone motion sense (`mind.senses.phone.motion`).
 
 ## Morning alarm
 
@@ -5882,6 +5978,34 @@ anything urgent.
 - **When to change it:** Turn it off to have Kurooto's ready-made messages come whole, as in 0.8.15.
 - **Depends on:** `mind.register.on`.
 
+### `mind.tone.calls`
+
+With tone on, what you say on a call is tagged too, by the model on this computer.
+
+Only your lines; the words are never kept, and no tone reaches an AI.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if only typed messages should count toward the day's tone.
+- **Depends on:** `mind.tone.on`.
+
+### `mind.read.snoozes`
+
+The read counts how often you snoozed the wake-up alarm (Later on its call).
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if snoozes shouldn't count toward how your days read.
+- **Depends on:** `mind.read.on`.
+
+### `mind.read.skipped_classes`
+
+The read counts the hours of classes you said you'd skip that day.
+
+Only from your own /skip or a call's skip_class, never guessed from where you are.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if skipped classes shouldn't count toward how your days read.
+- **Depends on:** `mind.read.on` and Subjects.
+
 ## Voice and voice notes
 
 Kurooto speaks through this computer's speakers with a voice made here, and, if you turn listening on, hears the room
@@ -7987,3 +8111,14 @@ Also look while the screen is locked; off pauses it while locked.
 
 - **Values:** On or off. **Default:** off.
 - **When to change it:** Turn it on if you want it to notice you arriving at a locked computer.
+
+### `face.phone_badge`
+
+The phone app's Today shows whether this computer's camera is on, and why.
+
+Face presence's own line (looking for you, an add-on's hold by name, resting): words only, never a frame.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you don't want that on your phone.
+- **Costs and what leaves this computer:** Sealed for each phone, with the rest of Today.
+- **Depends on:** Face presence and `calls.today`.

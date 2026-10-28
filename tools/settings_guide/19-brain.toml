@@ -754,3 +754,20 @@ tip = "Its ready-made unprompted messages keep the register's 2, 3 or 4 sentence
 what = "A nudge or a line a feature sends by itself keeps its first sentences, and any later one its buttons answer (a question, or one naming a button). Digests and lists (more than one paragraph, or a line that starts a list) stay whole, and so do answers to you and anything exempt: alarms, your own reminders, a deadline under 12 hours away, calls, approvals, anything urgent."
 when = "Turn it off to have Kurooto's ready-made messages come whole, as in 0.8.15."
 needs = "`mind.register.on`."
+
+[s."mind.tone.calls"]
+tip = "With tone on, what you say on a call is tagged too, by the model on this computer."
+what = "Only your lines; the words are never kept, and no tone reaches an AI."
+when = "Turn it off if only typed messages should count toward the day's tone."
+needs = "`mind.tone.on`."
+
+[s."mind.read.snoozes"]
+tip = "The read counts how often you snoozed the wake-up alarm (Later on its call)."
+when = "Turn it off if snoozes shouldn't count toward how your days read."
+needs = "`mind.read.on`."
+
+[s."mind.read.skipped_classes"]
+tip = "The read counts the hours of classes you said you'd skip that day."
+what = "Only from your own /skip or a call's skip_class, never guessed from where you are."
+when = "Turn it off if skipped classes shouldn't count toward how your days read."
+needs = "`mind.read.on` and Subjects."

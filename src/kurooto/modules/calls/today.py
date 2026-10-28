@@ -3,7 +3,12 @@ laptop asleep too, and the wake-up alarm copied to the phone so it rings there e
 
 What goes: the day, classes and calendar events, what's due (with parts done, "4/7", and what you can tap: Done, +1),
 your reminders, the alarm (the next one in words, and every alarm still to ring as a time, for the phone's own
-alarm), open threads, and how many questions wait. Nothing else from the day (no plan, no journal, no notes).
+alarm), open threads, and how many questions wait. Nothing else from the day (no journal, no notes). (0.9.0,
+calls.today_plan) The day's plan's first lines, Start-by's and revision's rows, and the hours studied today.
+(0.9.0, calls.today_waiting) How many messages Calm holds (Send now releases today's held ones: core/calm.py
+release), how many proposals wait for a tap (core/proposals.py), and the Brain's state in a word. (0.9.0,
+face.phone_badge) With Face presence on, whether this computer's camera is on and why (Face.line(): "camera
+on: looking for you", an add-on's hold by its id): a word and a reason, never a frame.
 
 How: with each state push to your call line (every 5 minutes, and soon after something on it changes), this works the
 list out and, if it changed (or every REFRESH_S), seals it for each paired Android phone with that phone's own key
@@ -28,17 +33,28 @@ import re
 import time
 from typing import TYPE_CHECKING
 
+from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock
 from kurooto.core.state import jload, jsave
 from kurooto.modules.calls import line
+
+register_defaults(
+    "face",
+    {
+        # (0.9.0) the phone app's Today shows whether this computer's camera is on and why (calls/today.py), with
+        # Face presence on: the state and the holder's name only, never a frame
+        "phone_badge": True,
+    },
+)
 
 if TYPE_CHECKING:
     from kurooto.modules.calls import Calls
 
 REFRESH_S = 900  # the same list goes again this often, so "as of" stays near the truth
 TODAY_MAX = 40_000  # bytes of the list before sealing (the call line keeps one value per phone, sent all at once)
-ROWS = {"classes": 12, "events": 12, "due": 20, "reminders": 10, "threads": 8}
+ROWS = {"classes": 12, "events": 12, "due": 20, "reminders": 10, "threads": 8, "plan": 8, "start": 8}
 ACTS = ("done", "+1")
+SEND_HELD = "send_held"  # (calls.today_waiting) Today's Send now: Calm's held messages go out
 DEADLINE_ID = re.compile(r"[A-Za-z0-9_-]{1,40}")
 # what happened that the Today list shows: push it soon (core/events.py subscribe)
 CHANGES = {
@@ -46,6 +62,9 @@ CHANGES = {
     "deadline_undo", "deadline_merged", "alarm_set", "alarm_cleared", "alarm_skipped", "alarm_daily", "alarm_rang",
     "reminder_set", "reminder_fired", "button_tapped", "thread_opened", "thread_closed", "thread_reopened",
     "calls_device_paired",
+    # (0.9.0) the plan, Start-by, revision and classes skipped or attended: Today's rows change with them
+    "class_skip", "class_attend", "startby_planned", "revision_planned", "plan_block_added", "plan_rescheduled",
+    "plan_cleared", "plan_blocks_removed", "plan_reschedule_undone",
 }  # fmt: skip
 
 
@@ -87,7 +106,78 @@ class PhoneToday:
         out["alarm"] = self._alarm(t.get("alarm_state"))
         out["threads"] = self._threads()
         out["questions"] = len(t.get("questions_full") or [])
+        cam = self._camera()
+        if cam:
+            out["camera"] = cam
+        waiting = self._waiting()
+        if waiting:
+            out["waiting"] = waiting
+        if self.calls.setting("today_plan"):  # (0.9.0) the day's plan, what to start, the hours studied
+            out.update(self._plan(t))
         return out
+
+    @staticmethod
+    def _plan(t: dict) -> dict:
+        """{"plan": the plan's first lines (its "## Plan" section in the daily note, Markdown marks taken off),
+        "start": Start-by's and revision's rows, "study_h": hours studied today}, each only when there is one."""
+        out: dict = {}
+        lines = []
+        for ln in str(t.get("plan") or "").splitlines():
+            ln = re.sub(r"^\s*(?:#+|[-*]\s+\[[ xX]\]|[-*]|\d+[.)])\s*", "", ln).strip()
+            if ln and not ln.lower().startswith("plan"):
+                lines.append(_clip(ln, 120))
+        if lines:
+            stale = str(t.get("plan_stale") or "")
+            head = [_clip(f"Changed since it was drafted: {stale}", 120)] if stale else []
+            out["plan"] = (head + lines)[: ROWS["plan"]]
+        start = [
+            {"title": _clip(r.get("title"), 120), "when": _clip(r.get("when"), 80)}
+            for r in (t.get("start") or [])[: ROWS["start"]]
+            if isinstance(r, dict)
+        ]
+        if start:
+            out["start"] = start
+        if t.get("study_h"):
+            out["study_h"] = t["study_h"]
+        return out
+
+    def _waiting(self) -> dict:
+        """(calls.today_waiting) {"held": messages Calm holds, "proposals": proposals waiting for a tap, "brain":
+        "asleep" | "focus" | "awake" with Brain on}: counts and a word, never what the messages say. {} when off."""
+        if not self.calls.setting("today_waiting"):
+            return {}
+        out: dict = {}
+        try:
+            out["held"] = len(self.app.calm.held())
+        except Exception:
+            out["held"] = 0
+        try:
+            from kurooto.core import proposals
+
+            out["proposals"] = len(proposals.waiting(self.app))
+        except Exception:
+            out["proposals"] = 0
+        try:
+            from kurooto.mind import status
+
+            if status.on(self.app):
+                snap = status.snapshot(self.app)
+                out["brain"] = "asleep" if snap.get("asleep") else "focus" if snap.get("focus") else "awake"
+        except Exception:
+            pass
+        return out
+
+    def _camera(self) -> dict:
+        """(face.phone_badge) {"on": the camera is on, "why": Face presence's own line}, or {} with Face presence or
+        the switch off. Words only: Face.line() names its state and an add-on's hold by its id."""
+        face = self.app.modules.get("face")
+        if face is None or not self.app.is_on("face") or not self.app.settings.get("face.phone_badge"):
+            return {}
+        try:
+            said = str(face.line() or "")
+        except Exception:
+            return {}
+        return {"on": said.startswith("camera on") or "(camera on)" in said, "why": _clip(said, 120)}
 
     def _due(self, rows: list[dict]) -> list[dict]:
         dl = self.app.modules.get("deadlines")
@@ -149,7 +239,8 @@ class PhoneToday:
         """The list as sent, cut to TODAY_MAX bytes (the longest lists lose their last rows first)."""
         body = json.dumps(snap, ensure_ascii=False, separators=(",", ":"))
         while len(body.encode()) > TODAY_MAX:
-            longest = max(("due", "events", "classes", "reminders", "threads"), key=lambda k: len(snap.get(k) or []))
+            rows = ("due", "events", "classes", "reminders", "threads", "plan", "start")
+            longest = max(rows, key=lambda k: len(snap.get(k) or []))
             if not snap.get(longest):
                 break
             snap[longest] = snap[longest][:-1]
@@ -228,6 +319,8 @@ class PhoneToday:
         deadline's Telegram message."""
         req = req if isinstance(req, dict) else {}
         i, do = str(req.get("id") or ""), str(req.get("do") or "")
+        if do == SEND_HELD:
+            return self._send_held()
         if do not in ACTS or not DEADLINE_ID.fullmatch(i):
             return 400, {"ok": False, "note": "That button is out of date."}
         dl = self.app.modules.get("deadlines")
@@ -246,3 +339,16 @@ class PhoneToday:
         out = str(self.app.callback(f"dl:{i}:{do}") or "")
         self.app.events.emit("phone_today_act", act=do)
         return 200, {"ok": True, "note": _clip(out, 300)}
+
+    def _send_held(self) -> tuple[int, dict]:
+        """Today's Send now: the messages the daily limit held today go out now (Calm.release, as at the day's end)."""
+        if not self.calls.setting("today_waiting"):
+            return 400, {"ok": False, "note": "That button is out of date."}
+        try:
+            n = int(self.app.calm.release())
+        except Exception as e:
+            self.app.events.emit("phone_today_failed", error=type(e).__name__)
+            return 500, {"ok": False, "note": "Couldn't send them; they're still held."}
+        self.app.events.emit("phone_today_act", act=SEND_HELD)
+        self.poke()
+        return 200, {"ok": True, "note": f"Sent {n} held message{'s' if n != 1 else ''}." if n else "Nothing was held."}

@@ -481,6 +481,7 @@ class Revision:
             for b in today:
                 b["read"] = self.reading(b["subject"], b["_topic"], cache)
             self._put(lambda s: self._keep_day(s, t0.date(), today))
+            self.es.app.events.emit("revision_planned", blocks=len(today))  # (0.9.0) the phone's Today shows them
             fixed = today
             blocks = [b for b in blocks if b["start"].date() != t0.date()]
         return fixed + blocks, notes

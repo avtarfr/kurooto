@@ -192,6 +192,21 @@ meanwhile.
   every AI request is told: the "In brief" part of your profile, your how-to-help-me note, the topics on your
   not-interested list and the Brain's own state. Never your read, mood, tone or senses. Off: calls hear only what's
   due, the story and the persona, as before.
+- **It knows whether you're at your desk** (0.9.0, `calls.tell_senses`, on). The brief says whether Face presence and
+  Voice ID are on and when Face presence last had you at the desk ("at the desk 12 minutes ago, 14:05"): sense names, a
+  word and a time, never camera frames or scores.
+- **More it can look up** (0.9.0, `calls.read_agent_tools`, on). A call, and a Live talk at the desk, also gets the
+  read-only tools your AI has: the concept graph's search and concept cards, Books' pages and course sources, your
+  chat history search, a Classroom file's text. Never a tool that writes, sends or needs your tap.
+  `calls.read_tools` `{"books": false}` leaves one feature's out.
+- **It says when the day changed under it** (0.9.0). After moving, adding or removing a deadline, skipping a class or
+  a commitment, or changing the plan, the tool's answer ends with a line saying the brief and today's plan are out of
+  date there; the phone's Today shows "Changed since it was drafted" above the plan.
+- **"I sent it" closes the thread at once** (0.9.0, `calls.threads_live`, on): the call's `close_thread` tool, instead
+  of waiting for the transcript. `/threads` has Undo.
+- **On the move** (0.9.0, `calls.mode_when_moving`, off). Turned on, with Brain's phone motion sense on, a call
+  Kurooto places by itself while your phone says you're walking or in a vehicle uses your phone's own speech instead
+  of Live. It never holds the call; calls you ask for and the alarm are unchanged.
 
 The call's transcript is kept on your computer (Kurooto's state folder → `calls/transcripts/`, readable only by your
 user account). A check-in's transcript becomes your journal and study logs; the wake-up call's becomes today's plan.
@@ -295,7 +310,12 @@ main AI, at high effort) reads the transcript and the tools the call used, and:
    it under "Needs you".
 2. **Keeps lessons.** Up to 3 short, general instructions for future calls ("When they say 'after class', ask when
    class ends before setting the reminder."). Every later call is told them. No names or details of other people,
-   nothing secret.
+   nothing secret. (0.9.0, `calls.lessons_everywhere`, on) Each is also a dated line under "Learned on calls" in your
+   how-to-help-me note, so every AI request follows it; a lesson replaced or forgotten (`/lessons forget`) takes its
+   line out too.
+3. **Reads what you said** (0.9.0, `calls.after_infer`, on). Your lines are read like a typed message: "I got a project
+   under Prof X" sets it up (one line, with Undo), and "remember that ..." goes into how-to-help-me. With tone on
+   (`mind.tone.calls`), your lines also count toward the day's tone, on this computer only.
 
 **The message.** Only when something was fixed or learned: "After the call: <what it fixed>", "Needs you: ...", and
 "Learned for next time: ..." with a pointer to `/lessons`. A call where nothing slipped and nothing was learned sends
