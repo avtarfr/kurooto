@@ -297,7 +297,7 @@ def register_line(app: App, text: str, voice: bool = False, files: bool = False)
         return ""
     if voice:
         return (
-            REG + "They sent this as a voice note: answer the way you'd say it aloud, in short sentences, with no "
+            REG + "They said this aloud: answer the way you'd say it aloud, in short sentences, with no "
             "lists, headings or markdown."
         )
     if files or card(app)["length"]:

@@ -138,3 +138,17 @@ def test_what_waited_on_the_line_is_taken_one_item_at_a_time(chat):
     assert len(saved) == 1 and saved[0].read_bytes() == raw
     assert calls.take_queued({"kind": "nope"})[0] == 400
     assert calls.take_queued({"kind": "chat", "body": {"id": "bad"}})[0] == 400
+
+
+def test_more_buttons_than_the_app_shows_go_on_in_a_follow_up(chat):
+    """(0.8.17) Past six, the rest were dropped (an evening bundle's numbered buttons above all); now they follow, six
+    a message, each answering the same feature."""
+    rows = [[(f"Pick {i}", f"fq:p1:{i}")] for i in range(9)]
+    m = chat.chat.say("Which one?", rows, mapped=("ask", "q1"))
+    out = said(chat)
+    assert [b["label"] for b in m["buttons"]] == [f"Pick {i}" for i in range(6)]
+    follow = out[-1]
+    assert follow["text"] == "More choices for the message above:" and follow["id"] != m["id"]
+    assert [b["label"] for b in follow["buttons"]] == ["Pick 6", "Pick 7", "Pick 8"]
+    code, _ = chat.chat.take(body(chat.app, "d" * 16, sealed=False, button=2, msg=follow["id"]))
+    assert code == 200 and chat.fake_mod.got[-1] == ("button", "p1", "8")

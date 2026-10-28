@@ -132,6 +132,8 @@ class Chat(Module):
         style = persona.register_line(self.app, msg.text.strip(), voice=msg.voice, files=bool(msg.files))
         if style:
             prompt = f"{prompt}\n\n{style}"  # last, so a "high:" prefix still comes first
+        if msg.via == "voice":  # (0.8.17) said at the desk: who Kurooto knows said it (asked, it said it can't see)
+            prompt = f"{prompt}\n\n{self._heard_line(msg)}"
 
         helper = getattr(self.app, "helper", None)  # the internet down: the offline helper (core/helper.py)
         if helper is not None and not recent:
@@ -156,6 +158,25 @@ class Chat(Module):
         if not terminal:
             self.turns = {**dict(list(self.turns.items())[-50:]), jid: sid or MAIN}
         return helper.waiting_line() if waits else "On it."
+
+    def _heard_line(self, msg: Incoming) -> str:
+        """(0.8.17) How a spoken turn came: the desk's microphone, Voice ID's verdict, what Face presence sees now."""
+        bits = ["They said this aloud to you at their desk (your own microphone, written out on this computer)."]
+        if msg.speaker == "owner":
+            bits.append("Voice ID recognised their voice.")
+        if self.app.is_on("face"):
+            from kurooto.core import nearby
+
+            v = nearby.view(self.app)
+            if v and v[1]:
+                bits.append("Face presence recognises their face in front of your camera right now.")
+            elif v and v[0]:
+                bits.append(f"Face presence sees {v[0]} face{'s' if v[0] != 1 else ''} in front of your camera.")
+            bits.append(
+                "You never see the camera's pictures: Face presence recognises faces on this computer and tells you "
+                "only this."
+            )
+        return "[How it came] " + " ".join(bits)
 
     def _main(self):
         from kurooto import providers

@@ -351,7 +351,9 @@ that `config_template` puts in the call's instructions.
 `Incoming(text, via="app", message_id="app:<id>", respond=...)` and calls `App.handle`: commands, intents and Chat as
 on Telegram (`core/turnon.py` already offers its buttons for `via` `app`). `respond` and later answers go through
 `PhoneChat.say`, which keeps the buttons' data in `<state>/calls/chat.json` (last 100, 7 days) and sends
-`admin_later("chat-say", msg=...)`; failed pushes are sent again from `state_message` (`flush`, last hour).
+`admin_later("chat-say", msg=...)`; failed pushes are sent again from `state_message` (`flush`, last hour). (0.8.17) Past `BUTTONS_MAX`
+(6), the rest go in follow-up messages (`MORE` text, six each, same `mapped` and session), so nothing is dropped;
+`core/calm.py:Calm.bundle` sends each held message by itself unless `notify.calm.bundle_one`.
 Jobs answer with `reply_to="app:<id>"`: `core/notify.py:Notifier._deliver` sends such a message to the `chat` channel
 only (and the desktop, by its kinds); with no `chat` channel it goes to Telegram without the reply_to. With
 `notify.app_chat` on, messages whose kind isn't in `notify.app_kinds` (and isn't `call`) also go to `chat`.

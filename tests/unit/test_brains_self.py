@@ -419,3 +419,16 @@ def test_the_manual_names_every_feature_command_and_tap_rule(app):
     for names, _ in (*commands.CORE, commands.SYNC):
         assert all(f"/{n}" in text for n in names)
     assert all(f"`{k}`" in text for k in tap.GUARDED)
+
+
+def test_the_header_line_can_go_and_the_answer_comes_alone(two):
+    """(0.8.17, jobs.header) "[AI · effort] what you asked" first was most of a short answer's length."""
+    app, sent, mp = two
+    app.settings.set("brain.main", "agy")
+    mp.setenv("FAKE_AGY_MODE", "ok")
+    ask(app, "what's due?")
+    assert sent[-1].startswith("[")
+    app.settings.set("jobs.header", False)
+    app.settings.set("jobs.receipt", False)
+    ask(app, "and tomorrow?")
+    assert not sent[-1].startswith("[") and sent[-1].startswith("answer from")  # the answer alone

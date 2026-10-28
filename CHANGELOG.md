@@ -34,6 +34,15 @@
 - **Claude Code can open the pictures a job is about.** A screenshot or photo outside your notes (Interest's look
   at your screen, a picture from the phone) was named in the request but reading it was denied every time, so the
   answer said it couldn't see it. Each such picture is now readable for that job, and nothing else beside it.
+- **The evening bundle comes one by one.** What waited all day came as one long message, its buttons numbered and
+  merged; in the phone app only the first six showed. Now it's a short header, then each message by itself with its
+  own buttons (`notify.calm.bundle_one` brings back the single message). Any app message with more than six buttons
+  goes on in a follow-up instead of dropping the rest.
+- **Shorter answers** (`jobs.header`, on): the first line repeating what you asked, "[Claude Code · medium] ...",
+  can be turned off so the answer comes alone; with `jobs.receipt` off too, nothing but the answer.
+- **It knows when it recognised you.** Asked "do you recognise my face?" at the desk, the AI said it had no camera:
+  a spoken turn reached it as bare text. Now each one says it was said aloud at the desk, whether Voice ID knew your
+  voice, and whether Face presence recognises you in front of the camera (never the pictures themselves).
 - **Voice language:** the settings guide now says to set `voice.listen.language`; left to be worked out on each short
   clip, an accent is often taken for another language and Kurooto's name is missed.
 - **The Chat page fills its pane.** The list of messages was a short box of about 170 px with the box to write in right

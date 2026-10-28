@@ -87,7 +87,7 @@ def test_register_follows_the_length_band_and_voice_notes(env):
     assert prompt("capital of peru").endswith(
         "[Reply style] Their message is short: answer in a few lines unless it truly needs more."
     )
-    assert "voice note" in prompt("so what do you think about the plan for tomorrow", voice=True)
+    assert "said this aloud" in prompt("so what do you think about the plan for tomorrow", voice=True)
     middling = " ".join(["word"] * 30)
     assert "[Reply style]" not in prompt(middling)
     assert prompt(" ".join(["word"] * 90)).endswith("still without padding.")
@@ -97,6 +97,31 @@ def test_register_follows_the_length_band_and_voice_notes(env):
     assert jload(chat.history_file, [])[-1]["user"] == "capital of peru"  # what you wrote, not the style line
     env.app.settings.set("persona.length", "long and detailed")
     assert "[Reply style]" not in prompt("capital of peru")  # the card's length wins
-    assert "voice note" in prompt("capital of peru", voice=True)
+    assert "said this aloud" in prompt("capital of peru", voice=True)
     env.app.settings.set("persona.register", False)
     assert "[Reply style]" not in prompt("capital of peru", voice=True)
+
+
+def test_a_turn_said_at_the_desk_tells_the_ai_who_kurooto_knows_said_it(env):
+    """(0.8.17) Asked "do you recognise my face?", it said it had no camera: the request never said Voice ID and Face
+    presence had recognised him."""
+    from kurooto.core import nearby
+
+    chat, app = env.app.modules["chat"], env.app
+
+    def prompt(**kw):
+        msg = Incoming("do you recognise my face?", via="voice", voice=True, respond=lambda t, buttons=None: None, **kw)
+        chat.ask(msg)
+        return app.jobs.get(msg.job).prompt
+
+    p = prompt(speaker="owner", speaker_by="voice")
+    assert "[How it came] They said this aloud to you at their desk" in p and "Voice ID recognised their voice." in p
+    assert "Face presence" not in p  # Face presence is off here
+    app.settings.set("modules.enabled", [*app.settings.get("modules.enabled"), "face"])
+    nearby.set_view(app, 1, True)
+    p = prompt(speaker="owner", speaker_by="voice")
+    assert "Face presence recognises their face in front of your camera right now." in p
+    assert "never see the camera's pictures" in p
+    typed = Incoming("do you recognise my face?", via="telegram", respond=lambda t, buttons=None: None)
+    chat.ask(typed)
+    assert "[How it came]" not in app.jobs.get(typed.job).prompt

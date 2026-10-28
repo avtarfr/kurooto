@@ -372,7 +372,10 @@ can't be done by voice: type it or use the dashboard."
   out) and is never written to disk. The words of noise and chatter are dropped as soon as the gate decides: never
   stored, logged or sent. It counts how many stretches were noise, chatter or for it, in memory only.
 - **What leaves:** only the turns the gate decided were said to Kurooto, as text, to the AI you picked, like a chat
-  message (and kept in the chat history like a typed one). While the conversation is closed, nothing leaves. With
+  message (and kept in the chat history like a typed one), with one line saying it was said aloud at your desk,
+  whether Voice ID knew your voice and whether Face presence recognises you in front of the camera (0.8.17: words
+  only, never a picture; so "do you recognise me?" gets a true answer). While the conversation is closed, nothing
+  leaves. With
   `voice.listen.fast_brain` `fastest` (not the default), a plain-chat turn may go to another AI you've set up (a
   Gemini key, say) instead of your main one, with what a chat request carries; `local` keeps it on this computer.
   With `voice.listen.live` (not the default), the sound of your own turns said to Kurooto (Voice ID: you, and facing

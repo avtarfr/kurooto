@@ -25,8 +25,8 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 ## Contents
 
 - [You and how it talks to you](#you-and-how-it-talks-to-you): 11 settings
-- [Your AI](#your-ai): 33 settings
-- [Messages and where they reach you](#messages-and-where-they-reach-you): 30 settings
+- [Your AI](#your-ai): 34 settings
+- [Messages and where they reach you](#messages-and-where-they-reach-you): 31 settings
 - [When it may interrupt you](#when-it-may-interrupt-you): 13 settings
 - [Phone calls and the call line](#phone-calls-and-the-call-line): 35 settings
 - [Morning alarm](#morning-alarm): 11 settings
@@ -396,6 +396,17 @@ One quiet line under each answer: which AI, effort, time, limit used and what it
   the same record.
 - **Costs and what leaves this computer:** Nothing.
 
+### `jobs.header`
+
+A first line on each answer naming the AI and repeating what you asked.
+
+On (the default): "[Claude Code · medium] what you asked" comes first, then the answer. Off: the answer alone. A failed
+request keeps its first line either way, so you know what failed.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off for shorter messages, above all in the phone app.
+- **Costs and what leaves this computer:** Nothing.
+
 ### `jobs.plan_line`
 
 Before a long answer, one short line saying what it's about to do and roughly how long.
@@ -568,6 +579,19 @@ When the evening bundle comes with everything that waited today.
 - **Values:** A time of day, 24-hour `HH:MM`. **Default:** `20:00`.
 - **When to change it:** Move it to when you usually look at your phone in the evening. After this time, messages come
   as they are.
+- **Depends on:** `notify.calm.on`.
+
+### `notify.calm.bundle_one`
+
+Send the evening bundle as one long message instead of one by one.
+
+Off (the default since 0.8.17): the bundle is a short header, then each message that waited, by itself, in order, with
+its own buttons, so replying to one or tapping its buttons works as if it had come at once. On: one message (split only
+where Telegram's length limit makes it), every item numbered and its buttons numbered to match, as before 0.8.17; the
+phone app's chat shows six buttons under a message, and the rest go on in follow-up messages.
+
+- **Values:** `false` (default) or `true`. **Default:** off.
+- **When to change it:** Turn it on if a busy evening fills your chat with too many separate messages.
 - **Depends on:** `notify.calm.on`.
 
 ### `notify.calm.evening`

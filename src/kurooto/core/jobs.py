@@ -79,6 +79,7 @@ register_defaults(
     {
         "stuck_min": 10,  # the watchdog: minutes with no AI at work and no program running
         "receipt": True,  # a quiet last line under each answer: which AI, effort, time, limit used, what it did
+        "header": True,  # (0.8.17) a first line on each answer: "[AI · effort] what you asked"; off: the answer alone
         "plan_line": True,  # a short "Searching your notes, then answering" first, when a text answer will take 20 s+
     },
 )
@@ -1215,6 +1216,8 @@ class Jobs:
         why = (self._read("select why from jobs where id=?", (job.id,)) or [None])[0] or "asked"  # core/calm.py
         pool = self.app.quota.pool(used, job.effort or "medium")
         head = f"[{label} · {job.effort or '?'}{'' if result.ok else ' · failed'}] {job.title}"
+        if not self.app.settings.get("jobs.header", True) and result.ok:  # (0.8.17) the answer alone
+            head = ""
         if result.ok:
             note = (result.usage or {}).get("note")
             body = f"{result.text}\n\n{note}" if note else result.text
@@ -1235,7 +1238,7 @@ class Jobs:
             md = self.dir / f"{job.id}-result.md"
             md.write_text(body, encoding="utf-8")
             self.app.notify(
-                f"{head}\n\n{body[:1500]}\n\n[…the full answer is attached]{end}",
+                f"{head}\n\n{body[:1500]}\n\n[…the full answer is attached]{end}".lstrip(),
                 kind="result",
                 reply_to=reply_to,
                 buttons=buttons,
@@ -1246,7 +1249,7 @@ class Jobs:
             self.app.notify(job.title, kind="result", file=str(md), reply_to=reply_to, why=why)
         else:
             self.app.notify(
-                f"{head}\n\n{body}{end}", kind="result", reply_to=reply_to, buttons=buttons, why=why, tail=tail
+                f"{head}\n\n{body}{end}".lstrip(), kind="result", reply_to=reply_to, buttons=buttons, why=why, tail=tail
             )
         chat = self.app.modules.get("chat")
         if chat is not None and result.ok and result.text and getattr(chat, "owns", lambda _j: True)(job.id):

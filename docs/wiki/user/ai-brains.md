@@ -375,6 +375,7 @@ Dashboard → Settings → AI model (and quota, jobs, you):
 | `brain.timeout_min.low` / `.medium` / `.high` | `10` / `15` / `30` | minutes a request may run |
 | `brain.agy.io_mode` | `pipe` | how Kurooto talks to agy (leave it unless agy gives no output) |
 | `jobs.stuck_min` | `10` | minutes without progress before a request is stopped (Settings → AI jobs) |
+| `jobs.header` | `true` | (0.8.17) the first line of each answer, "[Claude Code · medium] what you asked"; off: the answer alone (a failed request keeps it) |
 | `jobs.receipt` | `true` | the run receipt: one quiet line under each answer saying which AI and model, who decided, who stood in, effort, time, limit used and what it did |
 | `you.language` | `follow` | answer in the language you write in, or always in the one named |
 

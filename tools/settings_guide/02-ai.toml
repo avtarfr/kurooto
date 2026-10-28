@@ -142,6 +142,13 @@ tip = "One quiet line under each answer: which AI, effort, time, limit used and 
 when = "Turn it off if you don't care which AI answered. Nothing else changes; the AI jobs page keeps the same record."
 cost = "Nothing."
 
+[s."jobs.header"]
+tip = "A first line on each answer naming the AI and repeating what you asked."
+what = """On (the default): "[Claude Code · medium] what you asked" comes first, then the answer. Off: the answer alone.
+A failed request keeps its first line either way, so you know what failed."""
+when = "Turn it off for shorter messages, above all in the phone app."
+cost = "Nothing."
+
 [s."jobs.plan_line"]
 tip = "Before a long answer, one short line saying what it's about to do and roughly how long."
 what = "Only when your last requests of the same kind took more than about 20 seconds. Never on a call."

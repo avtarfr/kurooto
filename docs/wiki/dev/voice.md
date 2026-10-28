@@ -315,7 +315,10 @@ it's known how it went: the next addressed turn in the same session from the sam
 answer through `respond`; anything for the AI becomes a Chat job. `modules/chat.py` makes `via == "voice"` jobs quiet
 (no Telegram copy) but keeps the conversation history; `ask_brain` waits for the job (`jobs.watchers` sets an event,
 plus polling), and records the turn with `Chat.record_turn` (quiet jobs skip `Jobs._deliver`, which normally does it).
-`persona.register_line(voice=True)` asks for an answer worded to be spoken.
+`persona.register_line(voice=True)` asks for an answer worded to be spoken. (0.8.17) `Chat._heard_line(msg)` follows it for `via == "voice"`:
+`[How it came]` said aloud at the desk, "Voice ID recognised their voice" when `msg.speaker == "owner"`, and with
+Face presence on, `core/nearby.view()` (the owner alone in view, or how many faces), plus that the AI never sees the
+camera's pictures.
 
 `voice.speak.what = "all"`: the same watcher speaks every non-quiet, non-background answer in lane "you".
 

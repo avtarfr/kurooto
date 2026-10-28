@@ -62,6 +62,8 @@ KEEP = 100  # messages kept here, for buttons and replies
 KEEP_S = 7 * 86400
 TEXT_MAX = 4000  # what you type
 SAY_MAX = 6000  # what Kurooto says (the call line keeps this much too)
+BUTTONS_MAX = 6  # buttons the app shows under one message; (0.8.17) more go on in a follow-up message
+MORE = "More choices for the message above:"
 ID = re.compile(r"[0-9a-f]{16}")
 PREFIX = "app:"  # an Incoming's message_id, and the reply_to of what answers it
 # files for the chat, kept sealed on the call line: the largest, how long, and the size of each part sent there
@@ -200,14 +202,15 @@ class PhoneChat:
                 elif isinstance(target, str):
                     shown.append({"label": _clip(label, 40)})
                     data.append(target)
+        more = (shown[BUTTONS_MAX:], data[BUTTONS_MAX:])  # (0.8.17) more than the app shows: in a follow-up
         m = {
             "id": uuid.uuid4().hex[:16],
             "from": "kurooto",
             "text": _clip(text, SAY_MAX),
             "at": int(time.time()),
-            "buttons": shown[:6],
+            "buttons": shown[:BUTTONS_MAX],
             "reply": bool(mapped),  # a reply to it goes to the feature that sent it (as on Telegram)
-            "_data": data[:6],  # stays here: the phone answers with the button's number
+            "_data": data[:BUTTONS_MAX],  # stays here: the phone answers with the button's number
         }
         if title:
             m["title"] = _clip(title, 120)
@@ -224,6 +227,9 @@ class PhoneChat:
         self._add(m)
         self._push(m)
         self.sessions.touch(sid, m)
+        if more[0]:  # the rest of the buttons, BUTTONS_MAX a message, each answering the same feature
+            rows = [[(b["label"], {"url": b["url"]} if "url" in b else d)] for b, d in zip(*more, strict=True)]
+            self.say(MORE, rows, re_id=re_id, mapped=mapped, session=sid)
         return m
 
     def send(self, msg: Message) -> str | None:

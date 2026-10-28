@@ -448,7 +448,8 @@ jid = app.jobs.submit(
   (`_mark` updates `activity`) for `jobs.stuck_min` minutes ends `stuck`; one past its deadline (time limit plus the
   brain's `grace_s` plus `GRACE_S = 120`) ends `timeout`. Ending kills the process tree (`proc.kill_tree`).
 - **Cancel**: `cancel(jid)`, `cancel_text("all")`, `/jobs`, `POST /api/jobs/cancel`, `kurooto jobs --cancel`.
-- **Delivery** (`_deliver`, unless `quiet`): `[<brain label> · <effort>] <title>` then the answer, through
+- **Delivery** (`_deliver`, unless `quiet`): `[<brain label> · <effort>] <title>` (0.8.17: left out when
+  `jobs.header` is off and the request succeeded) then the answer, through
   `app.notify(kind="result", why=job.why or "asked", reply_to=...)`. Answers over `LONG = 7000` chars are also sent as
   a file (`jobs/<id>-result.md`). Cases adds a Wrong button when on.
 - **Run receipt** (0.5.15): `_run` builds one line from the run's own record before the request's tool log is dropped

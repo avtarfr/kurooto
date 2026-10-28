@@ -575,6 +575,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 
 | Setting | Default | What it does |
 |---|---|---|
+| `jobs.header` | `true` | A first line on each answer naming the AI and repeating what you asked. ([guide](wiki/user/settings-guide.md#jobsheader)) |
 | `jobs.plan_line` | `true` | Before a long answer, one short line saying what it's about to do and roughly how long. ([guide](wiki/user/settings-guide.md#jobsplanline)) |
 | `jobs.receipt` | `true` | One quiet line under each answer: which AI, effort, time, limit used and what it did. ([guide](wiki/user/settings-guide.md#jobsreceipt)) |
 | `jobs.stuck_min` | `10` | Minutes a request may sit with no AI at work and no program running before the watchdog stops it. ([guide](wiki/user/settings-guide.md#jobsstuckmin)) |
@@ -844,6 +845,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 |---|---|---|
 | `notify.app_chat` | `false` | Kurooto's own messages also show in the phone app's chat, not just on Telegram. ([guide](wiki/user/settings-guide.md#notifyappchat)) |
 | `notify.app_kinds` | `["call", "question", "approval"]` | Which kinds of message also reach your phone app. ([guide](wiki/user/settings-guide.md#notifyappkinds)) |
+| `notify.calm.bundle_one` | `false` | Send the evening bundle as one long message instead of one by one. ([guide](wiki/user/settings-guide.md#notifycalmbundleone)) |
 | `notify.calm.calls` | `1` | How many calls a day may come by themselves; one past it waits in the evening bundle as a call link. ([guide](wiki/user/settings-guide.md#notifycalmcalls)) |
 | `notify.calm.evening` | `[]` | Kinds of message that always wait for the evening bundle. ([guide](wiki/user/settings-guide.md#notifycalmevening)) |
 | `notify.calm.evening_at` | `"20:00"` | When the evening bundle comes with everything that waited today. ([guide](wiki/user/settings-guide.md#notifycalmeveningat)) |

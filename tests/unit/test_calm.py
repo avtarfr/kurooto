@@ -249,6 +249,7 @@ def test_fewer_and_another_time_hold_for_the_evening(clock):
 # --------------------------------------------------------------------------- the limit and the bundle
 def test_the_daily_limit_holds_the_rest_for_one_evening_bundle(clock):
     c, app = with_subjects(clock), clock.app
+    app.settings.set("notify.calm.bundle_one", True)  # (0.8.17) the bundle as one message, as it was
     kinds = [
         "research.papers",
         "google.announcement",
@@ -286,6 +287,26 @@ def test_the_daily_limit_holds_the_rest_for_one_evening_bundle(clock):
     # a new day, a new count
     c.t = at(MON + dt.timedelta(days=1), 9)
     assert c.calm.today()["messages"] == 0 and c.say("Morning news.", why="research.papers") is not None
+
+
+def test_the_bundle_comes_one_by_one_with_each_message_s_own_buttons(clock):
+    """(0.8.17, the default) A header, then each message that waited by itself: its buttons stay its own, so the app
+    (six buttons a message) and replies by message work as if it had come at once."""
+    c, app = with_subjects(clock), clock.app
+    for k in ["research.papers", "google.announcement", "handwritten.done", "books.read", "notes_sync.clash",
+              "space.cleaned"]:  # fmt: skip
+        c.say(f"About {k}.", why=k)
+    assert c.say("Seventh: new papers.", why="research.papers") is None
+    qid = after_class(c)
+    n = len(c.sent())
+    c.t = at(MON, 20, 2)
+    assert c.calm.tick() == {"bundled": 2, "suggested": None}
+    new = c.sent()[n:]
+    assert new[0]["text"].startswith("This evening's bundle: 2 messages that waited")
+    assert new[1]["text"] == "Seventh: new papers." and not c.labels(new[1])
+    assert c.labels(new[2]) == ["Nothing new", "Later"]  # its own buttons, not numbered
+    c.env.reply_to_last("We did eigenvalues.")
+    assert app.ask.get(qid)["status"] == "answered"
 
 
 def test_exempt_kinds_always_come_and_cant_be_stopped(clock):
@@ -326,6 +347,7 @@ def json_labels(rec: dict) -> list[str]:
 
 # ------------------------------------------------------------------- saying so when the limit starts holding
 def test_the_limit_says_so_once_a_day_and_only_for_its_own_holds(clock):
+    clock.app.settings.set("notify.calm.bundle_one", True)  # (0.8.17) these read the single-message bundle
     c, app = clock, clock.app
     app.settings.set("notify.calm.messages", 2)
     for i in range(2):
@@ -431,6 +453,7 @@ def with_calls(c: Clock) -> Clock:
 
 
 def test_one_call_a_day_by_itself(clock):
+    clock.app.settings.set("notify.calm.bundle_one", True)  # (0.8.17) these read the single-message bundle
     c, app = with_calls(clock), clock.app
     calm = c.calm
     assert calm.call_ok("weekly.call", key="weekly:review:2026-11-02")
@@ -466,6 +489,7 @@ def test_a_check_in_call_past_the_limit_comes_as_a_message(clock):
 
 # ------------------------------------------------------------------------------------ exam season
 def test_exam_season_tightens_the_day_to_deadlines_quizzes_and_the_alarm(clock):
+    clock.app.settings.set("notify.calm.bundle_one", True)  # (0.8.17) these read the single-message bundle
     c, app = clock, clock.app
     c.env.on("subjects", "deadlines", "exam_season")
     app.settings.set("subjects.exam_periods", [["2026-11-04", "2026-11-06"]])

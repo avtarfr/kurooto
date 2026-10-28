@@ -24,7 +24,10 @@ for, the setting that controls it, and what it was about (the deadline, the clas
   (0.8.14), it also says what Brain's gate and the door did with it, what it expected (a reply, or that you'd act on it)
   and what came of it, and the phone app chat's copy gets a **Why this?** button that answers the same way
   ([Brain: one door](mind.md#one-door-at-a-natural-break-0814)). A message that kept losing at Brain's door for hours
-  waits for the evening bundle, which says so.
+  waits for the evening bundle, which says so. Since 0.8.17 the bundle comes one by one: a short header, then each
+  message that waited, with its own buttons (`notify.calm.bundle_one` on: one message, as before). The phone app's
+  chat shows six buttons under a message; a message with more goes on in a follow-up message ("More choices for the
+  message above:") instead of losing them.
 - **Less of this** offers up to three choices. Each changes **one** setting and is followed by an **Undo** button:
   - **Stop**: that kind stops. Where the feature has its own setting, that's what changes (practice offers:
     `quiz.offer_at` emptied; a check-in: its time cleared; after-class questions: After-class notes turned off).

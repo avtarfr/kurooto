@@ -68,6 +68,7 @@ register_defaults(
             "messages": 6,  # messages a day that come by themselves; more wait for the evening bundle
             "calls": 1,  # calls a day that come by themselves (the alarm and calls you asked for don't count)
             "evening_at": "20:00",  # the evening bundle: what waited today
+            "bundle_one": False,  # (0.8.17) the bundle as one message; off: a short header, then each one by itself
             "monthly": True,  # once a month: a kind of question you rarely answer, and whether to turn it off
             "stopped": [],  # kinds stopped with Less of this (when their feature has no setting of its own)
             "evening": [],  # kinds that always wait for the evening bundle (Less of this → Another time)
@@ -1354,6 +1355,24 @@ class Calm:
         else:
             head += " (" + "; ".join(f"{n} {why[k]}" for k, n in held.items()) + ")"
         head += ". /calm changes the limit."
+        if not self.app.settings.get("notify.calm.bundle_one"):  # (0.8.17) each one by itself, its buttons its own
+            self.app.notify(head, kind="info", why="calm.bundle")
+            for _, m in items:
+                self.app.notify(
+                    m.text,
+                    kind=m.kind,
+                    why="calm.bundle",
+                    title=m.title,
+                    buttons=m.buttons,
+                    map_kind=m.map_kind,
+                    map_ref=m.map_ref,
+                    file=m.file,
+                )
+            ids = [(rec["id"],) for rec, _ in items]
+            with self._db() as db:
+                db.executemany("update sent set state='bundled', msg=null where id=?", ids)
+            self.app.events.emit("calm_bundle", items=len(items), exams=exams)
+            return len(items)
         parts: list[tuple[list[str], list, list]] = [([head], [], [])]
         for i, (_rec, m) in enumerate(items, 1):
             body = f"{m.title}: {m.text}" if m.title else m.text

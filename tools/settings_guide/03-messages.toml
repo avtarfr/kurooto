@@ -35,6 +35,16 @@ tip = "When the evening bundle comes with everything that waited today."
 when = "Move it to when you usually look at your phone in the evening. After this time, messages come as they are."
 needs = "`notify.calm.on`."
 
+[s."notify.calm.bundle_one"]
+tip = "Send the evening bundle as one long message instead of one by one."
+what = """Off (the default since 0.8.17): the bundle is a short header, then each message that waited, by itself, in
+order, with its own buttons, so replying to one or tapping its buttons works as if it had come at once. On: one
+message (split only where Telegram's length limit makes it), every item numbered and its buttons numbered to match,
+as before 0.8.17; the phone app's chat shows six buttons under a message, and the rest go on in follow-up messages."""
+values = "`false` (default) or `true`."
+when = "Turn it on if a busy evening fills your chat with too many separate messages."
+needs = "`notify.calm.on`."
+
 [s."notify.calm.evening"]
 tip = "Kinds of message that always wait for the evening bundle."
 values = "A list of message kinds, e.g. `[\"research\", \"weekly\"]`; filled by Less of this → Another time."
