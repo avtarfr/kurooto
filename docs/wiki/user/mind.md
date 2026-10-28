@@ -676,6 +676,10 @@ shaky on lately (up to three, from your quizzes and notes) and what's on its min
 about you). It's read from Brain's files with no model call, in well under 50 ms. Your read, tone, mood and body state
 never go in, so a cloud AI never gets them; answers use it silently, never "since you seem stressed".
 
+**An add-on's lines** (0.9.0, `mind.context.addons`, on): an add-on may add a few short lines of its own to your
+requests (at most four, 300 characters each), only when its own switch allows it (for example an add-on's list of
+topics from your notes, behind an off-by-default switch). Never to a guest's request. Off: no add-on's line goes in.
+
 ## When you'll be free (0.8.16)
 
 Brain forecasts, for each of the next six hours, how likely you are to be **at your desk and free**: at your desk (the

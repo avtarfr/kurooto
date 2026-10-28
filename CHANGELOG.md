@@ -2,6 +2,8 @@
 
 ## 0.9.0 (unreleased)
 
+- **An add-on can add a line to your AI requests** (`mind.context.addons`, on). At most four short lines, only when the
+  add-on's own switch allows it; never in a guest's request.
 - **Fewer interruptions while you're deep in one thing** (`mind.workspace.deep_hold`, on). When an add-on says you're
   deep in one thing, what Kurooto starts by itself waits even at a break, never past `max_hold_min`, and goes when you
   come up; alarms, reminders, calls, approvals and close deadlines are never held.

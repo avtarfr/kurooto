@@ -40,6 +40,8 @@ Extension points an add-on feature (a Module in modules/) may define, besides wh
                                 (modules/reminders.py; reminders.addon_buttons)
     guest_name() -> str         (0.9.0) the name of the guest in front of it, for Voice's greeting and a local guest
                                 AI only (core/guest.py addon_name; voice.addons.guest_name)
+    context_lines() -> [str]    (0.9.0) a few short lines for the owner's AI requests, when its own switch allows
+                                (providers/context.py addon_context; mind.context.addons)
 """
 
 from __future__ import annotations

@@ -120,3 +120,35 @@ def test_deep_waits_no_longer_than_max_hold(door_app):
     w = {"urgent": False, "at": time.time() - breaks.max_hold_s(app) - 1}
     assert workspace._may_go(app, w, time.time()) != "wait"
     assert workspace._may_go(app, {"urgent": False, "at": time.time()}, time.time()) == "wait"
+
+
+# ------------------------------------------------------------------------------- features' context lines (L142, L147)
+class Lines(Module):
+    id = "lines"
+    title = "Lines"
+
+    def __init__(self, app, lines=None, fail=False):
+        super().__init__(app)
+        self.lines, self.fail = lines or [], fail
+
+    def context_lines(self):
+        if self.fail:
+            raise RuntimeError("no")
+        return self.lines
+
+
+def test_a_features_context_lines_join_requests_never_a_guests(env, monkeypatch):
+    from kurooto.providers import context
+
+    many = [f"line {i}\nwith\tspaces" for i in range(6)]
+    with_features(env, monkeypatch, Lines(env.app, fail=True), Lines(env.app, ["Topics: chaos, " + "x" * 400]))
+    got = context.addon_context(env.app)
+    assert got.startswith("Topics: chaos, ") and len(got) == context.ADDON_LINE_MAX
+    assert "Topics: chaos" in context.headless_context(env.app)
+    assert "Topics: chaos" not in context.guest_context(env.app)
+    with_features(env, monkeypatch, Lines(env.app, many))
+    assert context.addon_context(env.app).count("\n") == context.ADDON_LINES - 1 and "line 0 with spaces" in (
+        context.addon_context(env.app)
+    )
+    env.app.settings.set("mind.context.addons", False)
+    assert context.addon_context(env.app) == "" and "Topics: chaos" not in context.headless_context(env.app)

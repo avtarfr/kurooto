@@ -4,6 +4,10 @@ mind.context (Brain, 0.8.14, `mind.context.on`): with Brain on, every request al
 answer it, read from its files with no model call (under 50 ms): mastery hints (the concepts its model of your mind
 says you're shaky on, from knowledge tracing) and what's on its mind (the workspace's winners that aren't about you).
 Your read, tone, mood and body state never go in: they stay on this computer. Answers use it silently.
+
+Add-ons' lines (0.9.0, `mind.context.addons`): a feature's context_lines() -> [str] (an add-on's, under its own
+switch, which says when its lines may reach an AI) joins the request's context, at most ADDON_LINES lines of
+ADDON_LINE_MAX characters in all features together. Never in a guest's context.
 """
 
 from __future__ import annotations
@@ -24,10 +28,14 @@ register_defaults(
     {
         "context": {
             "on": True,  # every AI request gets Brain's mastery hints and what's on its mind (never how you are)
+            # (0.9.0) a feature (an add-on) may add a few short lines of its own to your requests' context, when its
+            # own switch allows it (nothing until one does); never to a guest's
+            "addons": True,
         }
     },
 )
 
+ADDON_LINES, ADDON_LINE_MAX = 4, 300  # (mind.context.addons) features' context lines, at most, all together
 SHAKY_MAX = 3  # concepts named at most
 SHAKY_DAYS = 14  # a concept counts while its estimate moved this recently
 TIMES: deque = deque(maxlen=200)  # how long the last builds took, in ms (/mind measures: Brain's share of a reply)
@@ -81,6 +89,24 @@ def mind_context(app: App) -> str:
         lines.append(ws)
     TIMES.append((time.perf_counter() - t0) * 1000.0)
     return "\n".join(lines)
+
+
+def addon_context(app: App) -> str:
+    """(mind.context.addons) Each enabled feature's context_lines() (an add-on's; its own switch decides), at most
+    ADDON_LINES lines of ADDON_LINE_MAX characters; a feature that fails is skipped. "" with none or the switch off."""
+    if app.settings.get("mind.context.addons") is False:
+        return ""
+    lines: list[str] = []
+    for m in app.enabled():
+        fn = getattr(m, "context_lines", None)
+        if not callable(fn):
+            continue
+        try:
+            got = [" ".join(str(x).split())[:ADDON_LINE_MAX] for x in (fn() or [])]
+        except Exception:  # noqa: S112 (one feature's mistake never stops a request)
+            continue
+        lines += [x for x in got if x]
+    return "\n".join(lines[:ADDON_LINES])
 
 
 def p95_ms() -> float | None:
@@ -143,7 +169,7 @@ def headless_context(app: App, extra: str = "", lane: str = "you") -> str:
 
     # (0.8.14) mind.context holds the workspace's winners with the mastery hints; off, the winners go as in 0.8.13
     held = mind_context(app) if mind.part_on(app, "context") else workspace.context(app)
-    for part in (story.prompt(app), feelings.prompt(app), held, register.line(app, lane)):
+    for part in (story.prompt(app), feelings.prompt(app), held, addon_context(app), register.line(app, lane)):
         if part:
             lines.append(part)
     from kurooto.core import persona  # your persona card and the boundaries it keeps (core/persona.py)

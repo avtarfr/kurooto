@@ -167,6 +167,7 @@ Details of each Google permission are in [google.md](google.md#what-each-feature
 | Kurooto Terminal | nothing by itself; getting kitty or fish (only when you say yes) downloads them | their official releases |
 | Terminals, and your AI's program in them | nothing by themselves; what you type to your AI's program goes to its service, as when you run it yourself | that program's service |
 | Your add-ons | nothing by the feature; your add-ons' own code can send whatever it's written to send | wherever your add-ons send it |
+| An add-on's lines in your AI requests (`mind.context.addons`) | only when that add-on's own switch allows it: at most four short lines it writes | the AI you picked |
 | Add-ons by link (official ones too) | git fetches it when you add or update one; then only what its card says: the hosts it may reach, and what the programs it may start send | the git address you gave (github.com for the official add-ons); the hosts on its card |
 | Diagnostics zip (`kurooto doctor --bundle`) | nothing: it's saved on this computer for you to look at and send yourself | stays here until you send it |
 | Setup page progress | nothing: which setup steps you finished or skipped, and the seconds spent on each, stay in `setup.json` in Kurooto's state folder (never what you typed); the diagnostics zip includes them | stays on your computer |

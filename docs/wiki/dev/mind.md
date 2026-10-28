@@ -1381,6 +1381,10 @@ the switches, the surprise check-in and its exclusions, the late-wake rule).
   Each build's time goes into `TIMES` (`p95_ms()`); `tests/unit/test_mind_being.py` holds it under 50 ms with 600 rows.
   Known exception, older than this: `feelings.prompt()`'s tone hint ("Keep it short and calm; they have a lot on") still
   comes from his read at 70%+ confidence; it's the 0.8.0 rule and not part of mind.context.
+- (0.9.0, `mind.context.addons`) `addon_context(app)`: each enabled feature's `context_lines() -> [str]` (an add-on's
+  hook; whitespace folded, `ADDON_LINES` 4 lines of `ADDON_LINE_MAX` 300 in all, a failing one skipped), placed after
+  the workspace's block in `headless_context`, independent of Brain being on; `guest_context` never calls it. The
+  add-on's own switch is the privacy gate (what may reach an AI); this one turns all of them off.
 - **Measurements** (`console.audit`, `console.latency`, `/mind measures`, the console's `measurements`, `GET
   /api/brain/console?view=measurements`): per brainview part, the outward records in 30 days (`OUTWARD_KINDS`:
   decisions, `mind_act`, the gate's receipts, lints, mutes and calls, `promise_made`; a decision is attributed by

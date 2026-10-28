@@ -724,6 +724,15 @@ what = "Quiet (low mood), even or lively (high mood and roused). An AI request K
 when = "Turn it off to keep every unprompted message, opener and pace as in 0.8.13."
 needs = "Brain on."
 
+[s."mind.context.addons"]
+tip = "Let an add-on add a few short lines of its own to your AI requests, when its own switch allows it."
+what = """At most four lines of 300 characters, from all add-ons together, after Brain's hints. Each add-on decides by its
+own switch whether its lines may reach an AI at all (one that keeps what it saw on this computer starts with that
+off). Never in a guest's request."""
+cost = "What the add-on's lines say goes with each request to the AI you picked."
+when = "Turn it off to keep every add-on's lines out of your requests."
+needs = "An add-on that offers lines, with its own switch on."
+
 [s."mind.context.on"]
 tip = "Every AI request gets Brain's hints: concepts you're shaky on, and what's on its mind."
 what = "Read from Brain's own files with no model call (under 50 ms): up to three concepts below solid from your quizzes and notes in the last two weeks, and the workspace's winners that aren't about you. Your read, tone, mood and body state never go in, so a cloud AI never gets them. Answers use it silently. Off, the workspace's winners go as they did in 0.8.13."
