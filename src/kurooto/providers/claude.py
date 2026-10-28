@@ -12,15 +12,26 @@ only, so there's nothing to undo.
 Settings: brain.models.claude {"low": "haiku", "medium": "sonnet", "high": "sonnet"} (any model name Claude Code
 takes), and your Claude sign-in (`claude` once, or Settings → AI → Test). An extra Claude account ("claude:work",
 providers/claude_accounts.py) is the same brain run with CLAUDE_CONFIG_DIR set to its own folder of Kurooto's.
+
+(0.8.17, brain.claude.session) A conversation's requests (Task.session: a chat's, spoken ones too) go to one Claude
+Code kept running for it (Session, `--input-format stream-json`), one message a turn, instead of a new program each
+time: the same command, permissions, tools and folders as a run of its own, so it may do nothing more. It closes after
+brain.claude.session_idle_min, when its AI or the switch changes, and with Kurooto; a failed one hands the turn to a
+run of its own.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import queue
 import re
+import shutil
 import tempfile
+import threading
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -49,6 +60,13 @@ MONTHS = ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", 
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 DENIAL_NAMES = 5  # how many refused tools the log line names
 SCRATCH_NO = {"mkdir", "echo"}  # commands a change request doesn't get: they could write outside its scratch folder
+SESSIONS_MAX = 2  # (brain.claude.session) Claude Code programs kept at once; the longest idle goes first
+IDLE_MIN = 10  # brain.claude.session_idle_min's default
+REAP_S = 15  # how often kept programs are looked at
+FIRST_S = 45  # a new one silent this long after its first message: it isn't answering that way (a run of its own)
+SAID_KEEP = 40  # messages and answers a session remembers it saw (to leave out chat's history it already has)
+HISTORY, CURRENT = "Previous conversation:\n", "\nCurrent request:\n"  # chat's request with history (modules/chat.py)
+NEWS = "[New since this conversation began; where it differs from your instructions, this wins:]"
 
 
 def reset_at(text: str, now: float | None = None) -> float | None:
@@ -363,6 +381,203 @@ def stream_run(
     return proc.Result(code, "".join(out), b"".join(err).decode("utf-8", "replace"))
 
 
+def _bare(line: str) -> str:
+    line = line.strip()
+    for head in ("User: ", "Assistant: "):
+        if line.startswith(head):
+            return line[len(head) :].strip()
+    return line
+
+
+class Session:
+    """(0.8.17, brain.claude.session) One Claude Code kept running for a conversation: its stream-json input gets one
+    message a turn and its output is read as a run of its own is, up to the turn's result line. Its files (settings,
+    tools, the first turn's context) live in `tmp` until it closes; the request a turn belongs to is in tmp/job, which
+    Kurooto's tools read (core/mcp.py ENV_JOB_FILE), so tool uses count for the right request. One turn at a time
+    (`lock`). It ends by its own pid only: stdin closed, then its tree killed if it's still there."""
+
+    def __init__(self, args: list[str], tmp: Path, *, cwd=None, env=None, context: str = "", app=None, idle_s=600):
+        import subprocess
+
+        self.tmp, self.app, self.idle_s = tmp, app, idle_s
+        self.main = str(app.settings.get("brain.main") or "") if app is not None else ""
+        self.p = subprocess.Popen(
+            proc.resolve_cmd_shim(args[0]) + list(args[1:]),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=cwd,
+            env=env,
+            creationflags=subprocess.CREATE_NO_WINDOW if proc.WINDOWS else 0,
+            start_new_session=not proc.WINDOWS,
+        )
+        if not proc.WINDOWS:
+            from kurooto.core import children
+
+            children.session(self.p.pid)
+        self.lock = threading.Lock()
+        self.used = time.monotonic()
+        self.turns = 0
+        self.known = set(context.splitlines())  # the context lines it was started with, or told since
+        self.said: list[str] = []
+        self.lines: queue.Queue = queue.Queue()
+        self.err: list[str] = []
+        threading.Thread(target=self._read, name="claude-session", daemon=True).start()
+        threading.Thread(target=self._read_err, name="claude-session-err", daemon=True).start()
+
+    def _read(self) -> None:
+        try:
+            for raw in self.p.stdout:
+                self.lines.put(raw.decode("utf-8", "replace"))
+        except (OSError, ValueError):
+            pass
+        self.lines.put(None)  # it ended
+
+    def _read_err(self) -> None:
+        try:
+            for raw in self.p.stderr:
+                self.err = [*self.err[-50:], raw.decode("utf-8", "replace")]
+        except (OSError, ValueError):
+            pass
+
+    def alive(self) -> bool:
+        return self.p.poll() is None
+
+    def message(self, prompt: str, context: str) -> str:
+        """What this turn sends: chat's "Previous conversation" left out when it saw all of it already (it's in its
+        own context), and the context's lines it wasn't given yet (the time, what's remembered for this request)."""
+        body = prompt
+        if self.turns and prompt.startswith(HISTORY) and CURRENT in prompt:
+            hist, cur = prompt[len(HISTORY) :].split(CURRENT, 1)
+            seen = "\n".join(self.said)
+            if all(_bare(x) in seen for x in hist.splitlines() if _bare(x)):
+                body = cur
+        new = [x for x in context.splitlines() if x.strip() and x not in self.known]
+        self.known.update(new)
+        if new:
+            body = NEWS + "\n" + "\n".join(new) + "\n\n" + body
+        return body
+
+    def turn(self, text: str, job: str, timeout: float, on_line=None) -> proc.Result | None:
+        """One message, read up to its result line. None when it failed (gone, ended without one, or a new one said
+        nothing for FIRST_S): the caller runs the request on its own. Past the timeout it's closed, and the result
+        says so (code None)."""
+        while not self.lines.empty():  # nothing of an earlier turn is read as this one's
+            if self.lines.get_nowait() is None:
+                return None
+        self.err = []
+        try:
+            (self.tmp / "job").write_text(job, encoding="utf-8")
+            msg = {"type": "user", "session_id": "", "message": {"role": "user", "content": text}}
+            self.p.stdin.write((json.dumps({**msg, "parent_tool_use_id": None}) + "\n").encode("utf-8"))
+            self.p.stdin.flush()
+        except (OSError, ValueError):
+            return None
+        self.said = [*self.said[-SAID_KEEP:], text]
+        end = time.monotonic() + timeout
+        quiet = time.monotonic() + FIRST_S if not self.turns else None
+        out: list[str] = []
+        while True:
+            left = end - time.monotonic()
+            if quiet is not None and not out and time.monotonic() > quiet:
+                return None
+            if left <= 0:  # as a run of its own: its whole tree killed at the timeout
+                proc.kill_tree(self.p.pid)
+                self.close()
+                return proc.Result(None, "".join(out), "".join(self.err))
+            try:
+                line = self.lines.get(timeout=min(left, 1.0))
+            except queue.Empty:
+                continue
+            if line is None:
+                return None
+            out.append(line)
+            if on_line is not None:
+                try:
+                    on_line(line)
+                except Exception:
+                    pass
+            if '"result"' in line:
+                try:
+                    d = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(d, dict) and d.get("type") == "result":
+                    self.said = [*self.said[-SAID_KEEP:], str(d.get("result") or "")]
+                    break
+        self.turns += 1
+        self.used = time.monotonic()
+        return proc.Result(0, "".join(out), "".join(self.err))
+
+    def close(self) -> None:
+        """Its stdin closed (it ends by itself), and a few seconds later its tree killed by its pid if it's still
+        there; its files go."""
+        try:
+            self.p.stdin.close()
+        except (OSError, ValueError):
+            pass
+
+        def end() -> None:
+            try:
+                self.p.wait(timeout=5)
+            except Exception:
+                proc.kill_tree(self.p.pid)
+            shutil.rmtree(self.tmp, ignore_errors=True)
+
+        threading.Thread(target=end, name="claude-session-end", daemon=True).start()
+
+    def stale(self, now: float) -> bool:
+        """Idle too long, gone, or its AI or the switch changed meanwhile."""
+        if not self.alive() or now - self.used > self.idle_s:
+            return True
+        if self.app is None:
+            return False
+        s = self.app.settings
+        return not s.get("brain.claude.session", True) or str(s.get("brain.main") or "") != self.main
+
+
+_SESSIONS: dict[tuple[str, str], Session] = {}  # (conversation, what its command is) -> its program
+_POOL = threading.Lock()
+_REAPER: list[threading.Thread] = []
+
+
+def reap(now: float | None = None) -> int:
+    """Close the kept programs that are idle too long, gone, or out of date (not one at work). How many closed."""
+    now = time.monotonic() if now is None else now
+    gone = []
+    with _POOL:
+        for k, s in list(_SESSIONS.items()):
+            if s.stale(now) and s.lock.acquire(blocking=False):
+                gone.append(_SESSIONS.pop(k))
+    for s in gone:
+        s.close()
+    return len(gone)
+
+
+def _reaper() -> None:
+    while True:
+        time.sleep(REAP_S)
+        reap()
+        with _POOL:
+            if not _SESSIONS:
+                _REAPER.clear()
+                return
+
+
+def close_sessions() -> None:
+    """Every kept Claude Code closed now (Kurooto is stopping): killed by its pid, its files gone."""
+    with _POOL:
+        gone = list(_SESSIONS.values())
+        _SESSIONS.clear()
+    for s in gone:
+        try:
+            s.p.stdin.close()
+        except (OSError, ValueError):
+            pass
+        proc.kill_tree(s.p.pid)
+        shutil.rmtree(s.tmp, ignore_errors=True)
+
+
 class ClaudeCode(Brain):
     id = "claude"
     label = "Claude Code"  # the brain's name everywhere; "Advanced" is only the setup page's grouping (web/api.py)
@@ -450,10 +665,122 @@ class ClaudeCode(Brain):
             args += ["--model", self.models[task.effort]]
         return args
 
+    def keeps(self) -> bool:
+        """(brain.claude.session) Are a conversation's requests sent to a Claude Code kept running for it?"""
+        return self.app is None or bool(self.app.settings.get("brain.claude.session", True))
+
+    def _session_run(self, task: Task):
+        """(brain.claude.session) The request as a turn of its conversation's kept Claude Code: (result, seconds), or
+        None for a run of its own (that one busy, or it failed before answering; a stopped request isn't run again).
+        Its command is a run of its own's, made the same way, with its stream-json input; a different command (other
+        settings, model, effort or permissions) is another program."""
+        from kurooto.core.mcp import ENV_JOB, ENV_JOB_FILE
+
+        tmp = Path(tempfile.mkdtemp(prefix="kurooto-claude-"))
+        env = {k: v for k, v in task.mcp_env.items() if k != ENV_JOB}
+        env[ENV_JOB_FILE] = str(tmp / "job")
+        args = self.args(replace(task, context="", mcp_env=env, on_text=lambda k, t: None), tmp)
+        args += ["--input-format", "stream-json"]
+        shape = [a.replace(str(tmp), "<tmp>") for a in args]
+        for name in ("settings.json", "mcp.json"):
+            f = tmp / name
+            if f.exists():
+                text = f.read_text(encoding="utf-8")
+                shape.append(text.replace(json.dumps(str(tmp))[1:-1], "<tmp>"))
+        shape += [str(task.cwd), str(self.config_dir)]
+        key = (task.session, hashlib.sha256(json.dumps(shape).encode("utf-8")).hexdigest())
+        afresh = not task.prompt.startswith(HISTORY)  # chat sent no history: the conversation began again
+        own = None
+        with _POOL:
+            s = _SESSIONS.get(key)
+            if s is not None:
+                if not s.lock.acquire(blocking=False):  # at work on another request: this one runs on its own
+                    shutil.rmtree(tmp, ignore_errors=True)
+                    return None
+                if not s.alive() or (afresh and s.turns):
+                    _SESSIONS.pop(key)
+                    own, s = s, None
+        if own is not None:
+            own.close()
+        if s is not None:
+            shutil.rmtree(tmp, ignore_errors=True)
+        else:
+            if task.context:
+                c = tmp / "context.md"
+                c.write_text(task.context, encoding="utf-8")
+                args += ["--append-system-prompt-file", str(c)]
+            idle = (self.app.settings.get("brain.claude.session_idle_min") if self.app is not None else None) or 0
+            try:
+                s = Session(
+                    args, tmp, cwd=task.cwd, env=self.env(), context=task.context, app=self.app,
+                    idle_s=60 * (float(idle) if float(idle) > 0 else IDLE_MIN),
+                )  # fmt: skip
+            except OSError:
+                shutil.rmtree(tmp, ignore_errors=True)
+                return None
+            s.lock.acquire()
+            evict = []
+            with _POOL:
+                pooled = key not in _SESSIONS
+                if pooled:
+                    _SESSIONS[key] = s
+                    for k, o in sorted(_SESSIONS.items(), key=lambda kv: kv[1].used):
+                        if len(_SESSIONS) <= SESSIONS_MAX:
+                            break
+                        if o is not s and o.lock.acquire(blocking=False):
+                            evict.append(_SESSIONS.pop(k))
+                    if not _REAPER:
+                        _REAPER.append(threading.Thread(target=_reaper, name="claude-sessions", daemon=True))
+                        _REAPER[0].start()
+            for o in evict:
+                o.close()
+            if not pooled:  # another request opened one for it meanwhile: this one is for this turn only
+                s.idle_s = 0
+        try:
+            if task.on_process is not None:
+                try:
+                    task.on_process(s.p.pid)  # cancelling the request stops the program (the next turn opens one)
+                except Exception:
+                    pass
+            text = s.message(task.prompt, task.context)
+            egress.handed("Claude Code", "AI requests")
+            t0 = time.monotonic()
+            r = s.turn(
+                text,
+                str(task.mcp_env.get(ENV_JOB) or ""),
+                task.timeout_s + self.grace_s,
+                on_line=Lines(task.on_text).line if task.on_text is not None else None,
+            )
+            secs = time.monotonic() - t0
+        finally:
+            s.lock.release()
+        if r is None or r.code is None or s.idle_s == 0:  # failed, timed out (closed), or for this turn only
+            with _POOL:
+                if _SESSIONS.get(key) is s:
+                    _SESSIONS.pop(key)
+            s.close()
+        if r is None:
+            if task.stop is not None and task.stop.is_set():
+                return proc.Result(-9, "", "stopped"), secs
+            return None
+        return r, secs
+
     def run(self, task: Task) -> Result:
         if not self.exe:
             return Result(Verdict.ERROR, detail="Claude Code isn't installed")
         minutes = max(1, task.timeout_s // 60)
+        got = None
+        if task.session and self.keeps():
+            try:
+                got = self._session_run(task)
+            except Exception:  # a kept program's mistake never costs the request: it runs on its own
+                got = None
+        if got is not None:
+            r, secs = got
+            result = self.verdict(r, secs, minutes)
+            result.model = result.model or self.models.get(task.effort) or ""
+            self.metered(None, result)
+            return result
         with tempfile.TemporaryDirectory() as tmp:
             args = self.args(task, Path(tmp))
             egress.handed("Claude Code", "AI requests")  # what it sends to Anthropic, it sends itself

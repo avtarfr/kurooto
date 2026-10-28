@@ -166,6 +166,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `brain.agy.io_mode` | `"pipe"` | How Kurooto talks to the agy program: through a pipe, or a pseudo-terminal. ([guide](wiki/user/settings-guide.md#brainagyiomode)) |
 | `brain.base_urls` | `{}` | Another address for an AI's service, in place of its preset. ([guide](wiki/user/settings-guide.md#brainbaseurls)) |
 | `brain.classify` | `"rules"` | Who decides how hard a request is (and so how much effort it gets). ([guide](wiki/user/settings-guide.md#brainclassify)) |
+| `brain.claude.session` | `true` | Keep Claude Code running between turns of a conversation, so each message doesn't start it again. ([guide](wiki/user/settings-guide.md#brainclaudesession)) |
+| `brain.claude.session_idle_min` | `10` | Minutes a kept Claude Code waits for your next message before it closes. ([guide](wiki/user/settings-guide.md#brainclaudesessionidlemin)) |
 | `brain.claude_accounts` | `{}` | Your extra Claude accounts, each its own AI you can pick (`claude:<name>`). ([guide](wiki/user/settings-guide.md#brainclaudeaccounts)) |
 | `brain.effort_map` | `{}` | Effort changes Dreaming learned for your requests, e.g. low ones run at medium. ([guide](wiki/user/settings-guide.md#braineffortmap)) |
 | `brain.fallback` | `""` | Which AI takes over when your main one can't answer, in order. ([guide](wiki/user/settings-guide.md#brainfallback)) |

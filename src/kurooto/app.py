@@ -858,6 +858,9 @@ class App:
                         self.events.emit("module_failed", module=m.id, error=f"at shutdown: {e}"[:300])
         self.scheduler.close()
         self.jobs.close()
+        from kurooto.providers.claude import close_sessions  # (brain.claude.session) its kept programs end
+
+        close_sessions()
         from kurooto.core import ledger
 
         ledger.close(self)

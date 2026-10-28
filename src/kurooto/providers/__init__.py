@@ -46,6 +46,7 @@ register_defaults(
         "fallback": "",
         "classify": "rules",
         "agy": {"io_mode": "pipe"},
+        "claude": {"session": True, "session_idle_min": 10},  # (0.8.17) a conversation's Claude Code kept running
         "models": {},  # per brain: {"custom": {"low": ..., "medium": ..., "high": ...}}
         "base_urls": {},  # per brain, to override a preset's address
         "timeout_min": {"low": 10, "medium": 15, "high": 30},

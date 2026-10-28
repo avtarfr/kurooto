@@ -36,9 +36,16 @@ class Chat(Module):
         super().__init__(app)
         self.dir = app.paths.state / "chat"
         self.mine: set[str] = set()  # the requests chat sent: only their answers become the conversation
+        self.turns: dict[str, str] = {}  # (0.8.17) request -> its conversation ("main" or a session's id)
 
     def owns(self, jid: str) -> bool:
         return jid in self.mine
+
+    def conversation(self, jid: str) -> str:
+        """(0.8.17) The conversation a request of chat's is a turn of ("main", or a phone app chat's id); "" for one
+        on its own (the terminal's, another feature's). An AI may keep a program running for it
+        (brain.claude.session)."""
+        return self.turns.get(jid, "")
 
     # ------------------------------------------------------------------------------ sessions (0.8.10)
     def session_file(self, sid: str):
@@ -146,6 +153,8 @@ class Chat(Module):
         self.mine = {*list(self.mine)[-50:], jid}
         if sid:
             self._job_session(jid, sid)
+        if not terminal:
+            self.turns = {**dict(list(self.turns.items())[-50:]), jid: sid or MAIN}
         return helper.waiting_line() if waits else "On it."
 
     def _main(self):

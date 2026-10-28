@@ -2,6 +2,11 @@
 
 ## 0.8.17 (unreleased)
 
+- **Claude Code stays running for a conversation** (`brain.claude.session`, on): your chat's and voice's turns go to
+  one Claude Code kept running for that conversation instead of starting the program for every message, so answers
+  start sooner. Same permissions, tools and folders as before; it closes after 10 idle minutes
+  (`brain.claude.session_idle_min`), when you change your AI or start the chat over, and if it fails that turn is
+  answered the old way.
 - **Voice says the whole answer.** Barge-in stopped an answer for good whenever a voice that passed as yours was
   heard over it, even an "mm", a cough or a word to someone else, and the rest went unsaid. Now it goes quiet at once,
   and unless what you said was "stop" or a new question or request, it carries on from the start of the sentence it

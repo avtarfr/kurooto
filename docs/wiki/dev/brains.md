@@ -118,9 +118,24 @@ The user's view (choosing an AI, limits, fallbacks): [../user/ai-brains.md](../u
   thread). `Lines` turns the lines into `on_text(message id, text so far)`: `content_block_delta` text deltas, else a
   whole `assistant` message (block by block or whole); `parent_tool_use_id` (a subagent) is skipped; non-JSON lines
   are ignored. The last line is the same `result` object as `--output-format json`, so `verdict()` is unchanged.
-  Without `on_text` the command line and `proc.run` are exactly as before. A kept-warm process (`--input-format
-  stream-json`) isn't used: permissions, MCP servers and the appended context are fixed when the process starts, and
-  each request has its own.
+  Without `on_text` the command line and `proc.run` are exactly as before.
+- Kept per conversation (0.8.17, `brain.claude.session`, on; `brain.claude.session_idle_min`, 10): a request with
+  `Task.session` set (`core/jobs.py:_conversation` from `modules/chat.py:Chat.conversation`: `"main"` or a phone app
+  chat's id; never the terminal's, a guest's or a change request) goes to `_session_run()`, a `Session` that runs the
+  command `args()` makes (always stream-json, plus `--input-format stream-json`) and gets one
+  `{"type": "user", "message": {...}}` line per turn, read up to that turn's `result` line, so `Lines` and `verdict()`
+  are unchanged. Sessions are keyed by (conversation, sha256 of the command and its settings.json/mcp.json with the
+  temp folder blanked, cwd, account folder): another effort, model, permissions or text-only is another program, so
+  nothing it may do changes. The context file is the first turn's context; later turns send the context lines it
+  wasn't given yet (`NEWS`, e.g. the time and what was recalled) and leave out chat's `Previous conversation` block
+  when every line of it was already sent or answered there (`Session.message`); a prompt without that block (cleared,
+  or quiet for 2 hours) opens a new program. Kurooto's tools find the request through `KUROOTO_JOB_FILE`
+  (`core/mcp.py:job_id`, written each turn) instead of `KUROOTO_JOB`. One turn at a time (`Session.lock`): a second
+  request at once runs on its own. A session that's gone, ends without a result, or says nothing for `FIRST_S` (45 s)
+  on its first turn returns None and the turn runs on its own (not after a cancel). `reap()` (a thread, every
+  `REAP_S`) closes idle, dead, switched-off ones and those opened under another `brain.main`; at most `SESSIONS_MAX`
+  (2) are kept, the longest idle evicted. Closing: stdin closed, then `proc.kill_tree(pid)` after 5 s; `App.close()`
+  calls `close_sessions()`. `task.on_process(pid)` is told the session's pid each turn, so a cancel ends it.
 
 ### Extra Claude accounts (`providers/claude_accounts.py`, 0.7.0)
 
