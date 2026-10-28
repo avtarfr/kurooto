@@ -248,6 +248,11 @@ you're back when it recognises you or someone types. Two more switches use it:
 - `face.away.hold_calls`: while you're away, calls wait as they do during a class (a no-call time), until you're back
   or at most an hour (`face.away.hold_max_min`).
 
+Other features may use whether you're at your desk, each behind its own switch (0.9.0): the Study tracker's "on
+paper?" and pause/resume offers in a focus (`study.face`, off), the exam debrief that waits until you're back
+(`exam_season.debrief_at_desk`, off), and the focus offered when a planned block starts (`agent_plan.start_focus`).
+They only offer; nothing is recorded about you being away, and no frame is kept.
+
 ## Learning over time
 
 Off by default (`face.learn.on`, "Learn slowly from confident sightings" on the card). When on, a sighting can refine

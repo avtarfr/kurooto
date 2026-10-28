@@ -238,6 +238,12 @@ No Stop; only Another time. When sent as urgent they always come.
 | Message | Feature | Setting | Stop | Fewer | Later | Monthly |
 |---|---|---|---|---|---|---|
 | a reminder a day before something on your deadline list is due (Done / Not mine / Snooze 3 h) | Deadlines | `deadlines.ping_h` | no more day-ahead reminders; the last few hours' ones still come | | yes | |
+| a moved deadline's plan blocks: Remove or Keep (0.9.0) | Agent plan calendar | | yes | | yes | |
+| a block of yours starts: a focus for it? (0.9.0, at your desk) | Agent plan calendar | `agent_plan.start_focus` | yes | | yes | |
+| a share of free time from your pace (0.9.0, weekly) | Start-by dates | `startby.learn_share` | yes | | yes | |
+| "on paper?", pause or resume in a focus (0.9.0) | Study tracker | `study.face` | yes | | | |
+| at a saved place: start a study session? (0.9.0) | Study tracker | `study.places` | yes | | yes | |
+| at a saved place during a class: went to it? (0.9.0) | Subjects | `subjects.attend_by_place` | yes | | | |
 | deadlines and exams in a class calendar you subscribed to, with Add buttons | Calendar | `calendar.shared_offer` | they only show as events, without Add buttons | | yes | |
 | the call a few hours before a deadline | Deadlines | `deadlines.call` | no deadline calls; a message instead | | yes | |
 | "Overdue?" after a deadline passed (Done / New date / Drop) | Deadlines | `deadlines.overdue_check` | no more "Overdue?" | | yes | yes |

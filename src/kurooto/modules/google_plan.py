@@ -16,7 +16,8 @@ date then. A block for something done, dropped or over (a quiz this morning) isn
 
 Rescheduling the day ("reschedule my day", "push my day by 2 hours", "I just woke up, reschedule my day from 7", or
 on a call): the blocks you haven't done (still to come, and with a late start the ones you slept through) move to
-start then, each as long as it was, the breaks between them kept (at most GAP_MAX); pushing "by" some time moves only
+start then, each as long as it was, the breaks between them kept (at most GAP_MAX), and around your classes,
+commitments and calendar events (a block that would overlap one goes after it); pushing "by" some time moves only
 the ones not over yet, in their order. Starting over, what's due soonest goes first (blocks tied to nothing keep their
 places), and an order you give ("homework first, then quiz prep") comes before that. Blocks whose thing is done, over
 or moved past "due soon" (deadlines.plan_h) since they were planned are dropped and named. A block planned twice keeps
@@ -31,6 +32,7 @@ from __future__ import annotations
 
 import datetime as dt
 import re
+import time
 import urllib.parse
 import uuid
 
@@ -43,7 +45,21 @@ from kurooto.modules.calls.tools import Tool, arg
 from kurooto.modules.deadlines import STOP, similar, when_text
 from kurooto.modules.google import GoogleError, GooglePart, NeedsSignIn
 
-register_defaults("agent_plan", {"name": "Agent plan", "remind_min": 5})
+register_defaults(
+    "agent_plan",
+    {
+        "name": "Agent plan",
+        "remind_min": 5,
+        # (0.9.0) a call Kurooto places by itself (a check-in, a nudge; never one you asked for, never an alarm) waits
+        # for the end of a block of yours that's running (modules/calls)
+        "holds_calls": False,
+        # (0.9.0) when a block of yours starts and you're at your desk (Face presence or the computer in use), one
+        # message offers a Study mode focus for what it's for; the focus starts only on your tap
+        "start_focus": True,
+    },
+)
+FOCUS_EVERY = "every 5m"  # (start_focus) how often it looks for a block that just started
+BUSY_KEEP_S = 120  # (0.9.0) the blocks Start-by and Revision count as busy are fetched at most this often
 GAP_MAX = dt.timedelta(minutes=45)  # a reschedule keeps the breaks between blocks, up to this long
 LATEST_H = 3  # ... and fits blocks up to this hour after midnight
 SHIFT = re.compile(
@@ -107,6 +123,72 @@ class AgentPlan(GooglePart):
     @property
     def file(self):
         return self.app.paths.state / "agent-plan.json"
+
+    def start(self):
+        self.every("block_start", FOCUS_EVERY, lambda p: self.block_start())
+
+    def block_start(self, t: dt.datetime | None = None) -> bool:
+        """(0.9.0, agent_plan.start_focus) A block that started in the last five minutes, you at your desk: one offer
+        of a Study mode focus for its subject (modules/study.py), tied to the deadline it's for. Away from the desk:
+        nothing, and nothing is noted. True when it offered."""
+        if not self.setting("start_focus"):
+            return False
+        study = self.app.modules.get("study")
+        if study is None or not self.app.is_on("study"):
+            return False
+        t = t or now()
+        st = jload(self.file, {}) or {}
+        b = next(
+            (
+                b
+                for b in (st.get("days") or {}).get(t.date().isoformat()) or []
+                if t - dt.timedelta(minutes=5) <= dt.datetime.fromisoformat(b["start"]) <= t
+            ),
+            None,
+        )
+        key = f"{b['start'][:16]}|{b['title']}" if b else ""
+        if b is None or key in (st.get("focus_offered") or []) or study.timer().get("ends"):
+            return False
+        try:
+            from kurooto.mind import presence_forecast as pf
+
+            if not pf.at_desk(self.app):
+                return False
+        except Exception:
+            return False
+        src = self.source(b["title"], t.date())
+        it = src[1] if src else {}
+        slug = it.get("subject") or (self._deadlines().subject_of(b["title"]) if self._deadlines() else None)
+        if not slug:
+            return False
+        with Lock(self.app.paths.state, "agent-plan"):
+            st = jload(self.file, {}) or {}
+            st["focus_offered"] = [*(st.get("focus_offered") or [])[-20:], key]
+            st["focus_pending"] = {"subject": slug, "item": src[0] if src else ""}
+            jsave(self.file, st)
+        mins = int(float(self.app.settings.get("study.focus_min") or 25))
+        self.app.notify(
+            f"Your block {b['title']} starts now. Start a {mins}-minute focus for it? Calls and messages wait till "
+            "it ends.",
+            kind="info",
+            why="agent_plan.start_focus",
+            buttons=[[(f"Start {mins} min", "apl:focus:start")]],
+            about=b["title"],
+        )
+        self.app.events.emit("plan_focus_offered")
+        return True
+
+    def _focus_answer(self) -> str:
+        with Lock(self.app.paths.state, "agent-plan"):
+            st = jload(self.file, {}) or {}
+            p = st.pop("focus_pending", None)
+            jsave(self.file, st)
+        study = self.app.modules.get("study")
+        if not p:
+            return "That offer is over."
+        if study is None or not self.app.is_on("study"):
+            return "The Study tracker is off."
+        return study.timer_start(p["subject"], deadline=p.get("item") or None)
 
     def plan_ready(self) -> bool:
         return self.app.is_on(self.id) and self.ready()[0]
@@ -182,7 +264,60 @@ class AgentPlan(GooglePart):
         self._remember(day, out)
         return out
 
+    def busy(self, t0: dt.datetime, until: dt.datetime) -> list[tuple[dt.datetime, dt.datetime]]:
+        """(0.9.0) Kurooto's own blocks between t0 and `until` as busy times, the one ledger Start-by's free time and
+        Revision read (modules/startby.py, modules/revision.py): time you've planned is not free for something else.
+        One request, kept BUSY_KEEP_S seconds (a block planned, moved or removed here clears it). Not set up, signed
+        out or Google unreachable: no busy time, the way it was before."""
+        if not self.plan_ready():
+            return []
+        key = (t0.replace(second=0, microsecond=0), until.replace(second=0, microsecond=0))
+        memo = getattr(self, "_busy_memo", None)
+        if memo and memo[0] == key and time.monotonic() - memo[1] < BUSY_KEEP_S:
+            return list(memo[2])
+        try:
+            cid = self.calendar_id(create=False)
+            if not cid:
+                return []
+            q = {
+                "timeMin": t0.astimezone().isoformat(),
+                "timeMax": until.astimezone().isoformat(),
+                "singleEvents": "true",
+                "orderBy": "startTime",
+                "maxResults": 250,
+            }
+            items = self.google.api("calendar", f"{self._events_path(cid)}?{urllib.parse.urlencode(q)}").get(
+                "items", []
+            )
+        except Exception as e:  # signed out, offline, the calendar deleted: plan as if there were no blocks
+            self.app.events.emit("agent_plan_failed", error=f"busy: {type(e).__name__}"[:120])
+            return []
+        out = []
+        for e in items:
+            s, f = (e.get("start") or {}).get("dateTime"), (e.get("end") or {}).get("dateTime")
+            if not s or not f or e.get("status") == "cancelled":
+                continue
+            a, b = (dt.datetime.fromisoformat(x).astimezone().replace(tzinfo=None) for x in (s, f))
+            if b > a:
+                out.append((a, b))
+        self._busy_memo = (key, time.monotonic(), out)
+        return list(out)
+
+    def running_block(self, t: dt.datetime | None = None) -> dict | None:
+        """(0.9.0) The block of yours running at t (default now), from the blocks remembered for today; None."""
+        t = t or now()
+        st = jload(self.file, {}) or {}
+        for b in (st.get("days") or {}).get(t.date().isoformat()) or []:
+            try:
+                a, f = dt.datetime.fromisoformat(b["start"]), dt.datetime.fromisoformat(b["end"])
+            except (KeyError, ValueError):
+                continue
+            if a <= t < f:
+                return {"title": b.get("title") or "", "start": a, "end": f}
+        return None
+
     def _remember(self, day: dt.date, blocks: list[dict]) -> None:
+        self._busy_memo = None  # a change here: Start-by asks Google again
         with Lock(self.app.paths.state, "agent-plan"):
             st = jload(self.file, {}) or {}
             days = {
@@ -336,6 +471,7 @@ class AgentPlan(GooglePart):
 
     # -------------------------------------------------------------------------------------- reschedule
     def _delete(self, cid: str, eid: str) -> None:
+        self._busy_memo = None
         try:
             self.google.api("calendar", f"{self._events_path(cid)}/{urllib.parse.quote(eid, safe='')}", method="DELETE")
         except GoogleError as e:
@@ -427,10 +563,15 @@ class AgentPlan(GooglePart):
         if start is None and todo:
             start = todo[0]["start"] + by if by else soon  # pushed: each block that much later
         todo, unnamed = self._arrange(todo, order) if missed or order else (todo, [])
+        busy = self._busy_else(min(start, t), latest)
         new, left, cur = [], [], start
         for gap, b in zip(gaps, todo, strict=False):
             cur += gap
             end = cur + (b["end"] - b["start"])
+            for s, f in busy:  # 0.9.0: a class, a commitment or an event in the way: the block goes after it
+                if s < end and f > cur:
+                    cur = max(cur, f)
+                    end = cur + (b["end"] - b["start"])
             if end > latest:
                 left.append(b)
             else:
@@ -464,6 +605,33 @@ class AgentPlan(GooglePart):
             pass
         self.app.events.emit("plan_rescheduled", moved=len(new), dropped=len(gone), left=len(left), stale=len(stale))
         return "Your day, from now:\n" + "\n".join(lines) + "\n(/blocks undo puts it back.)"
+
+    def _busy_else(self, a: dt.datetime, b: dt.datetime) -> list[tuple[dt.datetime, dt.datetime]]:
+        """What a reschedule keeps clear between a and b, soonest first: classes you go to (Subjects, skips left
+        out), commitments (Commitments) and your calendar's timed events (Calendar), as naive local times. A feature
+        that's off or fails adds nothing."""
+        out = []
+        day = a.date() - dt.timedelta(days=1)
+        for mid, get in (("subjects", "classes_on"), ("commitments", "on")):
+            m = self.app.modules.get(mid)
+            if m is None or not self.app.is_on(mid):
+                continue
+            d = day
+            while d <= b.date():
+                try:
+                    out += [(c["start_dt"], c["end_dt"]) for c in getattr(m, get)(d)]
+                except Exception:
+                    break
+                d += dt.timedelta(days=1)
+        cal = self.app.modules.get("calendar")
+        if cal is not None and self.app.is_on("calendar"):
+            try:
+                for e in cal.events(a.astimezone(), b.astimezone()):
+                    if not e.get("all_day"):
+                        out.append(tuple(x.astimezone().replace(tzinfo=None) for x in (e["start_dt"], e["end_dt"])))
+            except Exception:
+                pass
+        return sorted((s, f) for s, f in out if f > a and s < b and f > s)
 
     def _unplanned(self, until: dt.datetime, tied: set[str]) -> list[str]:
         """What's due between now and `until` that no block is for: "Bayesian: Quiz (Thu 29 Oct 10:00)"."""
@@ -527,8 +695,98 @@ class AgentPlan(GooglePart):
         self.app.events.emit("plan_reschedule_undone", back=back)
         return f"Put {back} block{'s' if back != 1 else ''} back where they were (the ones already past stay gone)."
 
+    # ---------------------------------------------------------------------------- a deadline that moved
+    def deadline_changed(self, j: str, what: str) -> None:
+        """(0.9.0) A deadline moved (modules/deadlines.py): its blocks still ahead in Kurooto's calendar get "(moved to
+        ...)" in their titles and one message asks Remove or Keep. Nothing is removed without that tap."""
+        if what != "moved" or not self.plan_ready():
+            return
+        dl = self._deadlines()
+        it = (dl.items() if dl is not None else {}).get(j)
+        cid = self.calendar_id(create=False)
+        if not it or not cid:
+            return
+        t = now()
+        q = {
+            "timeMin": t.astimezone().isoformat(),
+            "timeMax": (t + dt.timedelta(days=31)).astimezone().isoformat(),
+            "singleEvents": "true",
+            "orderBy": "startTime",
+            "maxResults": 250,
+        }
+        items = self.google.api("calendar", f"{self._events_path(cid)}?{urllib.parse.urlencode(q)}").get("items", [])
+        mine = [e for e in items if ((e.get("extendedProperties") or {}).get("private") or {}).get("item") == j]
+        mark = f" (moved to {when_text(it['due'])})"
+        rows = []
+        for e in mine:
+            s_, f_ = (e.get("start") or {}).get("dateTime"), (e.get("end") or {}).get("dateTime")
+            if not s_ or not f_ or e.get("status") == "cancelled":
+                continue
+            a, b = (dt.datetime.fromisoformat(x).astimezone().replace(tzinfo=None) for x in (s_, f_))
+            old = re.sub(r" \(moved to [^)]*\)$", "", e.get("summary") or "")
+            due = ((e.get("extendedProperties") or {}).get("private") or {}).get("due") or ""
+            self._delete(cid, e["id"])
+            self.plan_block(a, b, old + mark, j, due=due, check=False)
+            rows.append({"title": old, "start": a.isoformat(), "end": b.isoformat(), "item": j, "due": due})
+        if not rows:
+            return
+        with Lock(self.app.paths.state, "agent-plan"):
+            st = jload(self.file, {}) or {}
+            st.setdefault("moved", {})[j] = {"blocks": rows, "mark": mark}
+            jsave(self.file, st)
+        n = f"{len(rows)} plan block{'s' if len(rows) != 1 else ''}"
+        name = dl.full_title(it) if dl is not None else it["title"]
+        self.app.notify(
+            f"{name} moved to {when_text(it['due'])}: remove its {n} from your Agent plan calendar?",
+            kind="info",
+            title="Plan blocks",
+            why="agent_plan.moved",
+            buttons=[[("Remove", f"apl:mv{j}:remove"), ("Keep", f"apl:mv{j}:keep")]],
+            about=name,
+            item=j,
+        )
+        self.app.events.emit("plan_moved_offered", blocks=len(rows))
+
+    def _moved_answer(self, j: str, remove: bool) -> str:
+        """Remove: the blocks go (/blocks undo puts them back). Keep: their titles go back to what they were."""
+        with Lock(self.app.paths.state, "agent-plan"):
+            st = jload(self.file, {}) or {}
+            rec = (st.get("moved") or {}).pop(j, None)
+            jsave(self.file, st)
+        if not rec:
+            return "Already answered."
+        cid = self.calendar_id(create=False)
+        if not cid:
+            return "The Agent plan calendar is gone, so there's nothing to change."
+        old = []
+        for r in rec["blocks"]:
+            a, b = dt.datetime.fromisoformat(r["start"]), dt.datetime.fromisoformat(r["end"])
+            hit = next(
+                (x for x in self.plan_blocks(a.date()) if x["start"] == a and x["title"] == r["title"] + rec["mark"]),
+                None,
+            )
+            if hit is None:
+                continue  # moved or removed since
+            self._delete(cid, hit["id"])
+            old.append({**hit, "title": r["title"], "item": r["item"], "due": r["due"]})
+            if not remove:
+                self.plan_block(a, b, r["title"], r["item"] or None, due=r["due"], check=False)
+        self.app.events.emit("plan_moved_answered", removed=bool(remove), blocks=len(old))
+        if not remove:
+            return "Kept: the blocks stay where they are."
+        self._keep_undo(old, [])
+        return f"Removed {len(old)} block{'s' if len(old) != 1 else ''}. (/blocks undo puts them back.)"
+
     def _button(self, ref: str, act: str) -> str:
-        """Undo under a removal: only while it's still the last change to the plan."""
+        """Undo under a removal: only while it's still the last change to the plan. Remove / Keep under a deadline
+        that moved (0.9.0)."""
+        if ref == "focus" and act == "start":
+            return self._focus_answer()
+        if ref.startswith("mv") and act in ("remove", "keep"):
+            try:
+                return self._moved_answer(ref[2:], act == "remove")
+            except (NeedsSignIn, GoogleError) as err:
+                return f"Google Calendar didn't take it: {err}"[:300]
         if act != "undo":
             return "That button is out of date."
         if ((jload(self.file, {}) or {}).get("undo") or {}).get("uid") != ref:

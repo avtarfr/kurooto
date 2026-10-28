@@ -108,11 +108,21 @@ tip = "Minutes before the exam the leave alarm goes, unless you say a time (\"le
 when = "Set it to your travel time plus a margin."
 needs = "`exam_season.leave_alarm`."
 
+[s."exam_season.in_calls"]
+tip = "The wake-up call and the night check-in name the exam that day or the next, when to leave, and a wake time to suggest."
+when = "Turn it off to keep those calls as they were. The alarm is still set only when you agree to a time."
+needs = "Exam season, with the Morning alarm or check-ins."
+
 [s."exam_season.debrief"]
 tip = "After each exam, a two-minute debrief that goes into the subject's course note."
 when = "Turn it off if you'd rather not look back right after an exam."
 cost = "Nothing: your debrief is saved as you said it."
 needs = "Exam season."
+
+[s."exam_season.debrief_at_desk"]
+tip = "The debrief waits until you're back at your desk or the phone arrives at the place you saved as home."
+when = "Turn it on if the debrief half an hour after the exam comes while you're still out. It comes 90 minutes after at the latest."
+needs = "Exam season; Face presence or the activity sense, or the phone's places."
 
 [s."exam_season.quiz_call_at"]
 tip = "When a quiz call you picked rings the evening before an exam."

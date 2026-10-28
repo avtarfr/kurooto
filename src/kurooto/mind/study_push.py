@@ -11,7 +11,9 @@ uneasy about when that's there (mind/status.py); else its feelings' concern abou
 empathy), else how close it is; less study logged and more quiz cards due break a tie. Nothing close enough: no line.
 
 Yes sets a reminder at the time offered (Reminders; else Start-by counts the deadline as started today). Later leaves
-it. Either way, that day the subject's separate nudges are folded into the line: the deadline's day-before reminder
+it. With mind.study_push.start_timer (on, 0.9.0) that reminder carries "Start 25 min": Study mode's timer for the
+subject, tied to the deadline (modules/study.py), started only by that tap; Study mode opens on that subject too.
+Either way, that day the subject's separate nudges are folded into the line: the deadline's day-before reminder
 (modules/deadlines.py), Start-by's "Time to start" (modules/startby.py) and exam mode's daily practice check-in
 (modules/quiz.py). The six-hour reminder, the overdue question and the evening-before practice offer still come.
 
@@ -43,6 +45,9 @@ register_defaults(
             "when": "daily 07:55",  # when the line comes (before Start-by's morning pass, so its nudge is folded)
             "minutes": 25,  # the study time it offers
             "horizon_days": 7,  # deadlines this far ahead can be what it's uneasy about
+            # (0.9.0) the reminder a Yes sets has a "Start 25 min" button (Study mode's timer, for that deadline), and
+            # Study mode and a tap on the uneasy glow pick that subject; the timer starts only on your tap
+            "start_timer": True,
         }
     },
 )
@@ -153,12 +158,20 @@ def slot(app: App, minutes: int, t: dt.datetime | None = None) -> dt.datetime | 
     sb = _on(app, "startby")
     if sb is not None:
         try:
+            rank = sb.rank() if hasattr(sb, "rank") else None  # 0.9.0: mind.presence_forecast.plan
+            fits, need = [], dt.timedelta(minutes=minutes)
             for a, b in sb.slots(t, end):
                 start = max(a, earliest)
                 start = start.replace(second=0, microsecond=0) + dt.timedelta(minutes=(-start.minute) % 15)
-                if b - start >= dt.timedelta(minutes=minutes):
-                    return start
-            return None
+                if b - start >= need:
+                    fits.append(start)
+                    hour = start.replace(minute=0) + dt.timedelta(hours=1)
+                    while rank is not None and hour + need <= b:  # each whole hour in it, to rank
+                        fits.append(hour)
+                        hour += dt.timedelta(hours=1)
+            if rank is not None and fits:
+                return max(fits, key=lambda s: (rank(s), -s.timestamp()))  # likeliest free, the earliest of equals
+            return fits[0] if fits else None
         except Exception:  # noqa: S110 (its free time couldn't be worked out: the plain guess below)
             pass
     start = (earliest + dt.timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
@@ -253,7 +266,8 @@ def _do(app: App, day: str, how: str = "yes") -> dict | None:
     if rem is not None:
         when = at if at and at > now() else now() + dt.timedelta(minutes=30)
         key = f"reminders:msp{day.replace('-', '')}"
-        rem.add(when, f"{minutes} min of {name} ({st.get('title') or 'the deadline'})", key=key)
+        start = _start_button(app, day)
+        rem.add(when, f"{minutes} min of {name} ({st.get('title') or 'the deadline'})", key=key, buttons=start)
         return {"said": f"{lead} I'll remind you at {when:%H:%M} for {minutes} min of {name}.",
                 "undo": {"day": day, "reminder": key}}  # fmt: skip
     sb = _on(app, "startby")
@@ -262,6 +276,42 @@ def _do(app: App, day: str, how: str = "yes") -> dict | None:
         return {"said": f"{'Noted' if how == 'yes' else 'I counted it as started'}: "
                 f"{st.get('title') or name} counts as started today.", "undo": {"day": day}}  # fmt: skip
     return {"said": f"Noted. {minutes} min of {name}" + (f" at {at:%H:%M}." if at else " today."), "undo": None}
+
+
+def start_timer_on(app: App) -> bool:
+    """(0.9.0) mind.study_push.start_timer, with the study tracker on."""
+    return on(app) and app.settings.get("mind.study_push.start_timer") is not False and _on(app, "study") is not None
+
+
+def _start_button(app: App, day: str) -> list | None:
+    """The "Start 25 min" row under the reminder a Yes sets (its length is Study mode's focus, study.focus_min)."""
+    if not start_timer_on(app):
+        return None
+    try:
+        mins = int(float(app.settings.get("study.focus_min") or 25))
+    except (TypeError, ValueError):
+        mins = 25
+    return [[(f"Start {mins} min", f"msp:{day}:start")]]
+
+
+def subject_today(app: App) -> str | None:
+    """(0.9.0) The subject today's line was about, for Study mode to open on (None: no line today, or the switch is
+    off)."""
+    if not start_timer_on(app):
+        return None
+    st = _state(app)
+    return st.get("subject") if st.get("day") == now().date().isoformat() else None
+
+
+def _start(app: App, day: str) -> str:
+    """Start under the reminder: Study mode's timer for the line's subject, tied to its deadline (your tap only)."""
+    st = _state(app)
+    if st.get("day") != day or not st.get("subject"):
+        return "That was for another day."
+    study = _on(app, "study")
+    if study is None or not start_timer_on(app):
+        return "Study mode's timer is off (Study tracker, or mind.study_push.start_timer)."
+    return study.timer_start(st["subject"], deadline=st.get("deadline"))
 
 
 def undo(app: App, payload: dict | None) -> str:
@@ -288,7 +338,9 @@ def folded(app: App, subject: str | None, what: str = "") -> bool:
 
 
 def button(app: App, day: str, act: str) -> str:
-    """msp:<day>:yes|later under the morning line."""
+    """msp:<day>:yes|later under the morning line; msp:<day>:start under the reminder a Yes set (0.9.0)."""
+    if act == "start":
+        return _start(app, day)
     with Lock(app.paths.state, "mind-study-push"):
         st = _state(app)
         if st.get("day") != day:

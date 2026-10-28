@@ -366,6 +366,13 @@ class Checkins(Module):
         night check-in is the goodnight call, so the night itself doesn't hold it."""
         av = self.app.availability
         reason, until = av.call_block()
+        hold = None
+        if not reason and name != "night":  # 0.9.0 (agent_plan.holds_calls): a block of yours that's running
+            calls = self.app.modules.get("calls")
+            hold = (
+                calls.plan_block_hold("checkins") if calls is not None and hasattr(calls, "plan_block_hold") else None
+            )
+            reason = hold[1] if hold else None
         if not reason:
             return None
         night = av.night(now())
@@ -374,7 +381,7 @@ class Checkins(Module):
                 return None
             when = until + dt.timedelta(minutes=1)
         else:
-            when, _ = av.next_callable()
+            when, _ = av.next_callable(hold[0] if hold else None)
         if self.day_of(when) != dt.date.fromisoformat(day) or (name != "night" and av.night(when)):
             return "message"  # too late for a call today
         self.app.scheduler.at(
@@ -1066,6 +1073,10 @@ class Checkins(Module):
             if due:
                 steps.append(f"Study logs still due for {', '.join(due)}: ask briefly what each covered.")
             steps.append("Ask tomorrow's top priority.")
+            es = app.modules.get("exam_season")
+            exam = es.call_line("tomorrow") if es is not None and app.is_on("exam_season") else ""
+            if exam:  # 0.9.0 (exam_season.in_calls): tomorrow's exam and a wake time to propose
+                steps.append(exam)
             steps.append(f"Ask when they want to wake up{alarm}.")
             steps.append(
                 "If they're too tired, call defer_checkin (the rest moves to the wake-up call) and just say goodnight."

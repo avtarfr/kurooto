@@ -58,6 +58,12 @@ register_defaults(
         "leave_alarm": True,  # on the exam day, an alarm to leave (a call with Phone calls on, else a message)
         "leave_min": 45,  # ...this long before the exam starts, unless you say a time ("leave 8:10")
         "debrief": True,  # after each exam: a two-minute debrief, into the subject's course note
+        # (0.9.0) the debrief waits for you to be back: at your desk (Face presence or the computer in use) or the
+        # phone arriving at a place you saved as "home", at the latest DEBRIEF_WAIT_MIN after the exam
+        "debrief_at_desk": False,
+        # (0.9.0) the wake-up call and the night check-in name the exam that day or the next, with when to leave and
+        # a wake time to propose (the alarm is still set only when you say so)
+        "in_calls": True,
         "no_calls": True,  # no calls during an exam
         "budget": True,  # only deadlines, quizzes and the alarm during the day; the rest waits for the evening bundle
         "exam_min": 180,  # how long an exam takes (no calls then; the debrief comes half an hour after)
@@ -101,6 +107,8 @@ MERGE_DAYS = 3  # exam days this close (a weekend between) are one season
 SEATED_MIN = 15  # no calls from this long before an exam starts
 DEBRIEF_AFTER_MIN = 30  # the debrief comes this long after the exam ends
 DEBRIEF_UNTIL_H = 36  # ...and isn't asked later than this after it
+DEBRIEF_WAIT_MIN = 90  # (debrief_at_desk) waiting for you to be back: at most this long after the exam ends
+WAKE_BEFORE_LEAVE_MIN = 60  # (in_calls) the wake time proposed on the night check-in: this long before leaving
 QUIZ_CALL_UNTIL_H = 3  # the picked quiz call isn't placed later than this after quiz_call_at
 SNOOZES = 2  # "Later" on the leave-by alarm rings again in 5 minutes, this many times
 BUDGET_KEEP = ("deadlines", "quiz", "alarm", "exam_season")  # what still comes by day (core/calm.py)
@@ -178,6 +186,11 @@ class ExamSeason(Module):
         return bool(c and self.app.is_on("calls") and c.ready()[0])
 
     # ------------------------------------------------------------------------------------------ lifecycle
+    def deadline_changed(self, j: str, what: str) -> None:
+        """(0.9.0) A deadline moved or was done (modules/deadlines.py): the revision plan follows it."""
+        if self.setting("revision"):
+            self.revision.deadline_changed(j, what)
+
     def start(self):
         self.every("tick", "every 15m", self._tick)
         self.action("leave", self._leave)
@@ -555,7 +568,66 @@ class ExamSeason(Module):
 
     def _debrief_due(self, e: dict, t: dt.datetime) -> bool:
         at = self._debrief_moment(e)
-        return at <= t < at + dt.timedelta(hours=DEBRIEF_UNTIL_H) and not self._mine(e["id"]).get("debrief_q")
+        until = at + dt.timedelta(hours=DEBRIEF_UNTIL_H)
+        if self._mine(e["id"]).get("debrief_q"):
+            return False
+        if self.setting("debrief_at_desk") and e["end"]:  # 0.9.0: when you're back, at the latest DEBRIEF_WAIT_MIN
+            last = e["end"] + dt.timedelta(minutes=DEBRIEF_WAIT_MIN)
+            if e["end"] <= t < last:
+                return self._back_since(e["end"])
+            return last <= t < until
+        return at <= t < until
+
+    def _back_since(self, since: dt.datetime) -> bool:
+        """(debrief_at_desk) You're at your desk now (mind/presence_forecast.py:at_desk: Face presence or the computer
+        in use), or the phone arrived at "home" since then (mind/senses/phone.py; the label stays here)."""
+        try:
+            from kurooto.mind import presence_forecast as pf
+
+            if pf.at_desk(self.app):
+                return True
+        except Exception:
+            pass
+        home = self._load().get("home_at")
+        try:
+            return bool(home) and dt.datetime.fromisoformat(home) >= since
+        except ValueError:
+            return False
+
+    def place_event(self, label: str, event: str, t: dt.datetime | None = None) -> None:
+        """(0.9.0) The phone arrived at or left a place you saved (mind/senses/phone.py): arriving "home" is kept as a
+        time, for the debrief that waits for you (debrief_at_desk). Nothing else of it is kept."""
+        if not self.setting("debrief_at_desk") or event != "arrive" or str(label).strip().lower() != "home":
+            return
+        with Lock(self.app.paths.state, "exam_season"):
+            st = self._load()
+            st["home_at"] = (t or now()).isoformat(timespec="seconds")
+            jsave(self.file, st)
+
+    # ------------------------------------------------------------------------------------- in the calls
+    def call_line(self, when: str = "today", t: dt.datetime | None = None) -> str:
+        """(0.9.0, in_calls) For the wake-up call ("today") and the night check-in ("tomorrow"): the exam that day,
+        when it starts, when to leave, and on the night check-in a wake time to propose. "" when there's none."""
+        if not self.setting("in_calls"):
+            return ""
+        t = t or now()
+        day = t.date() + (DAY if when == "tomorrow" else dt.timedelta(0))
+        todays = sorted((e for e in self.exams() if e["day"] == day), key=lambda e: e["start"] or t)
+        if not todays:
+            return ""
+        e = todays[0]
+        if when == "today" and e["start"] and e["start"] <= t:
+            return ""
+        at = f" at {e['start']:%H:%M}" if e["start"] else ""
+        leave = self._leave_time(e, self._mine(e["id"]).get("details") or "") if e["start"] else None
+        out = f"{'Tomorrow' if when == 'tomorrow' else 'Today'}: {e['title']}{at}"
+        out += f", leave by {leave:%H:%M}." if leave else "."
+        if when == "tomorrow" and leave:
+            wake = leave - dt.timedelta(minutes=WAKE_BEFORE_LEAVE_MIN)
+            out += (
+                f" Propose waking at {wake:%H:%M} (an hour before leaving); set the alarm only if they agree to a time."
+            )
+        return out
 
     def _debrief_note(self, slug: str | None, day: dt.date):
         return layout.path(self.app, "course", subject=slug) if slug else daily.note_path(self.app, day)

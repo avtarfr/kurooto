@@ -6,11 +6,11 @@ Correct it with one tap: the "Time to start" message and /startby offer the othe
 counts for that subject's exams from then on, and the first exam of a subject asks you once.
 
 Free time is each day's window (startby.window, 09:00-22:00) less your classes (Subjects: the timetable, holidays,
-exam periods, the classes you skip) and your calendar's timed events (Calendar), in gaps of at least half an hour,
-and only a share of that (startby.share, 40%): the rest is meals, rest, going over lectures and everything else.
-Working back from the due times, latest first, each deadline's hours go into the latest free time before it that
-nothing due later has taken; the day its first hour lands on is its start-by date. Two big deadlines in one week push
-each other earlier.
+exam periods, the classes you skip), your commitments (Commitments), your calendar's timed events (Calendar) and the
+blocks already in your Agent plan calendar, in gaps of at least half an hour, and only a share of that
+(startby.share, 40%): the rest is meals, rest, going over lectures and everything else. Working back from the due
+times, latest first, each deadline's hours go into the latest free time before it that nothing due later has taken;
+the day its first hour lands on is its start-by date. Two big deadlines in one week push each other earlier.
 
 From its start-by date until it's due, a deadline is in the morning plan (the morning page, the wake-up call, the
 plan drafted before the alarm). On the day itself you get one message, only when that's two days or more before it's
@@ -58,6 +58,15 @@ register_defaults(
         "ask_exams": True,  # ask once per subject how long its exams take to prepare for
         "crunch_weeks": 4,  # the Sunday summary looks this many weeks ahead (0: no crunch weeks)
         "negotiate": True,  # a reminder that would repeat for a slipping deadline: a reshaped plan instead, once a day
+        # (0.9.0) "Time to start" says the study the tracker counted for it (sessions tied to it, else its subject's
+        # week when it's that subject's only deadline) and offers "Count it", which sets the size to what's left. The
+        # size changes only on that tap
+        "count_study": True,
+        # (0.9.0) once a week, when your pace (Brain's plans) says a different share of free time goes to deadlines,
+        # an offer to use it (Yes, then Undo); never a share you set yourself
+        "learn_share": False,
+        # (0.9.0) "Time to start" and the Sunday summary say Brain's chance of missing a deadline (Brain's plans)
+        "miss_risk": True,
     },
 )
 DAY_H = 5  # "a day" of work, for sizes given in days
@@ -66,6 +75,9 @@ TASK_SIZES = [(1, "An hour"), (3, "An evening"), (5, "A day"), (12, "2-3 days"),
 EXAM_SIZES = [(3, "An evening"), (5, "A day"), (12, "2-3 days"), (25, "A week"), (50, "Two weeks")]
 NAMES = {h: label for h, label in TASK_SIZES + EXAM_SIZES}
 LEARN_DAYS, LEARN_ACTIVE_DAYS, LEARN_MSGS, LEARN_GAP_MIN = 21, 7, 3, 60  # look back, days needed, a day's, off by
+SHARE_GAP, SHARE_LO, SHARE_HI = 10, 10, 90  # (learn_share) % off before offering; the range offered
+COUNTED_MIN_H = 0.5  # (count_study) less study than this isn't said
+RISK_SAY = 0.2  # (miss_risk) a chance of missing at least this is said
 DAY_TURNS = 4  # your day, for this: from 04:00 (a message at 01:00 ends the day before)
 WORDS = {"an hour": 1, "one hour": 1, "an evening": 3, "one evening": 3, "a day": DAY_H, "one day": DAY_H,
          "two days": 2 * DAY_H, "three days": 3 * DAY_H, "a couple of days": 12, "a few days": 12, "a week": WEEK_H,
@@ -184,15 +196,34 @@ def free_slots(
     return [(s, e) for s, e in out if e - s >= gap and e > s]
 
 
+def by_hour(slots: list[tuple[dt.datetime, dt.datetime]]) -> list[tuple[dt.datetime, dt.datetime]]:
+    """The same free time cut at each whole hour (for a ranking by hour; nothing is added or lost)."""
+    out = []
+    for s, e in sorted(slots):
+        cur = s
+        while cur < e:
+            nxt = min(e, cur.replace(minute=0, second=0, microsecond=0) + dt.timedelta(hours=1))
+            out.append((cur, nxt))
+            cur = nxt
+    return out
+
+
 def allocate(
-    items: list[dict], slots: list[tuple[dt.datetime, dt.datetime]], share: float, pieces: dict | None = None
+    items: list[dict],
+    slots: list[tuple[dt.datetime, dt.datetime]],
+    share: float,
+    pieces: dict | None = None,
+    rank=None,
 ) -> dict[str, tuple[dt.datetime | None, float]]:
     """As late as possible: latest due first, each item's hours (items: {"id", "due", "hours"}) go into the latest
     free time before its due time that a later one hasn't taken; `share` (0-1) of each free hour counts. Returns
     {id: (where its work starts, or None if no time at all; the hours that didn't fit)}. `pieces`, when given, gets
-    where each item's hours went: {id: [(from, to, hours of work), ...]}."""
-    free = [[s, e] for s, e in sorted(slots)]
+    where each item's hours went: {id: [(from, to, hours of work), ...]}. `rank` (0.9.0, a time -> a score, the
+    presence forecast's): the free hours with the higher score are taken first, later ones first among equals."""
     share = min(1.0, max(0.01, share))
+    if rank is not None:
+        return _allocate_ranked(items, by_hour(slots), share, pieces, rank)
+    free = [[s, e] for s, e in sorted(slots)]
     out: dict[str, tuple[dt.datetime | None, float]] = {}
     for it in sorted(items, key=lambda x: x["due"], reverse=True):
         need, first = float(it["hours"]), None
@@ -212,6 +243,33 @@ def allocate(
             if pieces is not None and take > 0:
                 pieces.setdefault(it["id"], []).append((lo, top, take))
             first = lo
+        out[it["id"]] = (first, max(0.0, need))
+    return out
+
+
+def _allocate_ranked(items, slots, share, pieces, rank) -> dict[str, tuple[dt.datetime | None, float]]:
+    """allocate() with the free hours taken best-ranked first (each item still only before its due time)."""
+    free = [[s, e] for s, e in slots]
+    out: dict[str, tuple[dt.datetime | None, float]] = {}
+    for it in sorted(items, key=lambda x: x["due"], reverse=True):
+        need, first, extra = float(it["hours"]), None, []
+        for k in sorted(range(len(free)), key=lambda k: (-rank(free[k][0]), -free[k][0].timestamp())):
+            if need <= 1e-6:
+                break
+            s, e = free[k]
+            top = min(e, it["due"])
+            if top <= s:
+                continue
+            take = min(need, (top - s).total_seconds() / 3600 * share)
+            lo = top - dt.timedelta(hours=take / share)
+            free[k] = [s, lo]
+            if top < e:
+                extra.append([top, e])
+            need -= take
+            if pieces is not None and take > 0:
+                pieces.setdefault(it["id"], []).append((lo, top, take))
+            first = lo if first is None else min(first, lo)
+        free = sorted([f for f in free + extra if f[1] > f[0]])
         out[it["id"]] = (first, max(0.0, need))
     return out
 
@@ -241,7 +299,7 @@ class StartBy(Module):
         spec = self.setting("when") or "daily 08:00"
         self.every("morning", spec, self._morning, {"what": "start-by dates"}, respect="quiet")
         self.app.ask.hooks["startby.exam_size"] = lambda q, a: self._exam_answer(q.get("hook_payload") or {}, a)
-        self.every("learn_window", "weekly sun 12:00", lambda p: self.learn_window())
+        self.every("learn_window", "weekly sun 12:00", lambda p: (self.learn_window(), self.learn_share()))
         self.action("moved", self._moved)  # (negotiate) the part you moved to tomorrow, at its time
         _register_undo()  # 0.8.16: Undo under a plan Brain reshaped by itself works after a restart too
 
@@ -270,10 +328,15 @@ class StartBy(Module):
             shifted = t - dt.timedelta(hours=DAY_TURNS)
             days.setdefault(shifted.date(), []).append(shifted.hour * 60 + shifted.minute + DAY_TURNS * 60)
         active = [sorted(v) for v in days.values() if len(v) >= LEARN_MSGS]
-        if len(active) < LEARN_ACTIVE_DAYS:
-            return ""
-        first = sorted(v[0] for v in active)[len(active) // 2]
-        last = sorted(v[-1] for v in active)[len(active) // 2]
+        if len(active) >= LEARN_ACTIVE_DAYS:
+            first = sorted(v[0] for v in active)[len(active) // 2]
+            last = sorted(v[-1] for v in active)[len(active) // 2]
+            said = f"that's when your messages came in on {len(active)} days of the last three weeks"
+        else:  # 0.9.0 (mind.presence_forecast.plan): too few messages; your usual quiet hours (core/rhythm.py)
+            usual = self._usual_hours()
+            if usual is None:
+                return ""
+            first, last, said = usual
         first = max(5 * 60, min(13 * 60, first // 30 * 30))  # 05:00 to 13:00
         last = max(17 * 60, min(27 * 60, -(-last // 30) * 30))  # 17:00 to 03:00 the next morning
         cur = self.setting("window") or "09:00-22:00"
@@ -287,11 +350,29 @@ class StartBy(Module):
         self._put_state(window_learned={"at": now().isoformat(timespec="seconds"), "from": cur, "to": new})
         line = (
             f"Start-by dates now count your free time from {hm(first)} to {hm(last)}, not {cur.replace('-', ' to ')}: "
-            f"that's when your messages came in on {len(active)} days of the last three weeks."
+            f"{said}."
         )
         self.app.events.emit("startby_window_learned", from_window=cur, to_window=new, days=len(active))
         self.app.notify(line, kind="info", why="startby.window", buttons=[[("Undo", "sby:window:undo")]])
         return line
+
+    def _usual_hours(self) -> tuple[int, int, str] | None:
+        """(0.9.0) The window from your usual quiet hours (core/rhythm.py, learned from when you're around) as minutes
+        from midnight (the end may run past it), when mind.presence_forecast.plan is on; else None."""
+        if not self.prefer_free():
+            return None
+        rh = getattr(self.app, "rhythm", None)
+        u = rh.usual_hours() if rh is not None else None
+        if not u:
+            return None
+        try:
+            bed, wake = parse_window(f"{u['from']}-{u['to']}")
+        except (KeyError, TypeError):
+            return None
+        first, last = wake.hour * 60 + wake.minute, bed.hour * 60 + bed.minute
+        if last <= first:
+            last += 24 * 60
+        return first, last, f"you're usually around from {u['to']} to {u['from']}"
 
     def _put_state(self, **kw) -> None:
         with Lock(self.app.paths.state, "startby", timeout=5):
@@ -372,24 +453,66 @@ class StartBy(Module):
                 out.append((s, f))
         return out
 
+    def _plan_blocks(self, t0: dt.datetime, until: dt.datetime) -> list[tuple[dt.datetime, dt.datetime]]:
+        """(0.9.0) The blocks already in your Agent plan calendar: time you planned is busy (modules/google_plan.py's
+        ledger; none when it's off, signed out or offline)."""
+        plan = self._on("agent_plan")
+        if plan is None or not hasattr(plan, "busy"):
+            return []
+        try:
+            return plan.busy(t0, until)
+        except Exception:
+            return []
+
     def slots(self, t0: dt.datetime, until: dt.datetime) -> list[tuple[dt.datetime, dt.datetime]]:
-        """The free time from t0 until `until`: each day's window less classes and calendar events."""
+        """The free time from t0 until `until`: each day's window less classes, commitments, calendar events and the
+        blocks already in your Agent plan calendar."""
         window = parse_window(self.setting("window"))
         try:
             gap = int(self.setting("min_gap_min") or 0)
         except (TypeError, ValueError):
             gap = 30
-        events = self._events(t0 - dt.timedelta(days=1), until)
+        events = self._events(t0 - dt.timedelta(days=1), until) + self._plan_blocks(t0 - dt.timedelta(days=1), until)
         subj = self._on("subjects")
+        com = self._on("commitments")  # 0.9.0: commitments are busy here too, not only in Revision's plan
         out = []
         day = t0.date() - dt.timedelta(days=1)  # a window past midnight starts the day before
         while day <= until.date():
             busy = list(events)
             if subj is not None:
                 busy += [(c["start_dt"], c["end_dt"]) for c in subj.classes_on(day)]
+            if com is not None:
+                for d in (day - dt.timedelta(days=1), day):  # last night's shift may run into this window
+                    busy += [(c["start_dt"], c["end_dt"]) for c in com.on(d)]
             out += [(s, min(e, until)) for s, e in free_slots(day, window, busy, t0, gap) if s < until]
             day += dt.timedelta(days=1)
         return out
+
+    def prefer_free(self) -> bool:
+        """(0.9.0, mind.presence_forecast.plan) Brain's presence forecast orders the free hours: the deadline work and
+        the study push's time go first into hours you're usually at your desk and free. Hours are never taken away."""
+        try:
+            from kurooto.mind import presence_forecast as pf
+        except ImportError:
+            return False
+        return pf.on(self.app) and bool(self.app.settings.get("mind.presence_forecast.plan"))
+
+    def rank(self):
+        """The presence forecast's chance you're free at a time (mind/presence_forecast.py:p_free, local arithmetic),
+        when mind.presence_forecast.plan is on; else None."""
+        if not self.prefer_free():
+            return None
+        from kurooto.mind import presence_forecast as pf
+
+        st, seen = pf._load(self.app), {}  # noqa: SLF001 (one read for the whole plan)
+
+        def p(t: dt.datetime) -> float:
+            k = t.replace(minute=0, second=0, microsecond=0)
+            if k not in seen:
+                seen[k] = pf.p_free(self.app, k, st)
+            return seen[k]
+
+        return p
 
     def _rows(self, t0: dt.datetime, days: float, st: dict) -> list[dict]:
         """Open deadlines due between t0 and `days` ahead, with their sizes."""
@@ -432,7 +555,7 @@ class StartBy(Module):
                 began = dt.datetime.combine(r["since"], dt.time(0))
                 left *= max(0.0, min(1.0, (r["due"] - t0) / (r["due"] - began))) if r["due"] > began else 0
             work.append({"id": r["id"], "due": r["due"], "hours": left})
-        fits = allocate(work, slots, self._share(), pieces)
+        fits = allocate(work, slots, self._share(), pieces, rank=self.rank())
         for r, w in zip(rows, work, strict=True):
             first, short = fits[r["id"]]
             r["start"] = first.date() if first else t0.date()
@@ -524,6 +647,9 @@ class StartBy(Module):
         weeks = self.crunch(t0)
         if weeks:
             out.append(self.crunch_text(weeks))
+            risky = self._risky(t0, weeks)
+            if risky:  # 0.9.0 (startby.miss_risk)
+                out.append("Likeliest to slip at your usual pace: " + ", ".join(risky[:3]) + ".")
         nxt = [r for r in self.plan(t0) if t0.date() < r["start"] <= t0.date() + dt.timedelta(days=7)]
         if nxt:
             out.append("To start this week: " + ", ".join(f"{r['title']} ({r['start']:%a})" for r in nxt[:5]))
@@ -583,6 +709,134 @@ class StartBy(Module):
         self._ask_exams(rows)
         self.app.events.emit("startby_planned", deadlines=len(rows), told=len(tell))
 
+    # ------------------------------------------------------------------- what else knows about it (0.9.0)
+    def studied_h(self, r: dict) -> float:
+        """(startby.count_study) Hours the study tracker counted for this deadline: sessions tied to it (Study push's
+        Start, modules/study.py) in the last 30 days; else, when it's the only open deadline in its subject due in
+        the horizon, that subject's last 7 days. 0 when it can't tell."""
+        study = self._on("study")
+        if study is None or not self.setting("count_study"):
+            return 0.0
+        since = now() - dt.timedelta(days=30)
+        exact = 0.0
+        for e in self.app.events.tail(5000, kinds={"study_session_end"}):
+            try:
+                if e.get("deadline") == r["id"] and dt.datetime.fromisoformat(e["ts"]).replace(tzinfo=None) >= since:
+                    exact += float(e.get("minutes") or 0) / 60
+            except (KeyError, TypeError, ValueError):
+                continue
+        if exact > 0 or not r.get("subject"):
+            return exact
+        end = now() + dt.timedelta(days=max(1, int(self.setting("horizon_days") or 35)))
+        same = [
+            i
+            for i, it in self._dl().items().items()
+            if it.get("status") == "open" and it.get("subject") == r["subject"] and it.get("due", "") <= end.isoformat()
+        ]
+        if same != [r["id"]]:
+            return 0.0
+        try:
+            return float(study.totals(7).get(r["subject"], 0)) / 3600
+        except Exception:
+            return 0.0
+
+    def _risks(self) -> dict:
+        """Brain's plans' last chances of missing each deadline (mind/plans: mind-plan-last.json), {deadline id: p}."""
+        if not self.setting("miss_risk"):
+            return {}
+        try:
+            from kurooto.mind import plans
+
+            if not plans.on(self.app):
+                return {}
+        except ImportError:
+            return {}
+        risks = (jload(self.app.paths.state / "mind-plan-last.json", {}) or {}).get("risks") or {}
+        return {k[2:]: float(v) for k, v in risks.items() if str(k).startswith("d:") and isinstance(v, (int, float))}
+
+    def miss_risk(self, i: str) -> float:
+        return self._risks().get(i, 0.0)
+
+    def _risky(self, t0: dt.datetime, weeks: list[dict]) -> list[str]:
+        """The deadlines due in the crunch weeks that Brain's plans think may slip, likeliest first: "Essay (40%)"."""
+        risks = self._risks()
+        if not risks:
+            return []
+        lo, hi = weeks[0]["week"], weeks[-1]["week"] + dt.timedelta(days=7)
+        rows = [
+            (risks[i], it["title"])
+            for i, it in self._dl().items().items()
+            if risks.get(i, 0) >= RISK_SAY
+            and it.get("status") == "open"
+            and lo.isoformat() <= it["due"][:10] < hi.isoformat()
+        ]
+        return [f"{title} ({round(p * 100)}%)" for p, title in sorted(rows, reverse=True)]
+
+    def learn_share(self) -> str:
+        """(startby.learn_share) Once a week: your pace (mind/plans/pace.py, the hours a day you really get done) as a
+        share of your free time; when it's SHARE_GAP points or more from startby.share, an offer to use it. Never a
+        share you set yourself; a No or an Undo leaves it alone for a month. Returns the line offered."""
+        if not self.setting("learn_share"):
+            return ""
+        st = self._state().get("share_learned") or {}
+        mine = (self.app.settings.user().get("startby") or {}).get("share")
+        if mine is not None and mine != st.get("to"):
+            return ""  # yours
+        if st.get("at") and now() - dt.datetime.fromisoformat(st["at"]) < dt.timedelta(
+            days=30 if st.get("state") in ("no", "undone") else 7
+        ):
+            return ""
+        try:
+            from kurooto.mind.plans import pace
+
+            pool = pace.samples(self.app, now().date())
+        except Exception:
+            return ""
+        per_day = sum(sum(v) / len(v) for v in pool.values() if v) / 7
+        t0 = dt.datetime.combine(now().date() + dt.timedelta(days=1), dt.time(0))
+        free = overlap_h(self.slots(t0, t0 + dt.timedelta(days=14)), t0, t0 + dt.timedelta(days=14)) / 14
+        if free < 1 or per_day <= 0:
+            return ""
+        new = int(max(SHARE_LO, min(SHARE_HI, round(per_day / free * 100 / 5) * 5)))
+        cur = round(self._share() * 100)
+        if abs(new - cur) < SHARE_GAP:
+            return ""
+        self._put_state(share_learned={"at": now().isoformat(timespec="seconds"), "from": cur, "to": new,
+                                       "state": "offered"})  # fmt: skip
+        line = (
+            f"Your pace says about {per_day:.1f} h a day of work, out of about {free:.1f} h free. Start-by dates "
+            f"count {cur}% of your free time for deadlines; use {new}% instead? It moves start-by dates."
+        )
+        self.app.notify(
+            line, kind="info", why="startby.share", buttons=[[("Yes", "sby:share:yes"), ("No", "sby:share:no")]]
+        )
+        self.app.events.emit("startby_share_offered", from_share=cur, to_share=new)
+        return line
+
+    def _share_answer(self, act: str) -> str:
+        st = self._state().get("share_learned") or {}
+        if act == "undo":
+            if st.get("state") != "yes":
+                return "Nothing to undo."
+            if round(self._share() * 100) == st["to"]:
+                self.app.settings.set("startby.share", st["from"])
+            self._put_state(share_learned={**st, "state": "undone", "at": now().isoformat(timespec="seconds")})
+            return f"Back to {st['from']}%; I'll leave it alone for a month."
+        if st.get("state") != "offered":
+            return "Already answered."
+        if act == "no":
+            self._put_state(share_learned={**st, "state": "no", "at": now().isoformat(timespec="seconds")})
+            return f"OK, it stays at {st['from']}%."
+        self.app.settings.set("startby.share", st["to"])
+        self._put_state(share_learned={**st, "state": "yes", "at": now().isoformat(timespec="seconds")})
+        self.app.notify(
+            f"Start-by dates now count {st['to']}% of your free time.",
+            kind="result",
+            why="asked",
+            buttons=[[("Undo", "sby:share:undo")]],
+        )
+        return f"Done: {st['to']}%."
+
     def _folded(self, r: dict) -> bool:
         """Brain's morning line about the subject it's most uneasy about took this message's place today (0.8.14,
         mind/study_push.py; mind.study_push.on)."""
@@ -630,11 +884,20 @@ class StartBy(Module):
                 f"Time to start: {what}. It's {size_text(r['hours'])} of work ({why}); started today it fits around "
                 "your classes and other deadlines."
             )
+        buttons = self._buttons(r["id"], r["hours"], r["kind"])
+        done = self.studied_h(r)
+        if done >= COUNTED_MIN_H:  # 0.9.0 (startby.count_study): what the study tracker counted, and a tap to use it
+            left = max(0.25, round((r["hours"] - done) * 2) / 2)
+            text += f" You've put about {hours(done)} h into it already; about {hours(left)} h left if that counts."
+            buttons = [[("Count it", f"sby:{r['id']}:{left:g}")], *buttons]
+        risk = self.miss_risk(r["id"])
+        if risk >= RISK_SAY:  # 0.9.0 (startby.miss_risk): Brain's plans, at your real pace
+            text += f" At your usual pace there's about a {round(risk * 100)}% chance of missing it."
         self.app.notify(
             text + " (An estimate. Wrong size? Tap the right one.)",
             kind="deadline",
             title="Start-by date",
-            buttons=self._buttons(r["id"], r["hours"], r["kind"]),
+            buttons=buttons,
             why="startby.tell",
             about=what,
         )
@@ -952,6 +1215,8 @@ class StartBy(Module):
     def _button(self, ref: str, act: str) -> str:
         if ref == "window" and act == "undo":
             return self._window_undo()
+        if ref == "share" and act in ("yes", "no", "undo"):
+            return self._share_answer(act)
         try:
             h = float(act)
         except ValueError:

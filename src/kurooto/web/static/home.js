@@ -980,8 +980,9 @@ async function mindStatus(m, fresh) {
   }
   if (BEING && BEING.status && MINDST) BEING.status(MINDST);
 }
-// a tap on the uneasy glow: the deadline on Today, a promise in the Brain console
-function openUneasy(item) { if (item && item.tab) openPage(item.tab); }
+// a tap on the uneasy glow: the deadline on Today, a promise in the Brain console; a deadline's subject is the one Study
+// mode opens on next (0.9.0, mind.study_push.start_timer: the server names it only then)
+function openUneasy(item) { if (item && item.subject) SM.subject = item.subject; if (item && item.tab) openPage(item.tab); }
 // The talk box (look.talk_box, 0.8.9): a small box over the board, on every board, to talk to Kurooto in plain
 // English as on Telegram; the answer prints in it. Alt+K goes to it. Hidden while a page is open.
 const TALK = { on: true, fold: false, log: [] };

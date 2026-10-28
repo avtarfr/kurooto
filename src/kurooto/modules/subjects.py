@@ -59,6 +59,9 @@ register_defaults(
         # matching note), "auto" (terms/*, or maps/semester-* in the zettelkasten layout); empty: off
         "term_note": "",
         "catch_up": True,  # a class you missed gets a catch-up task and a lecture note (see the notes above)
+        # (0.9.0) the phone arriving at a place you saved while a class is on asks "went to it?": Went means no
+        # catch-up for it. Only on your tap; never a record that you weren't there
+        "attend_by_place": False,
     },
 )
 CATCH_UP_EVERY = "every 30m"  # classes that ended are looked at this often
@@ -447,7 +450,7 @@ class Subjects(Module):
         more = sum(self._more_posts(slug, day, it) for slug, it in done.items() if it.get("made"))
         for c in self.classes_on(day, include_skipped=True):
             slug = c.get("subject") or slugify(c["name"])
-            if c["end_dt"] > t or slug in done:
+            if c["end_dt"] > t or (slug in done and not done[slug].get("asked")):  # asked (attend_by_place): no answer
                 continue
             if slug not in skipped and not looked:  # the event log is read only when it can matter
                 woke, looked = self.woke_at(day), True
@@ -542,11 +545,47 @@ class Subjects(Module):
         it["size"], it["posts"] = note.stat().st_size, [p["url"] or p["title"] for p in posts]
         return True
 
+    def place_event(self, label: str, event: str, t: dt.datetime | None = None) -> None:
+        """(0.9.0, subjects.attend_by_place) The phone arrived at a place you saved during a class (from a quarter of
+        an hour before it starts until it ends): one question, "went to it?", with Went. Nothing happens without that
+        tap: no catch-up is made or skipped because of where the phone was, and a class you /skip is left alone. The
+        place's name isn't used."""
+        if not self.setting("attend_by_place") or event != "arrive":
+            return
+        t = t or now()
+        day = t.date()
+        done = jload(self._catch_file(day), {}) or {}
+        for c in self.classes_on(day):  # skipped ones aren't here: /skip wins
+            slug = c.get("subject") or slugify(c["name"])
+            if slug in done or not c["start_dt"] - dt.timedelta(minutes=15) <= t < c["end_dt"]:
+                continue
+            done[slug] = {"asked": True}
+            jsave(self._catch_file(day), done)
+            self.app.notify(
+                f"You've arrived at a place you saved while {c['name']} ({c['start']}) is on. Went to it? Went "
+                "means no catch-up for it today.",
+                kind="info",
+                why="subjects.attend_by_place",
+                buttons=[[("Went", f"cup:{day.isoformat()}|{slug}:here")]],
+                about=c["name"],
+            )
+            self.app.events.emit("class_place_asked")
+            return
+
     def _went(self, ref: str, act: str) -> str:
-        """ "Went after all": the catch-up task goes, and the stub if it's as it was made."""
+        """ "Went after all": the catch-up task goes, and the stub if it's as it was made. "here" (attend_by_place):
+        you said you went before any catch-up was made."""
         day, _, slug = ref.partition("|")
         f = self._catch_file(dt.date.fromisoformat(day))
         done = jload(f, {}) or {}
+        if act == "here":
+            if (done.get(slug) or {}).get("asked"):
+                done[slug] = {"went": True}
+                jsave(f, done)
+                self.app.events.emit("class_place_went")
+                return "OK, you went: no catch-up for it."
+            if (done.get(slug) or {}).get("went"):
+                return "Already noted."
         it = done.pop(slug, None)
         if not it:
             return "That's gone already."

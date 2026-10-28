@@ -20,6 +20,11 @@ window, which follows yours).
                    you won't be then and a nearby hour is clearly better. Never an alarm, a reminder you set, a call
                    you asked for or a close deadline: their callers don't ask.
 
+    planning       (`mind.presence_forecast.plan`, off, 0.9.0) Start-by's free time (modules/startby.py) is cut by the
+                   hour and filled likeliest-free first, and the study push's time (mind/study_push.py:slot) is the
+                   stretch you're likeliest free in; no hour is taken away. With too few messages to learn Start-by's
+                   window from, the usual quiet hours (core/rhythm.py) can move it, with the same line and Undo.
+
 Kept in `<state>/mind-presence.json`: hour-of-week counts, the frozen forecasts, today's looks and the last days'
 outcomes (numbers only, this computer only). /mind shows the accuracy and the next free hour.
 """
@@ -48,6 +53,9 @@ register_defaults(
             "on": True,  # forecast when you'll be at your desk and free, scored against what the senses show
             "prefer": True,  # its own check-ins and calls move to a nearby hour the forecast thinks you are free
             "within_min": 60,  # how far (minutes) such a check-in or call may move to a likelier hour
+            # (0.9.0) Start-by and the study push put work first into the hours you're likeliest free (never fewer
+            # hours), and Start-by's window may learn from your usual quiet hours (with Undo, never one you set)
+            "plan": False,
         }
     },
 )

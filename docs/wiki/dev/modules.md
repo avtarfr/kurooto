@@ -557,7 +557,10 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 ### Time and attention
 
 - **reminders** (`modules/reminders.py`): one-off `reminders:<id>` jobs (`reminders.fire`, registered in `__init__`),
-  snooze buttons `rem`, cancel `remx`, tool `add_reminder`. `stop()` parks the pending jobs in
+  snooze buttons `rem`, cancel `remx`, tool `add_reminder`. `add(..., buttons=)` (0.9.0) keeps extra button rows in
+  the job's payload (Study push's `msp:<day>:start`). `reminders.wait_for_break` (0.9.0, off): `_wait()` books a
+  reminder that fires in a Study mode focus again at the focus's end as `reminders:wait<ref>` with `released`;
+  `release_waiting()` (called from `Study._focus_end`: pause, reset, end) fires those at once. `stop()` parks the pending jobs in
   `<state>/reminders-parked.json` before the base cancel, and `start()` sets them again (a time that passed while off
   fires at once with `while_off`, "late: Reminders was off"). Asks lidsafe whether the phone already said it. The
   plain-English intent reads the time with `modules/text.py:when_from`, which takes a weekday only where
@@ -587,6 +590,12 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   The `add_deadline` tool (and the `deadline.add` action) takes an optional `course` (`subject`, its old name, still
   works): `Subjects.resolve()`, else the one subject `find_in()` names; unknown or naming two, the answer says so and
   lists the courses, and the item gets no subject from it (`subject_of()` on the title still applies).
+  0.9.0: every move and done goes through `_changed(id, what, source)`: `deadline_moved`/`deadline_done` with the id
+  (and the source for a sync), then `deadline_changed(id, what)` on `exam_season` and `agent_plan` when they're on.
+  A source's new date moves the item already there instead of adding a twin: Classroom passes `ref=classroom:<course>/<work>`
+  (`_put` finds the open item with that ref); `_sync_source` pairs an item that just went "gone" with a new one like
+  it from the same source (`_same_from`: same kind and subject, a similar title); mail pairs an exact title from mail.
+  `_move_into` keeps the old id (the new one becomes an alias). Tests: `tests/unit/test_deadline_moves.py`.
 - **deadlines** Photo to dates (0.6.0, `modules/photodates.py`, `deadlines.from_photos`): `App.handle` hands a
   message with a picture whose caption matches `photodates.WORDS` ("dates", "/dates", "timetable", "find the
   dates") to `start()` before the books and class-pack checks; `/dates` (a photo, or alone: `latest()`, the newest
@@ -637,6 +646,21 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `agent_plan.plan_block` when that's ready). The offer's Calm reason is `startby.negotiate`; call tools
   `reshape_plan`, `reshape_answer`. Events `startby_reshape_offered`, `_done`, `_declined`. Tests:
   `tests/unit/test_negotiate.py`.
+  0.9.0: `slots()` is one ledger: the window less classes, commitments (`commitments.on`, yesterday's too for a night
+  shift), timed calendar events and the Agent plan's blocks (`_plan_blocks` → `AgentPlan.busy(t0, until)`: one
+  Calendar list, kept `BUSY_KEEP_S` seconds, cleared by `_remember`/`_delete`; any failure is no busy time), so
+  `revision._free`, `mind/study_push.slot` and `mind/plans.free_hours` get them too. `rank()` (with
+  `mind.presence_forecast.plan`): `presence_forecast.p_free` per hour; `allocate(..., rank=)` then cuts the slots
+  `by_hour()` and fills best-ranked first (`_allocate_ranked`), the same total hours; `study_push.slot` ranks each whole
+  hour of each stretch. `learn_window` falls back to `_usual_hours()` (`core/rhythm.py:usual_hours`) under the same
+  switch. `studied_h(r)` (`startby.count_study`): `study_session_end` events with `deadline=<id>` in 30 days, else the
+  subject's `study.totals(7)` when it's the subject's only open deadline in the horizon; `_tell` adds the line and a
+  `sby:<id>:<hours left>` "Count it" button (the size buttons' handler). `miss_risk(i)` (`startby.miss_risk`) reads
+  `mind-plan-last.json` `risks["d:<id>"]` when `mind.plans` is on; `_risky()` lists crunch-week deadlines for
+  `weekly_lines`. `learn_share()` (`startby.learn_share`, off; the weekly `learn_window` job runs it too):
+  `pace.samples` mean a day over the free hours a day of the next 14 days, to 5 points in 10-90; an offer when 10+
+  points off, `share_learned` in `startby.json`, buttons `sby:share:yes|no|undo`, 30 days' back-off after No or Undo,
+  never a user-set share. Tests: `tests/unit/test_startby_ledger.py`, `tests/unit/test_plan_links.py`.
 - **exam_season** (`modules/exam_season.py`): one card for an exam period (update hold, alarm check, the eve question,
   leave-by alarm, debrief, no calls in exams, the Calm budget). Registers `app.updates.holds["exam_season"]` and an
   availability blocker; `budget_during_exams()` is read by Calm. An add-on since 0.5.8 (`extra = True`). Its
@@ -652,6 +676,13 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   sends `ask()` once a day (Calm reason `exam_season.revise`); buttons `rv:<yyyymmdd>-<n>:y|p|n` go to `answer()`,
   which grades the quiz items through `Quiz.grade` and keeps their previous state for `undo()` (`Quiz.restore`).
   Commands `/revise`, intent "what should I revise today". Tests: `tests/unit/test_revision.py`.
+  0.9.0: `deadline_changed(id, what)` (from `Deadlines._changed` through `ExamSeason.deadline_changed`) takes today's
+  not-started blocks for that exam out of the fixed day (not once `asked`); for "moved" it adds the id to the day's
+  `replan`, and the next `plan()` lays that exam's blocks for the rest of today around the kept ones, fixes them and
+  clears `replan`. `call_line("today"|"tomorrow")` (`exam_season.in_calls`) feeds `Alarm.script` and the night
+  check-in's script; `_debrief_due` with `exam_season.debrief_at_desk` asks between the end and `DEBRIEF_WAIT_MIN`
+  only when `_back_since(end)` (`presence_forecast.at_desk`, or `home_at` from `place_event`). Tests:
+  `tests/unit/test_deadline_moves.py`, `tests/unit/test_plan_links.py`.
 - **alarm** (`modules/alarm.py`, requires `calls`): the wake-up call is booked on the call line so it rings with the
   computer asleep; `alarm:plan` every 30 min; the morning plan drafted `prep_min` before; sets
   `app.availability.sleep`; mirrors to `reserve/alarm.md`. Alarms you set are a list (`alarm-set.json`, `mine()`, at
@@ -687,7 +718,10 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `catch_up()`, job `subjects:catch_up` every 30 min; classes over today that were skipped or ended before
   `woke_at(day)` (the first `message_in`, `alarm_up_now` or `call_answered` after `checkins.day_starts`) get a
   `deadlines.add(..., source="catch_up", kind="task")` due at the course's next class and a lecture stub; state
-  `subjects/catchup-<date>.json`; button `cup:<date>|<slug>:went`; Calm reason `subjects.catch_up`. With Classroom
+  `subjects/catchup-<date>.json`; button `cup:<date>|<slug>:went`; Calm reason `subjects.catch_up`.
+  `place_event(label, "arrive")` (0.9.0, `subjects.attend_by_place`, off): during a class (from 15 minutes before)
+  writes `{"asked": true}` for it (which `catch_up` ignores) and asks with `cup:<date>|<slug>:here`, which writes
+  `{"went": true}`. Never a skip, never a catch-up, the label unused. With Classroom
   on (`google` with `google.classroom`, or `classroom_notes`), `google_classroom.posts_on(app, slug, day)` gives that
   day's posts of the courses filed under the subject (`classroom_notes.folders`, `classroom-notes/folders.json`, else
   `course_subject()`, the longest subject name in the course's name) from `classroom-posts.json`
@@ -777,6 +811,14 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `_timer_end`; focus time through `core/availability.py`; see
   [web.md](web.md#the-today-page-and-actions-coreactionspy)).
   `/study mode on|off` and the `study_mode` intent call `core/actions.py:study_mode`.
+  0.9.0: `start_session(..., deadline=)` and `timer_start(..., deadline=)` keep the deadline id in the session and
+  timer files and on `study_session_start`/`_end` (Start-by's `studied_h` reads it). `study.face` (off): `sample()`
+  calls `_ask_paper()` when idle and the Face watcher's `last_seen_owner` is under 2 minutes old (once per stretch,
+  `stf:<slug>:paper` starts a session); `face_event("left"|"back")` (from `modules/face`'s `_tell_study`) offers
+  `stf:-:pause` in a running focus and `stf:-:resume` after that pause (`face_paused` in the timer file).
+  `study.places` (off): `place_event()` (from `mind/senses/phone.py:place_hooks`) offers `stp:<slug>:go` once a day per
+  place (`study/places.json`), the subjects from `deadlines.upcoming(7 days)` else `totals(7)`; the session keeps
+  `place`, and leaving that place stops it. Tests: `tests/unit/test_study_links.py`, `tests/unit/test_plan_links.py`.
 - **skills** (`modules/skills.py`): runs `SKILL.md` files (shipped `data/skills`, add-ons, prompts with `skill: true`,
   the user's own) as AI jobs; routines (`/every`), drafts (`/newskill`), LaTeX revision packs (Tectonic `--untrusted`,
   else `latexmk` or `pdflatex` with `-no-shell-escape`: the AI wrote the LaTeX), study packs, `send_file(s)` (over
@@ -877,7 +919,7 @@ after `drive_upload.temp_days`: `expire` deletes each as the account recorded wi
 model. An HTTP 401 from an API drops the access token and tries once more with a new one (`Google.api`,
 `DriveUpload._call`); only `invalid_grant` when renewing it is a lost sign-in (`_lost_signin` drops the refresh token).
 Then-action `google.draft` (an AI-written `/draft`) is registered in `start()`, so one finishing after a restart
-arrives.
+arrives. 0.9.0: `busy(t0, until)` is the planned-block ledger for Start-by and Revision; `reschedule` steps each block past `_busy_else()` (classes, commitments, timed calendar events); `deadline_changed(id, "moved")` (from `Deadlines._changed`) renames the deadline's blocks ahead "(moved to …)" (delete and plan again) and asks `apl:mv<id>:remove|keep` (`moved` in `agent-plan.json`; Remove keeps `/blocks undo`); `block_start()` (job `agent_plan:block_start`, every 5 min, `agent_plan.start_focus`) offers `apl:focus:start` when a remembered block started in the last 5 minutes and `presence_forecast.at_desk` is true; `running_block()` feeds `Calls.plan_block_hold` (`agent_plan.holds_calls`, off: `_held_call` and check-ins' `_held`, Kurooto's own calls only). Tests: `tests/unit/test_plan_reschedule_busy.py`, `tests/unit/test_deadline_moves.py`.
 
 ### Computer
 

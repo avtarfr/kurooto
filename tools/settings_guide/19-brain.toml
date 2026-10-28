@@ -681,6 +681,11 @@ tip = "How far ahead a deadline can be for Brain to be uneasy about it."
 when = "Lower it to hear only about what's close."
 needs = "`mind.study_push.on`."
 
+[s."mind.study_push.start_timer"]
+tip = "The reminder a Yes sets carries Start 25 min (Study mode's timer for that deadline), and Study mode opens on that subject."
+when = "Turn it off to keep the reminder plain. The timer starts only on your tap."
+needs = "Brain's study push and the Study tracker."
+
 [s."mind.checkins.surprise"]
 tip = "The next check-in comes early when the day departs strongly from Brain's forecast."
 what = "Two hours past the predicted wake time with no sign of you while your phone shows you up, or a deadline moved twice in a day: the next check-in planned today comes now instead of at its time, once a day. Never in a class or while you're asleep."
@@ -748,6 +753,11 @@ needs = "`mind.presence_forecast.on`."
 tip = "How far (minutes) a check-in or a call may move to a likelier hour."
 when = "Lower it to keep them close to their times; 0 never moves them."
 needs = "`mind.presence_forecast.prefer`."
+
+[s."mind.presence_forecast.plan"]
+tip = "Start-by and the study push use the hours you're likeliest free first; no hour is taken away."
+when = "Turn it on once the forecast has seen a few weeks. With few messages, it can also move Start-by's window to your usual hours, with Undo."
+needs = "Brain's presence forecast and Start-by dates."
 
 [s."mind.register.templates"]
 tip = "Its ready-made unprompted messages keep the register's 2, 3 or 4 sentences too, not only what the AI writes."

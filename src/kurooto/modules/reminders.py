@@ -34,6 +34,8 @@ register_defaults(
     {
         # sent to the Android app, which reminds you on arrival at a place saved there (turn on Places in the app too)
         "places": False,  # location reminders: "remind me when I reach the library to …" (needs the Android app)
+        # (0.9.0) during a Study mode focus, your reminders wait for its break (a reset or pause brings them at once)
+        "wait_for_break": False,
     },
 )
 PLACE = re.compile(
@@ -100,13 +102,15 @@ class Reminders(Module):
         if rows:
             self._lidsafe_poke()
 
-    def add(self, when: dt.datetime, what: str, key: str | None = None) -> str:
+    def add(self, when: dt.datetime, what: str, key: str | None = None, buttons: list | None = None) -> str:
         # key: a caller that may take the reminder back (Brain's Undo, mind/study_push.py) names it "reminders:<ref>"
+        # buttons: rows of (label, data) shown under it besides the snoozes (0.9.0: Study push's "Start 25 min")
         key = key if key and key.startswith("reminders:") else f"reminders:{uuid.uuid4().hex[:8]}"
         self.app.scheduler.action("reminders.fire", self._fire)
-        self.app.scheduler.at(
-            when, "reminders.fire", {"what": what, "ref": key.split(":", 1)[1]}, key=key, module=self.id
-        )
+        p = {"what": what, "ref": key.split(":", 1)[1]}
+        if buttons:
+            p["buttons"] = [[list(b) for b in row] for row in buttons]
+        self.app.scheduler.at(when, "reminders.fire", p, key=key, module=self.id)
         self.app.events.emit("reminder_set", at=when.isoformat())
         self._lidsafe_poke()
         return f"I'll remind you {when:%a %d %b at %H:%M}: {what}"
@@ -125,6 +129,8 @@ class Reminders(Module):
         ls = self._lidsafe()
         if ls is not None and ls.handed_over("reminders.fire", p):
             return  # your call line has a sealed copy: whichever side is awake now says it, once (lidsafe.py)
+        if self._wait(p):
+            return
         what = p.get("what", "")
         late = (
             " (late: Reminders was off)"
@@ -138,11 +144,43 @@ class Reminders(Module):
         self.app.notify(
             f"Reminder{late}: {what}",
             kind="reminder",
-            buttons=[[("+10 min", f"rem:{ref}:10"), ("+1 h", f"rem:{ref}:60")]],
+            buttons=[[("+10 min", f"rem:{ref}:10"), ("+1 h", f"rem:{ref}:60")]]
+            + [[(str(a), str(b)) for a, b in row] for row in p.get("buttons") or []],
             why="reminders.own",
             about=what,
         )
         self.app.events.emit("reminder_fired", late=bool(late))
+
+    def _wait(self, p: dict) -> bool:
+        """(0.9.0, reminders.wait_for_break) In a Study mode focus (modules/study.py), the reminder waits for its break:
+        booked again for when the focus ends. True when it waits."""
+        if not self.setting("wait_for_break") or p.get("released"):
+            return False
+        study = self.app.modules.get("study")
+        t = study.timer() if study is not None and self.app.is_on("study") else {}
+        if t.get("phase") != "focus" or not t.get("ends"):
+            return False
+        try:
+            ends = dt.datetime.fromisoformat(t["ends"])
+        except ValueError:
+            return False
+        if ends <= now():
+            return False
+        ref = str(p.get("ref") or uuid.uuid4().hex[:8])
+        self.app.scheduler.at(
+            ends, "reminders.fire", {**p, "released": True}, key=f"reminders:wait{ref}", module=self.id
+        )
+        self.app.events.emit("reminder_waits", until=ends.isoformat(timespec="minutes"))
+        return True
+
+    def release_waiting(self) -> int:
+        """The reminders waiting for a focus's break, now (Study mode's timer was paused, reset or ended)."""
+        n = 0
+        for j in self.app.scheduler.jobs("reminders:wait"):
+            if j.action == "reminders.fire" and self.app.scheduler.cancel(j.key):
+                self._fire({**(j.payload or {}), "released": True})
+                n += 1
+        return n
 
     def _snoozable(self, ref: str, what: str) -> None:
         from kurooto.core.state import jload, jsave

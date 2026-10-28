@@ -50,6 +50,11 @@ tip = "A class you missed gets a catch-up task and a lecture note to fill in."
 when = "Turn it off if you don't want catch-up tasks; Went to … on the message takes one back."
 cost = "Nothing leaves: a task in Deadlines and a stub note."
 
+[s."subjects.attend_by_place"]
+tip = "The phone arriving at a place you saved during a class asks \"went to it?\"; Went means no catch-up for it."
+when = "Turn it on if catch-ups come for classes you went to. Nothing is decided from where the phone was."
+needs = "Subjects and the phone's places sense (Brain)."
+
 [s."capture.delay_min"]
 tip = "Minutes after a class ends before it asks what happened in it."
 when = "Raise it if the question comes while you're still packing up."

@@ -425,7 +425,12 @@ class Revision:
         st = self._state()
         day = (st.get("days") or {}).get(t0.date().isoformat())
         fixed = [self._load_block(b) for b in day["blocks"]] if day is not None else None
-        start = t0 if fixed is None else max(t0, dt.datetime.combine(t0.date() + dt.timedelta(days=1), dt.time(0)))
+        replan = set(day.get("replan") or []) if day is not None else set()  # exams moved since this morning
+        start = (
+            t0
+            if fixed is None or replan
+            else max(t0, dt.datetime.combine(t0.date() + dt.timedelta(days=1), dt.time(0)))
+        )
         taken = {(b["subject"], b["key"]) for b in fixed or []}
         notes, rows, index = [], [], {}
         for e in exams:
@@ -444,6 +449,8 @@ class Revision:
         if not rows:
             return fixed or [], notes
         slots = self._free(start, max(r["until"] for r in rows), exams)
+        if fixed is not None and replan:  # today's other blocks stay where they are
+            slots = minus(slots, [(b["start"], b["end"]) for b in fixed], 0)
         try:
             share = min(100.0, max(1.0, float(self.es.setting("revision_share") or 50))) / 100
         except (TypeError, ValueError):
@@ -483,6 +490,15 @@ class Revision:
             self._put(lambda s: self._keep_day(s, t0.date(), today))
             fixed = today
             blocks = [b for b in blocks if b["start"].date() != t0.date()]
+        elif replan:  # 0.9.0: a moved exam's blocks for the rest of today, worked out again once
+            extra = [b for b in blocks if b["start"].date() == t0.date() and b["exam"] in replan]
+            cache = {}
+            for b in extra:
+                b["read"] = self.reading(b["subject"], b["_topic"], cache)
+            fixed = sorted(fixed + extra, key=lambda b: b["start"])
+            keep = [self._save_block(b) for b in fixed]
+            self._put(lambda s: s["days"][t0.date().isoformat()].update(blocks=keep, replan=[]))
+            blocks = [b for b in blocks if b["start"].date() != t0.date()]
         return fixed + blocks, notes
 
     @staticmethod
@@ -499,13 +515,35 @@ class Revision:
         old = (day - dt.timedelta(days=KEEP_DAYS)).isoformat()
         st["days"] = {k: v for k, v in days.items() if k >= old}
 
+    def deadline_changed(self, j: str, what: str) -> None:
+        """(0.9.0) A deadline moved or was done (modules/deadlines.py): today's blocks for it that haven't started
+        come out of today's plan; a moved exam's are worked out again for its new date (the next look at the plan),
+        a done one's are gone. Not once the evening asked about today's blocks."""
+        if not self.on():
+            return
+        t = now()
+        key = t.date().isoformat()
+
+        def put(st: dict) -> None:
+            day = (st.get("days") or {}).get(key)
+            if not day or day.get("asked"):
+                return
+            mine = [b for b in day["blocks"] if b.get("exam") == j and dt.datetime.fromisoformat(b["start"]) > t]
+            if not mine:
+                return
+            day["blocks"] = [b for b in day["blocks"] if b not in mine]
+            if what == "moved" and j not in day.setdefault("replan", []):
+                day["replan"].append(j)
+
+        self._put(put)
+
     def today(self, t0: dt.datetime | None = None) -> list[dict]:
         """Today's blocks (fixed the first time they're worked out today)."""
         t0 = t0 or now()
         if not self.on():
             return []
         day = (self._state().get("days") or {}).get(t0.date().isoformat())
-        if day is not None:
+        if day is not None and not day.get("replan"):
             return [self._load_block(b) for b in day["blocks"]]
         return [b for b in self.plan(t0)[0] if b["start"].date() == t0.date()]
 

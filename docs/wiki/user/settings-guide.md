@@ -30,19 +30,19 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [When it may interrupt you](#when-it-may-interrupt-you): 13 settings
 - [Phone calls and the call line](#phone-calls-and-the-call-line): 35 settings
 - [Morning alarm](#morning-alarm): 11 settings
-- [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 34 settings
+- [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 38 settings
 - [Check-ins, journal and the week](#check-ins-journal-and-the-week): 18 settings
-- [Classes and timetable](#classes-and-timetable): 15 settings
+- [Classes and timetable](#classes-and-timetable): 16 settings
 - [Calendar](#calendar): 11 settings
-- [Quiz and exams](#quiz-and-exams): 33 settings
-- [Books, study time and handwritten notes](#books-study-time-and-handwritten-notes): 41 settings
+- [Quiz and exams](#quiz-and-exams): 35 settings
+- [Books, study time and handwritten notes](#books-study-time-and-handwritten-notes): 44 settings
 - [Notes, files and sync](#notes-files-and-sync): 28 settings
 - [Notes brain (GBrain)](#notes-brain-gbrain): 18 settings
 - [Concept graph](#concept-graph): 26 settings
-- [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 49 settings
+- [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 51 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
-- [Brain](#brain): 127 settings
+- [Brain](#brain): 129 settings
 - [Voice and voice notes](#voice-and-voice-notes): 80 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
@@ -1548,6 +1548,30 @@ The share of your free time (in %) that goes to deadlines; the rest is for every
 - **When to change it:** Raise it if start-by dates come too late for you; lower it if they come too early.
 - **Depends on:** Start-by dates.
 
+### `startby.learn_share`
+
+Once a week, when your real pace says a different share of free time goes to deadlines, an offer to use it.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on to get the offer (Yes, then Undo). A share you set yourself is never changed.
+- **Depends on:** Start-by dates and Brain's plans (pace).
+
+### `startby.count_study`
+
+"Time to start" says the study the tracker counted for it, with Count it to set the size to what's left.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep the message as it was. The size changes only when you tap Count it.
+- **Depends on:** Start-by dates and the Study tracker.
+
+### `startby.miss_risk`
+
+"Time to start" and the Sunday summary say Brain's chance of missing a deadline at your usual pace.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if the numbers aren't useful to you.
+- **Depends on:** Start-by dates and Brain's plans.
+
 ### `startby.min_gap_min`
 
 Gaps between classes and events shorter than this (minutes) don't count as free time.
@@ -1656,6 +1680,15 @@ Location reminders: "remind me when I reach the library to …".
 - **Costs and what leaves this computer:** Where your places are never leaves the phone; the computer and call line only
   see their names.
 - **Depends on:** Reminders and the Android app, with places saved in it.
+
+### `reminders.wait_for_break`
+
+During a Study mode focus, your reminders wait for its break; a pause or reset brings them at once.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if a reminder in the middle of a focus breaks it. Alarms and deadline calls never
+  wait.
+- **Depends on:** Reminders and the Study tracker.
 
 ### `date_offers.remind_min`
 
@@ -1903,6 +1936,15 @@ A class you missed gets a catch-up task and a lecture note to fill in.
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off if you don't want catch-up tasks; Went to … on the message takes one back.
 - **Costs and what leaves this computer:** Nothing leaves: a task in Deadlines and a stub note.
+
+### `subjects.attend_by_place`
+
+The phone arriving at a place you saved during a class asks "went to it?"; Went means no catch-up for it.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if catch-ups come for classes you went to. Nothing is decided from where the phone
+  was.
+- **Depends on:** Subjects and the phone's places sense (Brain).
 
 ### `capture.delay_min`
 
@@ -2224,6 +2266,15 @@ Minutes before the exam the leave alarm goes, unless you say a time ("leave 8:10
 - **When to change it:** Set it to your travel time plus a margin.
 - **Depends on:** `exam_season.leave_alarm`.
 
+### `exam_season.in_calls`
+
+The wake-up call and the night check-in name the exam that day or the next, when to leave, and a wake time to suggest.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep those calls as they were. The alarm is still set only when you agree to a
+  time.
+- **Depends on:** Exam season, with the Morning alarm or check-ins.
+
 ### `exam_season.debrief`
 
 After each exam, a two-minute debrief that goes into the subject's course note.
@@ -2232,6 +2283,15 @@ After each exam, a two-minute debrief that goes into the subject's course note.
 - **When to change it:** Turn it off if you'd rather not look back right after an exam.
 - **Costs and what leaves this computer:** Nothing: your debrief is saved as you said it.
 - **Depends on:** Exam season.
+
+### `exam_season.debrief_at_desk`
+
+The debrief waits until you're back at your desk or the phone arrives at the place you saved as home.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if the debrief half an hour after the exam comes while you're still out. It comes 90
+  minutes after at the latest.
+- **Depends on:** Exam season; Face presence or the activity sense, or the phone's places.
 
 ### `exam_season.quiz_call_at`
 
@@ -2601,6 +2661,31 @@ When a focus ends, Study mode ends too, instead of starting a break.
 - **Values:** On or off. **Default:** off.
 - **When to change it:** Turn it on if you use one focus session at a time.
 - **Depends on:** The Study tracker; Study mode on the dashboard.
+
+### `study.face`
+
+Face presence helps the tracker: "on paper?" when it sees you without typing, a pause offer when you step away in a
+focus.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if paper study goes uncounted. Nothing is counted or paused without your tap.
+- **Depends on:** The Study tracker and Face presence.
+
+### `study.places`
+
+Arriving at a place you saved in the phone app offers a study session there; leaving ends one that offer started.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you study at a library or a lab. The place's name stays on this computer.
+- **Depends on:** The Study tracker and the phone's places sense (Brain).
+
+### `study.places_labels`
+
+The places (their names in the phone app) where an arrival offers a session; empty: any you saved.
+
+- **Values:** A list of names, e.g. library, lab. **Default:** none.
+- **When to change it:** Set it so home doesn't offer a session.
+- **Depends on:** study.places.
 
 ### `handwritten.folder`
 
@@ -3716,6 +3801,22 @@ Minutes before each planned block for Google's pop-up reminder; 0: none.
 - **Values:** A whole number. **Default:** `5`.
 - **When to change it:** Set 0 if Kurooto's own reminders are enough.
 - **Depends on:** The Agent plan calendar.
+
+### `agent_plan.holds_calls`
+
+A call Kurooto places by itself (a check-in, a nudge) waits for the end of a block of yours that's running.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if a planned block should be quiet time. Calls you asked for and alarms still ring.
+- **Depends on:** The Agent plan calendar.
+
+### `agent_plan.start_focus`
+
+When a block of yours starts and you're at your desk, one message offers a Study mode focus for it.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you don't want the offer. The focus starts only when you tap Start.
+- **Depends on:** The Agent plan calendar and the Study tracker.
 
 ### `drive_upload.big_files`
 
@@ -5676,6 +5777,15 @@ How far ahead a deadline can be for Brain to be uneasy about it.
 - **When to change it:** Lower it to hear only about what's close.
 - **Depends on:** `mind.study_push.on`.
 
+### `mind.study_push.start_timer`
+
+The reminder a Yes sets carries Start 25 min (Study mode's timer for that deadline), and Study mode opens on that
+subject.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep the reminder plain. The timer starts only on your tap.
+- **Depends on:** Brain's study push and the Study tracker.
+
 ### `mind.checkins.surprise`
 
 The next check-in comes early when the day departs strongly from Brain's forecast.
@@ -5799,6 +5909,15 @@ How far (minutes) a check-in or a call may move to a likelier hour.
 - **Values:** A whole number. **Default:** `60`.
 - **When to change it:** Lower it to keep them close to their times; 0 never moves them.
 - **Depends on:** `mind.presence_forecast.prefer`.
+
+### `mind.presence_forecast.plan`
+
+Start-by and the study push use the hours you're likeliest free first; no hour is taken away.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on once the forecast has seen a few weeks. With few messages, it can also move
+  Start-by's window to your usual hours, with Undo.
+- **Depends on:** Brain's presence forecast and Start-by dates.
 
 ### `mind.register.templates`
 

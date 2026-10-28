@@ -586,6 +586,16 @@ class Face(Module):
         finally:
             self._halt.set()
 
+    def _tell_study(self, kind: str) -> None:
+        """(0.9.0, study.face) The Study tracker offers a pause or a resume in a focus (modules/study.py)."""
+        study = self.app.modules.get("study")
+        if study is None or not self.app.is_on("study") or not hasattr(study, "face_event"):
+            return
+        try:
+            study.face_event(kind)
+        except Exception as e:
+            self._failed("telling the Study tracker", e)
+
     def _failed(self, part: str, e: BaseException) -> None:
         self.app.events.emit("face_failed", **_event_safe(part=part, error=f"{type(e).__name__}"[:80]))
 
@@ -608,9 +618,11 @@ class Face(Module):
             self._arrived(int(f.get("away_min") or 0), bool(f.get("others")))
         elif kind == "left":
             self.app.events.emit("face_left")
+            self._tell_study("left")
         elif kind == "back":
             self.app.events.emit("face_back")
             self.flush_desktop()
+            self._tell_study("back")
         elif kind == "others":
             nearby.set_others(self.app, "face", bool(f.get("on")))
         elif kind == "view":  # (0.8.13) how many faces, and whether the only one is yours: memory only, never an event

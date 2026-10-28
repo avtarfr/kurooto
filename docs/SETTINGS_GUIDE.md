@@ -66,8 +66,10 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 
 | Setting | Default | What it does |
 |---|---|---|
+| `agent_plan.holds_calls` | `false` | A call Kurooto places by itself (a check-in, a nudge) waits for the end of a block of yours that's running. ([guide](wiki/user/settings-guide.md#agentplanholdscalls)) |
 | `agent_plan.name` | `"Agent plan"` | The name of Kurooto's own calendar for the time blocks it plans with you. ([guide](wiki/user/settings-guide.md#agentplanname)) |
 | `agent_plan.remind_min` | `5` | Minutes before each planned block for Google's pop-up reminder; 0: none. ([guide](wiki/user/settings-guide.md#agentplanremindmin)) |
+| `agent_plan.start_focus` | `true` | When a block of yours starts and you're at your desk, one message offers a Study mode focus for it. ([guide](wiki/user/settings-guide.md#agentplanstartfocus)) |
 
 ### `agents`
 
@@ -370,10 +372,12 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `exam_season.block_min` | `60` | Minutes in one revision block (one topic each). ([guide](wiki/user/settings-guide.md#examseasonblockmin)) |
 | `exam_season.budget` | `true` | During exams, only deadlines, quizzes and the alarm come in the day; the rest waits for the evening. ([guide](wiki/user/settings-guide.md#examseasonbudget)) |
 | `exam_season.debrief` | `true` | After each exam, a two-minute debrief that goes into the subject's course note. ([guide](wiki/user/settings-guide.md#examseasondebrief)) |
+| `exam_season.debrief_at_desk` | `false` | The debrief waits until you're back at your desk or the phone arrives at the place you saved as home. ([guide](wiki/user/settings-guide.md#examseasondebriefatdesk)) |
 | `exam_season.eve` | `true` | The evening before an exam, a checklist: where it is, your seat, calculator, ID card. ([guide](wiki/user/settings-guide.md#examseasoneve)) |
 | `exam_season.eve_at` | `"18:00"` | When the evening-before question can come. ([guide](wiki/user/settings-guide.md#examseasoneveat)) |
 | `exam_season.exam_min` | `180` | How long an exam lasts, in minutes (no calls then; the debrief comes half an hour after). ([guide](wiki/user/settings-guide.md#examseasonexammin)) |
 | `exam_season.hold_updates` | `true` | During exams, updates that aren't critical wait until the exams are over. ([guide](wiki/user/settings-guide.md#examseasonholdupdates)) |
+| `exam_season.in_calls` | `true` | The wake-up call and the night check-in name the exam that day or the next, when to leave, and a wake time to suggest. ([guide](wiki/user/settings-guide.md#examseasonincalls)) |
 | `exam_season.leave_alarm` | `true` | On an exam day, an alarm to leave (a call with Phone calls, else a message). ([guide](wiki/user/settings-guide.md#examseasonleavealarm)) |
 | `exam_season.leave_min` | `45` | Minutes before the exam the leave alarm goes, unless you say a time ("leave 8:10"). ([guide](wiki/user/settings-guide.md#examseasonleavemin)) |
 | `exam_season.night_at` | `"21:30"` | When the nightly alarm check runs. ([guide](wiki/user/settings-guide.md#examseasonnightat)) |
@@ -766,6 +770,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.precedents.on` | `false` | Judgement calls between your values are asked once, then followed (off until you turn it on). ([guide](wiki/user/settings-guide.md#mindprecedentson)) |
 | `mind.precedents.threshold` | `0.75` | How alike two situations must be (0 to 1) for a precedent to be followed. ([guide](wiki/user/settings-guide.md#mindprecedentsthreshold)) |
 | `mind.presence_forecast.on` | `true` | Forecast, hour by hour for the next six hours, when you'll be at your desk and free; scored against what the senses then show. ([guide](wiki/user/settings-guide.md#mindpresenceforecaston)) |
+| `mind.presence_forecast.plan` | `false` | Start-by and the study push use the hours you're likeliest free first; no hour is taken away. ([guide](wiki/user/settings-guide.md#mindpresenceforecastplan)) |
 | `mind.presence_forecast.prefer` | `true` | Check-ins and calls Kurooto places by itself prefer an hour you're likely free. ([guide](wiki/user/settings-guide.md#mindpresenceforecastprefer)) |
 | `mind.presence_forecast.within_min` | `60` | How far (minutes) a check-in or a call may move to a likelier hour. ([guide](wiki/user/settings-guide.md#mindpresenceforecastwithinmin)) |
 | `mind.promises.on` | `true` | Its own promises ("I'll check back at 6") are noticed, kept, or owned up to first. ([guide](wiki/user/settings-guide.md#mindpromiseson)) |
@@ -794,6 +799,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.study_push.horizon_days` | `7` | How far ahead a deadline can be for Brain to be uneasy about it. ([guide](wiki/user/settings-guide.md#mindstudypushhorizondays)) |
 | `mind.study_push.minutes` | `25` | How long a study stretch the morning line offers. ([guide](wiki/user/settings-guide.md#mindstudypushminutes)) |
 | `mind.study_push.on` | `true` | One morning line about the subject Brain is most uneasy about (due date, minutes logged, cards due), with Yes and Later. ([guide](wiki/user/settings-guide.md#mindstudypushon)) |
+| `mind.study_push.start_timer` | `true` | The reminder a Yes sets carries Start 25 min (Study mode's timer for that deadline), and Study mode opens on that subject. ([guide](wiki/user/settings-guide.md#mindstudypushstarttimer)) |
 | `mind.study_push.when` | `"daily 07:55"` | When the morning line comes. ([guide](wiki/user/settings-guide.md#mindstudypushwhen)) |
 | `mind.talk.met` | `true` | An add-on's chat with someone in the room is a smaller reward for Brain (at most 0.05 a day, 6 meetings). ([guide](wiki/user/settings-guide.md#mindtalkmet)) |
 | `mind.talk.on` | `true` | Being talked to is a small reward for Brain (at most 0.2 a day; nothing for answers to its own pings). ([guide](wiki/user/settings-guide.md#mindtalkon)) |
@@ -978,6 +984,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | Setting | Default | What it does |
 |---|---|---|
 | `reminders.places` | `false` | Location reminders: "remind me when I reach the library to …". ([guide](wiki/user/settings-guide.md#remindersplaces)) |
+| `reminders.wait_for_break` | `false` | During a Study mode focus, your reminders wait for its break; a pause or reset brings them at once. ([guide](wiki/user/settings-guide.md#reminderswaitforbreak)) |
 
 ### `repair`
 
@@ -1111,11 +1118,14 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | Setting | Default | What it does |
 |---|---|---|
 | `startby.ask_exams` | `true` | The first time a subject has an exam, ask how long its exams take you to prepare for. ([guide](wiki/user/settings-guide.md#startbyaskexams)) |
+| `startby.count_study` | `true` | "Time to start" says the study the tracker counted for it, with Count it to set the size to what's left. ([guide](wiki/user/settings-guide.md#startbycountstudy)) |
 | `startby.crunch_weeks` | `4` | Weeks the Sunday summary looks ahead for crunch weeks (more work due than free time); 0: none. ([guide](wiki/user/settings-guide.md#startbycrunchweeks)) |
 | `startby.exam_by_subject` | `{}` | Hours to prepare for a subject's exams, where it differs from the usual. ([guide](wiki/user/settings-guide.md#startbyexambysubject)) |
 | `startby.horizon_days` | `35` | Deadlines due this far ahead (in days) get a start-by date. ([guide](wiki/user/settings-guide.md#startbyhorizondays)) |
+| `startby.learn_share` | `false` | Once a week, when your real pace says a different share of free time goes to deadlines, an offer to use it. ([guide](wiki/user/settings-guide.md#startbylearnshare)) |
 | `startby.learn_window` | `true` | Once a week, move the window to when you're actually up, with one line and Undo. ([guide](wiki/user/settings-guide.md#startbylearnwindow)) |
 | `startby.min_gap_min` | `30` | Gaps between classes and events shorter than this (minutes) don't count as free time. ([guide](wiki/user/settings-guide.md#startbymingapmin)) |
+| `startby.miss_risk` | `true` | "Time to start" and the Sunday summary say Brain's chance of missing a deadline at your usual pace. ([guide](wiki/user/settings-guide.md#startbymissrisk)) |
 | `startby.negotiate` | `true` | A deadline that keeps slipping gets a reshaped plan once a day instead of the same reminder again. ([guide](wiki/user/settings-guide.md#startbynegotiate)) |
 | `startby.share` | `40` | The share of your free time (in %) that goes to deadlines; the rest is for everything else. ([guide](wiki/user/settings-guide.md#startbyshare)) |
 | `startby.sizes.exam` | `10` | Hours to prepare for an exam, unless its subject has its own. ([guide](wiki/user/settings-guide.md#startbysizesexam)) |
@@ -1133,9 +1143,12 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 |---|---|---|
 | `study.break_min` | `5` | Minutes of break the Study mode timer gives after each focus session. ([guide](wiki/user/settings-guide.md#studybreakmin)) |
 | `study.daily_note` | `"23:45"` | When the day's study hours go into your daily note; none: never. ([guide](wiki/user/settings-guide.md#studydailynote)) |
+| `study.face` | `false` | Face presence helps the tracker: "on paper?" when it sees you without typing, a pause offer when you step away in a focus. ([guide](wiki/user/settings-guide.md#studyface)) |
 | `study.focus_min` | `25` | Study mode's timer: minutes of focus (calls and messages wait, the time is logged). ([guide](wiki/user/settings-guide.md#studyfocusmin)) |
 | `study.idle_min` | `5` | Minutes without activity before study time stops counting. ([guide](wiki/user/settings-guide.md#studyidlemin)) |
 | `study.keywords` | `{}` | Extra words per subject that count a window for it. ([guide](wiki/user/settings-guide.md#studykeywords)) |
+| `study.places` | `false` | Arriving at a place you saved in the phone app offers a study session there; leaving ends one that offer started. ([guide](wiki/user/settings-guide.md#studyplaces)) |
+| `study.places_labels` | `[]` | The places (their names in the phone app) where an arrival offers a session; empty: any you saved. ([guide](wiki/user/settings-guide.md#studyplaceslabels)) |
 | `study.research_paths` | `[]` | Words or folders whose windows count as Research time. ([guide](wiki/user/settings-guide.md#studyresearchpaths)) |
 | `study.sample_s` | `30` | Seconds between looks at the window you're working in. ([guide](wiki/user/settings-guide.md#studysamples)) |
 | `study.timer_ends_mode` | `false` | When a focus ends, Study mode ends too, instead of starting a break. ([guide](wiki/user/settings-guide.md#studytimerendsmode)) |
@@ -1152,6 +1165,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 
 | Setting | Default | What it does |
 |---|---|---|
+| `subjects.attend_by_place` | `false` | The phone arriving at a place you saved during a class asks "went to it?"; Went means no catch-up for it. ([guide](wiki/user/settings-guide.md#subjectsattendbyplace)) |
 | `subjects.catch_up` | `true` | A class you missed gets a catch-up task and a lecture note to fill in. ([guide](wiki/user/settings-guide.md#subjectscatchup)) |
 | `subjects.exam_periods` | `[]` | Exam periods: no classes then, exams instead. ([guide](wiki/user/settings-guide.md#subjectsexamperiods)) |
 | `subjects.holidays` | `[]` | Days with no classes. ([guide](wiki/user/settings-guide.md#subjectsholidays)) |

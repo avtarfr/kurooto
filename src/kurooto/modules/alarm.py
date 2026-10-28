@@ -499,6 +499,14 @@ class Alarm(Module):
                 steps.append(f"Classes still to come today: {names}. Ask which they're skipping, if any (skip_class).")
             elif cls:  # a late wake-up: they can't have gone, so don't ask
                 steps.append("Today's classes are over already; don't ask whether they went.")
+        es = app.modules.get("exam_season")
+        if es is not None and app.is_on("exam_season") and hasattr(es, "call_line"):
+            try:  # 0.9.0 (exam_season.in_calls): today's exam, when it starts, when to leave
+                line = es.call_line("today")
+            except Exception:
+                line = ""
+            if line:
+                steps.append(line + " Say it plainly, once.")
         if app.is_on("calendar"):
             evs = app.modules["calendar"].call_brief().get("calendar_today")
             if evs:

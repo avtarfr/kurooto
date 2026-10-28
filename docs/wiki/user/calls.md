@@ -157,6 +157,7 @@ Linear Algebra): the essay"**. It's placed by itself when the block ends.
 | A commitment | Each of your [commitments](classes-and-timetable.md#commitments-gym-shifts-standups) (the gym, a shift, a standup) while it's on, unless you skipped it today or set `/busy calls <name> off`; a night shift holds calls until it ends. |
 | A calendar event | Every timed event (`calendar.no_calls_in_events`), or only events tagged `#nocall` and events in a calendar whose name contains "no call" when `calendar.nocall_events` = `tagged`. |
 | An exam | With Exam season on and its `no_calls` part on: from 15 minutes before an exam until `exam_season.exam_min` (180) minutes after it starts. |
+| A block you planned | Off by default (`agent_plan.holds_calls`, 0.9.0): only calls Kurooto places by itself (check-ins, nudges) wait until a block in your [Agent plan calendar](google.md#agent-plan-calendar) ends. Calls you asked for and alarms ring. |
 
 Never held: the morning alarm and exam leave-by alarms (they ring through the night and holds), "call me now", and
 `kurooto call --force`. A repeat ring of an unanswered call is dropped (it becomes a missed call) if a block started

@@ -108,6 +108,21 @@ tip = "The share of your free time (in %) that goes to deadlines; the rest is fo
 when = "Raise it if start-by dates come too late for you; lower it if they come too early."
 needs = "Start-by dates."
 
+[s."startby.learn_share"]
+tip = "Once a week, when your real pace says a different share of free time goes to deadlines, an offer to use it."
+when = "Turn it on to get the offer (Yes, then Undo). A share you set yourself is never changed."
+needs = "Start-by dates and Brain's plans (pace)."
+
+[s."startby.count_study"]
+tip = "\"Time to start\" says the study the tracker counted for it, with Count it to set the size to what's left."
+when = "Turn it off to keep the message as it was. The size changes only when you tap Count it."
+needs = "Start-by dates and the Study tracker."
+
+[s."startby.miss_risk"]
+tip = "\"Time to start\" and the Sunday summary say Brain's chance of missing a deadline at your usual pace."
+when = "Turn it off if the numbers aren't useful to you."
+needs = "Start-by dates and Brain's plans."
+
 [s."startby.min_gap_min"]
 tip = "Gaps between classes and events shorter than this (minutes) don't count as free time."
 when = "Lower it if you do get work done in short gaps."
@@ -174,6 +189,11 @@ tip = "Location reminders: \"remind me when I reach the library to …\"."
 when = "Turn it on to use places you saved in the Android app."
 cost = "Where your places are never leaves the phone; the computer and call line only see their names."
 needs = "Reminders and the Android app, with places saved in it."
+
+[s."reminders.wait_for_break"]
+tip = "During a Study mode focus, your reminders wait for its break; a pause or reset brings them at once."
+when = "Turn it on if a reminder in the middle of a focus breaks it. Alarms and deadline calls never wait."
+needs = "Reminders and the Study tracker."
 
 [s."date_offers.remind_min"]
 tip = "An event you tap Add on (from a photo, mail or a shared calendar) is reminded this long before."

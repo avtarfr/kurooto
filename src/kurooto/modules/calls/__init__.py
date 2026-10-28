@@ -429,6 +429,21 @@ class Calls(Module):
         self.ring(reason, alarm=alarm, key=key, why=why, due=due)
         return f"Calling you now: {reason}"
 
+    def plan_block_hold(self, why: str | None) -> tuple[dt.datetime, str] | None:
+        """(0.9.0, agent_plan.holds_calls, off) a call Kurooto places by itself (not one you asked for, not an alarm)
+        while a block in your Agent plan calendar runs: (just after the block's end, the reason said), else None (it
+        rings now). Check-ins ask too (modules/checkins.py)."""
+        if not why or why in ("calls.own", "alarm.ring"):
+            return None
+        plan = self.app.modules.get("agent_plan")
+        if plan is None or not self.app.is_on("agent_plan") or not plan.setting("holds_calls"):
+            return None
+        try:
+            b = plan.running_block()
+        except Exception:
+            return None
+        return (b["end"] + dt.timedelta(minutes=1), f"your planned block: {b['title'] or 'a block'}") if b else None
+
     def _presence_later(self, why: str | None, due: str | None) -> dt.datetime | None:
         """(Brain, 0.8.16: mind.presence_forecast.prefer) a call Kurooto places by itself (not one you asked for, not
         an alarm, not a deadline under 12 hours away) when Brain forecasts you won't be at your desk and free now and
@@ -452,7 +467,8 @@ class Calls(Module):
         av = self.app.availability
         why, _ = av.call_block()
         if not why:
-            return None
+            block = self.plan_block_hold(p.get("why"))  # 0.9.0: agent_plan.holds_calls, its own calls only
+            return self._hold_until(block[0], p, block[1]) if block else None
         when, _ = av.next_callable()
         return self._hold_until(when, p, why)
 

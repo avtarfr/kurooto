@@ -113,6 +113,12 @@ minus that list.
 One message lists them once the classes are over (it looks every 30 minutes), each with a **Went to ...** button for
 a class you did go to: it takes the task back, and the note too if you haven't written in it.
 
+**Went to it, by place** (`subjects.attend_by_place`, off, 0.9.0). With the phone app's places sense on (Brain), the
+phone arriving at a place you saved while a class is on (from a quarter of an hour before it starts) asks once:
+"You've arrived at a place you saved while Topology (10:00) is on. Went to it?" **Went** means no catch-up for it.
+Nothing is decided from where the phone was: no answer, and the catch-up comes as usual; a class you `/skip` is never
+asked about. The place's name isn't used or said.
+
 **Settings.** `subjects.catch_up` (on). **What leaves your computer.** Nothing (the Classroom posts come from what
 Kurooto already read). **Undo:** **Went to ...**, or tick the task off in Deadlines; turning the setting off stops new
 ones.

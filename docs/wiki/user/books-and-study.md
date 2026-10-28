@@ -192,6 +192,22 @@ For swayidle: `swayidle timeout 300 'kurooto idle away' resume 'kurooto idle bac
 call include study hours. [Study mode](dashboard.md#study-mode) (Alt+M, `/study mode on`) keeps only your notes and a
 focus and break timer: a focus holds calls and messages and logs its minutes here.
 
+**From Brain's study push** (`mind.study_push.start_timer`, on, 0.9.0). Yes under Brain's morning line still sets the
+reminder; when it comes, it carries **Start 25 min**, which starts Study mode's timer for that subject, tied to the
+deadline (Start-by counts those minutes for it). Study mode opens on that subject that day, and a tap on the being's
+uneasy glow picks it too. Nothing starts without your tap.
+
+**Face presence helps** (`study.face`, off, 0.9.0). With [Face presence](face.md) on: seen at your desk without
+typing for `study.idle_min`, it asks once "Studying Topology on paper?"; **Yes** starts a session, and nothing is counted
+without it. Stepping away during a focus offers **Pause**, and coming back after that pause offers **Resume**. Logged
+minutes are never dropped or discounted, and nothing is noted about where you were.
+
+**At a place you saved** (`study.places`, off, 0.9.0). With the phone app's places sense on (Brain, `mind.senses.phone.places`),
+arriving at a place you saved offers a session there, once a day per place: "You've arrived at a place you saved.
+Start a study session there?" with your subjects due soonest. Leaving that place ends a session that offer started
+(one you started yourself keeps going). `study.places_labels` limits it to some places (their names in the phone
+app), so home doesn't offer one. The place's name stays on this computer and never goes to an AI.
+
 **Settings that matter** (Dashboard → Settings → Study tracker)
 
 | Setting | Default | Effect |
@@ -202,6 +218,8 @@ focus and break timer: a focus holds calls and messages and logs its minutes her
 | `study.keywords` | `{}` | extra words per subject, e.g. `{"linear-algebra": ["matrix", "eigen"]}` |
 | `study.focus_min` / `study.break_min` | 25 / 5 | Study mode's timer: minutes of focus, then of break |
 | `study.timer_ends_mode` | off | Study mode ends when a focus ends, instead of a break |
+| `study.face` | off | Face presence asks "on paper?" and offers a pause or resume in a focus (0.9.0) |
+| `study.places` / `study.places_labels` | off / `[]` | arriving at a saved place offers a session (0.9.0) |
 
 **What leaves your computer.** Nothing. Window titles are read here and thrown away.
 

@@ -528,8 +528,26 @@ tied to nothing keep their places); an order you give on a call ("homework first
 Pushing by some time moves only the ones not over yet, in their order. Blocks for something done, over, or moved past
 "due soon" (`deadlines.plan_h`, 3 days) since they were planned are dropped and named ("Dropped, nothing left to do for
 them: ..."). A block planned twice keeps its first; one that would end after 03:00 is left out and named, and so is
-what's due within a day with no block yet. Tonight's blocks past midnight count too. The new plan also goes in today's
-daily note. `/blocks undo` puts them back.
+what's due within a day with no block yet. Tonight's blocks past midnight count too. A block that would overlap a
+class you go to, a commitment or a timed event in your calendar goes after it (0.9.0). The new plan also goes in
+today's daily note. `/blocks undo` puts them back.
+
+**Planned time is busy.** [Start-by dates](reminders-and-deadlines.md#start-by-dates-and-crunch-weeks) and the
+revision plan count your blocks as busy (0.9.0), so they don't plan other work into time you planned. With Google out of
+reach they plan as if there were no blocks.
+
+**A deadline that moves** (0.9.0). When a deadline moves (you, a call, or its source, such as a Classroom post with a
+new due date), its blocks still ahead get "(moved to Fri 13 Nov)" in their titles and one message asks "remove its 2
+plan blocks from your Agent plan calendar?" with **Remove** and **Keep**. Remove takes them out (`/blocks undo` puts them
+back); Keep puts their titles back. Nothing is removed without your tap.
+
+**A focus when a block starts** (`agent_plan.start_focus`, on, 0.9.0). With the [Study tracker](books-and-study.md#study-tracker)
+on, when a block starts and you're at your desk (Face presence or the computer in use), one message: "Your block
+Topology report starts now. Start a 25-minute focus for it?" with **Start 25 min**. Away from your desk: nothing, and
+nothing is noted.
+
+**Calls wait for your blocks** (`agent_plan.holds_calls`, off, 0.9.0). Turned on, a call Kurooto places by itself (a
+check-in, a nudge) during a block waits until it ends. Calls you asked for and alarms still ring.
 
 **On calls.** Agree to a time on a call ("let's do the problem set from 2 to 4") and the call puts the block in. A
 block that would overlap one already planned goes in the first free time after it, and the call says the time it got;
@@ -543,6 +561,8 @@ brief.
 |---|---|---|
 | `agent_plan.remind_min` | `5` | Google's pop-up reminder before each block; 0 for none |
 | `agent_plan.name` | `Agent plan` | the calendar's name |
+| `agent_plan.start_focus` | on | a block starting with you at the desk offers a Study mode focus (0.9.0) |
+| `agent_plan.holds_calls` | off | Kurooto's own calls wait for the end of a running block (0.9.0) |
 
 **Limits and edge cases.** A block must end after it starts, be at most 12 hours long, and fall between now and a month
 ahead. The same block twice is refused ("Already planned"); so is one for a quiz or exam that's over, or a deadline
