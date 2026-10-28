@@ -79,6 +79,8 @@ POLICY_WORDS = {"allowed": "allowed", "on": "allowed", "yes": "allowed", "full":
                 "hint": "hints", "hints-only": "hints", "off": "off", "none": "off", "no": "off"}  # fmt: skip
 POSTS_HEAD = "## Classroom posts that day"  # in a catch-up's lecture stub, above...
 COVERED = "## What was covered"  # ...the part you fill in
+# skip_class on a call: every class today in one call (0.8.17; Live called it once per class, seven lines in a row)
+ALL_TODAY = re.compile(r"(?i)all|every(thing| class)?|today|all (of )?(the |my |today'?s )?classes( today)?")
 
 
 def slugify(name: str) -> str:
@@ -853,17 +855,40 @@ class Subjects(Module):
         return [
             Tool(
                 "skip_class",
-                "They're not going to this class today (no after-class question; calls are allowed during it).",
+                "They're not going to these classes today (no after-class question; calls are allowed during them). "
+                'One call for any number: subjects lists them, ["all"] is every class today.',
                 self._tool_skip,
-                {"subject": arg("e.g. Linear Algebra")},
-                ("subject",),
+                {
+                    "subject": arg("one class, e.g. Linear Algebra"),
+                    "subjects": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": 'several classes at once, or ["all"] for all of today\'s',
+                    },
+                },
                 offline="queue",
+                hint='Skipping several classes, or all of today\'s: ONE skip_class call with subjects (["all"] for '
+                "every class today), never one call per class. Classes are skip_class, never skip_commitment.",
             )
         ]
 
     def _tool_skip(self, a: dict) -> str:
-        slug = self.resolve(str(a.get("subject", "")))
-        if not slug:
+        """One class (subject, as before 0.8.17), several (subjects) or all of today's, in one call."""
+        want = a.get("subjects")
+        want = [str(x) for x in want] if isinstance(want, list) else [str(want)] if want else []
+        if a.get("subject"):
+            want.append(str(a["subject"]))
+        if any(ALL_TODAY.fullmatch(x.strip()) for x in want):
+            slugs = list(dict.fromkeys(c["subject"] for c in self.classes_on(include_skipped=True) if c.get("subject")))
+            if not slugs:
+                return "There are no classes today."
+            self.set_skip(slugs)
+            return f"Skipping all of today's classes: {', '.join(self.name_of(s) for s in slugs)}."
+        slugs = list(dict.fromkeys(s for s in (self.resolve(x) for x in want) if s))
+        if not slugs:
             return "I don't know that subject."
-        self.set_skip([slug])
-        return f"Skipping {self.name_of(slug)} today."
+        self.set_skip(slugs)
+        unknown = [x for x in want if not self.resolve(x)]
+        return f"Skipping {', '.join(self.name_of(s) for s in slugs)} today." + (
+            f" I don't know: {', '.join(unknown)}." if unknown else ""
+        )

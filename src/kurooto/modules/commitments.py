@@ -408,14 +408,38 @@ class Commitments(Module):
         return [
             Tool(
                 "skip_commitment",
-                "They're skipping this commitment today (the gym, a shift); calls are allowed during it.",
+                "They're skipping these commitments today (the gym, a shift; never classes); calls are allowed during "
+                'them. One call for any number: names lists them, ["all"] is every commitment today.',
                 self._tool_skip,
-                {"name": arg("e.g. gym")},
-                ("name",),
+                {
+                    "name": arg("one, e.g. gym"),
+                    "names": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": 'several at once, or ["all"] for all of today\'s',
+                    },
+                },
                 offline="queue",
             )
         ]
 
     def _tool_skip(self, a: dict) -> str:
-        r = self.find(str(a.get("name", "")))
-        return self._skip(r, True, now().date()) if r else "I don't know that one."
+        """One commitment (name, as before 0.8.17), several (names) or all of today's, in one call."""
+        want = a.get("names")
+        want = [str(x) for x in want] if isinstance(want, list) else [str(want)] if want else []
+        if a.get("name"):
+            want.append(str(a["name"]))
+        today = now().date()
+        if any(x.strip().lower() in ("all", "everything", "today") for x in want):
+            rows = self.on(today, include_skipped=True)
+            if not rows:
+                return "There are no commitments today."
+        else:
+            rows = list({r["name"]: r for r in (self.find(x) for x in want) if r}.values())
+        if not rows:
+            return "I don't know that one."
+        if len(rows) == 1:
+            return self._skip(rows[0], True, today)
+        for r in rows:
+            self._skip(r, True, today)
+        return f"Skipping {', '.join(r['name'] for r in rows)} today; calls are allowed then."

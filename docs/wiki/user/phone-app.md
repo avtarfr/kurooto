@@ -171,7 +171,10 @@ floating card with the badge. Above the bar: your microphone's level and **Mic g
 needs a louder voice, so a noisy room doesn't cut in), **Interrupt** while Kurooto talks on the loudspeaker, and in a
 turn-by-turn call the big **Talk** button. The floating bar at the bottom has **Mute**, **Speaker** (off: the earpiece,
 or your headset) and **Hang up**. A call you place from the app and one you answer from the notification look the
-same. The call page still runs the call underneath, so nothing about how calls work changes; if a call line ever
+same. **Back** during a call (0.8.17) doesn't end it: the call goes on behind your other apps, and the "On a call with
+Kurooto" notification brings it back (a tap) or ends it (**Hang up**); the app keeps the microphone for the call
+meanwhile. Back while it rings closes the ringing screen only; it keeps ringing, and the notification still answers.
+The call page still runs the call underneath, so nothing about how calls work changes; if a call line ever
 sends something that isn't its call page, that page is shown as it is. The **New call screen** switch brings back the
 old screens, ringing and in the call. On Android 12 and
 newer the notification looks like the phone's own incoming calls (a red Decline, a green Answer). What each does is in

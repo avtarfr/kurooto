@@ -20,6 +20,11 @@ public class CallRulesTest {
         check(CallRules.what(true, false, true, true) == CallRules.ANSWER, "a ring during the call: stays in the call");
         check(CallRules.what(true, false, false, false) == CallRules.ANSWER, "a link alone: straight into the call");
 
+        check(CallRules.fromNotice(true, false) == CallRules.IGNORE, "the call's notification: back to the call, nothing else");
+        check(CallRules.fromNotice(true, true) == CallRules.HANG_UP, "its Hang up ends the call");
+        check(CallRules.fromNotice(false, false) == CallRules.FINISH && CallRules.fromNotice(false, true) == CallRules.FINISH,
+                "the call already over: close");
+
         check(CallRules.who(true, true, "Kuro").equals("Good morning: wake-up alarm"), "the phone's own alarm");
         check(CallRules.who(false, true, "Kuro").equals("Good morning: wake-up call"), "the wake-up call");
         check(CallRules.who(false, false, "Kuro").equals("Kuro is calling"), "a call");

@@ -163,6 +163,9 @@ class Calls(Module):
         # each call's tool uses, by the call's "since" ("" when the call page didn't say), for the look back after it
         # (review.py); two calls at once, or work queued while the computer was off, each keep their own
         self.tool_log: dict[str, list[dict]] = {}
+        # the transcripts already kept (a hash of each), so the same end of a call sent twice is kept once (0.8.17: the
+        # call page also sends it as the page closes, and the app hangs up a call its screen was closed on)
+        self._kept: list[str] = []
         self._devices_seen: tuple[float, list[dict]] = (0.0, [])  # the last device list, and when (phones_direct)
 
     # ------------------------------------------------------------------------------------------ setup
@@ -1299,6 +1302,12 @@ class Calls(Module):
     def _transcript(self, b: dict) -> dict:
         self.app.availability.set_on_call(None)  # the call page sends this when the call ends
         (self.dir / "live.json").unlink(missing_ok=True)
+        key = hashlib.sha256(
+            json.dumps([b.get("since"), b.get("lines")], sort_keys=True, default=str).encode()
+        ).hexdigest()
+        if b.get("lines") and key in self._kept:  # the same end sent again (the page closing, the app hanging up)
+            return {"ok": True, "again": True}
+        self._kept = [*self._kept[-19:], key]
         return self.save_transcript(b)
 
     def save_transcript(self, b: dict) -> dict:

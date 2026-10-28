@@ -295,15 +295,41 @@ function onMessage(m) {
 }
 
 async function runTool(fc) {
-  say(toolLabel(fc), 'sys');
+  sayTool(fc);
   let result;
   try { result = (await api('/tool', { name: fc.name, args: fc.args || {}, since })).result; } catch (e) { result = `Tool failed: ${e.message}`; }
   if (session) session.sendToolResponse({ functionResponses: [{ id: fc.id, name: fc.name, response: nonBlocking ? { result, scheduling: 'WHEN_IDLE' } : { result } }] });
 }
 function toolLabel(fc) {
   const a = fc.args || {};
+  const what = skipping(fc);
+  if (what) return skipLabel(fc.name, what);
   return { search_notes: `searching notes: ${a.query || ''}`, read_note: `reading ${a.slug || 'a note'}`, run_task: 'started a task on your computer',
     schedule_call: `scheduling a call: ${a.when || ''}`, set_alarm: `setting the alarm: ${a.time || ''}` }[fc.name] || fc.name.replace(/_/g, ' ');
+}
+// What a skip_class / skip_commitment call skips (its one name and its list), else null.
+const SKIPS = { skip_class: ['subject', 'subjects'], skip_commitment: ['name', 'names'] };
+const ALL = /^\s*(all|every(thing| class)?|today|all (of )?(the |my |today'?s )?classes( today)?)\s*$/i;
+function skipping(fc) {
+  const k = SKIPS[fc.name];
+  if (!k) return null;
+  const a = fc.args || {}, list = Array.isArray(a[k[1]]) ? a[k[1]] : a[k[1]] ? [a[k[1]]] : [];
+  return [...list, ...(a[k[0]] ? [a[k[0]]] : [])].map(String).filter((x) => x.trim());
+}
+function skipLabel(name, what) {
+  const all = what.some((w) => ALL.test(w));
+  if (all) return name === 'skip_class' ? "skipping today's classes" : "skipping today's commitments";
+  return what.length ? `skipping ${[...new Set(what)].join(', ')}` : name === 'skip_class' ? 'skipping a class' : 'skipping a commitment';
+}
+// One line per run of the same tool (0.8.17: "I skipped all classes" was seven "skip class" lines in a row): the same
+// line again becomes "×N", and skipping one thing after another becomes one line naming them all.
+let lastTool = null; // {el, name, label, n, what}
+function sayTool(fc) {
+  const label = toolLabel(fc), kids = $('log').children, what = skipping(fc);
+  const t = lastTool && kids[kids.length - 1] === lastTool.el ? lastTool : null;
+  if (t && what && t.what && t.name === fc.name) { t.what.push(...what); t.el.textContent = skipLabel(fc.name, t.what); return; }
+  if (t && t.label === label) { t.n += 1; t.el.textContent = `${label} ×${t.n}`; return; }
+  lastTool = { el: say(label, 'sys'), name: fc.name, label, n: 1, what };
 }
 
 // Something for the AI to hear (a finished task, an approval, the computer coming back): into the Live session, or
@@ -538,9 +564,29 @@ async function start() {
   startLive(0);
 }
 
+// The call's end and transcript to your computer, once: always sent, even with nothing said, as it also tells your
+// computer the call is over ("on a call" ends). keepalive lets it outlive the page (0.8.17: Back or a closed screen
+// used to lose both); a closing page may send 64 KB at most that way, so a long call's oldest lines go first then.
+const KEEPALIVE_MAX = 60000;
+function sendEnd(closing) {
+  if (!live && !announced && !transcript.length) return;
+  let lines = transcript.splice(0);
+  const layer = mode;
+  live = false; announced = false;
+  const size = (s) => new TextEncoder().encode(s).length;
+  const body = () => JSON.stringify({ lines, purpose, since, ended: true, layer });
+  let b = body();
+  while (closing && size(b) > KEEPALIVE_MAX) {
+    lines = lines.length > 1 ? lines.slice(Math.ceil(lines.length / 8)) : [{ ...lines[0], text: lines[0].text.slice(-(lines[0].text.length >> 1)) }];
+    b = body();
+  }
+  try {
+    fetch('/transcript', { method: 'POST', keepalive: size(b) <= KEEPALIVE_MAX, headers: { 'Content-Type': 'application/json', 'x-call-secret': secret }, body: b }).catch(() => {});
+  } catch { /* the page is going */ }
+}
+
 function hangup(user = true) {
-  // always sent, even with nothing said: it also tells your computer the call is over ("on a call" ends)
-  if (live || transcript.length) api('/transcript', { lines: transcript.splice(0), purpose, since, ended: true, layer: mode }).catch(() => {});
+  sendEnd(false);
   ending = true;
   live = false;
   mode = '';
@@ -570,6 +616,10 @@ $('int').onclick = interrupt;
 $('gate').oninput = (e) => setSensitivity(Number(e.target.value));
 $('gate').value = String(sensitivity); setSensitivity(sensitivity);
 $('mute').onclick = () => { muted = !muted; $('mute').textContent = muted ? 'Unmute' : 'Mute'; };
+// The page going away with a call still up (the app's screen closed, the tab closed or reloaded): the end goes anyway.
+// Only hidden (another app in front, the screen off) the call goes on.
+window.addEventListener('pagehide', () => sendEnd(true));
+window.addEventListener('beforeunload', () => sendEnd(true));
 document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState === 'visible' && (session || mode === 'turns') && !wakeLock && navigator.wakeLock) try { wakeLock = await navigator.wakeLock.request('screen'); } catch { /* optional */ }
 });
