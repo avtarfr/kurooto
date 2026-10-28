@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import datetime as dt
 import re
+import time
 
 from kurooto.core import layout
 from kurooto.core.clock import now
@@ -68,8 +69,15 @@ register_defaults(
         "revision_share": 50,  # % of your free time (Start-by's, less commitments) revision blocks may take
         "block_min": 60,  # one revision block, in minutes (one topic each)
         "revision_ask": True,  # the evening: did you cover today's topics? (counts like a quiz answer)
+        # (0.9.0) in a season, AI requests about an exam's subject (and quiz, revision and study work) go first in the
+        # queue and, with their effort picked automatically, one step higher (core/jobs.py: boosts); the rest runs
+        "jobs_priority": True,
+        # (0.9.0) in a season, background AI work that isn't about studying waits until the season ends (learning,
+        # research digests, Brain's nightly work...). Off: it runs as always
+        "defer_background": False,
     },
 )
+STUDY_WHY = ("quiz", "revision", "exam_season", "study", "startby", "doubts", "deadlines")  # study work, by its reason
 
 PIECES = {
     "hold_updates": "Hold non-critical updates",
@@ -186,6 +194,9 @@ class ExamSeason(Module):
         self.app.ask.hooks["exam_season.debrief"] = self._debrief_answer
         self.app.availability.blockers["exam_season:exam"] = self._block
         self.app.updates.holds[self.id] = self.update_hold
+        self.app.jobs.boosts[self.id] = self._job_first  # (0.9.0) study first in a season
+        if self._job_later not in self.app.jobs.gates:
+            self.app.jobs.gates.append(self._job_later)
 
     def stop(self):
         super().stop()
@@ -193,6 +204,9 @@ class ExamSeason(Module):
             self.app.modules["calls"].connector.poke()  # the call line forgets the leave-by alarms
         self.app.availability.blockers.pop("exam_season:exam", None)
         self.app.updates.holds.pop(self.id, None)
+        self.app.jobs.boosts.pop(self.id, None)
+        if self._job_later in self.app.jobs.gates:
+            self.app.jobs.gates.remove(self._job_later)
         for h in ("exam_season.eve", "exam_season.debrief"):
             self.app.ask.hooks.pop(h, None)
 
@@ -292,6 +306,44 @@ class ExamSeason(Module):
         if not s:
             return None
         return {"keep": BUDGET_KEEP, "until": dt.datetime.combine(s[1], dt.time(23, 59))}
+
+    def studying(self, info: dict) -> bool:
+        """(0.9.0) Is this AI request study work for the season on now? Its reason is quiz, revision or the like, or
+        its title names a subject (or the exam) one of the season's exams is in. False outside a season."""
+        t = time.monotonic()
+        cached = getattr(self, "_season_cache", None)  # the queue asks often: the season is read once a minute
+        if cached is None or t - cached[0] > 60:
+            s = self.season()
+            cached = self._season_cache = (t, s, [e for e in self.exams() if s and s[0] <= e["day"] <= s[1]])
+        _, s, exams = cached
+        if not s:
+            return False
+        why = str(info.get("why") or "")
+        if why.split(".")[0] in STUDY_WHY:
+            return True
+        title = str(info.get("title") or "")
+        if not title:
+            return False
+        subj = self.app.modules.get("subjects") if self.app.is_on("subjects") else None
+        mine = {e.get("subject") for e in exams if e.get("subject")}
+        if subj is not None and mine & set(subj.find_in(title)):
+            return True
+        low = title.lower()
+        return any(n.lower() in low for e in exams for n in (str(e.get("name") or ""),) if len(n) > 2)
+
+    def _job_first(self, info: dict) -> bool:
+        """core/jobs.py's boost: study work first, and a step higher (exam_season.jobs_priority)."""
+        return bool(self.setting("jobs_priority")) and self.studying(info)
+
+    def _job_later(self, info: dict) -> float | None:
+        """core/jobs.py's gate (automatic work only): with exam_season.defer_background on, background work that isn't
+        study waits until the season ends. None: it runs."""
+        if not self.setting("defer_background") or not self.app.is_on(self.id):
+            return None
+        s = self.season()
+        if not s or self.studying(info):
+            return None
+        return dt.datetime.combine(s[1] + DAY, dt.time(0, 5)).timestamp()
 
     def quiz_call(self, exam_id: str) -> bool | None:
         """For Quiz: True if you picked the quiz call for this exam (and Phone calls can place it), False for a season

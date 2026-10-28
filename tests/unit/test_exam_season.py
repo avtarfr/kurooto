@@ -450,3 +450,42 @@ def test_the_card_its_switches_on_telegram_and_the_dashboard(season):
     assert app.settings.get("exam_season.debrief") is True
     assert api.post("modules/card", {"id": "deadlines", "act": "x", "value": True})[0] == 400
     assert next(m for m in api.get("state")[1]["modules"] if m["id"] == "deadlines")["card"] is None
+
+
+# ------------------------------------------------------------------------------------- the AI queue (0.9.0)
+def test_in_a_season_study_requests_go_first_and_a_step_higher(season):
+    """L129: exam_season.jobs_priority puts a request about an exam's subject first and, with its effort picked
+    automatically, one step up; other work still runs. exam_season.defer_background (off by default) holds background
+    work that isn't study until the season ends."""
+    w, app = season, season.app
+    dl = app.modules["deadlines"]
+    dl.add("Linear Algebra final exam", at(TUE, 9), kind="exam", subject="linear-algebra")
+    w.t = at(TUE - days(1), 10)  # in the season (the day before)
+    w.es._season_cache = None
+    jobs = app.jobs
+    other = jobs.submit("what's a good pasta recipe", title="what's a good pasta recipe", quiet=True)
+    study = jobs.submit("explain la eigenvalues", title="explain la eigenvalues", quiet=True)
+    assert jobs.boosted({"id": study, "lane": "you", "why": "", "title": "explain la eigenvalues"})
+    assert not jobs.boosted({"id": other, "lane": "you", "why": "", "title": "what's a good pasta recipe"})
+    assert jobs.boosted({"id": "x", "lane": "bg", "why": "quiz.cards", "title": "cards"})
+    assert jobs._claim() == study  # newer, but first
+    assert jobs._claim() == other  # the rest still runs
+    j = jobs.get(study)
+    assert jobs._step_up(j, "low", None) == "medium" and jobs._step_up(j, "high", None) == "high"
+    assert jobs._step_up(jobs.get(other), "low", None) == "low"
+    # background work: runs unless defer_background is on
+    info = {"id": "b", "lane": "bg", "why": "research.papers", "title": "papers"}
+    assert w.es._job_later(info) is None
+    app.settings.set("exam_season.defer_background", True)
+    until = w.es._job_later(info)
+    assert until and dt.datetime.fromtimestamp(until).date() == TUE + days(1)
+    assert w.es._job_later({**info, "why": "revision.plan"}) is None  # study work isn't held
+    # off, or outside the season: nothing changes
+    app.settings.set("exam_season.jobs_priority", False)
+    assert not jobs.boosted({"id": study, "lane": "you", "why": "", "title": "explain la eigenvalues"})
+    app.settings.set("exam_season.jobs_priority", True)
+    w.t = at(TUE + days(3), 10)
+    w.es._season_cache = None
+    assert not jobs.boosted({"id": study, "lane": "you", "why": "", "title": "explain la eigenvalues"})
+    app.disable("exam_season")
+    assert "exam_season" not in jobs.boosts and w.es._job_later not in jobs.gates

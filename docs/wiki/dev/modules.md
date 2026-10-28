@@ -639,7 +639,11 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `tests/unit/test_negotiate.py`.
 - **exam_season** (`modules/exam_season.py`): one card for an exam period (update hold, alarm check, the eve question,
   leave-by alarm, debrief, no calls in exams, the Calm budget). Registers `app.updates.holds["exam_season"]` and an
-  availability blocker; `budget_during_exams()` is read by Calm. An add-on since 0.5.8 (`extra = True`). Its
+  availability blocker; `budget_during_exams()` is read by Calm. (0.9.0, L129) `studying(info)`: in a season, a job
+  whose `why` starts with one of `STUDY_WHY` or whose title names a season exam's subject (`Subjects.find_in`) or its
+  name (the season read once a minute); `_job_first` is `Jobs.boosts["exam_season"]` (`jobs_priority`, on) and
+  `_job_later` a `Jobs.gates` entry (`defer_background`, off) holding non-study automatic work to the day after the
+  season; both are taken off in `stop()`. An add-on since 0.5.8 (`extra = True`). Its
   `revision` part is `modules/revision.py` (not a module: `ExamSeason.revision`, a `Revision`, settings in
   `exam_season.*`): `topics()` reads the exam prep note's "Covered so far"/"Gaps" lines, else dated lecture notes, else
   concept notes (`integrate`'s `chapters.json`, the subject folder); `ranked()` sorts by `rank_key` (tier: no note,

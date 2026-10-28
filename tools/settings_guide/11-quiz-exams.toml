@@ -150,6 +150,18 @@ tip = "Each evening: did you cover today's revision topics? (Counts like a quiz 
 when = "Turn it off if you'd rather not be asked."
 needs = "`exam_season.revision`."
 
+[s."exam_season.jobs_priority"]
+tip = "During exams, AI requests about an exam's subject (and quiz and revision work) go first in the queue, one effort step up."
+what = "A request someone waits for in a chat still goes first. The effort goes up only when Kurooto picked it (not a `high:` you asked for) and that level's free limit isn't kept for you. Everything else still runs in order."
+when = "Turn it off to keep the queue in plain order during exams."
+needs = "Exam season, with exam dates."
+
+[s."exam_season.defer_background"]
+tip = "During exams, background AI work that isn't study waits until the day after the season."
+what = "Learning's look back, research digests, Brain's nightly work and the like wait; study work (quiz, revision) and your own requests don't."
+when = "Turn it on to keep the AI and its free limits for study during exams."
+needs = "Exam season, with exam dates."
+
 [s."skills.auto_pack"]
 tip = "The evening before a quiz or exam, a revision pack: ask first, build it, or never."
 when = "Pick `auto` if you always want one; `off` if you never use them."

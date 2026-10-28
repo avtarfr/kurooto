@@ -24,6 +24,10 @@
   open doubts and, with Brain's model of what you know on, the concept it thinks you're ready for next.
 - **Where each AI request came from** (`look.jobs_source`, on). The dashboard's AI jobs page has a **from** column:
   Telegram, the phone chat (a link to that chat), the talk box, voice at the desk, or by itself.
+- **Study first during exams** (`exam_season.jobs_priority`, on). In an exam season, AI requests about an exam's
+  subject and quiz or revision work go first in the queue and, when Kurooto picks the effort, one step higher; the rest
+  still runs. Holding back other background AI work until the season ends is its own switch,
+  `exam_season.defer_background`, off.
 
 ## 0.8.18 (2026-10-29)
 
