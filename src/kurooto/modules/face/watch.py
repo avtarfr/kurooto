@@ -28,7 +28,9 @@ stranger frames count for nothing and reset nothing.
 Away (face.away.on): no sign of you for away.after_min while unlocked and watching, or locked that long. "left" once;
 it ends with an arrival or with input ("back": somebody is using the computer, though it never greets for that).
 
-Strangers: their numbers are dropped with the frame; only counts since start are kept (you, unsure, not you).
+Strangers: their numbers are dropped with the frame; only counts since start are kept (you, unsure, not you). (0.9.0,
+face.away.report_others) While you're away, a frame with faces judged not yours emits "strangers" with how many: the
+module keeps the minute, never the faces.
 
 Hooks for add-ons (0.8.12): `held()` true (an add-on asked the camera to keep looking: Face.hold_watch) opens it
 whatever the input says, but only after every pause reason above has passed, so it never overrides a switch, the
@@ -419,6 +421,7 @@ class Watcher:
         judged: dict[int, bool] = {}  # index in faces -> recognised as you (for the tracks' owner flag)
         best_i = -1
         n_other = 0
+        n_strangers = 0  # (0.9.0) faces judged not yours in this frame (unsure ones aren't counted)
         seen: list[dict] | None = [] if self.people() else None
         size = full if seen is not None else (0, 0)
         for i, f in enumerate(faces):
@@ -456,11 +459,14 @@ class Watcher:
                     self.counts.unsure += 1
                 else:
                     self.counts.not_you += 1
+                    n_strangers += 1
                 n_other += 1
             del e  # a stranger's or an unsure face's numbers go with the frame
         if seen is not None:
             self.emit("people", faces=seen)  # every frame looked at, empty too: nobody in view is news as well
             del seen
+        if self.away and n_strangers:
+            self.emit("strangers", n=n_strangers)  # (0.9.0, face.away.report_others) how many, never who
         if self._track != TRACK_OFF:
             if best_i >= 0:
                 judged[best_i] = True

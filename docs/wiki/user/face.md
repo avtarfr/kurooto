@@ -254,6 +254,10 @@ you're back when it recognises you or someone types. Two more switches use it:
   empty room (they're on the dashboard).
 - `face.away.hold_calls`: while you're away, calls wait as they do during a class (a no-call time), until you're back
   or at most an hour (`face.away.hold_max_min`).
+- `face.away.report_others` (0.9.0, off): while you're away, it notes the minutes when someone else's face was in view
+  (and how many faces), and once you're back sends one message: "While you were away, Face presence saw someone else
+  at your desk at 14:10 and 14:25 (2 faces)." Times and counts only, in memory, then forgotten: never a picture, never
+  who, never to your AI. Unsure faces (maybe you) don't count. It only knows about times the camera was looking.
 
 ## Learning over time
 
@@ -292,7 +296,8 @@ elsewhere.
   backup, Profile sync or a diagnostics bundle.
 - **What it never keeps:** the camera's frames (looked at in memory and dropped), the preview (made in memory for the
   Face page), and anything of other people: a stranger's face is dropped with the frame, and only a count since start
-  is kept ("faces: you 120, unsure 4, not you 9").
+  is kept ("faces: you 120, unsure 4, not you 9"). With `face.away.report_others` on (0.9.0, off by default), also the
+  minutes someone else was in view while you were away, in memory until it tells you on your return.
 - **What leaves your computer:** nothing. The one-time downloads fetch the models from `media.githubusercontent.com`
   (OpenCV's model zoo), the package from PyPI and, only if you tap Get the eye model, MediaPipe's iris model from
   `storage.googleapis.com`; nothing of yours is sent.
@@ -349,6 +354,7 @@ From a terminal: `kurooto face`, `kurooto face pause 1h`, `kurooto face forget [
 | `face.greet.say` | next, waiting, deadline | what it mentions (`held` too) |
 | `face.greet.with_others` | `skip` | `skip`, `short` or `full` |
 | `face.away.on`, `hold_desktop`, `hold_calls` | off | noticing you left, and what waits |
+| `face.away.report_others` | off | the times someone else was at your desk while you were away, told on your return |
 | `face.learn.on`, `every_h`, `max`, `margin` | off, 6, 30, 0.08 | learning over time |
 | `face.track.on`, `fps` | on, 10 | the being's eye follows every face in view, and how often it looks then |
 | `face.addons.watch`, `hold` | on, on | let add-ons see who's in view, and keep the camera looking while you type |

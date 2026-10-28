@@ -764,6 +764,13 @@ REASONS: dict[str, Reason] = {
             counted=False,
             feature="face",
         ),
+        R(
+            "face.away.others",
+            "someone else was in view at your desk while you were away (times only)",
+            setting="face.away.report_others",
+            stop=to(False, "No more of these"),
+            feature="face",
+        ),
         R("calls.rang_offline", "a call your call line placed while this computer was off"),
         R("calls.held", "a call that waits for a better time"),
         R("calls.review", "what Kurooto fixed and learned looking back at a call", setting="calls.review"),

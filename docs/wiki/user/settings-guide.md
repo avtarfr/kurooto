@@ -50,7 +50,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Dashboard and terminal](#dashboard-and-terminal): 27 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 26 settings
-- [Face presence](#face-presence): 35 settings
+- [Face presence](#face-presence): 36 settings
 
 ## You and how it talks to you
 
@@ -7667,6 +7667,18 @@ No sign of you (your face or the keyboard) this long means you've left, in minut
 
 - **Values:** A whole number. **Default:** `5`.
 - **When to change it:** Lengthen it if it decides you've left while you're reading.
+
+### `face.away.report_others`
+
+While you're away, note the times someone else's face was in view at your desk, and tell you once when you're back.
+
+Times and how many faces only, in memory, forgotten once told: never a picture, never who, never sent to your AI. Faces
+it isn't sure about (maybe you) don't count, and it only knows about the times the camera was looking.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you want to know whether someone used your computer while you were out.
+- **Costs and what leaves this computer:** One message on your return when someone was seen.
+- **Depends on:** Noticing when you leave (face.away.on).
 
 ### `face.away.hold_calls`
 

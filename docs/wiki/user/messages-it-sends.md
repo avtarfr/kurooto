@@ -271,6 +271,7 @@ No Stop; only Another time. When sent as urgent they always come.
 | "A lighter day after your exam ..." (Not today; Dreaming's morning message carries it when that's on) | Your rhythm | `notify.calm.lighter_after` | no more lighter days | | | |
 | "Haven't heard from you in two days. All good? Nothing's urgent." (I'm fine / Busy, quiet for a week) | Your rhythm | `availability.absence_days` | no more of these | | | |
 | "You usually wake around 16:30; set an alarm?" (Set / Not tonight) | Morning alarm | `alarm.suggest` | no more alarm suggestions | | | |
+| "While you were away, Face presence saw someone else at your desk at 14:10." (0.9.0, off by default) | Face presence | `face.away.report_others` | no more of these | | yes | |
 
 ### Google
 

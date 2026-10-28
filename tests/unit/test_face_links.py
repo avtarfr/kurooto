@@ -118,3 +118,74 @@ def test_i_m_awake_says_your_name(app, monkeypatch):
     assert al.up("I'm up").startswith("Good morning. Calling you")
     persona.save(app, {"call_me": "Sam"})
     assert al.up("I'm up").startswith("Good morning, Sam. Calling you")
+
+
+# ------------------------------------------------------------------------ L21 someone else while you're away
+def test_the_watcher_says_how_many_strangers_only_while_you_re_away():
+    from tests.unit.test_face import W, face, frame, rvec
+
+    strangers = [frame([face(dx=i * 3.0), face(x=40.0, dx=i * 3.0)], [rvec(), rvec()]) for i in range(20)]
+    t = W(strangers)
+    t.run(3)
+    assert "strangers" not in t.kinds()  # here: nothing noted
+    t.w.away = True
+    t.run(3)
+    got = [f for k, f in t.got if k == "strangers"]
+    assert got and all(f == {"n": 2} for f in got)  # a count, nothing about the faces
+
+
+def test_strangers_while_away_are_told_once_on_your_return_as_times_only(app, monkeypatch):
+    import time
+
+    f = app.modules["face"]
+    sent = []
+    monkeypatch.setattr(app, "notify", lambda text, **kw: sent.append((text, kw)))
+    f._on_watch("strangers", n=2)
+    assert f._others_away == {}  # off by default: nothing is kept
+    app.settings.set("face.away.report_others", True)
+    now = [1_800_000_000.0]
+    monkeypatch.setattr(time, "time", lambda: now[0])
+    f._on_watch("strangers", n=1)
+    f._on_watch("strangers", n=2)  # the same minute: one time, the most faces
+    now[0] += 900
+    f._on_watch("strangers", n=1)
+    f._on_watch("back")
+    assert len(sent) == 1
+    text, kw = sent[0]
+    assert kw["why"] == "face.away.others" and "(2 faces)" in text and " and " in text and "doesn't know who" in text
+    ev = [e for e in app.events.tail(50) if e["kind"] == "face_away_others"][-1]
+    assert set(ev) <= {"ts", "kind", "count"} and ev["count"] == 2
+    f._on_watch("back")
+    assert len(sent) == 1  # told once, then forgotten
+    f._on_watch("strangers", n=1)
+    app.settings.set("face.away.report_others", False)
+    assert not f.report_others() and f._others_away == {}  # turned off meanwhile: dropped, not told
+
+
+def test_an_arrival_also_tells_and_forget_drops_them(app, monkeypatch):
+    f = app.modules["face"]
+    sent = []
+    monkeypatch.setattr(app, "notify", lambda text, **kw: sent.append(text))
+    monkeypatch.setattr(f, "greet", lambda others=False: False)
+    app.settings.set("face.away.report_others", True)
+    f._on_watch("strangers", n=1)
+    f._arrived(30, False)
+    assert len(sent) == 1
+    f._on_watch("strangers", n=1)
+    f.forget()
+    assert f._others_away == {}
+    import time
+
+    now = [1_800_000_000.0]
+    monkeypatch.setattr(time, "time", lambda: now[0])
+    for _ in range(200):
+        now[0] += 60
+        f._stranger_seen(1)
+    assert len(f._others_away) == 120 and min(f._others_away) == int(now[0] // 60) - 119  # the oldest went first
+
+
+def test_the_message_has_a_calm_reason():
+    from kurooto.core import calm
+
+    r = calm.REASONS["face.away.others"]
+    assert r.setting == "face.away.report_others" and r.feature == "face"

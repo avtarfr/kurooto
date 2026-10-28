@@ -119,6 +119,9 @@ register_defaults(
             "hold_desktop": False,  # while you're away, desktop pop-ups wait and answers aren't read aloud
             "hold_calls": False,  # while you're away, calls Kurooto starts itself wait (at most hold_max_min)
             "hold_max_min": 60,  # the longest a call waits while you're away (minutes)
+            # (0.9.0) while you're away, note the times someone else's face was in view (times and counts only, in
+            # memory, never a picture or who) and tell you once you're back
+            "report_others": False,
         },
         "track": {
             "on": True,  # while the camera is open, follow every face in view (places only) for the being's eye
@@ -146,6 +149,8 @@ BLINK_HOLD_S = 1.0  # (look by the eyes) a frame whose eyes can't be read keeps 
 EYE_MB = 2.64  # the eye model (parts.py's iris)
 CONFIRM_FORGET_S = 7 * 86400  # Delete my face data, offered when Face presence is turned off, works this long
 IMPOSTORS = "face-impostors.npz"
+OTHERS_MAX = 120  # (away.report_others) at most this many minutes with someone else in view are noted while away
+OTHERS_SAID = 6  # ...and the message names at most this many of them
 SIZE_GB = 0.18
 LICENCES = [
     {"what": "YuNet face detection (face_detection_yunet_2023mar)", "licence": "MIT (Shiqi Yu)", "mb": 0.23},
@@ -255,6 +260,7 @@ class Face(Module):
         self._gazer: object | None = None  # (0.8.17) the eye model, loaded once it's wanted (gaze.CvGazer)
         self._gazer_failed = -1e9  # when loading it last failed (monotonic): not tried again for a minute
         self._gaze_last: dict = {}  # the last frame's gaze: degrees and the verdict, numbers only, in memory
+        self._others_away: dict[int, int] = {}  # (0.9.0, away.report_others) minute (epoch // 60) -> most faces seen
 
     # ------------------------------------------------------------------------------------------- the parts
     def wants(self) -> list[str]:
@@ -615,6 +621,9 @@ class Face(Module):
         elif kind == "back":
             self.app.events.emit("face_back")
             self.flush_desktop()
+            self.report_others()
+        elif kind == "strangers":  # (0.9.0) someone else's face while you're away: the time and how many, nothing more
+            self._stranger_seen(int(f.get("n") or 0))
         elif kind == "others":
             nearby.set_others(self.app, "face", bool(f.get("on")))
         elif kind == "view":  # (0.8.13) how many faces, and whether the only one is yours: memory only, never an event
@@ -1027,9 +1036,45 @@ class Face(Module):
                 pass
         return n
 
+    # ------------------------------------------------------------- someone else while you're away (0.9.0)
+    def _stranger_seen(self, n: int) -> None:
+        """(face.away.report_others) A frame with n faces judged not yours while you were away: the minute and the
+        most faces in it, in memory only (OTHERS_MAX minutes, the oldest go first). Never a picture, numbers or who."""
+        if n <= 0 or not self.setting("away.report_others"):
+            return
+        minute = int(time.time() // 60)
+        self._others_away[minute] = max(n, self._others_away.get(minute, 0))
+        while len(self._others_away) > OTHERS_MAX:
+            del self._others_away[min(self._others_away)]
+
+    def report_others(self) -> bool:
+        """You're back (or arrived): one message with the times someone else was in view while you were away, then
+        they're forgotten. Nothing when the switch is off (what was noted goes too) or nobody was seen."""
+        seen, self._others_away = self._others_away, {}
+        if not seen or not self.setting("away.report_others"):
+            return False
+        times = []
+        for minute in sorted(seen)[:OTHERS_SAID]:
+            n = seen[minute]
+            times.append(f"{dt.datetime.fromtimestamp(minute * 60):%H:%M}" + (f" ({n} faces)" if n > 1 else ""))
+        more = len(seen) - len(times)
+        said = ", ".join(times[:-1]) + (" and " if len(times) > 1 else "") + times[-1]
+        said += f", and {more} more minute{'s' if more != 1 else ''}" if more > 0 else ""
+        self.app.notify(
+            f"While you were away, Face presence saw someone else at your desk at {said}. It keeps only these times: "
+            "no picture, and it doesn't know who.",
+            kind="info",
+            why="face.away.others",
+            setting="face.away.report_others",
+            about="someone at your desk",
+        )
+        self.app.events.emit("face_away_others", **_event_safe(count=len(seen)))
+        return True
+
     def _arrived(self, away_min: int, others: bool) -> None:
         self.app.events.emit("face_arrived", **_event_safe(away_min=away_min))
         self.flush_desktop()
+        self.report_others()
         threading.Thread(target=self.greet, args=(others,), name="face-greet", daemon=True).start()
 
     def greet(self, others: bool = False) -> bool:
@@ -1371,6 +1416,7 @@ class Face(Module):
             self._previous = None
             self._desk.clear()
             self._gaze_last = {}
+            self._others_away = {}
             gone = self.store.forget()
         self._greets = {}
         self.app.events.emit("face_forgotten")

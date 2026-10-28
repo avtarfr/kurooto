@@ -362,6 +362,15 @@ Name (0.9.0, `persona.templates`): `Face.greet` passes `name=persona.address(app
 `nearby.others(app)`; `compose` makes "Welcome back, Sam." and measures `MAX_CHARS` without the name, then
 `persona.template` applies the avoid line as punctuation.
 
+## Someone else while you're away (0.9.0, `face.away.report_others`, off)
+
+`Watcher._look` counts the faces classified `stranger` in a frame (unsure ones don't count) and, while `away`, emits
+`strangers {n}`. `Face._stranger_seen(n)` (switch on) keeps `{epoch minute: most faces}` in memory, at most
+`OTHERS_MAX` (120) minutes, the oldest dropped. On "back" and on an arrival, `report_others()` sends one message
+(`why="face.away.others"`, a Calm reason with Stop = the switch off) naming up to `OTHERS_SAID` (6) minutes, emits
+`face_away_others {count}` and clears it; switched off meanwhile, it clears without telling. Forget clears it. Not in
+`status()`, the card, the reserve or any AI tool (R7: other people's presence is theirs).
+
 ## Learning
 
 `Watcher` keeps a candidate from an arrival's frames when the frame is enrolment-grade (blur ≥ 60, 50 ≤ mean ≤ 210,

@@ -2,6 +2,10 @@
 
 ## 0.9.0 (unreleased)
 
+- **Who was at your desk while you were out** (`face.away.report_others`, off). With Face presence noticing when you
+  leave, it notes the minutes someone else's face was in view and tells you once you're back ("at 14:10 and 14:25 (2
+  faces)"). Times and counts only, in memory, then forgotten; never a picture, never who, never to your AI.
+
 - **Words made by rules use your persona card** (`persona.templates`, on). The desk greeting says the name you gave
   ("Welcome back, Sam.") while nobody else is in view, "I'm awake" answers "Good morning, Sam.", and the avoid line is
   honoured as punctuation (no exclamation marks, no emojis) in those and in check-in messages. No part of a greeting is

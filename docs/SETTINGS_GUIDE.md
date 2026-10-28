@@ -396,6 +396,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `face.away.hold_desktop` | `false` | Hold desktop pop-ups and spoken answers until you're back at the desk. ([guide](wiki/user/settings-guide.md#faceawayholddesktop)) |
 | `face.away.hold_max_min` | `60` | The longest a call waits while you're away, in minutes. ([guide](wiki/user/settings-guide.md#faceawayholdmaxmin)) |
 | `face.away.on` | `false` | Notice when you leave the desk and come back. ([guide](wiki/user/settings-guide.md#faceawayon)) |
+| `face.away.report_others` | `false` | While you're away, note the times someone else's face was in view at your desk, and tell you once when you're back. ([guide](wiki/user/settings-guide.md#faceawayreportothers)) |
 | `face.camera.device` | `""` | The camera to use: empty for the first ordinary one (infrared ones are skipped), or a number or part of its name. ([guide](wiki/user/settings-guide.md#facecameradevice)) |
 | `face.camera.height` | `480` | The picture height asked of the camera. ([guide](wiki/user/settings-guide.md#facecameraheight)) |
 | `face.camera.width` | `640` | The picture width asked of the camera (it may give another). ([guide](wiki/user/settings-guide.md#facecamerawidth)) |
