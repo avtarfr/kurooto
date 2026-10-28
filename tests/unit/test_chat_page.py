@@ -191,3 +191,16 @@ def test_the_dashboard_has_the_chat_page():
     node = shutil.which("node")
     if node:
         assert subprocess.run([node, "--check", str(static / "chat.js")], capture_output=True).returncode == 0
+
+
+def test_the_chat_fills_the_page_with_the_box_at_its_foot():
+    """0.8.17: the chat's list is class "log", and style.css's .log (a box of at most 180 px, for setup's logs) shrank
+    it, with the box to write in right under it and the rest of the page empty. The chat's own rule undoes it."""
+    static = resources.files("kurooto.web") / "static"
+    style = (static / "style.css").read_text(encoding="utf-8")
+    assert ".log { font: 12px/1.5 var(--mono); color: var(--dim); max-height: 180px;" in style
+    chat = (static / "chat.js").read_text(encoding="utf-8")
+    log = chat.split(".cp .log{", 1)[1].split("}", 1)[0]
+    assert "flex:1" in log and "min-height:0" in log and "max-height:none" in log and "margin:0" in log
+    th = chat.split(".cp .th{", 1)[1].split("}", 1)[0]
+    assert "flex-direction:column" in th and "min-height:0" in th

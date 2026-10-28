@@ -75,6 +75,12 @@ at its right edge). If the window is too short for the panes, the page scrolls i
 wide they stack in one column. (Before 0.8.16 the roomy board left STATUS, SYSTEMS and BRAIN no height, and NOTES a
 narrow strip, on long pages such as Features.)
 
+Going narrow and back keeps what you had: the page open over the dense board shows as roomy's tab while the window is
+narrow, and comes back over the board when it's wide again; with no page open, the board comes back without one. A
+tab you pick while the window is narrow opens over the board when it's wide again (Features, Phone, Research, About
+you and Settings; after another tab the board comes back without a page). (Before 0.8.17 the board came back with
+Features, or roomy's last tab, open, and a page such as Chat closed.)
+
 **Setting:** `look.layout` (`dense` or `roomy`), Dashboard → Settings → Look. The change shows at once.
 
 ## The board (dense layout)
@@ -435,6 +441,8 @@ it the page says so.
   buttons (a tap does exactly what a tap in the app does, so a question settles everywhere), Why? and Less of this
   where the app shows them, files as links (a file from Kurooto opens from your call line, as on the phone; one you
   sent from the phone stays on this computer), quoted replies, and "edited" and "pinned" marks.
+- **The page's height:** the messages fill it, with the box to write in at the bottom (before 0.8.17 they were a
+  short box of about 170 px with the rest of the page empty).
 - **Waiting for you:** the app's open questions and approvals above the chat, with a button per answer, **answer…**
   for your own words, **later** and **dismiss**. An answer here is the same as one on the phone: the question goes from
   your phones, Telegram and the Today page too.
@@ -558,7 +566,9 @@ second time is the browser's own find). It filters as you type, ignoring case; e
 
 - Features are found by name, description, privacy line and their settings. A card found only by a setting says which
   ("its settings: deadlines.ping_h").
-- Settings are found by section, name, help text and current value.
+- Settings are found by section, name, help text and current value. Each section keeps only the settings that match,
+  laid out as without a search (before 0.8.17 one that wasn't its section's first could end up squeezed down the
+  right edge).
 - The words found are marked, with a count ("3 of 41 features"), or "nothing matches".
 - **Esc** empties the box.
 

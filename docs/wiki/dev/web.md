@@ -215,7 +215,14 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   and `roomy` (`look.layout`). Dense sets the grid's areas inline (`paneGrid` in `home.js`); roomy (0.8.16) places every
   pane by a named area in CSS ("roomy's board" at the end of `home.css`, a one-column stack under 900 px), so a new pane
   needs an area there or it spills into an implicit row. `beingBoard()` holds in roomy too: `body.being-board` there
-  hides SYSTEMS and BRAIN and `paneShown` says so, so neither draws behind the being.
+  hides SYSTEMS and BRAIN and `paneShown` says so, so neither draws behind the being. Switching (`applyLayout`, on
+  every resize): dense to roomy shows the open page (`PAGE`) as roomy's `tab` and keeps it in `LEFT` (`{page}`, null
+  for none); roomy to dense opens `LEFT.page` again, so the board comes back as it was, not with roomy's remembered
+  tab. `showTab` clears `LEFT` (a tab picked while narrow), and then only the roomier tabs (features, phone, research,
+  about, settings) open over the board (0.8.17).
+- Settings (new design, `home-new.css`): each fieldset's `legend` floats the full width and `legend ~ *` clears it on
+  every row, not just the first: a row the search hides (`settingsFind`) would otherwise leave the next one's flex
+  `label` beside the float with no width (0.8.17).
 - Ctrl+K (0.5.8): markup `#cmdk*` in `home.html`, logic in `home.js` (`VERBS`: ask, journal, note, remind, due, alarm,
   find, open, study; `cmdOpen`, `cmdGo`, ...). Every verb except `find`/`open`/`study` calls `POST /api/act`, the same
   path as the Today page (`study` calls `setStudy`). Note: `core/palette.py` is the colour palette and
@@ -581,7 +588,8 @@ Nothing of its own is stored: it reads and acts on `modules/calls/chat.py:PhoneC
   phone's badges; reading on the phone does clear the dashboard's.
 - `home.js` keeps only the page entry (`PKEY`/`TABS`/`DLABEL`, `renderChat`, `setChatPage` for the switch) and the
   `m.t === "chat"` line in `connect`; the rest is `chat.js`. Text is escaped first, then only `code`, bold and https
-  links are marked up.
+  links are marked up. The thread's list is `.cp .log`, which also matches `style.css`'s `.log` (setup's logs, at most
+  180 px): `.cp .log` sets `max-height:none; margin:0` so it fills `.cp .th` with `.in` at the foot (0.8.17).
 - Tests: `tests/unit/test_chat_page.py`.
 
 ## Threaded jobs (0.8.6)
