@@ -687,7 +687,10 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `catch_up()`, job `subjects:catch_up` every 30 min; classes over today that were skipped or ended before
   `woke_at(day)` (the first `message_in`, `alarm_up_now` or `call_answered` after `checkins.day_starts`) get a
   `deadlines.add(..., source="catch_up", kind="task")` due at the course's next class and a lecture stub; state
-  `subjects/catchup-<date>.json`; button `cup:<date>|<slug>:went`; Calm reason `subjects.catch_up`. With Classroom
+  `subjects/catchup-<date>.json`; button `cup:<date>|<slug>:went`; Calm reason `subjects.catch_up`. `missed(day)`
+  (0.9.0, L31): the slugs in that file without `went`; `checkins._classes` gives them status `missed` (unless the
+  after-class question was answered), so the evening script says "missed, catch-up on the list" instead of asking what
+  it covered, and `logs_due` leaves them out. With Classroom
   on (`google` with `google.classroom`, or `classroom_notes`), `google_classroom.posts_on(app, slug, day)` gives that
   day's posts of the courses filed under the subject (`classroom_notes.folders`, `classroom-notes/folders.json`, else
   `course_subject()`, the longest subject name in the course's name) from `classroom-posts.json`

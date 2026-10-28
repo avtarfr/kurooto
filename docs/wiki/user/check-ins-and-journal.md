@@ -142,6 +142,10 @@ With [Phone calls](calls.md) on and `checkins.by_call` on, each check-in is a ph
 after-class questions you kept for this call); what slipped from today's plan; open questions; the study time
 Kurooto counted, and study away from the computer; a short quiz if a quiz or exam is in the next two weeks. With
 `checkins.reflect` on, it says back in one line what the day's records show you did (the same list as the message).
+A class you missed that has a catch-up task ([Catching up on a class you
+missed](classes-and-timetable.md#catching-up-on-a-class-you-missed)) isn't asked about: the call only mentions that
+you missed it and the catch-up is on your list, and no study log is asked for it (0.9.0). **Went to ...** puts it
+back.
 
 **Night check-in** (3 to 5 minutes, if you turned it on): anything more for the journal, study logs still due,
 tomorrow's top priority and when to wake you (it sets the alarm), goodnight. With the night check-in off, the evening

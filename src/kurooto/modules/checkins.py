@@ -958,20 +958,24 @@ class Checkins(Module):
     # ------------------------------------------------------------------------------------- the scripts
     def _classes(self, day: dt.date) -> list[dict]:
         """The day's classes and what became of each one's after-class question: "" (not asked or no answer yet),
-        "later", "answered", "nothing", or "skipped"."""
+        "later", "answered", "nothing", "skipped", or "missed" (0.9.0: Subjects made a catch-up for it, so the
+        evening call doesn't ask what it covered; an answer after class still wins)."""
         if not self.app.is_on("subjects"):
             return []
         subj = self.app.modules["subjects"]
-        skip = subj.skipped(day)
+        skip, missed = subj.skipped(day), subj.missed(day)
         cap = self.app.modules.get("capture")
         status = cap.statuses(day) if cap is not None and self.app.is_on("capture") else {}
+
+        def of(slug: str) -> str:
+            if slug in skip:
+                return "skipped"
+            if slug in missed and status.get(slug, "") in ("", "later"):
+                return "missed"
+            return status.get(slug, "")
+
         return [
-            {
-                "name": c["name"],
-                "start": c["start"],
-                "slug": c["subject"],
-                "status": "skipped" if c["subject"] in skip else status.get(c["subject"], ""),
-            }
+            {"name": c["name"], "start": c["start"], "slug": c["subject"], "status": of(c["subject"])}
             for c in subj.classes_on(day, include_skipped=True)
         ]
 
@@ -1084,7 +1088,14 @@ class Checkins(Module):
                 f"From today's records they did: {'; '.join(did)}. Say these back in one line, plainly (no praise, "
                 "no score, nothing about what they didn't do)."
             )
-        classes = [c for c in self._classes(today) if c["status"] != "skipped"]
+        day_classes = self._classes(today)
+        classes = [c for c in day_classes if c["status"] not in ("skipped", "missed")]
+        missed = [c["name"] for c in day_classes if c["status"] == "missed"]
+        if missed:  # (0.9.0) not "what did it cover?": they weren't there, and the catch-up is already a task
+            steps.append(
+                f"They missed {', '.join(missed)} today; a catch-up task for it is already on their list. Don't ask "
+                "what it covered."
+            )
         if classes:
             names = ", ".join(f"{c['name']} ({c['start']})" for c in classes)
             steps.append(f"Today's classes: {names}. For each, ask what it covered and anything unclear.")

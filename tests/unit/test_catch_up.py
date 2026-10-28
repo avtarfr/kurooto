@@ -199,3 +199,19 @@ def test_classroom_posts_are_kept_a_month_and_by_course(env, monkeypatch):
     assert [p["title"] for p in gc.posts_on(env.app, "pota", DAY)] == ["Slides: radiative transfer"]
     env.app.settings.set("classroom_notes.folders", {POTA["name"]: "atmosphere"})  # your folder for it wins
     assert gc.posts_on(env.app, "pota", DAY) == [] and gc.posts_on(env.app, "atmosphere", DAY)
+
+
+def test_check_ins_treat_a_caught_up_class_as_missed(sub, monkeypatch):
+    """L31 (0.9.0): a class with a catch-up isn't asked about ("what did it cover?") in the evening; "went" undoes it,
+    and an answer after class still wins."""
+    env, s, clock = sub
+    env.on("checkins")
+    ck = env.app.modules["checkins"]
+    monkeypatch.setattr(s, "woke_at", lambda day: dt.datetime.combine(DAY, dt.time(15, 10)))
+    s.catch_up()
+    st = {c["slug"]: c["status"] for c in ck._classes(DAY)}
+    assert st == {"physics-of-the-atmosphere": "missed", "point-set-topology": "missed", "time-series": ""}
+    assert s.missed(DAY) == {"physics-of-the-atmosphere", "point-set-topology"}
+    assert ck.logs_due(DAY) == ["Time Series"]  # no study log asked for a class they weren't at
+    s.callbacks()["cup"]("2026-10-23|point-set-topology", "went")
+    assert {c["slug"]: c["status"] for c in ck._classes(DAY)}["point-set-topology"] == ""

@@ -13,6 +13,8 @@
 - **Fix: the call line no longer drops for nothing.** A heartbeat that looked silent because this computer was busy
   now gets one more ping and five seconds before the line is called dead (about 35 needless reconnects a day before);
   a late heartbeat is logged with how late it was.
+- **Fix: the evening check-in doesn't ask what a class you missed covered.** A class with a catch-up task is
+  mentioned as missed (the catch-up is on your list), and no study log is asked for it.
 
 ## 0.8.18 (2026-10-29)
 

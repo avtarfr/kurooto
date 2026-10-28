@@ -435,6 +435,12 @@ class Subjects(Module):
     def _catch_file(self, day: dt.date) -> Path:
         return self.app.paths.state / "subjects" / f"catchup-{day.isoformat()}.json"
 
+    def missed(self, day: dt.date | None = None) -> set[str]:
+        """The classes of a day with a catch-up made (catch_up: skipped, or over before you were up), less the ones
+        you said you went to after all. Read only from that record, never guessed (checkins.py's evening call)."""
+        done = jload(self._catch_file(day or now().date()), {}) or {}
+        return {slug for slug, it in done.items() if isinstance(it, dict) and not it.get("went")}
+
     def catch_up(self, day: dt.date | None = None) -> list[str]:
         """Catch-ups for the classes of that day (today) that are over and that you missed. Returns their lines."""
         if not self.setting("catch_up"):
