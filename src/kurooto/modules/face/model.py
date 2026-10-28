@@ -190,6 +190,7 @@ class Template:
         self.report: dict = {}
         self.last_test: dict = {}
         self.baseline: dict = {}  # the front step's pitch, face height and light (for Add samples)
+        self.gaze: dict = {}  # (0.8.17) Calibrate my eyes: h, v, yaw, pitch, n, at (gaze.py); never a picture
         self.created = time.time()
         self.updated = self.created
         self.impostors_sha = ""
@@ -210,6 +211,7 @@ class Template:
             "report": self.report,
             "last_test": self.last_test,
             "baseline": self.baseline,
+            "gaze": self.gaze,
         }
 
     @classmethod
@@ -227,6 +229,7 @@ class Template:
         t.report = dict(d.get("report") or {})
         t.last_test = dict(d.get("last_test") or {})
         t.baseline = dict(d.get("baseline") or {})
+        t.gaze = dict(d.get("gaze") or {})
         t.created = float(d.get("created") or time.time())
         t.updated = float(d.get("updated") or t.created)
         return t
@@ -247,6 +250,7 @@ class Template:
             "created": round(self.created),
             "trained": round(self.updated),
             "last_test_at": self.last_test.get("at"),
+            "gaze_at": self.gaze.get("at"),  # (0.8.17) when your eyes were calibrated: a date, never the numbers
             "model": MODEL,
             "impostors": self.thresholds.get("method") == "impostors",
         }

@@ -1110,7 +1110,10 @@ def test_what_it_needs_and_where(app):
     assert p.py == (app.paths.app / "voice" / p.py.name)  # shared with Voice: one numpy
     assert p.models_dir == app.paths.app / "face" / "models" and p.feature == "Face presence"
     assert all(
-        m.sha256 and m.url.startswith("https://media.githubusercontent.com/") for ms in p.table.values() for m in ms
+        m.sha256 and m.url.startswith("https://media.githubusercontent.com/")
+        for k, ms in p.table.items()
+        for m in ms
+        if k != "iris"  # (0.8.17) the optional eye model comes from MediaPipe's store: test_face_gaze.py
     )
     from kurooto.core import egress
 

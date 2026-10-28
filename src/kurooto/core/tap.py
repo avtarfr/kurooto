@@ -97,10 +97,10 @@ GUARDED: dict[str, Guard] = {
         "Delete my face data; the AI never deletes (a note it changes keeps its earlier version)",
     ),
     "camera.open": Guard(
-        "open the camera for face enrolment or a face test",
+        "open the camera for face enrolment, a face test or calibrating your eyes",
         ("button",),
-        "Start and Test on the dashboard's Face page only; never the AI, a request, the phone or a schedule (the "
-        "watcher opens it by itself only after you enrolled, and only while Face presence is on)",
+        "Start, Test and Calibrate my eyes on the dashboard's Face page only; never the AI, a request, the phone or "
+        "a schedule (the watcher opens it by itself only after you enrolled, and only while Face presence is on)",
     ),
     "install.remove": Guard(
         "remove a program or model Kurooto installed",

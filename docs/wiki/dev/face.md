@@ -22,6 +22,7 @@ strictness never do; see [voice.md](voice.md).
 | `modules/face/camera.py` | `Camera` (open/read/close, per-OS backends), `devices()`, `pick()`, `holders()` (Linux busy; Kurooto's own process tree, `own()`, left out), `shared()` (v4l2loopback: a `max_openers` file, never busy), `free()`, `windows_busy()`, `CameraError(why)` |
 | `modules/face/vision.py` | `Face(box, landmarks, score)`, `Stats`, `Pose`, the `Detector`/`Embedder`/`Frames` protocols, `pose()`, `moved()`, `opencv_detector()`, `opencv_embedder()`, `opencv_frames()` (cv2 imported only inside) |
 | `modules/face/enrol.py` | `PLAN`, `Step`, the quality limits, `Enrolment` (pure: progress, `act()`, `judge()`), `shape()`, `Session` (camera, preview, timeouts, test marks) |
+| `modules/face/gaze.py` | (0.8.17) look to talk by the eyes: `offset()` (iris along/across the eye from MediaPipe's contour), `eyes_of()`, `angles()` (head + eyes, degrees from the lens, against a calibration), `valid()`, `Calibration` (medians of h, v, yaw, pitch), `CvGazer` / `opencv_gazer()` (cv2 imported only inside) |
 | `modules/face/model.py` | `Sample`, `centroids()`, `score()`, `folds()`, `held_out()`, `train()`, `Template` (payload, `classify()`, `retrain()`, `learn()`, `undo_learn()`, `forget_learned()`) |
 | `modules/face/watch.py` | `Watcher` (pure: injected clock, idle, locked, camera, models, classify, pause reasons, emit), `PAUSES` |
 | `modules/face/greet.py` | `compose()` (rules, ≤ 220 characters), `may_greet()` |
@@ -30,6 +31,7 @@ strictness never do; see [voice.md](voice.md).
 | `web/static/face.js` | the Face page (`FACE.mount`, `FACE.live`), loaded on demand by `home.js:renderFace` |
 | `tools/face_impostors.py` | the maintainer's impostor-set builder (never at install) |
 | `tests/unit/test_face.py`, `tests/unit/test_biometric.py` | everything with fakes |
+| `tests/unit/test_face_gaze.py` | (0.8.17) the iris maths, gaze angles, calibration, `looking()` by the eyes, the calibration session, the watcher's eyes and `look_fps`, resolution independence (480x640 vs 1080x1440), the part, look to talk end to end; one real-model test (made-up drawn eyes), skipped unless `KUROOTO_TEST_MODELS` holds `iris_landmark.tflite` and cv2 imports |
 
 ## Changes elsewhere
 
@@ -42,7 +44,7 @@ strictness never do; see [voice.md](voice.md).
 - `core/calm.py`: reasons `face.greet` (`counted=False`, `later=False`, `feature="face"`) and `face.off` (exempt);
   `Calm.speak_ok(why, about)`.
 - `core/tap.py`: `GUARDED["camera.open"]` (ways: button), `data.delete`'s where, `BUTTONS["fce"]`.
-- `core/egress.py`: `media.githubusercontent.com`. `core/notify.py`: `Notifier._desktop` (held while away).
+- `core/egress.py`: `media.githubusercontent.com`; (0.8.17) `storage.googleapis.com` (the eye model). `core/notify.py`: `Notifier._desktop` (held while away).
 - `app.py`: `App.away_from_desk()`, the core `fce` button. `core/retention.py`: `/forget all` forgets the face model.
 - `core/profile.py:NEVER`, `modules/backups.py` (`SKIP_STATE_DIRS` + `face`, `backup_secret_names()` leaves out
   `BIOMETRIC_SECRETS`), `diagnostics.py` (`KNOWN_SECRETS` + `face.key`; `face.json` in the bundle: on, enrolled,
@@ -147,6 +149,60 @@ the last sighting time: times and counts only, never boxes, pictures, numbers or
 step; `pitch_degrees` is `atan(|pitch - front| / PITCH_K)`, `PITCH_K = 0.26`, an estimate) goes to
 `nearby.set_look(app, on)` (two times: the run's start and the last look), then `Voice.look_tick()` is called at once
 ([voice.md](voice.md)). It's the head's direction from five landmarks, not gaze.
+
+### By the eyes (0.8.17, `voice.listen.look_gaze`, `gaze.py`)
+
+- **The part.** `parts.py`: `iris` = `iris_landmark.tflite` (MediaPipe Iris, Apache-2.0, 2,640,568 bytes), from
+  `storage.googleapis.com/mediapipe-assets/iris_landmark.tflite?generation=1662065468653224`, sha256
+  `d1744d2a09c25f501d39eba4faff47e53ecca8852c5ce19bce8eeac39357521f` (the same bytes as google/mediapipe v0.8.10's
+  `mediapipe/modules/iris_landmark/`). Optional: `EYES = ["model:iris"]`, not in `WANTS`; fetched by
+  `Face.gaze_setup()` (POST `face/gaze/setup`, the page's Get the eye model); `install_from` copies it when the folder
+  has it. Loaded with `cv2.dnn.readNetFromTFLite` (checked with opencv-python-headless 4.14: NCHW blob, RGB 0..1,
+  outputs `output_eyes_contours_and_brows` (1, 213) and `output_iris` (1, 15)).
+- **Reading.** `CvGazer.eyes(frame, face)`: for each of YuNet's eye points, a square `EYE_CROP` (1.0) x the eyes'
+  distance, turned level by the roll, cut from the **full** frame at its own resolution (`warpAffine`, inverse map),
+  then shrunk to 64x64 (`INTER_AREA`); the picture's left eye (landmark 0) mirrored, as MediaPipe's right-eye path
+  does, and its points mirrored back. `offset(contour, iris)`: corners are contour points 0 and 8, lids' middles 4 and
+  12; `h = 2t - 1` along the corner line (picture left -1 .. right 1), `v` across it (down positive) in eye widths,
+  `open = |p4 - p12| / width`; `eyes_of` averages the eyes with `open >= OPEN_MIN` (0.12), None for none.
+- **Angles.** `angles(h, v, yaw, pitch, cal)`: `atan(yaw / YAW_K) - atan(cal.yaw / YAW_K)` minus
+  `asin(h / EYE_H) - asin(cal.h / EYE_H)` (the picture isn't mirrored, pose's yaw is), and
+  `atan((pitch - cal.pitch) / PITCH_K)` plus `asin(v / EYE_V) - asin(cal.v / EYE_V)`; `EYE_H` 0.8 and `EYE_V` 0.4 from
+  an eyeball radius of about 12 mm over a 30 mm eye. Estimates; calibration sets the zero, the tolerances absorb the
+  gain.
+- **Calibration.** Session kind `gaze` (`enrol.py`, `Face.gaze_start`, POST `face/gaze/start`, guarded
+  `camera.open`): per frame, one sure face, alone, `|yaw| <= CAL_YAW` (0.2), classified owner (SFace), eyes read ->
+  `Calibration.feed`; done after `CAL_S` (3 s) and `CAL_MIN` (8) readings; `result()` refuses a median absolute
+  deviation of h over `CAL_SPREAD` (0.2) or too few frames (gives up `CAL_MAX_S`, 15 s, after the first). The page
+  gets `{kind: "gaze", ok, reason, share}` and `{kind: "gaze_result", ok, message}`, never numbers.
+  `Face._gaze_done` stores `{h, v, yaw, pitch, n, at}` as `Template.gaze` (sealed; `face.json` gets only `gaze_at`);
+  `gaze_clear()` (POST `face/gaze/clear`) empties it; forget drops it with the template. Event `face_gaze
+  {calibrated}`.
+- **Deciding.** The watcher reads eyes only while `gaze()` (`Face._gaze_now`) hands a gazer: look_to_talk on, Voice's
+  own hold on the camera (`_look_listening`), `gaze_calibration()` (look_gaze on, the part, a valid calibration). The
+  "view" emit gains `eyes=(h, v)` (or None) and `frame=(w, h)`. `Face.looking(owner, eyes, frame)` with a calibration:
+  close as before, head within `face_yaw_deg`, then `|angles| <= look_gaze_yaw_deg / look_gaze_pitch_deg` (10, 10); no
+  eyes (a blink) keeps the last verdict for `BLINK_HOLD_S` (1 s). Without one: the head rule above.
+  `gaze_status()`: `{on, model, calibrated, at, using: eyes | head, why, now: {looking, yaw_deg, pitch_deg} (5 s
+  fresh), mb}`, in `status()["gaze"]` and Voice's `status()["look_to_talk"]["gaze"]`.
+- **Rate and cost.** `face.watch.look_fps` (5, at most `watch.LOOK_MAX_FPS` 5, halved by `slow` like `fps`) applies
+  while `_look_listening()` (`_watch_cfg()["look_fps"]`, else 0). Measured on a Ryzen 7 7435HS, one thread, per full
+  frame at 1080x1440: YuNet on the 320-wide copy 13.7 ms, `frames.mean` 4.0, SFace align + feature 28.7, two eyes
+  through the iris model 6.7: about 53 ms (47 ms at 480x640), so 5 fps is about a quarter of one core while Voice
+  listens.
+
+### Camera resolution (0.8.17)
+
+`CvDetector` already ran YuNet on a 320-wide copy (now `INTER_AREA`, no aliasing from 1080 wide) and scaled the points
+back; SFace's `alignCrop` and the eyes use the full frame. Every size-dependent rule is now relative:
+`vision.px_scale(w, h)` = shorter side / `REF_PX` (480) scales `face.recognise.min_face_px` (watcher and enrolment),
+the still-picture check (`STILL_PX`), enrolment's far step (`min_face_px + 20`) and repeat check (`REPEAT_PX`); the
+enrolment baseline gains `share` (front face height / frame height), used for the near and far steps when known;
+`owner_desk_height()` from the enrolment uses `share` (`measured: True`; an older one's `px / face.camera.height` is
+a guess and is compared in pixels as before); `close_facing(sizes, frame)` compares `h_px` with
+`desk.h * frame height * face_near` when the desk height is measured, else pixels as before; with no desk height,
+`min_face_px * px_scale`. `_shown`, `_person`, "seen" and tracking were shares already. Tests run both 480x640 and
+1080x1440.
 
 ## Tracking every face (0.8.12)
 
@@ -301,7 +357,7 @@ models are never mixed.
 
 | What | Where | Form |
 |---|---|---|
-| template | `<state>/face/template.bin` | AES-GCM-256, nonce + ciphertext, AAD `kurooto-face:template:v1`; the sealed JSON: version, model_sha256, created, updated, samples (base64 fp16, step, at, q), learned, centroids, thresholds, grade, report, last_test, baseline |
+| template | `<state>/face/template.bin` | AES-GCM-256, nonce + ciphertext, AAD `kurooto-face:template:v1`; the sealed JSON: version, model_sha256, created, updated, samples (base64 fp16, step, at, q), learned, centroids, thresholds, grade, report, last_test, baseline, gaze (0.8.17: h, v, yaw, pitch, n, at) |
 | key | secret `face.key` | keychain, else `config/secrets.json` (owner-only) |
 | status | `<state>/face/face.json` | counts and dates: enrolled, samples, per_step, learned, grade, tar, created, trained, last_test_at, model, model_sha (12 chars), greets |
 | frames, crops, previews, strangers | nowhere | memory only; previews served with `Cache-Control: no-store`, `X-Content-Type-Options: nosniff` |
@@ -313,10 +369,10 @@ boot (`core/autostart.py`) and uninstalling (`core/leave.py:forget_keys`) must r
 Events (no scores, embeddings or image data; `test_events_carry_no_scores_or_pictures` checks the keys):
 `face_watch {on, why}`, `face_arrived {away_min}`, `face_left {}`, `face_back {}`, `face_greeted {parts, talk}`,
 `face_greet_skipped {why}`, `face_enrolled {samples, grade}`, `face_trained {samples, grade}`, `face_learned {count}`,
-`face_forgotten {}`, `face_failed {part, error}` (the exception type only). `core/nearby.py` emits `nearby_others {on,
+`face_forgotten {}`, `face_gaze {calibrated}` (0.8.17), `face_failed {part, error}` (the exception type only). `core/nearby.py` emits `nearby_others {on,
 source}`.
 
-The live stream: `{t: "face", kind: "enrol" | "test" | "test_result" | "session"}` to the Face page's `cid` only;
+The live stream: `{t: "face", kind: "enrol" | "test" | "test_result" | "gaze" | "gaze_result" | "session"}` to the Face page's `cid` only;
 `{t: "face", kind: "camera", on}` to every page (the badge).
 
 ## API
@@ -332,6 +388,7 @@ The live stream: `{t: "face", kind: "enrol" | "test" | "test_result" | "session"
 | `POST /api/face/test/mark {session, who}`, `test/stop` | |
 | `POST /api/face/retrain`, `strictness {level}`, `learn/undo`, `learn/forget`, `pause {arg}` | |
 | `POST /api/face/undo` | back to the template before the last `train` (Start over, i.e. `enrol/start {mode: new}` while enrolled, or Add samples); held in memory (`Face._previous`, a payload) for this run only, dropped by forget; `status().can_undo`. A Start over never trains over a template whose key can't be read |
+| `POST /api/face/gaze/start {cid}` | (0.8.17) guarded `camera.open` (the page's Calibrate my eyes); `gaze/stop {session}`, `gaze/clear`, `gaze/setup` (the eye model, in the background) |
 | `POST /api/face/forget` | `data.delete` (after the page's confirm) |
 | `POST /api/face/install-from {folder}` | runs in the background; progress at `GET /api/progress` |
 
@@ -351,6 +408,10 @@ owner's check (3 s, numbers only).
   literature, not measured.
 - The Windows busy check and macOS permission behaviour are written from documentation, untested.
 - The SFace training-data line in the user page is from the SFace paper as remembered, not re-checked against it.
+- (0.8.17) The iris model ran here only on drawn eyes (OpenCV 4.14): it follows a drawn iris at 480x640 and 1080x1440
+  and with the head tilted, both eyes alike. Not tried on a real face: the mirroring of the picture's left eye, the
+  gains `EYE_H`/`EYE_V`, the 10-degree tolerances, `OPEN_MIN`, glasses, dim light and the phone camera's real frames
+  all need the owner's first real run (the Face page shows the last look's angles while Voice listens).
 
 ## The owner's first real run
 

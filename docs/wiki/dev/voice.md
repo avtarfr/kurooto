@@ -250,7 +250,13 @@ from the switches, `Speaker.holding()`, `core/nearby.py:view()` and Voice ID's v
   conversation going on is left to `close_s`/`follow_s`. In `hear()`, Voice ID's gate-first drop treats a look-opened
   portal as closed (someone else's voice not calling it is written out only at the edges). `_face_hold()` holds the
   camera for `_face()` or, with look_to_talk, `_face_on()`. `status()["look_to_talk"]`: `{on, state (off, watching,
-  open), why, dwell_s, yaw_deg, pitch_deg, away_s, opened}`; `line()` adds "looking at it opens a conversation".
+  open), why, dwell_s, yaw_deg, pitch_deg, away_s, opened, by, gaze}`; `line()` adds "looking at it opens a
+  conversation (by your eyes on the camera | by your head's turn: why)". (0.8.17, `look_gaze`, on; `look_gaze_dwell_s`
+  0, `look_gaze_yaw_deg` 10, `look_gaze_pitch_deg` 10) `_look_by()` asks Face's `gaze_status()`: "eyes" when the eye
+  model is here and the owner's eyes are calibrated; then `Face.looking` goes by gaze ([face.md](face.md#by-the-eyes-0817-voicelistenlook_gaze-gazepy))
+  and `look_tick` uses `look_gaze_dwell_s` instead of `look_dwell_s`, so with 0 the first frame with his eyes on the
+  lens opens the portal (Face calls `look_tick` from that frame's "view"; the watcher looks at `face.watch.look_fps`, 5,
+  while Voice holds the camera).
 
 `Decision` carries `name` (exact/known/near), `where`, `careful` and `feats` (`features()`: rule, name flags, where,
 voices, speaker, score, since_chatter_s, faces, careful; never words).

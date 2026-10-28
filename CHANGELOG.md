@@ -18,6 +18,13 @@
   your voice (Voice ID) and while you face it close by, go to Google, as sound; everything else stays as before. The
   conversation keeps one Live session while it's open, tools that need your tap still ask, and if Live can't answer
   the turn goes the usual way.
+- **Look at it to talk, by your eyes** (`voice.listen.look_gaze`, on): on the Face page, Get the eye model (2.6 MB,
+  MediaPipe Iris) and Calibrate my eyes (three seconds looking at the camera's lens), and a look counts by your eyes on
+  the camera, not your head's turn: eyes on the screen below it don't open Voice, and eyes on the lens open it at once
+  (`voice.listen.look_gaze_dwell_s`, 0), with the camera looking 5 times a second while Voice listens
+  (`face.watch.look_fps`). Only four numbers are kept, in your sealed face model; never a picture. Without the model or
+  a calibration it goes by your head's turn as before, and /voice says which. Face presence also works the same with a
+  sharper camera (1080x1440): sizes are judged as shares of the picture, and the eyes are read from the full picture.
 - **Voice says the whole answer.** Barge-in stopped an answer for good whenever a voice that passed as yours was
   heard over it, even an "mm", a cough or a word to someone else, and the rest went unsaid. Now it goes quiet at once,
   and unless what you said was "stop" or a new question or request, it carries on from the start of the sentence it

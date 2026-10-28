@@ -177,8 +177,15 @@ pause list below still comes first; then `voice.listen.need_face_fallback` decid
 call app can't use it.
 
 **Look at it to talk** (`voice.listen.look_to_talk`, on): look straight at the camera for about a second and Voice
-starts listening as if you'd said its name ([Voice](voice.md#look-at-it-to-talk)). Only your own face counts, and only
-which way your head points (the camera can't follow your eyes). The camera is held while Voice listens for this too.
+starts listening as if you'd said its name ([Voice](voice.md#look-at-it-to-talk)). Only your own face counts. On its
+own it goes by which way your head points; with the eye model and your eyes calibrated (below) it goes by your eyes,
+at once. The camera is held while Voice listens for this too, and looks up to 5 times a second then
+(`face.watch.look_fps`).
+
+**Calibrating your eyes** (the Face page, under Look to talk, once you've enrolled): **Get the eye model** (2.6 MB, once),
+then **Calibrate my eyes**: the camera opens and you look at its lens, head turned to it, for about three seconds. It
+keeps four numbers in your sealed face model (where your irises sit in your eyes and how your head was turned), never a
+picture; **Clear** drops them. Calibrate again if you move the camera. How it's used: [Voice](voice.md#by-your-eyes).
 
 **Following faces** (`face.track.on`, on): while the camera is open and a dashboard is in sight, the being's eye
 follows whoever is in view, not just you: it looks at one person and moves on to another every few seconds, sooner
@@ -196,6 +203,10 @@ up; you paused it (`/face pause 1h`); Kurooto is paused, or on battery in pause 
 (`face.watch.when_locked` to look anyway); you're on a call; focus; the night hours (`face.watch.night` to look
 anyway); you're enrolling; another program uses the camera (checked again every minute); there's no camera; the system
 blocks it; it's covered (10 dark frames; checked again every 5 minutes); or its key can't be read.
+
+**A sharper camera** (say a phone's 1080x1440 instead of 480x640) works the same way: faces are found on a small copy
+of each picture, how close you are is judged as a share of the picture's height, and the eyes are cut from the full
+picture, so only the eyes get sharper. Your enrolment carries over; after the switch, calibrate your eyes again.
 
 ## The greeting and the conversation
 
@@ -262,15 +273,19 @@ elsewhere.
 
 ## Privacy
 
-- **What it sees:** the camera's picture, only while it looks (above), at about one frame a second.
+- **What it sees:** the camera's picture, only while it looks (above), at about one frame a second (up to 5 while
+  Voice listens for a look). With look to talk by your eyes, your eyes are cut from each frame in memory and turned into
+  two numbers (where the irises sit), dropped with the frame.
 - **What it keeps:** your template only: numbers that describe your face, never a picture, encrypted (AES-GCM) under a
-  key in your system's keychain, in `state/face/template.bin`, with a status file of counts and dates. Never in a
+  key in your system's keychain, in `state/face/template.bin`, with a status file of counts and dates. Calibrating
+  your eyes adds four numbers to the same template. Never in a
   backup, Profile sync or a diagnostics bundle.
 - **What it never keeps:** the camera's frames (looked at in memory and dropped), the preview (made in memory for the
   Face page), and anything of other people: a stranger's face is dropped with the frame, and only a count since start
   is kept ("faces: you 120, unsure 4, not you 9").
 - **What leaves your computer:** nothing. The one-time downloads fetch the models from `media.githubusercontent.com`
-  (OpenCV's model zoo) and the package from PyPI; nothing of yours is sent.
+  (OpenCV's model zoo), the package from PyPI and, only if you tap Get the eye model, MediaPipe's iris model from
+  `storage.googleapis.com`; nothing of yours is sent.
 - **Honest limits:** without a keychain (no keychain service, starting at boot on Linux, or `KUROOTO_HOME` set) the key
   sits in Kurooto's owner-only settings file on the same disk, so the encryption then only protects copies of the state
   folder made without the settings folder. Deleting a file on an SSD doesn't erase it, which is why forgetting deletes
@@ -311,11 +326,12 @@ From a terminal: `kurooto face`, `kurooto face pause 1h`, `kurooto face forget [
 |---|---|---|
 | `face.camera.device` | (the first) | which camera: a number or part of its name |
 | `face.watch.fps`, `fps_battery` | 1, 0.33 | frames a second while it looks |
+| `face.watch.look_fps` | 5 | frames a second while Voice listens for a look (at most 5; 0: as usual) |
 | `face.watch.idle_s` | 60 | seconds without input before it looks |
 | `face.watch.when_locked`, `night` | off, off | also look while locked, at night |
 | `face.recognise.strictness` | `normal` | `loose`, `normal` or `strict` (retrains) |
 | `face.recognise.threshold` | 0 | a fixed threshold instead of the calibrated one (never below 0.363) |
-| `face.recognise.min_face_px` | 60 | smaller faces are ignored |
+| `face.recognise.min_face_px` | 60 | smaller faces are ignored (pixels of a 640x480 picture; scaled for a sharper camera) |
 | `face.recognise.frames` | 3 | frames of 4 that must be you |
 | `face.greet.on`, `talk` | on, on | the greeting, and the conversation after it |
 | `face.greet.after_absent_min`, `gap_min`, `per_day` | 20, 60, 3 | when it greets |
@@ -332,6 +348,8 @@ All of them: [the settings guide](../../SETTINGS_GUIDE.md).
 ## Licences
 
 - YuNet: MIT (Shiqi Yu). SFace: Apache-2.0. Both from OpenCV's model zoo, downloaded at setup, not part of Kurooto.
+- The eye model (optional): MediaPipe Iris, `iris_landmark.tflite`, Apache-2.0 (Google), from MediaPipe's model store,
+  downloaded only when you tap Get the eye model.
 - opencv-python-headless: Apache-2.0. Its wheel bundles FFmpeg's libraries (LGPL-2.1+), OpenBLAS (BSD-3), libvpx
   (BSD), libpng, OpenSSL and the GCC runtime (GPL-3.0 with the runtime library exception). numpy: BSD-3.
 - SFace's training data: OpenCV's page doesn't name it; the SFace paper reports training on public celebrity-face
@@ -354,4 +372,5 @@ All of them: [the settings guide](../../SETTINGS_GUIDE.md).
 | "template locked" | the keychain is locked (often right after boot); it waits and never makes a new key over your model |
 | No greeting | `/face` says why it's paused; the greeting needs Voice on and speaking, no call, focus or night, and 20 minutes away |
 | Voice ignores you ("no one facing it nearby") | face the camera when you talk; if you sit further back than usual, lower `voice.listen.face_near`; with a second screen beside you, raise `voice.listen.face_yaw_deg`; or turn `voice.listen.need_face` off |
+| Looking at the camera doesn't open Voice (by your eyes) | the Face page shows your last look's angles while Voice listens: calibrate again in your usual light, raise `voice.listen.look_gaze_yaw_deg` / `look_gaze_pitch_deg`, or turn `voice.listen.look_gaze` off (glasses' reflections can hide the irises) |
 | A video call app can't get the camera while Voice listens | `/voice mute` or `/face pause 1h` for the call, or turn `voice.listen.need_face` and `voice.listen.look_to_talk` off |

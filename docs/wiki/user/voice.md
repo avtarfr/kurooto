@@ -143,9 +143,9 @@ thing you say counts as said to it, a statement too, and the conversation goes o
   the camera**: at most about 15 degrees left or right (`voice.listen.look_yaw_deg`) and up or down from how you faced
   it when you enrolled (`voice.listen.look_pitch_deg`). A glance shorter than `voice.listen.look_dwell_s` (1 second)
   doesn't count.
-- The camera sees which way your **head** points, not your eyes, so looking at the screen next to the camera with your
-  head turned to it may count too. If it opens while you're only reading, tighten the angles or put the camera a bit
-  away from where you usually look.
+- On its own the camera sees which way your **head** points, not your eyes, so looking at the screen next to the
+  camera with your head turned to it may count too. If it opens while you're only reading, tighten the angles, or let it
+  go by your eyes (below).
 - It stays open while you keep looking. Look away for `voice.listen.look_away_s` (3 seconds) before saying anything
   and it closes again. One look opens it once: after it closes (you said something that wasn't to it, "stop", or you
   looked away), look away and back.
@@ -155,7 +155,31 @@ thing you say counts as said to it, a statement too, and the conversation goes o
   or with Face presence off or paused. Only two times are kept, in memory: when you started looking and when you last
   did.
 
-`voice.listen.look_to_talk` (on) turns it off. `/voice` says "looking at it opens a conversation" while it can.
+`voice.listen.look_to_talk` (on) turns it off. `/voice` says "looking at it opens a conversation" while it can, and
+whether it goes by your eyes or your head's turn (and why).
+
+#### By your eyes
+
+With the eye model and your eyes calibrated, a look counts by **your eyes on the camera's lens**, not your head: eyes on
+the lens count even with your head a little turned, and eyes on the screen below the camera don't, even with your head
+facing it. And it's **at once**: the first frame that sees your eyes on the lens opens the conversation
+(`voice.listen.look_gaze_dwell_s`, 0), with Face presence looking up to 5 times a second while Voice listens
+(`face.watch.look_fps`).
+
+1. On the dashboard's Face page, under Look to talk, tap **Get the eye model** (MediaPipe Iris, 2.6 MB, Apache-2.0,
+   downloaded once from Google's MediaPipe model store and checked against a pinned checksum).
+2. Tap **Calibrate my eyes** and look at the camera's **lens** (not the screen), head turned to it, for about three
+   seconds. Only you may be in view; it checks it's your face.
+3. The Face page then says "Goes by your eyes on the camera", and while Voice listens it shows your last look's angles
+   (sideways and up or down, in degrees), which help with the tolerances: `voice.listen.look_gaze_yaw_deg` and
+   `voice.listen.look_gaze_pitch_deg` (10 degrees each). Calibrate again after moving the camera.
+
+What's kept: four numbers in your sealed face model (where your irises sat in your eyes and how your head was turned
+while you looked at the lens), a frame count and the date. Never a picture of your eyes. **Clear** on the Face page
+drops them; forgetting your face drops them with the rest. A blink keeps the last verdict for a second; with your head
+turned more than `voice.listen.face_yaw_deg` the eyes aren't trusted. `voice.listen.look_gaze` (on) off, no eye model,
+or no calibration: it goes by your head's turn as above. Thick-rimmed glasses, reflections on lenses and dim light can
+make your eyes hard to read; if looks stop opening it, recalibrate in your usual light or turn `look_gaze` off.
 
 ### When someone else may be talking: its name has to be a call
 
@@ -422,6 +446,9 @@ downloaded to your computer as separate programs, not part of Kurooto.
 | `voice.listen.look_yaw_deg` | 15 | looking at it: head turned at most this many degrees left or right |
 | `voice.listen.look_pitch_deg` | 15 | and at most this many degrees up or down from your enrolment's front face |
 | `voice.listen.look_away_s` | 3 | looking away this long, with nothing said yet, closes it again |
+| `voice.listen.look_gaze` | on | with your eyes calibrated (the Face page): your eyes on the camera count, not your head |
+| `voice.listen.look_gaze_dwell_s` | 0 | by the eyes: looking this long opens it (0: the first frame) |
+| `voice.listen.look_gaze_yaw_deg`, `look_gaze_pitch_deg` | 10, 10 | by the eyes: how close to the lens your gaze must be |
 | `voice.listen.timing` | on | time each turn from your last word to its first sound (numbers only, in `/voice`) |
 | `voice.listen.fast_brain` | `same` | plain chat by voice: `same` (your AI), `local` (this computer's model) or `fastest` |
 | `voice.listen.warm_up` | on | warm the transcriber and the voice when listening starts |

@@ -247,7 +247,7 @@ kept (`egress.json` in the state folder, 30 days), never what was sent.
 
 Each host is checked against Kurooto's list, which is the "Where requests go" table in `docs/PRIVACY.md`: Telegram,
 Google's APIs (Gemini, sign-in, Classroom, Gmail, Drive and Calendar), GitHub, Cloudflare and your call line
-(`.workers.dev`), ntfy.sh, Node.js and Ollama downloads, Voice's models (GitHub and its release file server, Hugging Face), Face presence's models (media.githubusercontent.com, OpenCV's model zoo), arXiv, bioRxiv and PubMed, and Kurooto's release site.
+(`.workers.dev`), ntfy.sh, Node.js and Ollama downloads, Voice's models (GitHub and its release file server, Hugging Face), Face presence's models (media.githubusercontent.com, OpenCV's model zoo; its optional eye model from storage.googleapis.com, MediaPipe's model store), arXiv, bioRxiv and PubMed, and Kurooto's release site.
 Addresses you gave are yours and always allowed: your calendar's link, class calendars you subscribed to, your Research feeds, your own AI service, your
 call line, your ntfy server, and pages your AI reads for a request. This computer (`127.0.0.1`) is never counted.
 

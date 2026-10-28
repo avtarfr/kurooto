@@ -43,10 +43,11 @@
     let h = `<div class="fc">${also()}<h3>Face presence</h3><p class="d">${esc(st.line)}</p>`;
     if (st.stage === "off") h += off();
     else if (st.stage === "setup") h += setup();
-    else if (st.stage === "capturing" || st.stage === "testing") h += live();
+    else if (st.stage === "capturing" || st.stage === "testing" || st.stage === "calibrating") h += live();
     else if (st.stage === "enrol") h += start();
     else h += manage();
     b.innerHTML = h + "</div>";
+    if (S.note) { said(S.note.text, S.note.bad); S.note = null; } // (eyes) the calibration's result, after the reload
     if (S.sid) frames();
   }
   // ------------------------------------------------------------------------------------------------ the stages
@@ -75,6 +76,10 @@
     return S.st.voice_speaks ? `<label><input type="checkbox" data-say${S.say ? " checked" : ""}> Say the steps aloud</label>` : "";
   }
   function live() {
+    if (S.kind === "gaze") return `<div class="row"><div class="prev"><canvas data-cv width="320" height="240"></canvas><p class="why" data-why></p></div><div class="side">
+      <p><b>Look at the camera's lens</b>, not the screen, with your head turned to it, for about three seconds.</p>
+      <div class="m"><i data-gz style="width:0%"></i></div><p class="d">Only four numbers are kept: where your irises sit in your eyes, and how your head was turned. Never a picture.</p>
+      <p><button data-stop>Stop</button></p></div></div>`;
     const enrol = S.kind === "enrol";
     const side = enrol ? `<div data-steps>${steps()}</div>${sayBox()}
         <p><button data-pause>${S.paused ? "Resume" : "Pause"}</button> <button data-skip>Skip this step</button> <button data-noglasses>I don't wear glasses</button></p>
@@ -113,7 +118,16 @@
       <p><button class="primary" data-test>Test</button> <button data-start="add">Add samples</button> <button data-retrain>Retrain</button> <button data-start="new">Start over</button>${S.st.can_undo ? ' <button data-untrain>Undo the last training</button>' : ""}
       Strictness <select data-strict>${["loose", "normal", "strict"].map((k) => `<option${k === S.st.strictness ? " selected" : ""}>${k}</option>`).join("")}</select></p>
       <p class="d">Training here is honest: no network is trained. Your template is the centroid of SFace's numbers for your samples, and the cut-off is calibrated on your held-out samples against a set of made-up impostor faces, never below OpenCV's published 0.363.</p>
+      ${eyes()}
       <p><button data-forget>Forget everything</button></p><p data-said></p>`;
+  }
+  function eyes() { // (0.8.17) look to talk by your eyes: the eye model and your calibration
+    const g = S.st.gaze; if (!g) return "";
+    const by = g.using === "eyes" ? "your eyes on the camera" : `your head's turn (${esc(g.why)})`;
+    const now = g.now && g.now.yaw_deg !== undefined ? ` · last look: ${g.now.yaw_deg}° sideways, ${g.now.pitch_deg}° up or down${g.now.looking ? " (at it)" : ""}` : "";
+    const act = !g.model ? `<button data-gaze-get>Get the eye model (${g.mb} MB)</button> <span class="d">MediaPipe Iris, Apache-2.0</span>`
+      : `<button data-gaze>${g.calibrated ? "Calibrate again" : "Calibrate my eyes"}</button>${g.calibrated ? ` <span class="d">calibrated ${day(g.at)}</span> <button data-gaze-clear>Clear</button>` : ""}`;
+    return `<h4>Look to talk</h4><p class="d">Goes by ${by}${now}.</p><p>${act}</p><pre class="d" data-log></pre>`;
   }
   // ------------------------------------------------------------------------------------------------- the preview
   async function frames() {
@@ -170,6 +184,12 @@
         ${best ? `<div class="bar"><i style="width:${Math.max(0, Math.min(100, best.score * 100)).toFixed(0)}%"></i><b style="left:${(m.t_lo * 100).toFixed(0)}%"></b><b style="left:${(m.t_hi * 100).toFixed(0)}%"></b></div><p class="d">the marks: unsure from ${m.t_lo.toFixed(2)}, you from ${m.t_hi.toFixed(2)}</p>` : ""}`;
       return;
     }
+    if (m.kind === "gaze") {
+      const bar = S.body.querySelector("[data-gz]"); if (bar) bar.style.width = `${Math.round((m.share || 0) * 100)}%`;
+      const w = S.body.querySelector("[data-why]"); if (w) { w.textContent = m.ok ? "✓ keep looking" : m.reason || ""; w.className = `why ${m.ok ? "ok" : "bad"}`; }
+      return;
+    }
+    if (m.kind === "gaze_result") { S.note = { text: m.message, bad: !m.ok }; return; }
     if (m.kind === "test_result") { S.testRes[m.who] = m; const el = S.body.querySelector("[data-results]"); if (el) el.innerHTML = results(); }
   }
   function speak(text) { if (!text) return; S.sayAt = Date.now(); S.api("voice/say", { text }).catch(() => {}); }
@@ -207,6 +227,15 @@
       if (!r.ok) { t.disabled = false; said(r.message, true); return; }
       S.sid = r.session; S.kind = "test"; S.testRes = {}; S.st.stage = "testing"; render(); return;
     }
+    if (d.gaze !== undefined) { // camera.open: Calibrate my eyes, this button only
+      t.disabled = true; S.busy = true;
+      const r = await post("face/gaze/start", { cid: S.opts.cid ? S.opts.cid() : null });
+      S.busy = false;
+      if (!r.ok) { t.disabled = false; said(r.message, true); return; }
+      S.sid = r.session; S.kind = "gaze"; S.st.stage = "calibrating"; render(); return;
+    }
+    if (d.gazeGet !== undefined) { t.disabled = true; await post("face/gaze/setup"); progress(); return; }
+    if (d.gazeClear !== undefined) { const r = await post("face/gaze/clear"); await load(); said(r.message, !r.ok); return; }
     if (d.pause !== undefined) { const r = await post("face/enrol/pause", { session: S.sid, on: !S.paused }); if (r.ok) { S.paused = r.state === "paused"; t.textContent = S.paused ? "Resume" : "Pause"; } else said(r.message, true); return; }
     if (d.skip !== undefined || d.noglasses !== undefined) { const r = await post("face/enrol/step", { session: S.sid, action: d.skip !== undefined ? "skip" : "no_glasses" }); if (r.plan) { S.prog = { ...(S.prog || {}), ...r.plan }; const el = S.body.querySelector("[data-steps]"); if (el) el.innerHTML = steps(); } said(r.message, !r.ok); return; }
     if (d.discard !== undefined) { await post("face/enrol/discard", { session: S.sid }); S.sid = ""; load(); return; }
