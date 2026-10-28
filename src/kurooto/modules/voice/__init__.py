@@ -214,6 +214,7 @@ WARM = ("warm",)  # (warm_up) the hearing thread's own item: warm the transcribe
 WARM_BRAIN_S = 600  # (warm_brain) at most this often
 FAST_BRAINS = ("same", "local", "fastest")
 
+
 class Speaker:
     """Speaks text a piece at a time (a sentence, or short ones joined: shape.join): the next piece is made while this
     one plays, so speech starts as soon as the first piece is ready."""
@@ -410,6 +411,7 @@ class Speaker:
     def holding(self) -> bool:
         return self.busy or time.monotonic() < self.until
 
+
 def _gated(app, fn):
     """(0.8.13) The nightly learner runs while you sleep (learn.py); (0.8.16) through Brain's body gate like its own
     heavy work (mind/senses/intero.py: it waits while your own work holds the machine, a call or the battery)."""
@@ -418,6 +420,7 @@ def _gated(app, fn):
     except ImportError:
         return fn()
     return intero.gated(app, "voice:learn", "cpu", fn, nightly=True)
+
 
 class Voice(Module):
     id = "voice"
@@ -2049,12 +2052,14 @@ class Voice(Module):
             + "\n/voice mute, /voice unmute, /voice stop, /voice say <text>; /voice id (Voice ID), /voice enrol"
         )  # fmt: skip
 
+
 def _num(v, default: float) -> float:
     """A number setting; 0 stays 0 (a dwell of 0 opens on the first look), anything unreadable is the default."""
     try:
         return default if v is None else float(v)
     except (TypeError, ValueError):
         return default
+
 
 def _drowsing(app) -> bool:
     try:
@@ -2066,6 +2071,7 @@ def _drowsing(app) -> bool:
     except Exception:
         return False
 
+
 def pause_after(tts, part: str, sr: int) -> bytes:
     """The silence after a piece when another follows (16-bit, at the piece's rate). kokoro-onnx trims the silence at
     both ends of what it makes and puts a pause back only between the batches it joins itself (0.25 s after a
@@ -2074,6 +2080,7 @@ def pause_after(tts, part: str, sr: int) -> bytes:
     if getattr(tts, "name", "") != "kokoro":
         return b""
     return bytes(2 * int(sr * (0.25 if part.rstrip()[-1:] in ".!?" else 0.1)))
+
 
 def _edges(pcm: bytes, seconds: float = 2.0) -> bytes:
     """(voice id) The first and last `seconds` of the sound with a short silence between: enough to hear its name
