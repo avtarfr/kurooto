@@ -465,6 +465,23 @@ values = "Seconds, 0 to 5 (default 0)."
 when = "Raise it a little (0.3) if a passing glance at the camera opens it."
 needs = "`voice.listen.look_gaze` and a calibration."
 
+
+[s."voice.listen.look_anyone"]
+tip = "Anyone's look opens the conversation, not only yours: a guest looking at it can talk to it too."
+what = """Face presence reads where every close face looks (the three biggest besides yours), by the head's turn, or by
+the eyes judged against your calibration when you've calibrated. People talking to each other without looking at it
+stay ignored. A guest is still a guest: Voice ID decides, and someone who isn't you gets chat only (no tools, none of
+your data). Only numbers for where a face points are used, never who it is, and they go with the frame."""
+when = "Turn it off to have only your own look open it (as 0.8.17)."
+needs = "`voice.listen.look_to_talk`, Face presence on and enrolled."
+
+[s."voice.listen.look_in_company"]
+tip = "With others here, looking at it and saying its name (even misheard) counts as calling it."
+what = """With two or more faces in view or other voices about, its name has to be said first and heard exactly.
+After a look, its name first or last spelled any way (a near miss too) is enough, so a garbled transcript doesn't
+drop what you said."""
+when = "Turn it off to have a look count, in company, only before a question or a request."
+needs = "`voice.listen.look_to_talk`."
 [s."voice.listen.look_gaze_yaw_deg"]
 tip = "By the eyes: how close to the camera's lens your gaze must be, left or right (an estimate in degrees)."
 values = "Degrees, 3 to 30 (default 10)."

@@ -42,8 +42,8 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 49 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
-- [Brain](#brain): 124 settings
-- [Voice and voice notes](#voice-and-voice-notes): 78 settings
+- [Brain](#brain): 127 settings
+- [Voice and voice notes](#voice-and-voice-notes): 80 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
@@ -4934,6 +4934,39 @@ Woken by its name or a message at night, it dozes off again after this many quie
 - **When to change it:** Raise it if you often talk with it a while at night.
 - **Depends on:** `mind.sleep.on`.
 
+### `mind.sleep.senses_off`
+
+Asleep, Kurooto's camera and microphone are off: Face presence pauses and Voice stops listening.
+
+While it's asleep nothing watches or listens, so its name can't wake it: /wake, a message, a tap or a call from you
+does. Woken, the camera and microphone come back; they go off again when it dozes off. The half hour before (drowsy)
+they stay on. The Body add-on stops the desk phone's camera and microphone too.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to have Voice keep listening while it sleeps, so its name wakes it (as before
+  0.8.18).
+- **Depends on:** `mind.sleep.on`.
+
+### `mind.sleep.desk_holds`
+
+While you're at this computer, Kurooto doesn't fall asleep: its night starts after you leave.
+
+Face presence says when you were last here (your face, or your keyboard and mouse while it watches). Inside the sleep
+window, it starts `mind.sleep.desk_after_min` minutes after that, at most at the window's end. Once it's asleep, coming
+back to the desk doesn't wake it (only /wake, a message, a tap or a call); after a wake, the desk keeps it up again.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to have it sleep at its window whether you're at the desk or not.
+- **Depends on:** `mind.sleep.on` and Face presence on and enrolled.
+
+### `mind.sleep.desk_after_min`
+
+With desk_holds: how many minutes after you leave the desk its sleep starts.
+
+- **Values:** Minutes, at least 1 (default 15). **Default:** `15`.
+- **When to change it:** Raise it if it falls asleep while you've only stepped out for a while.
+- **Depends on:** `mind.sleep.desk_holds`.
+
 ### `mind.yield.on`
 
 The Brain's heavy work waits while your jobs use the graphics card, during a call, on battery or when hot.
@@ -6448,6 +6481,30 @@ calibration, voice.listen.look_dwell_s applies instead.
 - **Values:** Seconds, 0 to 5 (default 0). **Default:** `0.0`.
 - **When to change it:** Raise it a little (0.3) if a passing glance at the camera opens it.
 - **Depends on:** `voice.listen.look_gaze` and a calibration.
+
+### `voice.listen.look_anyone`
+
+Anyone's look opens the conversation, not only yours: a guest looking at it can talk to it too.
+
+Face presence reads where every close face looks (the three biggest besides yours), by the head's turn, or by the eyes
+judged against your calibration when you've calibrated. People talking to each other without looking at it stay ignored.
+A guest is still a guest: Voice ID decides, and someone who isn't you gets chat only (no tools, none of your data). Only
+numbers for where a face points are used, never who it is, and they go with the frame.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to have only your own look open it (as 0.8.17).
+- **Depends on:** `voice.listen.look_to_talk`, Face presence on and enrolled.
+
+### `voice.listen.look_in_company`
+
+With others here, looking at it and saying its name (even misheard) counts as calling it.
+
+With two or more faces in view or other voices about, its name has to be said first and heard exactly. After a look, its
+name first or last spelled any way (a near miss too) is enough, so a garbled transcript doesn't drop what you said.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to have a look count, in company, only before a question or a request.
+- **Depends on:** `voice.listen.look_to_talk`.
 
 ### `voice.listen.look_gaze_yaw_deg`
 

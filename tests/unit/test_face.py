@@ -623,7 +623,7 @@ def test_away_and_back():
 def test_every_pause_reason_in_order(app, monkeypatch):
     f = app.modules["face"]
     names = [n for n, _ in f.pause_checks()]
-    assert names == list(PAUSES) and len(PAUSES) == 16
+    assert names == list(PAUSES) and len(PAUSES) == 17
     assert f.pause_reason() == "feature off"
     app.settings.set("modules.enabled", ["face"])
     assert f.pause_reason() == "not enrolled"

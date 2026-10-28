@@ -175,6 +175,16 @@ STATUS = re.compile(
 FORGET = re.compile(r"^(?:please\s+)?(?:forget|delete|erase) my face(?: data| model| template)?[\s.!]*$", re.I)
 
 
+def _sleeping(app) -> bool:
+    """(0.8.18) Kurooto asleep with mind.sleep.senses_off on: the camera stays shut until it's woken."""
+    try:
+        from kurooto.mind import sleep
+
+        return sleep.senses_off(app)
+    except Exception:
+        return False
+
+
 def _event_safe(**fields) -> dict:
     """What a face event may carry: never a score, an embedding or image data."""
     return {k: v for k, v in fields.items() if k in ALLOWED_FIELDS}
@@ -398,6 +408,7 @@ class Face(Module):
             ("you're on a call", self._on_call),
             ("focus", focus),
             ("night hours", night),
+            ("Kurooto is asleep", lambda: _sleeping(app)),  # (0.8.18, mind.sleep.senses_off): /wake wakes it
             ("enrolling", lambda: self.session is not None and self.session.state != "ended"),
             ("camera in use by another program", problem("camera in use by another program")),
             ("no camera", problem("no camera")),
@@ -465,6 +476,8 @@ class Face(Module):
             "track_on": s("track.on"),
             "track_fps": s("track.fps"),
             "look_fps": s("watch.look_fps") if self._look_listening() else 0,
+            # (0.8.18) every close face's look, not only yours, while Voice listens for one
+            "look_anyone": bool(self.app.settings.get("voice.listen.look_anyone", True)) and self._look_listening(),
         }
 
     def _classify(self, e) -> tuple[str, float]:
@@ -604,7 +617,8 @@ class Face(Module):
             nearby.set_view(self.app, int(f.get("faces") or 0), bool(f.get("owner_alone")))
             size = f.get("frame")  # (0.8.17) the frame's (width, height): sizes as shares of it
             nearby.set_facing(self.app, int(f.get("faces") or 0), self.close_facing(f.get("sizes") or [], size))
-            nearby.set_look(self.app, self.looking(f.get("owner"), f.get("eyes"), size))  # (0.8.17) look to talk
+            looks = f.get("looks")  # (0.8.18) anyone's look, voice.listen.look_anyone
+            nearby.set_look(self.app, self.looking(f.get("owner"), f.get("eyes"), size, looks))  # (0.8.17) look to talk
             voice = self.app.modules.get("voice")
             if voice is not None and self.app.is_on("voice"):
                 try:
@@ -774,7 +788,7 @@ class Face(Module):
                 n += 1
         return n
 
-    def looking(self, owner, eyes=None, frame=None) -> bool:
+    def looking(self, owner, eyes=None, frame=None, looks=None) -> bool:
         """(voice.listen.look_to_talk, 0.8.17) Whether the owner's face in a frame, given as (height in pixels, pose
         yaw, pose pitch) or None, is looking at the camera. It must be close (as close_facing; frame: the frame's
         (width, height)). Then, with your eyes calibrated (gaze_calibration()), by the eyes: `eyes` (the irises'
@@ -782,10 +796,21 @@ class Face(Module):
         within face_yaw_deg (beyond it the irises can't be read well); a frame without eyes (a blink) keeps the last
         verdict for BLINK_HOLD_S. Otherwise by the head: turned at most look_yaw_deg from the camera and nodded at
         most look_pitch_deg from your enrolment's front step (none on record: the yaw alone), the nearest honest
-        stand-in for eye contact YuNet's five points give, hence angles tighter than face_yaw_deg."""
-        if not owner or not self.app.settings.get("voice.listen.look_to_talk", True):
+        stand-in for eye contact YuNet's five points give, hence angles tighter than face_yaw_deg.
+        (0.8.18, voice.listen.look_anyone) Or any other close face in `looks`, [(height, yaw, pitch, eyes)], judged the
+        same way against your calibration and enrolment (theirs isn't known); a blink of theirs is no look."""
+        if not self.app.settings.get("voice.listen.look_to_talk", True):
             return False
-        h_px, yaw, pitch = (list(owner) + [None, None])[:3]
+        if owner and self._looks_at(owner, eyes, frame, own=True):
+            return True
+        if looks and self.app.settings.get("voice.listen.look_anyone", True):
+            return any(self._looks_at(lk[:3], lk[3] if len(lk) > 3 else None, frame, own=False) for lk in looks)
+        return False
+
+    def _looks_at(self, face, eyes, frame, own: bool) -> bool:
+        """One face, (height, yaw, pitch), looking at the camera (looking()); own: the owner's (the blink hold and
+        /voice's gaze line are his)."""
+        h_px, yaw, pitch = (list(face) + [None, None])[:3]
         get = self.app.settings.get
         try:
             yaw_max = float(get("voice.listen.look_yaw_deg", 15))
@@ -796,7 +821,7 @@ class Face(Module):
             return False
         cal = self.gaze_calibration()
         if cal is not None:
-            return self._looking_by_eyes(yaw, pitch, eyes, cal)
+            return self._looking_by_eyes(yaw, pitch, eyes, cal, own)
         if yaw_degrees(yaw) > yaw_max:
             return False
         t = self._template_or_none()
@@ -805,7 +830,7 @@ class Face(Module):
             return True
         return pitch is not None and pitch_degrees(pitch, front) <= pitch_max
 
-    def _looking_by_eyes(self, yaw: float, pitch, eyes, cal: dict) -> bool:
+    def _looking_by_eyes(self, yaw: float, pitch, eyes, cal: dict, own: bool = True) -> bool:
         get = self.app.settings.get
         try:
             head_max = float(get("voice.listen.face_yaw_deg", 35))
@@ -815,13 +840,18 @@ class Face(Module):
             head_max, h_max, v_max = 35.0, 10.0, 10.0
         now = time.monotonic()
         if yaw_degrees(yaw) > head_max:
-            self._gaze_last = {"t": now, "looking": False, "why": "head turned away"}
+            if own:
+                self._gaze_last = {"t": now, "looking": False, "why": "head turned away"}
             return False
-        if not eyes or pitch is None:  # a blink, glare: the last verdict holds for a moment
+        if not eyes or pitch is None:  # a blink, glare: the last verdict holds for a moment (the owner's only)
+            if not own:
+                return False
             last = self._gaze_last
             return bool(last.get("looking")) and now - float(last.get("t") or 0) <= BLINK_HOLD_S
         gh, gv = gaze_mod.angles(float(eyes[0]), float(eyes[1]), float(yaw), float(pitch), cal)
         ok = abs(gh) <= h_max and abs(gv) <= v_max
+        if not own:
+            return ok
         self._gaze_last = {"t": now, "looking": ok, "yaw_deg": round(gh, 1), "pitch_deg": round(gv, 1)}
         return ok
 
@@ -947,6 +977,14 @@ class Face(Module):
     # ------------------------------------------------------------------------------------------- arriving
     def away_now(self) -> bool:
         return bool(self.setting("away.on") and self.watcher is not None and self.watcher.away)
+
+    def desk_seen_at(self) -> float | None:
+        """(0.8.18, mind.sleep.desk_holds) When you were last at this computer by Face presence (your face, or your
+        keyboard and mouse while it watches) as time.time(); None when it isn't watching or you've stepped away."""
+        w = self.watcher
+        if w is None or w.away or not self.app.is_on(self.id):
+            return None
+        return time.time() - max(0.0, w.clock() - w.present_at)
 
     def _away_block(self, t: dt.datetime):
         if not self.setting("away.hold_calls") or not self.away_now():

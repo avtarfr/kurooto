@@ -255,7 +255,12 @@ from the switches, `Speaker.holding()`, `core/nearby.py:view()` and Voice ID's v
   While `portal.looked`: still looking refreshes `portal.last`; not looking for `look_away_s` (and not busy) ->
   `close("looked away")`. `looked` clears on any addressed `take()`, `invite()`, `listen_on()` and every close, so a
   conversation going on is left to `close_s`/`follow_s`. In `hear()`, Voice ID's gate-first drop treats a look-opened
-  portal as closed (someone else's voice not calling it is written out only at the edges). `_face_hold()` holds the
+  portal as closed (someone else's voice not calling it is written out only at the edges), unless (0.8.18)
+  `look_anyone`: then the look stands in for anyone's call, `Context.look_anyone` lets rule 5b take a guest's words
+  (the guest path as ever: chat only), and `Context.look_company` (`look_in_company`, on) lets 5b count, with the
+  careful calls or conversation mode, its name first or last of any kind (a near miss too) or a question/request after
+  it. `_look_why` stops a look only while `_asleep` (0.8.18; drowsy or woken in the window, it opens). `blocked()`
+  returns "Kurooto is asleep" with `mind.sleep.senses_off` (`_sleeping`), so the listener stops. `_face_hold()` holds the
   camera for `_face()` or, with look_to_talk, `_face_on()`. `status()["look_to_talk"]`: `{on, state (off, watching,
   open), why, dwell_s, yaw_deg, pitch_deg, away_s, opened, by, gaze}`; `line()` adds "looking at it opens a
   conversation (by your eyes on the camera | by your head's turn: why)". (0.8.17, `look_gaze`, on; `look_gaze_dwell_s`

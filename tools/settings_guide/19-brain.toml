@@ -238,6 +238,24 @@ tip = "Woken by its name or a message at night, it dozes off again after this ma
 when = "Raise it if you often talk with it a while at night."
 needs = "`mind.sleep.on`."
 
+[s."mind.sleep.senses_off"]
+tip = "Asleep, Kurooto's camera and microphone are off: Face presence pauses and Voice stops listening."
+what = "While it's asleep nothing watches or listens, so its name can't wake it: /wake, a message, a tap or a call from you does. Woken, the camera and microphone come back; they go off again when it dozes off. The half hour before (drowsy) they stay on. The Body add-on stops the desk phone's camera and microphone too."
+when = "Turn it off to have Voice keep listening while it sleeps, so its name wakes it (as before 0.8.18)."
+needs = "`mind.sleep.on`."
+
+[s."mind.sleep.desk_holds"]
+tip = "While you're at this computer, Kurooto doesn't fall asleep: its night starts after you leave."
+what = "Face presence says when you were last here (your face, or your keyboard and mouse while it watches). Inside the sleep window, it starts `mind.sleep.desk_after_min` minutes after that, at most at the window's end. Once it's asleep, coming back to the desk doesn't wake it (only /wake, a message, a tap or a call); after a wake, the desk keeps it up again."
+when = "Turn it off to have it sleep at its window whether you're at the desk or not."
+needs = "`mind.sleep.on` and Face presence on and enrolled."
+
+[s."mind.sleep.desk_after_min"]
+tip = "With desk_holds: how many minutes after you leave the desk its sleep starts."
+values = "Minutes, at least 1 (default 15)."
+when = "Raise it if it falls asleep while you've only stepped out for a while."
+needs = "`mind.sleep.desk_holds`."
+
 [s."mind.yield.on"]
 tip = "The Brain's heavy work waits while your jobs use the graphics card, during a call, on battery or when hot."
 what = "It covers the lab, play, plans, the model of you, skills, the harness and the fine-tune; it tries again every 5 minutes and gives up for the night after 12 hours. What you ask for yourself never waits. /mind shows the contention minutes a week (its heavy work running while yours held the card)."

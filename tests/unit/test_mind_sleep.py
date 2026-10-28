@@ -357,3 +357,67 @@ def test_a_phone_pickup_jolts(app, monkeypatch):
     assert kinds == []
     phone.ingest(app, {"bins": [{"s": "screen", "t": time.time() * 1000, "unlocks": 1, "on_min": 15}]})
     assert kinds == ["pickup"]
+
+
+# ----------------------------------------------------------------------------------------------- 0.8.18
+class Desk:
+    """Face presence's desk_seen_at(), set by the test."""
+
+    def __init__(self):
+        self.at = None
+
+    def desk_seen_at(self):
+        return self.at
+
+
+def desk(app, monkeypatch) -> Desk:
+    d = Desk()
+    monkeypatch.setitem(app.modules, "face", d)
+    monkeypatch.setattr(app, "is_on", lambda m: m in ("mind", "face"))
+    return d
+
+
+def test_asleep_its_senses_close_until_woken(app, monkeypatch):
+    sleep._cache.clear()
+    at(monkeypatch, 2, 0, DAY + dt.timedelta(days=1))
+    assert sleep.senses_off(app)
+    sleep._cache.clear()
+    app.settings.set("mind.sleep.senses_off", False)  # the switch: Voice keeps listening, its name wakes it
+    assert not sleep.senses_off(app)
+    app.settings.set("mind.sleep.senses_off", True)
+    sleep._cache.clear()
+    out = app.modules["mind"].wake_cmd(None, "")
+    assert out.startswith("Awake: camera and microphone on") and not sleep.senses_off(app)  # wake drops the cache
+    at(monkeypatch, 14, 0)
+    assert app.modules["mind"].wake_cmd(None, "").startswith("I'm awake.")
+
+
+def test_the_desk_keeps_it_awake_then_it_sleeps_till_woken(app, monkeypatch):
+    d = desk(app, monkeypatch)
+    t = at(monkeypatch, 23, 40)
+    d.at = (t - dt.timedelta(minutes=2)).timestamp()  # at the desk: the window waits for you
+    assert sleep.state(app) == "drowsy" and sleep.window(app)[0] == dt.datetime(2026, 3, 10, 23, 53)
+    t = at(monkeypatch, 1, 0, DAY + dt.timedelta(days=1))
+    d.at = (t - dt.timedelta(minutes=1)).timestamp()  # still there at one
+    assert sleep.state(app) != "asleep"
+    d.at = (t - dt.timedelta(minutes=20)).timestamp()  # left 20 minutes ago (desk_after_min 15)
+    assert sleep.state(app) == "asleep"
+    t = at(monkeypatch, 1, 5, DAY + dt.timedelta(days=1))
+    d.at = t.timestamp()  # back at the desk: asleep is asleep until woken (the latch)
+    assert sleep.state(app) == "asleep"
+    sleep.wake(app, "you said /wake", 20)
+    t = at(monkeypatch, 1, 40, DAY + dt.timedelta(days=1))
+    d.at = (t - dt.timedelta(minutes=1)).timestamp()  # woken, and at the desk: it stays awake past wake_minutes
+    assert sleep.state(app) != "asleep"
+    app.settings.set("mind.sleep.desk_holds", False)  # the switch
+    assert sleep.state(app) == "asleep"
+
+
+def test_the_desk_holds_a_window_set_by_hand_up_to_its_end(app, monkeypatch):
+    app.settings.set("mind.sleep.window", "01:00-03:00")
+    d = desk(app, monkeypatch)
+    t = at(monkeypatch, 2, 50, DAY)
+    d.at = t.timestamp()
+    assert sleep.state(app) == "awake"  # held past its end: no window left tonight
+    d.at = None  # Face presence can't say (off, away): as before
+    assert sleep.state(app) == "asleep"

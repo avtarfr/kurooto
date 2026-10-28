@@ -24,7 +24,7 @@ def lv(fv, monkeypatch):
     """Voice listening, Face presence on and enrolled, awake (Brain's sleep can't depend on when the tests run)."""
     fv.listener = Listener()
     asleep = [False]
-    monkeypatch.setattr(voice_mod, "_drowsing", lambda app: asleep[0])
+    monkeypatch.setattr(voice_mod, "_asleep", lambda app: asleep[0])
     fv.asleep = asleep
     return fv
 
@@ -239,6 +239,7 @@ def lvid(vid, lv):
 
 def test_speech_while_looked_at_still_goes_through_voice_id(lvid):
     v = lvid.v
+    v.app.settings.set("voice.listen.look_anyone", False)  # (0.8.18) the owner's look only: as 0.8.17
     stt = lvid.stt_fake
     looks(v, 1.2, 0.0)
     assert opened(v)
@@ -260,3 +261,51 @@ def test_a_guest_voice_with_voice_id_s_gate_off_isn_t_taken_by_the_look(lvid):
     assert opened(v)
     hear(v, "I'll grab the snacks later", who_voice=55)
     assert v.portal.send.got == []
+
+
+# ------------------------------------------------------------------------------------------- 0.8.18: anyone's look
+def test_anyone_s_look_opens_it(lv):
+    f = lv.f
+    other = (140.0, 0.0, 0.5, None)  # a guest close and turned to it; the owner not looking
+    assert f.looking(None, None, None, [other]) and f.looking((140.0, 0.6, 0.5), None, None, [other])
+    assert not f.looking(None, None, None, [(60.0, 0.0, 0.5, None)])  # across the room
+    assert not f.looking(None, None, None, [(140.0, 0.3, 0.5, None)])  # turned away
+    lv.app.settings.set("voice.listen.look_anyone", False)  # the switch: the owner's look only
+    assert not f.looking(None, None, None, [other]) and f.looking(DESK)
+    lv.app.settings.set("voice.listen.look_anyone", True)
+    looks(lv, 1.5)
+    lv.f._on_watch("view", faces=2, owner_alone=False, sizes=[(140.0, 0.0)] * 2, owner=None, looks=[other])
+    assert lv.portal.open and lv.portal.looked
+
+
+def test_the_watcher_hands_other_faces_looks_only_when_asked():
+    frames = [frame([face(yaw=0.0), face(x=420.0, h=120.0, yaw=0.1)], [rvec(), rvec()])] * 3
+    t = W(frames, cfg={"look_anyone": True})
+    t.run(2)
+    views = [f for k, f in t.got if k == "view"]
+    assert views and len(views[0]["looks"]) == 2 and views[0]["owner"] is None
+    h, yaw, _pitch, eyes = views[0]["looks"][0]
+    assert h == 140.0 and yaw == pytest.approx(0.0, abs=0.01) and eyes is None  # biggest first; no gazer, no eyes
+    t = W(frames)
+    t.run(2)
+    assert all(f["looks"] is None for k, f in t.got if k == "view")
+
+
+def test_a_guest_looked_at_it_is_heard_as_a_guest(lvid):
+    v = lvid.v
+    looks(v, 1.2, 0.0)
+    assert opened(v)
+    hear(v, "what's the weather like tomorrow", who_voice=55)
+    assert [w for _t, w in v.portal.send.got] == ["guest"]  # chat only: the guest path
+
+
+def test_with_company_a_look_and_a_misheard_name_count(lvid):
+    from kurooto.modules.voice.gate import ADDRESSED, LOOKED, Context, Heard
+
+    g = lvid.v.gate()
+    ctx = Context(portal_open=True, looked=True, faces=2, careful=True, look_company=True)
+    h = Heard(text="Kurooti close your eyes for a bit", speech=True, voices=1)
+    d = g.decide(h, ctx)
+    assert d.klass == ADDRESSED and d.why == LOOKED
+    ctx.look_company = False  # the switch: in company only a question or a request after a look
+    assert g.decide(h, ctx).why != LOOKED

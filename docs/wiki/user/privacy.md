@@ -454,7 +454,9 @@ More on each: [updates-and-backups.md](updates-and-backups.md). Before you share
   backed up, carried by Profile sync, put in a diagnostics zip, logged or shown. Where the key sits in the secrets
   file, it's on the same disk as the voice print, so the encryption then only protects copies of the state folder.
 - **Face presence** never keeps a picture: frames and the enrolment preview stay in memory; a stranger's face is
-  dropped with the frame (a count since start is all that's kept). Your template is sealed under `face.key`; forgetting
+  dropped with the frame (a count since start is all that's kept; with `voice.listen.look_anyone`, 0.8.18, also where
+  it points, its head's turn and eyes as a few numbers, dropped with the frame too, never who it is). Your template is
+  sealed under `face.key`; forgetting
   deletes the key first, so an old copy of it anywhere can't be read. Licences: YuNet (MIT), SFace (Apache-2.0),
   opencv-python-headless (Apache-2.0; it bundles FFmpeg's libraries, LGPL-2.1+), numpy (BSD-3). See
   [Face presence](face.md#licences).

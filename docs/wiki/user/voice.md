@@ -139,7 +139,7 @@ With [Face presence](face.md) on and enrolled, you don't have to say its name: *
 second** and Kurooto starts listening, as if you'd said "Kurooto" (no "Yes?", the being shows it's listening). The next
 thing you say counts as said to it, a statement too, and the conversation goes on as usual after its answer.
 
-- It has to be **your** face (Face presence recognises it), close to the camera, and your head turned **straight at
+- It has to be **your** face (Face presence recognises it; anyone's with `voice.listen.look_anyone`), close to the camera, and your head turned **straight at
   the camera**: at most about 15 degrees left or right (`voice.listen.look_yaw_deg`) and up or down from how you faced
   it when you enrolled (`voice.listen.look_pitch_deg`). A glance shorter than `voice.listen.look_dwell_s` (1 second)
   doesn't count.
@@ -149,11 +149,16 @@ thing you say counts as said to it, a statement too, and the conversation goes o
 - It stays open while you keep looking. Look away for `voice.listen.look_away_s` (3 seconds) before saying anything
   and it closes again. One look opens it once: after it closes (you said something that wasn't to it, "stop", or you
   looked away), look away and back.
-- What you say still goes through the other checks: with Voice ID, someone else's voice isn't even written out; two
-  voices at once, or people talking here lately, need a question or a request.
-- It never opens while Voice is off or muted, on a call, while listening is off for the night, while Kurooto is asleep,
-  or with Face presence off or paused. Only two times are kept, in memory: when you started looking and when you last
-  did.
+- **Anyone's look counts** (`voice.listen.look_anyone`, on, 0.8.18), not only yours: a friend looking at it can
+  talk to it too, while people talking to each other without looking at it are left alone. Face presence reads where
+  the three biggest other faces point (their head's turn, or their eyes against your calibration), never who they are.
+  A guest is still a guest: Voice ID decides, and someone who isn't you gets chat only, no tools and none of your data.
+  Off: only your face opens it, and with Voice ID someone else's voice isn't even written out.
+- What you say still goes through the other checks: two voices at once, or people talking here lately, need a
+  question or a request, or (`voice.listen.look_in_company`, on, 0.8.18) its name first or last, even misheard.
+- It never opens while Voice is off or muted, on a call, while listening is off for the night, while Kurooto is asleep
+  (drowsy, or woken in the night, it does: 0.8.18), or with Face presence off or paused. Only two times are kept, in
+  memory: when someone started looking and when they last did.
 
 `voice.listen.look_to_talk` (on) turns it off. `/voice` says "looking at it opens a conversation" while it can, and
 whether it goes by your eyes or your head's turn (and why).
@@ -448,6 +453,8 @@ downloaded to your computer as separate programs, not part of Kurooto.
 | `voice.listen.look_away_s` | 3 | looking away this long, with nothing said yet, closes it again |
 | `voice.listen.look_gaze` | on | with your eyes calibrated (the Face page): your eyes on the camera count, not your head |
 | `voice.listen.look_gaze_dwell_s` | 0 | by the eyes: looking this long opens it (0: the first frame) |
+| `voice.listen.look_anyone` | on | (0.8.18) anyone's look opens it, not only yours (guests still get chat only) |
+| `voice.listen.look_in_company` | on | (0.8.18) with others here, a look and its name (even misheard) count as the call |
 | `voice.listen.look_gaze_yaw_deg`, `look_gaze_pitch_deg` | 10, 10 | by the eyes: how close to the lens your gaze must be |
 | `voice.listen.timing` | on | time each turn from your last word to its first sound (numbers only, in `/voice`) |
 | `voice.listen.fast_brain` | `same` | plain chat by voice: `same` (your AI), `local` (this computer's model) or `fastest` |

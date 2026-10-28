@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.8.18 (unreleased)
+
+Kurooto keeps its eyes and ears shut while it sleeps, stays up while you're at the desk, and anyone's look opens a conversation.
+
+- **Asleep, its camera and microphone are off** (`mind.sleep.senses_off`, on). While Kurooto sleeps, Face presence
+  pauses ("Kurooto is asleep") and Voice stops listening (the Body add-on's desk phone stops its camera and microphone
+  too). Its name can't wake it then: the new **/wake** does, and so does a message, a tap or a call from you. Woken, they
+  come back; when it dozes off again, they go off again. Off: Voice keeps listening at night and its name wakes it, as
+  before.
+- **It doesn't fall asleep while you're at the desk** (`mind.sleep.desk_holds`, on). With Face presence seeing you at
+  this computer (your face, or your keyboard and mouse), its night waits, and starts 15 minutes after you leave
+  (`mind.sleep.desk_after_min`), at most at the window's end. Once it's asleep, sitting back down doesn't wake it; after
+  you wake it, the desk keeps it up again.
+- **Anyone's look opens the conversation** (`voice.listen.look_anyone`, on). Not only your face: a friend looking at it
+  can talk to it, while people talking to each other without looking at it stay ignored. Face presence reads only where
+  their faces point (their head, or their eyes against your calibration), never who they are. A guest is still a
+  guest: chat only, no tools, none of your data.
+- **In company, a look and its name count even misheard** (`voice.listen.look_in_company`, on). With a friend in view,
+  its name had to be first and transcribed exactly, so "Kurooto, close your eyes" could be lost to a garbled name.
+  After a look, its name first or last spelled any way is enough.
+- **A look works while it's drowsy or woken at night.** Only asleep stops it now (it used to stop in the half hour
+  before its night too).
+- **One add-on can't blank the Features page.** An add-on whose setup form had no links list made the whole page fail
+  to draw; the page now copes.
+
 ## 0.8.17 (2026-10-28)
 
 Voice you can talk to: it finishes what it says, hears you over the room, answers sooner, opens when you look at it (by your eyes), and can answer through Gemini Live; calls keep going on Back and save every transcript; plans that follow what changed; messages one by one; and the AI knows when it recognised you.

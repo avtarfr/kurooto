@@ -438,16 +438,25 @@ the phone charging for 20 minutes means you're asleep (up to two hours early, an
 use when its night should start holds it back (up to two hours); the phone in use in the last hour and a half, the
 phone's own alarm, "I'm up" or the alarm ringing end it. `mind.sleep.window` (like `00:30-08:00`) sets it by hand.
 
-**Drowsy:** the half hour before, it says nothing aloud by itself (no greeting).
+**Not while you're at the desk** (`mind.sleep.desk_holds`, on, 0.8.18). While Face presence has you at this computer
+(your face, or your keyboard and mouse while it watches), its night waits: it starts 15 minutes after you were last
+there (`mind.sleep.desk_after_min`), at most at the window's end, so an all-nighter at the desk keeps it up all night.
+Once it's asleep, sitting back down doesn't wake it; after you wake it, the desk keeps it up again.
+
+**Drowsy:** the half hour before, it says nothing aloud by itself (no greeting). Looking at it still opens a
+conversation (0.8.18).
 
 **Asleep:**
 - Nothing it starts by itself is sent or said aloud. It waits, and goes out once its night is over, through the usual
   limits. Still coming: alarms, reminders and calls you set, deadlines less than 12 hours away, approvals and
   questions you're waiting on, and every answer to you.
 - The being's eyes are shut.
-- Voice still listens (with `voice.listen.night` on). Its name wakes it, and so does a message, a tap or a call from
-  you. It answers, then dozes off again after 20 quiet minutes (`mind.sleep.wake_minutes`). What waited still waits
-  for the morning: being woken to answer isn't being up.
+- **Its camera and microphone are off** (`mind.sleep.senses_off`, on, 0.8.18): Face presence pauses ("Kurooto is
+  asleep") and Voice stops listening, and the Body add-on's desk phone stops its camera and microphone too. So its name
+  can't wake it: **/wake** does, and so does a message, a tap or a call from you. Woken, the camera and microphone come
+  back. It answers, then dozes off again after 20 quiet minutes (`mind.sleep.wake_minutes`), and they go off again.
+  What waited still waits for the morning: being woken to answer isn't being up. With `mind.sleep.senses_off` off,
+  Voice keeps listening (with `voice.listen.night` on) and its name wakes it, as before 0.8.18.
 - Its own heavy work runs now (below).
 
 `/mind` says whether it's asleep, until when, and how many messages wait.
@@ -707,6 +716,7 @@ computer, not in backups.
 - **`/autonomy`:** what it may do without asking, by kind, how far each is trusted, and the shadow counts.
 - **`/budget`:** its body budget, its drive, the last reward and its current feeling.
 - **`/promises`:** what it said it would do, and whether it did.
+- **`/wake`:** (0.8.18) wakes Kurooto: asleep, its camera and microphone are off, so this (or a message, a tap, a call) is how.
 - **`/mind learning`:** whether its learning is on or frozen, how far through the 21 shadow days it is, its mood and
   why, what being talked to gave it today, and how welcome each kind of its own messages is right now.
 

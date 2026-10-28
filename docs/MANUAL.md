@@ -1686,6 +1686,12 @@ hot, and the nightly part waits for its sleep; what you ask never waits. Somethi
 loud room) gives an orienting jolt. `/mind` shows its sleep and the week's contention minutes. *Undo:* `mind.sleep.on`,
 `mind.yield.on`, `mind.yield.prefer_sleep`, `mind.stimulation.jolt` off; Delete Brain's data removes `mind-sleep.json`.
 
+**Asleep, its eyes and ears are shut; not while you're at the desk (0.8.18).** While it sleeps, Face presence pauses and
+Voice stops listening, so its name can't wake it: **/wake**, a message, a tap or a call does, and the camera and
+microphone come back with it. While Face presence has you at the desk (your face, or keyboard and mouse), its night
+waits and starts 15 minutes after you leave; once asleep, sitting back down doesn't wake it. *Undo:*
+`mind.sleep.senses_off` off (Voice listens at night again, its name wakes it); `mind.sleep.desk_holds` off.
+
 **Values as case law, and play (Brain, `/precedents`, `/play`; both off by default).** When a call between two of your values comes up it asks once and keeps your ruling as a precedent to follow in alike situations (never for anything on the always-ask list); `/precedents` lists, edits and deletes them. Play is 20 minutes a night of its own curiosity on your topics (charger only), credited only for what transfers; its outputs are never shown unprompted. *Undo:* `mind.precedents.on`, `mind.play.on` off.
 
 **How it forgets (Brain, `/forget`, `/memory`).** Old memories fade from use (a half-life by kind; `/memory` shows a bar and "fading") but stay on record until you forget them; a miss older than six weeks isn't brought up again (its own mistakes stay in its journal); and `/forget` now also removes what Brain kept of that stretch from every store (the read, the model of your mind, senses, skills' origins, the journal as a tombstone, the fine-tune's examples). Its log keeps only that a forget happened. *Undo:* `mind.forget.on` off (fading and old-miss retirement stop; `/forget` still removes the usual things).
@@ -1758,7 +1764,7 @@ it. Nothing named for money or health is shown. On the Android app (with Show on
 copy in place of the last one); `calls.views_brain` off for the phone only.
 
 **Commands:** `/mind` (is it running, how long is the log, does it check out, the last anchor); `/mind verify` (checks
-every record); `/mind learning`; `/mood` (how it reads you and what it expects); `/budget`; `/promises`; `/autonomy`; `/mindjournal`; `/story`; `/capabilities`; `/indicators`; `/thinking`; `/beliefs`; `/lab`; `/improve`; `/learned`.
+every record); `/mind learning`; `/mood` (how it reads you and what it expects); `/budget`; `/promises`; `/wake` (0.8.18: wakes it, camera and microphone with it); `/autonomy`; `/mindjournal`; `/story`; `/capabilities`; `/indicators`; `/thinking`; `/beliefs`; `/lab`; `/improve`; `/learned`.
 
 **Settings:** `mind.anchor_every` (1000: the log's head is noted every this many records, and once a day);
 `mind.hardened` (off).
@@ -2173,6 +2179,9 @@ today / Undo all. Manage: add samples, retrain, change model, install the parts 
 - With `voice.speaker_id.gate` (on), someone else's talk that isn't calling Kurooto is dropped before it's written out,
   and while another voice is around (**conversation mode**, `voice.listen.conversation_mode`) only "Kurooto, …" opens a
   conversation.
+- **Anyone's look** (0.8.18, `voice.listen.look_anyone`, on): with look to talk, a guest looking at the camera opens the
+  conversation too, and their words go the guest way (chat only). With others in view, a look and its name, even
+  misheard, count as calling it (`voice.listen.look_in_company`, on). *Undo:* either off.
 - Never by voice: enrolling, its settings and forgetting are typed or on the page. `/voice id` shows the grade, the
   thresholds and the last test.
 - Honest limits: a recording or a clone of your voice can pass (guarded actions still need your tap); a close relative

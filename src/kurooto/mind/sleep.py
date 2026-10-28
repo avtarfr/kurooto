@@ -9,6 +9,10 @@ Its sleep window follows yours (`mind.sleep.follow_owner`, on):
       up late); the phone in use in the window's last UP_MIN minutes, the phone's own alarm, "I'm up" or the alarm
       ringing end it (you're up).
     - `mind.sleep.window` ("00:30-08:00") sets it by hand instead; follow_owner off uses the night hours as they are.
+    - (0.8.18, `mind.sleep.desk_holds`, on) You at this computer (Face presence: your face, or your keyboard and mouse
+      while it watches) hold the window back, by hand-set or not: it starts `mind.sleep.desk_after_min` (15) minutes
+      after you were last there, up to the window's end. Once it's asleep the desk no longer holds it (the latch,
+      `slept_until`): only being woken does, and after a wake the desk holds it again.
 
 States: "drowsy" in the DROWSY_MIN minutes before the window (quieter: nothing is said aloud by itself), "asleep" in
 it, "awake" otherwise. Asleep:
@@ -16,13 +20,17 @@ it, "awake" otherwise. Asleep:
       the gate and Calm as usual, once the window is over. Exempt, never held: alarms, reminders and calls you asked
       for, close deadlines, approvals and questions you're waiting on, and every answer to you.
     - The being's eyes close (status reads state()).
-    - Voice still listens: its name wakes it (wake(app, "its name")), and so does a message, a tap or a call from you.
-      It answers, and dozes off again after `mind.sleep.wake_minutes` (20) quiet minutes. What waited still waits for
-      the morning: being woken to answer isn't being up.
+    - (0.8.18, `mind.sleep.senses_off`, on) Its senses close too: Face presence pauses ("Kurooto is asleep") and Voice
+      stops listening (senses_off()). Then only you wake it: /wake, a message, a tap or a call; its name can't, since
+      nothing listens. Switch off: Voice still listens and its name wakes it (wake(app, "its name")).
+    - Woken, it answers, and dozes off again after `mind.sleep.wake_minutes` (20) quiet minutes. What waited still
+      waits for the morning: being woken to answer isn't being up.
     - The Brain's heavy work prefers this window (mind/senses/intero.py: gated()).
 
 Public, for the other parts and add-ons:
     state(app) -> "awake" | "drowsy" | "asleep"
+    asleep(app) -> bool                state(app) == "asleep", kept CACHE_S (for checks made every second)
+    senses_off(app) -> bool            (0.8.18) asleep with mind.sleep.senses_off on: cameras and microphones stop
     wake(app, why, minutes=20)
     window(app) -> (start, end) | None, the current night's or the next one's, as local times
 
@@ -54,6 +62,13 @@ register_defaults(
             "follow_owner": True,  # the window follows your bedtime, alarm and phone; off: the night hours as set
             "window": "",  # "00:30-08:00" sets its sleep by hand ("" = follow the above)
             "wake_minutes": 20,  # woken by its name or a message, it dozes off again after this many quiet minutes
+            # (0.8.18) asleep, Face presence pauses and Voice stops listening: only /wake, a message, a tap or a call
+            # wakes it (its name can't). Off: Voice still listens while it sleeps and its name wakes it
+            "senses_off": True,
+            # (0.8.18) you at this computer (Face presence: your face, or keyboard and mouse) keep it from falling
+            # asleep: the window starts desk_after_min minutes after you were last there
+            "desk_holds": True,
+            "desk_after_min": 15,
         }
     },
 )
@@ -72,8 +87,10 @@ NAME_WHYS = ("its name", "the wake word")  # what opened Voice's conversation (m
 EVENTS = (*WAKE_KINDS, *UP_KINDS, "voice_portal")  # the events it listens to
 EXEMPT_KINDS = ("call", "approval", "reminder")
 DUMP_SKIP = ("rid", "extra", "state_read", "before")
+CACHE_S = 5.0  # asleep() is kept this long: Face presence and Voice ask every second
 
 _lock = threading.Lock()
+_cache: dict[int, tuple[float, bool]] = {}
 
 
 def on(app: App) -> bool:
@@ -178,8 +195,30 @@ def phone_now(app: App, t: dt.datetime) -> dict:
     return out
 
 
+def _desk(app: App) -> float | None:
+    """(0.8.18, mind.sleep.desk_holds) When Face presence last had you at this computer (time.time()), or None: the
+    switch off, Face presence off or not watching, or you've stepped away."""
+    if not app.settings.get("mind.sleep.desk_holds"):
+        return None
+    try:
+        face = app.modules.get("face")
+        if face is None or not app.is_on("face"):
+            return None
+        return face.desk_seen_at()
+    except Exception:
+        return None
+
+
+def _desk_after(app: App) -> float:
+    try:
+        return max(1.0, float(app.settings.get("mind.sleep.desk_after_min") or 15))
+    except (TypeError, ValueError):
+        return 15.0
+
+
 def _refine(app: App, s: dt.datetime, e: dt.datetime, t: dt.datetime, ph: dict, up_at: float | None):
-    """One night, moved by what's known about you tonight: your onset, staying up, the phone's alarm, getting up."""
+    """One night, moved by what's known about you tonight: your onset, staying up, the phone's alarm, getting up, and
+    (0.8.18) you at the desk."""
     if ph.get("alarm") and not app.settings.get("mind.sleep.window"):
         a = dt.datetime.fromtimestamp(ph["alarm"]).replace(microsecond=0)
         if s < a and abs((a - e).total_seconds()) <= 3 * 3600:
@@ -204,6 +243,11 @@ def _refine(app: App, s: dt.datetime, e: dt.datetime, t: dt.datetime, ph: dict, 
         u = dt.datetime.fromtimestamp(up_at).replace(microsecond=0)
         if s <= u < e:
             e = u
+    desk = ph.get("desk")
+    if desk is not None and s <= t < e:  # (0.8.18) at the desk: it waits for you, up to the window's end
+        held = dt.datetime.fromtimestamp(desk).replace(microsecond=0) + dt.timedelta(minutes=_desk_after(app))
+        if held > s:
+            s = min(held, e)
     return s, e
 
 
@@ -221,7 +265,12 @@ def window(app: App, t: dt.datetime | None = None) -> tuple[dt.datetime, dt.date
             (s, e) for s, e in _daily(t, *_hours(app)) if not any(a < e and s < b for a, b in nights)
         ]  # the alarm's nights take the place of the fixed hours they overlap
     ph = {} if manual else phone_now(app, t)
-    up = _load(app).get("up_at")
+    st = _load(app)
+    up = st.get("up_at")
+    if float(st.get("slept_until") or 0) <= t.timestamp():  # (0.8.18) asleep already: the desk no longer holds it
+        desk = _desk(app)
+        if desk is not None:
+            ph = {**ph, "desk": desk}
     out = []
     for s, e in nights:
         if s >= e:
@@ -254,10 +303,38 @@ def state(app: App, t: dt.datetime | None = None) -> str:
         return "awake"
     s, e = w
     if s <= t < e:
-        return "awake" if _woken(_load(app), t) else "asleep"
+        st = _load(app)
+        if _woken(st, t):
+            return "awake"
+        if float(st.get("slept_until") or 0) < e.timestamp():  # (0.8.18) the latch: the desk can't undo this
+            with _lock:
+                st = _load(app)
+                st["slept_until"] = e.timestamp()
+                _save(app, st)
+        return "asleep"
     if s - dt.timedelta(minutes=DROWSY_MIN) <= t < s:
         return "drowsy"
     return "awake"
+
+
+def asleep(app: App) -> bool:
+    """state(app) == "asleep", kept CACHE_S: Face presence and Voice ask every second."""
+    m = time.monotonic()
+    hit = _cache.get(id(app))
+    if hit is not None and m - hit[0] < CACHE_S:
+        return hit[1]
+    try:
+        v = state(app) == "asleep"
+    except Exception:
+        v = False
+    _cache[id(app)] = (m, v)
+    return v
+
+
+def senses_off(app: App) -> bool:
+    """(0.8.18, mind.sleep.senses_off) Asleep with the switch on: Face presence pauses and Voice stops listening (and
+    the Body add-on's phone camera and mic, which read this too)."""
+    return bool(app.settings.get("mind.sleep.senses_off")) and asleep(app)
 
 
 def wake(app: App, why: str, minutes: int = 20) -> None:
@@ -271,10 +348,12 @@ def wake(app: App, why: str, minutes: int = 20) -> None:
         st = _load(app)
         st["woke_until"] = max(float(st.get("woke_until") or 0), t.timestamp() + max(1, int(minutes)) * 60)
         st["woke_why"] = str(why)[:40]
+        st.pop("slept_until", None)  # (0.8.18) woken: the desk holds it again
         if was == "asleep":
             day = st.setdefault("wakes", {})
             day[t.date().isoformat()] = int(day.get(t.date().isoformat(), 0)) + 1
         _save(app, st)
+    _cache.pop(id(app), None)  # its senses come back at once
     _changed(app)
 
 

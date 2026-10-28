@@ -162,6 +162,11 @@ register_defaults(
             "look_gaze_yaw_deg": 10,  # by the eyes: gaze at most this many degrees left or right of the camera's lens
             "look_gaze_pitch_deg": 10,  # and at most this many degrees above or below it
             "look_gaze_dwell_s": 0.0,  # by the eyes: looking this long opens it (0: the first frame with them on it)
+            # (0.8.18) anyone's look opens it, not only yours (a guest is still a guest: chat only); off: yours only
+            "look_anyone": True,
+            # (0.8.18) with others here (careful calls, conversation mode), a look plus its name heard any way counts
+            # as the call, so a misheard name isn't dropped; off: a look counts there only before a question or request
+            "look_in_company": True,
             "timing": True,  # time each turn from your last word to its first sound (numbers only; medians in /voice)
             "fast_brain": "same",  # plain chat by voice: same (your AI), local (this computer's model) or fastest
             "warm_up": True,  # when listening starts, warm the transcriber and the voice so the first turn is quick
@@ -836,6 +841,10 @@ class Voice(Module):
             return "muted"
         if self.app.power.current == "paused":
             return "Kurooto is paused"
+        if _sleeping(
+            self.app
+        ):  # (0.8.18, mind.sleep.senses_off) asleep: nothing listens until /wake, a message, a call
+            return "Kurooto is asleep"
         if not self.app.power.may_run(self):
             return "on battery (saver mode)"
         if not self.setting("listen.calls") and self._on_call():
@@ -937,7 +946,8 @@ class Voice(Module):
         gate_first = bool(vid.s("gate", True))
         if on and (gate_first or self.setting("listen.conversation_mode")) and h.speech and audio is not None:
             who = vid.check(audio, h.speech_s, h.voices)  # (voice id) who, before the words
-            closed = not self.portal.open or self.portal.looked  # a look stood in for the owner's call, no one else's
+            # a look stood in for the owner's call, no one else's (0.8.18, look_anyone: for anyone's)
+            closed = not self.portal.open or (self.portal.looked and not self.setting("listen.look_anyone"))
             if gate_first and who.decision != "owner" and not h.wake and closed:
                 g = self.gate()
                 edges = _edges(audio)
@@ -1015,6 +1025,8 @@ class Voice(Module):
         ctx.chatter_s = float(s("listen.chatter_s") or 60)
         ctx.follow_window_s = float(s("listen.follow_s") or 0)
         ctx.told_off = bool(s("listen.told_off"))
+        ctx.look_anyone = bool(s("listen.look_anyone"))
+        ctx.look_company = bool(s("listen.look_in_company"))
         self.portal.follow_s = ctx.follow_window_s
         ctx.speaking = self.speaker.holding()
         if ctx.speaking:  # an output (a phone) may still be playing it: it hasn't finished speaking yet
@@ -1145,7 +1157,7 @@ class Voice(Module):
             return why
         if self._on_call():  # even with voice.listen.calls on: a look mustn't open a talk in the middle of a call
             return "you're on a call"
-        if _drowsing(self.app):
+        if _asleep(self.app):
             return "Kurooto is asleep"
         if self._face_on() is None:
             return "Face presence is off or not enrolled"
@@ -2092,6 +2104,29 @@ def _drowsing(app) -> bool:
         return False
     try:
         return sleep.state(app) in ("asleep", "drowsy") or sleep.resting(app)
+    except Exception:
+        return False
+
+
+def _asleep(app) -> bool:
+    """(0.8.18) A look can't open the conversation while Kurooto is asleep; drowsy, or woken inside its window, it can
+    (a look is you starting the talk)."""
+    try:
+        from kurooto.mind import sleep
+    except ImportError:
+        return False
+    try:
+        return sleep.asleep(app)
+    except Exception:
+        return False
+
+
+def _sleeping(app) -> bool:
+    """(0.8.18) Asleep with mind.sleep.senses_off on: Voice doesn't listen."""
+    try:
+        from kurooto.mind import sleep
+
+        return sleep.senses_off(app)
     except Exception:
         return False
 

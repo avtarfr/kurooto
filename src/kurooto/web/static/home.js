@@ -1295,8 +1295,8 @@ async function renderFeatures(body) {
     ${m.form.steps ? `<ol class="d form-steps">${m.form.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}
     ${m.form.guide ? `<p><a href="${esc(m.form.guide[1])}" target="_blank" rel="noopener">${esc(m.form.guide[0])}</a></p>` : ""}
     ${(m.form.copy || []).map(([l, v]) => `<div class="copy-row"><span class="d">${esc(l)}:</span> <code>${esc(v)}</code> <button type="button" data-copy="${esc(v)}">Copy</button></div>`).join("")}
-    <p class="d">${m.form.links.map(([l, h]) => `<a href="${esc(h)}" target="_blank" rel="noopener">${esc(l)}</a>`).join(" · ")}</p>
-    ${m.form.fields.map((f) => `<label>${esc(f.label)}${f.type === "textarea" ? `<textarea name="${esc(f.name)}" rows="3" placeholder="${esc(f.placeholder || "")}"></textarea>`
+    <p class="d">${(m.form.links || []).map(([l, h]) => `<a href="${esc(h)}" target="_blank" rel="noopener">${esc(l)}</a>`).join(" · ")}</p>
+    ${(m.form.fields || []).map((f) => `<label>${esc(f.label)}${f.type === "textarea" ? `<textarea name="${esc(f.name)}" rows="3" placeholder="${esc(f.placeholder || "")}"></textarea>`
       : `<input name="${esc(f.name)}" type="${f.type === "password" ? "password" : "text"}" placeholder="${esc(f.placeholder || "")}" autocomplete="off">`}${f.accept ? `<input type="file" accept="${esc(f.accept)}" data-fill="${esc(f.name)}">` : ""}</label>`).join("")}
     <button class="primary" type="submit">Save</button></form>`;
   // Phone calls: what it needs, in order; the Gemini key right here; Set up makes the call line on Cloudflare

@@ -778,8 +778,11 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.senses.phone` | `"(computed)"` | Each of your phone's sensors, off until you switch it on (here and in the phone app). ([guide](wiki/user/settings-guide.md#mindsensesphone)) |
 | `mind.skills.from_demos` | `false` | Also offer skills from what you do over and over (asked once). ([guide](wiki/user/settings-guide.md#mindskillsfromdemos)) |
 | `mind.skills.on` | `true` | Solved tasks become tested, reusable skills; each new one starts out asking first. ([guide](wiki/user/settings-guide.md#mindskillson)) |
+| `mind.sleep.desk_after_min` | `15` | With desk_holds: how many minutes after you leave the desk its sleep starts. ([guide](wiki/user/settings-guide.md#mindsleepdeskaftermin)) |
+| `mind.sleep.desk_holds` | `true` | While you're at this computer, Kurooto doesn't fall asleep: its night starts after you leave. ([guide](wiki/user/settings-guide.md#mindsleepdeskholds)) |
 | `mind.sleep.follow_owner` | `true` | Its sleep follows yours: bedtime to the alarm, refined by your phone (screen off, dark, charging; first use). ([guide](wiki/user/settings-guide.md#mindsleepfollowowner)) |
 | `mind.sleep.on` | `true` | Kurooto sleeps in your sleep window: nothing it starts by itself is sent or said aloud until morning. ([guide](wiki/user/settings-guide.md#mindsleepon)) |
+| `mind.sleep.senses_off` | `true` | Asleep, Kurooto's camera and microphone are off: Face presence pauses and Voice stops listening. ([guide](wiki/user/settings-guide.md#mindsleepsensesoff)) |
 | `mind.sleep.wake_minutes` | `20` | Woken by its name or a message at night, it dozes off again after this many quiet minutes. ([guide](wiki/user/settings-guide.md#mindsleepwakeminutes)) |
 | `mind.sleep.window` | `""` | Set Kurooto's sleep by hand, like 00:30-08:00 (empty: follow your night). ([guide](wiki/user/settings-guide.md#mindsleepwindow)) |
 | `mind.status.on` | `true` | One status stream: focus, asleep, messages held, the one thing it's uneasy about, its own mood and arousal. ([guide](wiki/user/settings-guide.md#mindstatuson)) |
@@ -1233,12 +1236,14 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.learn_nightly` | `true` | Every night Kurooto learns from how its voice turns went: ones you carried on with, and ones you told off. ([guide](wiki/user/settings-guide.md#voicelistenlearnnightly)) |
 | `voice.listen.levels` | `true` | Show the microphone's loudness as a waveform on the dashboard (numbers only). ([guide](wiki/user/settings-guide.md#voicelistenlevels)) |
 | `voice.listen.live` | `false` | Your own turns answered by Gemini Live, speech to speech, in about a second. Their sound goes to Google. ([guide](wiki/user/settings-guide.md#voicelistenlive)) |
+| `voice.listen.look_anyone` | `true` | Anyone's look opens the conversation, not only yours: a guest looking at it can talk to it too. ([guide](wiki/user/settings-guide.md#voicelistenlookanyone)) |
 | `voice.listen.look_away_s` | `3.0` | Looking away this long, before you've said anything, closes it again. ([guide](wiki/user/settings-guide.md#voicelistenlookaways)) |
 | `voice.listen.look_dwell_s` | `1.0` | How long you look at the camera before it starts listening: a glance shorter than this doesn't count. ([guide](wiki/user/settings-guide.md#voicelistenlookdwells)) |
 | `voice.listen.look_gaze` | `true` | With your eyes calibrated on the Face page, a look counts by your eyes on the camera, not your head's turn. ([guide](wiki/user/settings-guide.md#voicelistenlookgaze)) |
 | `voice.listen.look_gaze_dwell_s` | `0.0` | By the eyes: how long your eyes must be on the camera before it starts listening (0: at once). ([guide](wiki/user/settings-guide.md#voicelistenlookgazedwells)) |
 | `voice.listen.look_gaze_pitch_deg` | `10` | By the eyes: how close to the camera's lens your gaze must be, up or down (an estimate in degrees). ([guide](wiki/user/settings-guide.md#voicelistenlookgazepitchdeg)) |
 | `voice.listen.look_gaze_yaw_deg` | `10` | By the eyes: how close to the camera's lens your gaze must be, left or right (an estimate in degrees). ([guide](wiki/user/settings-guide.md#voicelistenlookgazeyawdeg)) |
+| `voice.listen.look_in_company` | `true` | With others here, looking at it and saying its name (even misheard) counts as calling it. ([guide](wiki/user/settings-guide.md#voicelistenlookincompany)) |
 | `voice.listen.look_pitch_deg` | `15` | How straight at the camera your head must point, up or down, judged against your face at enrolment. ([guide](wiki/user/settings-guide.md#voicelistenlookpitchdeg)) |
 | `voice.listen.look_to_talk` | `true` | Look at the camera for a second and Kurooto starts listening, as if you'd said its name. ([guide](wiki/user/settings-guide.md#voicelistenlooktotalk)) |
 | `voice.listen.look_yaw_deg` | `15` | How straight at the camera your head must point, left or right: at most this many degrees (an estimate). ([guide](wiki/user/settings-guide.md#voicelistenlookyawdeg)) |

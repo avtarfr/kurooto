@@ -150,6 +150,15 @@ step; `pitch_degrees` is `atan(|pitch - front| / PITCH_K)`, `PITCH_K = 0.26`, an
 `nearby.set_look(app, on)` (two times: the run's start and the last look), then `Voice.look_tick()` is called at once
 ([voice.md](voice.md)). It's the head's direction from five landmarks, not gaze.
 
+0.8.18 (`voice.listen.look_anyone`, on): with cfg `look_anyone` (the switch and `_look_listening()`), `view` also carries
+`looks`, the `LOOK_OTHERS` (3) biggest other faces at `SCORE_WATCH` and `min_face_px` as `(height_px, yaw, pitch, eyes)`
+(eyes through the same gazer, None without one); else None. `Face.looking(owner, eyes, frame, looks)` is the owner's
+verdict or any of theirs (`_looks_at(..., own=False)`): the same angles, your calibration and your enrolment's front step,
+no blink hold, and `_gaze_last` (the /voice gaze line) stays the owner's. Numbers for where a face points only, dropped
+with the frame. Pause list (0.8.18): "Kurooto is asleep" after "night hours" (`mind.sleep.senses_off`,
+`mind/sleep.senses_off()`), 17 reasons; `desk_seen_at()` (the watcher's `present_at` as `time.time()`, None when
+away or not watching) feeds `mind.sleep.desk_holds`.
+
 ### By the eyes (0.8.17, `voice.listen.look_gaze`, `gaze.py`)
 
 - **The part.** `parts.py`: `iris` = `iris_landmark.tflite` (MediaPipe Iris, Apache-2.0, 2,640,568 bytes), from

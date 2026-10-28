@@ -1216,11 +1216,23 @@ start earlier (at most `EARLY_H`, 2 h); otherwise the screen in use in the last 
 after that use (at most `LATE_H`, 2 h); the phone's `alarm` reading (ms) within 3 h of the end becomes the end; the screen in
 use in the last `UP_MIN` (90) minutes (and at least an hour in) ends it; so does `up_at` ("I'm up", the alarm ringing). Note:
 `phone.clean` keeps one number per bin, so a screen bin is stored as `on_min` (15 while interactive) when both fields come.
+**The desk** (0.8.18, `mind.sleep.desk_holds`, on; `desk_after_min` 15): `_desk(app)` asks Face presence's
+`desk_seen_at()` (`time.time()` of the watcher's `present_at`, a face of yours or keyboard and mouse input; None when the
+watcher is off or `away`), for any window, by hand too. Inside the window, `_refine` moves the start to that time plus
+`desk_after_min`, at most to the end (start == end drops the night). **The latch:** `state()` returning `asleep` stores
+`slept_until` (the window's end) in `mind-sleep.json`; while it's in the future `window()` skips the desk, so coming back
+to the desk never wakes it. `wake()` clears it, so after a wake the desk holds it again.
 
 **The state** (`state(app, t=None)`): `asleep` inside the window unless `woke_until` is in the future, `drowsy` in the
 `DROWSY_MIN` (30) before it, else `awake`. `resting()` is "inside the window" (woken or not): what holds messages. `wake(app,
 why, minutes=20)` sets `woke_until = max(old, now + minutes)` and counts a wake when it was asleep; `up(app, why)` sets `up_at`
-and releases. `on_event` (called from `Mind._mirror` for `sleep.EVENTS`): `message_in`, `button_tapped`, `call_answered` and a
+and releases. `asleep(app)` is `state() == "asleep"` kept `CACHE_S` (5 s) per app (Face presence and Voice ask every
+second; `wake()` drops it). **Senses off** (0.8.18, `mind.sleep.senses_off`, on): `senses_off(app)` is the switch and
+`asleep()`; Face presence's pause list has "Kurooto is asleep" after "night hours" (`watch.PAUSES`, 17 reasons;
+`face/__init__.py:_sleeping`) and `Voice.blocked()` returns "Kurooto is asleep" after the power pause
+(`voice/__init__.py:_sleeping`), so the listener stops and a name can't wake it. `/wake` (`Mind.wake_cmd`) calls
+`wake(app, "you said /wake", wake_minutes)`; a message, a tap or a call still wake it through `on_event`. The Body add-on
+reads `senses_off()` for the desk phone's streams. `on_event` (called from `Mind._mirror` for `sleep.EVENTS`): `message_in`, `button_tapped`, `call_answered` and a
 `voice_portal` opened by "its name" or "the wake word" wake it while resting; `alarm_up_now` and `alarm_rang` are `up`.
 `_changed` pushes `{"t": "mind", "kind": "sleep", "state"}` live and emits `mind_sleep` once per change; `tick` (every 1 m)
 calls it and releases once the window is over.
@@ -1230,8 +1242,8 @@ unprompted message (`why` set and not `asked`) that isn't exempt (`kind` call, a
 `exempt()`: own reminders and calls, close deadlines) is kept in `mind-sleep.json` `held` (at most 200) while `resting()`.
 `release()` (not resting, or the part off) sends each through `notifier.send` again, so the gate, Calm and the workspace
 arbiter apply as usual; an `ask` whose question closed meanwhile is dropped. Voice: `Voice.greet` returns
-`(False, "Kurooto is asleep")` while asleep, drowsy or resting (`modules/voice/__init__.py:_drowsing`); nothing else in Voice
-changed. Group A's arbiter and D's status read `state()`; with the arbiter off this hold still keeps the night quiet.
+`(False, "Kurooto is asleep")` while asleep, drowsy or resting (`modules/voice/__init__.py:_drowsing`); a look opens the
+conversation unless it's asleep (0.8.18, `_asleep`: drowsy, or woken inside the window, it may). Group A's arbiter and D's status read `state()`; with the arbiter off this hold still keeps the night quiet.
 
 ### The job gate (`mind/senses/intero.py`, `mind.yield.on`)
 `ok(app, cost, action="") -> (bool, why)`: `light` waits only while the minute's reading is past `HOT_C`; `gpu` and `cpu` wait
@@ -1262,7 +1274,8 @@ minute's arousal or the jolt's, whichever is higher (for the status stream).
 Tests: `tests/unit/test_mind_sleep.py` (the window from the night hours, by hand and from the alarm; onset, up late and up
 early from the phone; the phone's alarm; woken by name and by a message and dozing again; holding and the exempt kinds; up
 ends the night; Voice's greeting; the gate for a foreign GPU process, a call, battery and heat, deferral and retry, giving up,
-the asleep preference, contention minutes, the job queue's gate and the Brain's; the jolt and the pickup).
+the asleep preference, contention minutes, the job queue's gate and the Brain's; the jolt and the pickup; 0.8.18: senses
+off until woken and /wake, the desk holding the window and the latch, a hand-set window held up to its end).
 
 ## 0.8.14: dreaming and study (`dream.py`, `frontier.py`, `study_push.py`, `forecast.py`)
 

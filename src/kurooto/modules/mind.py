@@ -405,6 +405,9 @@ class Mind(Module):
                 usage="/autonomy [classify <action> <R0-R3>]",
             ),
             Command("budget", "Brain's body budget: its variables, drive, reward and current feeling", self.budget_cmd),
+            Command(
+                "wake", "wake Kurooto now (asleep, its camera and microphone are off: this wakes them)", self.wake_cmd
+            ),
             Command("promises", "what Kurooto said it would do, and whether it did", self.promises_cmd),
             Command(
                 "mood",
@@ -769,6 +772,18 @@ class Mind(Module):
 
     def beliefs_cmd(self, msg: Incoming, arg: str) -> str:
         return beliefs.report(self.app, arg or "") if mind.on(self.app) else "Brain is off (Features → Brain)."
+
+    def wake_cmd(self, msg: Incoming, arg: str) -> str:
+        """(0.8.18) /wake: awake for mind.sleep.wake_minutes; asleep, nothing listens, so this (or a message, a tap, a
+        call) is how it's woken."""
+        if not sleep.on(self.app):
+            return "I'm awake: sleep is off (mind.sleep.on)."
+        was = sleep.state(self.app)
+        mins = sleep._wake_minutes(self.app)
+        sleep.wake(self.app, "you said /wake", mins)
+        if was != "asleep":
+            return f"I'm awake. {sleep.line(self.app)}"
+        return f"Awake: camera and microphone on, for at least {mins} min."
 
     def promises_cmd(self, msg: Incoming, arg: str) -> str:
         return promises.listing(self.app) if mind.on(self.app) else "Brain is off (Features → Brain)."

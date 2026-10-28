@@ -177,7 +177,9 @@ pause list below still comes first; then `voice.listen.need_face_fallback` decid
 call app can't use it.
 
 **Look at it to talk** (`voice.listen.look_to_talk`, on): look straight at the camera for about a second and Voice
-starts listening as if you'd said its name ([Voice](voice.md#look-at-it-to-talk)). Only your own face counts. On its
+starts listening as if you'd said its name ([Voice](voice.md#look-at-it-to-talk)). Anyone's face counts
+(`voice.listen.look_anyone`, 0.8.18; off: only yours): for the others it reads only which way they look, never who they
+are. On its
 own it goes by which way your head points; with the eye model and your eyes calibrated (below) it goes by your eyes,
 at once. The camera is held while Voice listens for this too, and looks up to 5 times a second then
 (`face.watch.look_fps`).
@@ -201,7 +203,8 @@ nothing. A photo propped up in front of the camera doesn't move, so it waits for
 **It pauses** (and says why on the card and in `/face`) when: Face presence is off; you haven't enrolled; it isn't set
 up; you paused it (`/face pause 1h`); Kurooto is paused, or on battery in pause mode; the screen is locked
 (`face.watch.when_locked` to look anyway); you're on a call; focus; the night hours (`face.watch.night` to look
-anyway); you're enrolling; another program uses the camera (checked again every minute); there's no camera; the system
+anyway); Kurooto is asleep (0.8.18, `mind.sleep.senses_off`: `/wake`, a message, a tap or a call wakes it, and the
+camera with it); you're enrolling; another program uses the camera (checked again every minute); there's no camera; the system
 blocks it; it's covered (10 dark frames; checked again every 5 minutes); or its key can't be read.
 
 **A sharper camera** (say a phone's 1080x1440 instead of 480x640) works the same way: faces are found on a small copy

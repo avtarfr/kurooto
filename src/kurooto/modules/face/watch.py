@@ -45,6 +45,10 @@ Tracking never opens the camera: it only looks faster while the rules above have
 Eyes (0.8.17, voice.listen.look_gaze): while `gaze()` hands a gazer (look to talk on, the eye model here, your eyes
 calibrated), the owner's best face in each recognition frame gets its iris offsets read from the full frame
 (gaze.py), handed with "view" as eyes=(h, v): two numbers, never the eyes' pictures, dropped with the frame.
+
+Anyone's look (0.8.18, voice.listen.look_anyone; cfg "look_anyone"): the other faces big enough to judge, the
+LOOK_OTHERS biggest, go with "view" as looks=[(height, yaw, pitch, eyes)], the same numbers as the owner's: where a
+face looks, never who it is.
 """
 
 from __future__ import annotations
@@ -68,6 +72,7 @@ WINDOW_S = 6  # the frames of an arrival fall within this
 RETURN_S = 30  # a return (presence after an absence) waits this long for your face, then it was someone else
 SLOW_MS = 0.150
 MIN_FPS = 0.2
+LOOK_OTHERS = 3  # (0.8.18, look_anyone) at most this many other faces' looks are read per frame
 LOOK_MAX_FPS = 5.0  # (0.8.17) face.watch.look_fps, while Voice listens for a look, never above this
 BUSY_RECHECK_S = 60
 COVERED_RECHECK_S = 300
@@ -470,9 +475,16 @@ class Watcher:
         # (0.8.17, voice.listen.look_gaze) and where his eyes sit in them: two numbers (gaze.py), only while wanted;
         # frame: its (width, height), so "close" is a share of the frame at any camera resolution
         eyes = self._eyes(frame, best[2]) if best is not None else None
+        # (0.8.18, voice.listen.look_anyone) the other faces close enough to judge, the LOOK_OTHERS biggest: the same
+        # numbers and eyes, so anyone's look opens the talk; never who they are, dropped with the frame
+        looks = None
+        if c.get("look_anyone"):
+            rest = [f for i, f in enumerate(faces) if i != best_i and f.score >= SCORE_WATCH and f.height >= min_px]
+            rest = sorted(rest, key=lambda f: -float(f.height))[:LOOK_OTHERS]
+            looks = [(float(f.height), _yaw(f), _pitch(f), self._eyes(frame, f)) for f in rest]
         self.emit(
             "view", faces=n_faces, owner_alone=best is not None and n_other == 0, sizes=sizes, owner=mine, eyes=eyes,
-            frame=full,
+            frame=full, looks=looks,
         )  # fmt: skip
         others = n_faces >= 2
         if others != self.others or others:  # while it lasts, every frame refreshes it (core/nearby.py's STALE_S)
@@ -676,6 +688,7 @@ PAUSES = (
     "you're on a call",
     "focus",
     "night hours",
+    "Kurooto is asleep",  # (0.8.18, mind.sleep.senses_off)
     "enrolling",
     "camera in use by another program",
     "no camera",

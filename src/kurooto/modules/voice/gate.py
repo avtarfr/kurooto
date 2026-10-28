@@ -13,7 +13,9 @@ Kurooto (addressed)? Every step runs on this computer, and only "addressed" open
                                                                          -> addressed
     5b. (0.8.17) The owner looked at it (voice.listen.look_to_talk opened the portal) and nothing was said to it
        since: the next thing said, as if its name came first, unless two or more voices are in it or Voice ID heard
-       someone else; when the careful calls apply or in conversation mode, only a question or a request
+       someone else; when the careful calls apply or in conversation mode, only a question or a request, or (0.8.18,
+       voice.listen.look_in_company) its name first or last spelled any way, even a near miss. (0.8.18,
+       voice.listen.look_anyone) Anyone's look, and then a guest's words count too (guests still get chat only)
                                                                          -> addressed ("looked at")
     6. Two or more voices heard and none of the above                    -> chatter
     7. The portal is open (a conversation within voice.listen.close_s) and it's a question or a request
@@ -158,7 +160,9 @@ class Context:
     since_open_s: float | None = None  # seconds since the conversation opened
     speaking: bool = False  # Kurooto is speaking now
     told_off: bool = True  # voice.listen.told_off
-    looked: bool = False  # (0.8.17) the owner looking at it opened the portal; nothing said to it since
+    looked: bool = False  # (0.8.17) a look opened the portal (0.8.18: anyone's, look_anyone); nothing said to it since
+    look_anyone: bool = False  # (0.8.18) voice.listen.look_anyone: a guest's look stands in for the call too
+    look_company: bool = False  # (0.8.18) voice.listen.look_in_company: with others here, look + its name any way
 
     def unconfirmed(self) -> bool:
         """The speaker may not be the owner talking to it: the careful calls apply."""
@@ -313,8 +317,9 @@ class Gate:
         n = (call.kind, call.where, careful)
         if ctx.awaiting:
             return Decision(ADDRESSED, 0.9, "right after it was called", *n)
-        if ctx.looked and (h.voices or 0) < 2 and ctx.speaker != "guest":  # the look stands in for its name only
-            if not (careful or ctx.conversation) or asks(text):
+        if ctx.looked and (h.voices or 0) < 2 and (ctx.speaker != "guest" or ctx.look_anyone):  # stands in for its name
+            named = ctx.look_company and (call.where in ("first", "last") or asks(call.rest))  # (0.8.18) misheard too
+            if not (careful or ctx.conversation) or asks(text) or named:
                 return Decision(ADDRESSED, 0.9, LOOKED, *n)
         if (h.voices or 0) >= 2:
             return Decision(CHATTER, 0.8, "several voices, none to it", *n)
