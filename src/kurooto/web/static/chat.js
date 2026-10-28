@@ -8,6 +8,7 @@
 (function () {
   const S = { body: null, api: null, opts: {}, list: null, sid: "main", msgs: [], reply: null, note: "", busy: false, timer: 0, readAt: "" };
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  // .cp .log undoes style.css's .log (a 180 px box): the messages fill the page, the box to write in at its foot
   const CSS = `.cp{display:grid;grid-template-columns:minmax(180px,240px) minmax(0,1fr);gap:14px;height:100%;min-height:420px}
   body:not(.dense) .cp{height:72vh}
   .cp .ss{display:flex;flex-direction:column;gap:2px;overflow:auto;border-right:1px solid var(--rule,var(--line));padding-right:10px}
@@ -23,7 +24,7 @@
   .cp .wt{border:1px solid var(--rule,var(--line));border-radius:8px;padding:6px 10px;margin:8px 0 0;max-height:34%;overflow:auto}
   .cp .wt h4{margin:0 0 4px}.cp .wi{padding:6px 0;border-top:1px solid var(--rule,var(--line))}.cp .wi:first-of-type{border-top:0}
   .cp .wi .tx{white-space:pre-wrap;overflow-wrap:anywhere}
-  .cp .log{flex:1;overflow:auto;padding:10px 2px;display:flex;flex-direction:column;gap:8px;min-height:0}
+  .cp .log{flex:1;overflow:auto;padding:10px 2px;display:flex;flex-direction:column;gap:8px;min-height:0;max-height:none;margin:0}
   .cp .day{align-self:center;color:var(--dim);font-size:11px;margin:6px 0 0}
   .cp .m{max-width:78%;align-self:flex-start;background:var(--raised,var(--panel));border:1px solid var(--rule,var(--line));border-radius:10px;padding:7px 10px}
   .cp .m.you{align-self:flex-end;background:color-mix(in srgb,var(--accent) 16%,var(--panel))}

@@ -74,6 +74,16 @@ def test_classic_stays_as_it_was_and_the_new_rules_are_scoped():
     assert "fontFamily: MONO" in js  # terminals keep the monospace in both designs
 
 
+def test_a_settings_search_keeps_every_row_under_its_heading():
+    """0.8.17: the new design floats each fieldset's heading the full width, and only the row right after it cleared
+    the float. A search that hid that row left the next one beside the heading with no width: its name one letter a
+    line down the right edge and its box tiny. Every row after the heading clears it now."""
+    css = (STATIC / "home-new.css").read_text(encoding="utf-8")
+    assert 'body[data-design="new"] .form legend { float: left; width: 100%;' in css
+    assert 'body[data-design="new"] .form legend ~ * { clear: both; }' in css
+    assert "legend + *" not in css
+
+
 def test_reduced_motion_is_respected():
     css = (STATIC / "home-new.css").read_text(encoding="utf-8")
     assert "@media (prefers-reduced-motion: reduce)" in css

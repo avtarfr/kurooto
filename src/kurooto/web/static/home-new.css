@@ -306,7 +306,7 @@ body[data-design="new"] .find-n, body[data-design="new"] .find-none { font-size:
 body[data-design="new"] .form { gap: 10px; }
 body[data-design="new"] .form fieldset { min-width: 0; margin: 0; padding: 12px 16px 14px; border: 0; border-radius: 10px; background: var(--well); }
 body[data-design="new"] .form legend { float: left; width: 100%; padding: 0 0 8px; font: 600 14px var(--ui); color: var(--fg); }
-body[data-design="new"] .form legend + * { clear: both; }
+body[data-design="new"] .form legend ~ * { clear: both; } /* every row, not just the first: a search may hide it */
 body[data-design="new"] .form label { margin: 4px 0; min-height: 30px; font: 13px var(--ui); color: var(--fg); }
 body[data-design="new"] .form label > span:first-child { font: 12px var(--code); color: color-mix(in srgb, var(--fg) 82%, transparent); overflow-wrap: anywhere; }
 /* a value that's typed or chosen goes under its name, the width of the box; a switch stays beside it */

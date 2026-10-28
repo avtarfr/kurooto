@@ -280,6 +280,27 @@ def test_roomy_places_every_pane_by_name_so_none_collapses(env):
         assert part in roomy_js, part
 
 
+def test_a_narrow_window_and_back_shows_what_the_board_showed():
+    """0.8.17: making the window narrow (roomy) and wide again (dense) opened the tab roomy last had, often Features,
+    over a board that had no page open, and dropped a page roomy has but the old list didn't (Chat, AI jobs...). The
+    dense board's page (or none) is kept when the window goes narrow and comes back; a tab picked while it was narrow
+    forgets it, and then a roomier one still opens over the board."""
+    from importlib import resources
+
+    js = (resources.files("kurooto.web") / "static" / "home.js").read_text(encoding="utf-8")
+    assert "let LEFT = null;" in js
+    show = js.split("function showTab(name) {")[1].split("\n}")[0]
+    assert "tab = name; LEFT = null;" in show  # a tab picked in roomy
+    lay = js.split("function applyLayout(force = false) {")[1].split("\n}")[0]
+    assert 'const keep = force ? null : DENSE ? PAGE : LEFT ? LEFT.page : ["features",' in lay
+    # set after roomy's showTab (which clears it), before the dense board opens the page again
+    assert (
+        lay.index("showTab(tab")
+        < lay.index("LEFT = !force && !DENSE ? { page: keep } : null;")
+        < lay.index("if (DENSE && keep) openPage(keep);")
+    )
+
+
 # ================================================================================================= kurooto top
 def board_data(tmp_path):
     from kurooto import top

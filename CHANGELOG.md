@@ -17,6 +17,16 @@
   early, and with Voice ID's gate another voice is never written out early.
 - **Voice language:** the settings guide now says to set `voice.listen.language`; left to be worked out on each short
   clip, an accent is often taken for another language and Kurooto's name is missed.
+- **The Chat page fills its pane.** The list of messages was a short box of about 170 px with the box to write in right
+  under it and the rest of the page empty. The messages now take the whole height, with the box to write in at the
+  bottom.
+- **Searching Settings no longer squeezes rows.** When a search hid a section's first setting, the next one that
+  matched was pushed beside the section's heading with no room: its name ran down the right edge one letter a line and
+  its box was tiny. Every matching row now lays out under the heading as it does without a search.
+- **A narrow window and back keeps what you had open.** Making the window narrow (tiling it to half the screen) and
+  wide again opened the Features page (or whichever tab the narrow layout last showed) over a board that had no page
+  open, and closed pages such as Chat or AI jobs. The wide board now comes back as you left it: the same page, or none.
+  A tab you pick while the window is narrow still opens over the wide board as before.
 
 ## 0.8.16 (2026-10-28)
 

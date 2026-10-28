@@ -802,11 +802,12 @@ const SEEN = new WeakMap(); // when each live event arrived (fresh ones are brig
 const TABS = { brain: "Brain", console: "Brain console", today: "Today", chat: "Chat", activity: "Activity", jobs: "AI jobs", schedule: "Schedule", features: "Features", phone: "Phone", research: "Research", about: "About you", settings: "Settings", face: "Face" };
 const DLABEL = { brain: "brain", console: "console", today: "today", chat: "chat", activity: "activity", jobs: "jobs", schedule: "schedule", features: "features", phone: "phone", research: "research", about: "you", settings: "settings", face: "face" };
 let tab = "activity"; // roomy: the tab below the panes
+let LEFT = null; // what the dense board showed when the window went narrow ({page}; null: a tab was picked since)
 let dtab = "kurooto"; // dense: the terminal pane shows "kurooto" (the chat) or a terminal; the pages open over the board
 const current = () => (DENSE ? PAGE || dtab : tab);
 function showTab(name) {
   if (DENSE) { showDense(name === "terminals" ? (TERM.list[0] || {}).name || "kurooto" : name); return; }
-  tab = name;
+  tab = name; LEFT = null;
   renderNav();
   try { localStorage.setItem("kurooto.dash.tab", name); } catch { /* fine */ }
   // the settings-like tabs get room (the canvases above shrink and redraw by themselves)
@@ -2083,8 +2084,9 @@ document.addEventListener("click", (e) => { if (e.target.closest("[data-design-t
 function applyLayout(force = false) {
   const d = denseFits();
   if (d === DENSE && !force) return;
-  // a page stays open across the switch: in roomy's tabs, or (the roomier ones) over the dense board
-  const keep = force ? null : DENSE ? PAGE : ["features", "phone", "research", "about", "settings"].includes(tab) ? tab : null;
+  // a page stays open across the switch: in roomy's tabs, or over the dense board: the one it showed before the window
+  // went narrow (none: the board, not the tab roomy last had), or a roomier tab picked while it was narrow
+  const keep = force ? null : DENSE ? PAGE : LEFT ? LEFT.page : ["features", "phone", "research", "about", "settings"].includes(tab) ? tab : null;
   if (!force && DENSE && PAGE) tab = PAGE;
   PAGE = null; closeMenu();
   DENSE = d;
@@ -2096,6 +2098,7 @@ function applyLayout(force = false) {
   if (last) renderStatus(last);
   if (mind) mind.meta();
   if (DENSE) showDense(dtab); else showTab(tab === "terminals" && !TERM.on ? "activity" : tab);
+  LEFT = !force && !DENSE ? { page: keep } : null;
   applyPanes();
   if (DENSE && keep) openPage(keep);
 }
