@@ -744,10 +744,14 @@ def run_tool(app: App, name: str, args: dict, tools: list[Tool] | None = None, v
     if job and note is not None:
         note(job, name, args)
     try:
-        return tool.run(args)
+        out = tool.run(args)
     except Exception as e:
         app.events.emit("tool_failed", name=name, error=f"{type(e).__name__}: {e}"[:200])
         return f"That failed: {type(e).__name__}: {e}"[:300]
+    from kurooto.mind import act  # (0.9.0, mind.act.record_asked) a change you asked for, for the Sunday digest
+
+    act.record_asked(app, tool, args, "call" if via == "call" else "chat")
+    return out
 
 
 def schema(t: Tool) -> dict:

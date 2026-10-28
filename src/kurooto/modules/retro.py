@@ -380,7 +380,37 @@ class Retro(Module):
             "applied_recently": [a["text"] for a in state["applied"]][-15:],
             "max_proposals": int(self.setting("max_proposals") or 3),
             "today": f"{now():%A %Y-%m-%d %H:%M}",
+            **self._learned_from(since),
         }
+
+    def _learned_from(self, since: dt.datetime) -> dict:
+        """(0.9.0) What you marked Wrong (retro.case_text: the request, what it did, your note; never one about health,
+        money or other people), and how many lessons the look back after calls found and proposals you discarded
+        (mind.dream.from_calls / from_proposals: counts only)."""
+        out: dict = {}
+        s = self.app.settings
+        cases = self.app.modules.get("cases") if self.app.is_on("cases") else None
+        if cases is not None and s.get("retro.case_text"):
+            rows = []
+            for c in cases.store.load()["cases"].values():
+                if not c.get("wrong") or str(c.get("wrong_at") or "") < since.isoformat(timespec="seconds"):
+                    continue
+                if cases._sensitive(c.get("text") or "") or sensitive(c.get("note") or "") is not None:  # noqa: SLF001
+                    continue
+                rows.append({"said": str(c.get("text") or "")[:200], "did": c.get("did") or "",
+                             "note": str(c.get("note") or "")[:200]})  # fmt: skip
+            if rows:
+                out["marked_wrong"] = rows[-10:]
+        evs = [e for e in self.app.events.tail(20000) if str(e.get("ts", "")) >= since.isoformat()]
+        if s.get("mind.dream.from_calls"):
+            n = sum(int(e.get("lessons") or 0) for e in evs if e.get("kind") == "call_reviewed")
+            if n:
+                out["call_review_lessons"] = n
+        if s.get("mind.dream.from_proposals"):
+            n = sum(1 for e in evs if e.get("kind") == "proposal_discarded")
+            if n:
+                out["proposals_discarded"] = n
+        return out
 
     def evidence(self, since: dt.datetime) -> str:
         """What happened since then, as short lines: counts, then the events worth showing one by one."""

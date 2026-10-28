@@ -121,7 +121,13 @@ register_defaults(
             "join_sentences": True,  # short sentences spoken together (up to ~200 characters), not each on its own
             "ack": "tone",  # while the AI thinks, a soft sound says it heard you: tone, word ("Hmm.") or off
             "stream": True,  # speak the answer a sentence at a time as the AI writes it (when the AI can stream)
+            # 0.9.0: with someone else at the desk, an answer isn't read aloud by itself (speak.what "all"): it stays
+            # on screen, and a message offers "Read it aloud"
+            "guests_private": False,
         },
+        # 0.9.0: after the greeting's "Want to go through them?", a yes said aloud goes through the waiting questions
+        # one by one and takes your spoken answers (your voice only; approvals stay a tap)
+        "answers_questions": True,
         "listen": {  # hearing: what it listens for, when, and what counts as said to it
             "on": False,  # listen through the microphone, all on this computer; only turns said to Kurooto leave
             "wake_word": "",  # a wake word model of your own (an openWakeWord .onnx path); empty: its name wakes it
@@ -133,6 +139,8 @@ register_defaults(
             "after_speak_s": 6,  # a question or request this many seconds after it spoke counts as an answer to it
             "night": True,  # listen during the night hours too (off: it stops for availability.night)
             "calls": False,  # keep listening during a phone call (off: it stops while you're on one)
+            # 0.9.0: also stand down while the phone app says it's in another call (WhatsApp, Meet); off: it listens
+            "phone_call": False,
             "stt_model": "base",  # the transcriber's size: tiny (75 MB), base (145 MB) or small (484 MB, better)
             "language": "",  # the language you speak, e.g. en or hi; empty: worked out each time
             "device": "",  # the microphone: empty is the system's default; a name or number from sounddevice
@@ -849,6 +857,8 @@ class Voice(Module):
             return "on battery (saver mode)"
         if not self.setting("listen.calls") and self._on_call():
             return "you're on a call"
+        if self.setting("listen.phone_call") and self._phone_busy():  # (0.9.0) the phone app is in another call
+            return "you're on a phone call"
         if not self.setting("listen.night") and self._night():
             return "night hours"
         if self.parts.missing(  # (voice id) its own parts missing: every voice is unsure (fail closed), still heard
@@ -860,6 +870,12 @@ class Voice(Module):
         ):
             return "not set up yet"
         return ""
+
+    def _phone_busy(self) -> bool:
+        try:
+            return self.app.availability.phone_busy_until() is not None
+        except Exception:
+            return False
 
     def _on_call(self) -> bool:
         from kurooto.web.tools_api import live_call
@@ -1631,6 +1647,22 @@ class Voice(Module):
         if away is not None and self.app.settings.get("face.away.hold_desktop") and away():
             return  # stepped away from the desk (Face presence): the answer stays on screen, not read to an empty room
         if (
+            self.setting("speak.guests_private")
+            and self.setting("speak.what") == "all"
+            and getattr(result, "ok", False)
+            and getattr(result, "text", "")
+            and not job.quiet
+            and self.app.notifier.guests_here()
+        ):  # (0.9.0) someone else is here: on screen, with a button to read it aloud
+            self._unread = str(result.text)
+            self.app.notify(
+                "Not read aloud: someone else is here. The answer is on screen.",
+                kind="info",
+                why="asked",
+                buttons=[[("Read it aloud", "vrd:0:read")]],
+            )
+            return
+        if (
             self.app.is_on(self.id)
             and self.setting("speak.what") == "all"
             and not self.muted()
@@ -1970,7 +2002,17 @@ class Voice(Module):
         ]
 
     def callbacks(self) -> dict:
-        return self.voiceid.callbacks()  # vid: Forget my voice / Keep it (a data.delete button, core/tap.py)
+        out = self.voiceid.callbacks()  # vid: Forget my voice / Keep it (a data.delete button, core/tap.py)
+        out["vrd"] = self._read_it  # (0.9.0) Read it aloud, under an answer kept quiet with others present
+        return out
+
+    def _read_it(self, ref: str, act: str) -> str:
+        text = getattr(self, "_unread", "")
+        if not text or not self.app.is_on(self.id):
+            return "Nothing to read."
+        self._unread = ""
+        self.speaker.say(text, wait=False)
+        return "Reading it."
 
     # ------------------------------------------------------------------------------------------- Voice ID
     def card(self) -> dict:

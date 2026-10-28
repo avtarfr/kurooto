@@ -80,7 +80,10 @@ register_defaults(
         "attention": {"on": True},  # a model of its own attention; "what are you thinking about?" is answered from it
         # 0.8.14 (mind/records.py; registered here, as records.py is also the scorekeeper's and stays lean):
         "expect": {"on": True},  # what it expects of each message it starts (a reply, done in 2 h), and what came
-        "why": {"on": True},  # "Why this?" under its own messages says what the gate and the door did with it
+        "why": {
+            "on": True,  # "Why this?" under its own messages says what the gate and the door did with it
+            "console_link": True,  # 0.9.0: Why? ends with a link that opens its decision in the Brain console
+        },
         "beliefs": {"on": True},  # every belief keeps its source (said, saw, inferred, imagined) and a confidence
     },
 )
@@ -834,7 +837,13 @@ def _let_out(app: App, e: dict, note: str) -> int:
             else:
                 m = dict(e["msg"])
                 text = m.pop("text", "")
-                app.notifier.send(text, **{k: v for k, v in m.items() if k in KEPT})
+                kw = {k: v for k, v in m.items() if k in KEPT}
+                from kurooto.core.notify import Message
+
+                again = app.notifier._recheck(Message(text, **kw))  # (0.9.0) what changed while it waited
+                if again is None:
+                    return 0
+                app.notifier.send(again.text, **kw)
         return 1
     except Exception as x:
         app.events.emit("mind_door_failed", error=f"release: {type(x).__name__}"[:60])

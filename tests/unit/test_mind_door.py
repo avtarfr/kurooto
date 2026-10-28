@@ -200,6 +200,14 @@ def test_why_this_and_outcomes(app, monkeypatch):
     assert w["found"] and "check-in" in w["reason"].lower() and w["door"].startswith("went at once")
     assert w["expect"] == "a reply within 3 h" and w["outcome"] == "" and w["sent_today"] == 1
     assert "The door: went at once" in app.calm.why_text(app.calm.get(m.rid))
+    # (0.9.0, L83) Why? links to its decision in the Brain console, and the decision links back to the message
+    assert f"#console?d={dec['id']}" in app.calm.why_text(app.calm.get(m.rid))
+    back = records.message_of(app, dec["id"])
+    assert back["rid"] == m.rid and any("The door" in ln for ln in back["why"])
+    assert not any("Brain console" in ln for ln in back["why"])
+    app.settings.set("mind.why.console_link", False)
+    assert "#console" not in app.calm.why_text(app.calm.get(m.rid))
+    app.settings.set("mind.why.console_link", True)
     records.heard(app)
     assert ("decision_outcome", {"decision": dec["id"], "result": "replied", "value": 1.0}) in app.facts
     assert records.why(app, m.rid)["outcome"] == "replied"

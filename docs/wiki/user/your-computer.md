@@ -358,6 +358,7 @@ open a file instead of running a command it may not be allowed to run:
 | `alarm.md` | the next alarm and the daily one |
 | `deadlines.md` | what's due, nearest first |
 | `calendar.md` | the next two weeks of events |
+| `today.md` | (0.9.0, `reserve.today`) today at a glance: the next alarm, today's classes (skipped ones marked), what's due today and tomorrow, today's events; never a line about health or money, your mood or the senses |
 | `settings.md` | every setting that differs from its default, and which features are on (never a secret) |
 | `addons.md` | your add-ons and whether each loaded |
 | `agent-guide.md` | what an AI program may read, write and run here, its tools, and the chat commands |

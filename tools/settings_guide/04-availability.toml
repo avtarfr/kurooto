@@ -26,6 +26,12 @@ tip = "Hold calls at night only on nights you've set a wake-up alarm."
 when = "Turn it on if you set the alarm every night you want quiet, and calls on other nights are fine."
 needs = "The Morning alarm."
 
+[s."availability.night.phone_alarm"]
+tip = "Your phone's own alarm ends the night's call hold, when it's earlier than the night's end (never later)."
+what = "With the phone's alarm sense on (Brain), a 06:00 alarm on the phone ends the night at 06:00 instead of 07:00, and once it has rung the night is over. When it and Kurooto's alarm disagree for the same morning, Kurooto asks once whether to keep both; neither alarm changes without your tap. The phone's alarm time is used on this computer only."
+when = "Turn it off to keep the night hours as set, whatever the phone's alarm says."
+needs = "Brain and the phone's alarm sense (`mind.senses.phone.alarm`)."
+
 [s."availability.learn_night"]
 tip = "Move the night hours to when you're actually quiet, learned from three weeks of your activity, with Undo."
 what = "At most once a week, never night hours you set yourself, and not for a month after an Undo."

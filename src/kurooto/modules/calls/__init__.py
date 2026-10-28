@@ -70,6 +70,12 @@ register_defaults(
         "ring_s": 60,  # how long a call rings before it counts as missed (a wake-up call rings 5 minutes)
         "later_min": 30,  # "Later" on a ringing call calls back after this long
         "realert_min": [3, 6],  # a call you didn't answer rings again this many minutes after the first; [] = once
+        # 0.9.0: calls Kurooto places by itself wait while the phone says you're walking or in a vehicle (its motion
+        # sense, Brain); calls you asked for, the alarm and close deadlines don't. Headphones never hold a call
+        "hold_moving": False,
+        # 0.9.0: while the phone app says it's in another call (WhatsApp, Meet), calls Kurooto places by itself and
+        # their retries wait; off: the phone's own "busy" is only shown
+        "phone_busy": False,
         "notes_repo": "",  # owner/repo of your notes on GitHub (Notes sync), so calls can read notes while off
         "review": True,  # after every call, an AI request looks back at it: does what slipped through, keeps lessons
         "review_effort": "high",  # how hard that look back thinks (low, medium, high)
@@ -450,10 +456,10 @@ class Calls(Module):
     def _held_call(self, p: dict) -> str | None:
         """If calls are blocked now: schedule this one for when they're allowed, say so, and return what was said."""
         av = self.app.availability
-        why, _ = av.call_block()
+        why, _ = av.call_block(why=p.get("why"), due=p.get("due"))
         if not why:
             return None
-        when, _ = av.next_callable()
+        when, _ = av.next_callable(why=p.get("why"), due=p.get("due"))
         return self._hold_until(when, p, why)
 
     def _hold_until(self, when: dt.datetime, p: dict, why: str) -> str:
@@ -474,6 +480,9 @@ class Calls(Module):
         from kurooto.core.tools import sync_tools  # sync_status, shared with unattended AI runs
 
         out = self._own_tools() + self.app.ask.call_tools() + sync_tools(self.app)  # + answer_question/_approval
+        calm = getattr(self.app, "calm", None)  # (0.9.0, notify.calm.talk) why that came, less of these, the bundle
+        if calm is not None:
+            out += calm.call_tools()
         for m in self.app.enabled():
             if m.id != self.id and hasattr(m, "call_tools"):
                 try:
@@ -585,6 +594,9 @@ class Calls(Module):
             keep.used(keep.tool_owner(name), "tool")
         try:
             out = tool.run(args or {})
+            from kurooto.mind import act  # (0.9.0, mind.act.record_asked) a change you asked for on the call
+
+            act.record_asked(self.app, tool, args or {}, "call")
         except Exception as e:
             out = f"That failed: {type(e).__name__}: {e}"[:300]
         log = self.tool_log.setdefault(str(since or ""), [])
@@ -1334,6 +1346,14 @@ class Calls(Module):
             if m and self.app.is_on(mid) and hasattr(m, "call_transcript"):
                 m.call_transcript(r["key"], lines)
         self.app.events.emit("call_transcript", lines=len(lines), layer=str(b.get("layer") or "live")[:10])
+        try:  # (0.9.0, mind.promises.answers) what it promised on the call, from its own side only
+            from kurooto.mind import promises
+
+            mine = {self.app.name.lower(), "kurooto", "assistant", "ai", str(b.get("assistant") or "").lower()} - {""}
+            promises.said(self.app, " ".join(str(x.get("text") or "") for x in lines
+                                            if str(x.get("who") or "").lower() in mine), "call")  # fmt: skip
+        except Exception:
+            pass
         used = self.tool_log.pop(str(b.get("since") or ""), [])
         from kurooto.core import gists
 

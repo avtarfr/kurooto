@@ -10,6 +10,7 @@ import pytest
 
 from kurooto.core import ask as ask_mod
 from kurooto.core import calm as calm_mod
+from kurooto.core.notify import Message
 from kurooto.modules import calls as calls_mod
 from kurooto.modules import capture as capture_mod
 from kurooto.modules import checkins as checkins_mod
@@ -610,3 +611,86 @@ def test_focus_still_holds_and_the_buttons_survive_it(clock):
     app.availability.set_focus(None)
     assert app.notifier.flush_queue() == 1
     assert c.labels()[-2:] == ["Why?", "Less of this"] and c.calm.last()["ref"] is not None
+
+
+def test_a_held_message_says_what_changed_meanwhile(clock):
+    """L25 (0.9.0, notify.calm.recheck): released, a held reminder says what changed since it was written and still
+    comes ("rewrite"); "drop" leaves it out; off sends it as it was."""
+    c, app = with_subjects(clock), clock.app
+    c.env.on("deadlines")
+    dl = app.modules["deadlines"]
+    i = add(app, "Report on groups", at(MON, 10) + dt.timedelta(hours=30))
+    app.settings.set("notify.calm.messages", 0)
+    dl._tell(i, dl.items()[i], 30, urgent=False)  # held by the daily limit
+    after_class(c)  # held too
+    dl._status(i, "done")
+    app.modules["subjects"].set_skip(["la"])
+    n = len(c.sent())
+    c.t = at(MON, 20, 2)
+    assert c.calm.tick()["bundled"] == 2
+    texts = [p["text"] for p in c.sent()[n:]]
+    assert any(t.startswith("Due ") and t.endswith("(Since then: done 10:00.)") for t in texts)
+    assert any("How was Linear Algebra?" in t and "(Since then: class skipped.)" in t for t in texts)
+    m = Message("Due soon", ws_item=f"deadline:{i}")
+    assert calm_mod.recheck(app, calm_mod.recheck(app, m)).text.count("Since then") == 1  # said once
+    app.settings.set("notify.calm.recheck", "drop")
+    assert calm_mod.recheck(app, m) is None
+    app.settings.set("notify.calm.recheck", False)
+    assert calm_mod.recheck(app, m) is m
+    assert calm_mod.still(app, Message("x", ws_item="deadline:nope")) == ""
+
+
+def test_calm_said_in_plain_words_and_on_a_call(clock):
+    """L126 (0.9.0, notify.calm.talk): why, less of this, a named kind, the bundle and today's count, typed or as call
+    tools; every change goes through apply() and has its Undo."""
+    c, app = with_subjects(clock), clock.app
+    c.env.on("research")
+    c.say("New papers: three.", why="research.papers")
+    name, text, _ = app.calm.intent("why did you send that?")
+    assert name == "calm_why" and "New papers" in text
+    name, text, buttons = app.calm.intent("less of this")
+    assert name == "calm_less" and buttons and buttons[0][0][1].startswith("calm:")
+    name, text, buttons = app.calm.intent("no more new papers")
+    assert name == "calm_stop" and text.startswith("Done:") and buttons[0][0][0] == "Undo"
+    assert "research.papers" in app.settings.get("notify.calm.stopped")
+    app.calm.undo(buttons[0][0][1].split(":")[1])
+    assert "research.papers" not in (app.settings.get("notify.calm.stopped") or [])
+    assert app.calm.intent("stop the reminders") is None  # not a kind it can tell apart: left to the features
+    assert app.calm.intent("send me what's waiting")[1] == "Nothing is waiting."
+    assert app.calm.intent("how many messages today?")[0] == "calm_count"
+    tools = {t.name: t for t in app.calm.call_tools()}
+    assert set(tools) == {"why_that_message", "less_of_these", "send_waiting_messages", "messages_today"}
+    said = tools["less_of_these"].run({"kind": "new papers", "action": "stop"})
+    assert said.startswith("Done:") and "Undo" in c.labels()
+    assert "why_that_message" in {t.name for t in app.modules["calls"].tools()}
+    app.settings.set("notify.calm.talk", False)
+    assert app.calm.intent("why did you send that?") is None and app.calm.call_tools() == []
+
+
+def test_an_add_on_registers_its_reasons(clock):
+    """L79 (0.9.0): calm.register_reason gives an add-on's messages Why? and Less of this. By default only Stop applies
+    (nothing it sends today waits); its own rules setting brings Calm's other holds."""
+    c, app = clock, clock.app
+    with pytest.raises(ValueError):
+        calm_mod.register_reason("deadlines.reminder", "taken")  # never a built-in one
+    with pytest.raises(ValueError):
+        calm_mod.register_reason("Bad id", "x")
+    calm_mod.register_reason("gadget.remark", "a remark from the gadget add-on", rules="gadget.calm_rules")
+    try:
+        app.settings.set("notify.calm.messages", 0)
+        app.settings.set("notify.calm.evening", ["gadget.remark"])
+        assert c.say("The kettle is on.", why="gadget.remark") is not None  # not held: its rules are off
+        assert c.labels()[-2:] == ["Why?", "Less of this"]
+        rec = c.calm.last()
+        assert "gadget add-on" in c.calm.why_text(rec)
+        assert [a for a, _, _ in c.calm.options(rec)] == ["stop"]
+        assert c.calm.speak_ok("gadget.remark") is True
+        app.settings.set("gadget.calm_rules", True)
+        assert c.say("The kettle is on again.", why="gadget.remark") is None  # now Another time holds it
+        assert c.calm.speak_ok("gadget.remark") is False
+        app.settings.set("gadget.calm_rules", False)
+        app.settings.set("notify.calm.stopped", ["gadget.remark"])
+        assert c.say("And again.", why="gadget.remark") is None  # your Stop always applies
+    finally:
+        calm_mod.unregister_reason("gadget.remark")
+    assert "gadget.remark" not in calm_mod.REASONS

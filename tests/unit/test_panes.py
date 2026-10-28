@@ -34,6 +34,7 @@ def test_alt_keys_open_the_pages_but_a_terminal_keeps_its_own(page):
     tabs = ("brain", "console", "today", "activity", "jobs", "schedule", "features", "phone", "research", "about")
     tabs += ("settings", "face")  # 0.8.10: Face presence's page (Alt+E)
     tabs += ("chat",)  # 0.8.14: the Chat page (Alt+H)
+    tabs += ("memory",)  # 0.9.0: the Memory page (Alt+U; Alt+M is Study mode)
     for tab in tabs:
         assert f"{tab}:" in keys, tab
     assert (

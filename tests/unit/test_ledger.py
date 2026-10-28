@@ -167,3 +167,29 @@ def test_backups_leave_it_out_unless_chosen_and_the_profile_never_carries_its_ke
     names = [n for n, _ in backups.sources(app.paths, None, notes=False, secrets=False, index=True, memory=True)]
     assert "state/ledger.db" in names
     assert ledger.KEY not in profile.secret_names(app)
+
+
+def test_a_nightly_day_row_from_events_only(env):
+    """L91 (0.9.0, memory.day_rows, off): the desk in coarse words, study minutes by subject, classes by your taps."""
+    import json as _json
+
+    app = env.app
+    day = dt.date.today() - dt.timedelta(days=1)
+    at = lambda h, m=0: dt.datetime.combine(day, dt.time(h, m)).isoformat(timespec="seconds")  # noqa: E731
+    with open(app.paths.state / "events.jsonl", "a", encoding="utf-8") as f:
+        for rec in (
+            {"ts": at(9), "kind": "face_back"},
+            {"ts": at(12, 10), "kind": "face_left"},
+            {"ts": at(14), "kind": "study_logged", "subject": "la", "minutes": 50},
+            {"ts": at(16), "kind": "study_session_end", "subject": "la", "minutes": 40},
+            {"ts": at(8), "kind": "class_skip", "subjects": ["topo"]},
+        ):
+            f.write(_json.dumps(rec) + "\n")
+    text = ledger.day_row(app, day)
+    assert text == "at the desk about 3 h; studied la 1 h 30 min; skipped topo."
+    assert ledger.write_day_row(app, day) is False  # off by default
+    app.settings.set("memory.day_rows", True)
+    assert ledger.write_day_row(app, day) and ledger.write_day_row(app, day)
+    rows = ledger.of(app).rows(("dayrow",))
+    assert len(rows) == 1 and rows[0]["text"] == text  # sealed, and one a day
+    assert "The day in short: at the desk about 3 h" in ledger.day_story(app, day)

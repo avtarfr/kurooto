@@ -487,6 +487,9 @@ spans cover the due time). A new promise to do the same act marks the old `reneg
 words live in `mind-promises.json` (deleted with Brain's data; not in backups); `promise_made/kept/broken` events carry ids and
 numbers only. **The heartbeat:** `presence.line_text` appends `promises.outage_line`: reminders due in 12 h minus what the call
 line holds (`lidsafe._held`) plus open promises, once per outage (the line says it once already).
+(0.9.0, `mind.promises.answers`) `said(app, text, where)` runs `seen` with `why="said.<where>"`: `Notifier.send` for
+`why="asked"` ("answer"), `Calls.save_transcript` for lines whose `who` is the assistant's name ("call"), and
+`voice/live.py:_answer` for Live's output transcription at the desk ("desk"). Never raises.
 
 ### Not done / for later
 
@@ -520,7 +523,10 @@ by default (`enforce` off) `fn` still runs and the act is recorded for the Sunda
 verdict of ask stores a pending question (`aut:<id>:do|later|never`; the runner registered with `act.register` does it later) and `fn` doesn't
 run. An ALWAYS action never runs through here (`act_always_ask` event): the guarded ones keep their own path in `core/tap.py`, unchanged.
 The digest (`act.digest`, Sundays 19:10) lists the week's acts with Undo and a Seen it, which sends `silence` evidence (the only silence that
-counts). `act.run`'s only call site is still the retro's duplicate deadline merge; 0.8.16 adds the path below for what features propose.
+counts). (0.9.0, `mind.act.record_asked`) `act.record_asked(app, tool, args, via)` records a `writes=True` tool run because you asked
+(`core/tools.py:run_tool` with via "chat", `Calls.run_tool` "call") as `asked: True` (never a name matching `MONEY`; Undo when
+`UNDOERS` has the tool's name). The digest lists them under their own heading (each list capped at `DIGEST_MAX`); their Undo sends
+`undo` evidence only with `mind.trust.from_asked_undo`, and Seen it sends no `silence` for them. `act.run`'s only call site is still the retro's duplicate deadline merge; 0.8.16 adds the path below for what features propose.
 
 ### 0.8.16: the ladder on real actions (`mind.act.more`)
 
@@ -782,6 +788,11 @@ activity or phone screen sense, Face presence, an add-on signal within a day, or
 - `why(app, ref)` (ref: Calm's record id or the decision id) returns `found`, `reason` (Calm's reason in words), `gate`,
   `door`, `expect`, `outcome`, `sent_today` (the gate's count, else Calm's) and `text`. `why_lines` is what Calm's Why?
   adds; `with_why` puts `("Why this?", "calm:<rid>:why")` on the chat's copy (Telegram has Calm's Why? already).
+- (0.9.0, `mind.why.console_link`, on) `why_lines` ends with `console_link(app, decision_id)`: `web.json`'s `url` (else
+  `127.0.0.1:<web.port>`) + `#console?d=<id>`. `home.js` reads that hash at load (`CONSOLE_OPEN`) and mounts the console
+  with `open`, which opens the decision once the first copy arrives (`S.pendingOpen`). `message_of(app, did)` is the way
+  back: `console.decision` adds `message` (`rid`, Calm's `why_text` lines without the link), drawn as "The message it
+  sent". The phone's copy doesn't carry it (it reads the snapshot).
 
 **Deviation:** the gate's own holds (the hour's limit, the touches, deep work) are released past the door: the gate
 already chose their time, and sending them back to the door would make them wait twice.
@@ -1203,6 +1214,13 @@ controls are spans with a role (`button`, `tab`, `switch`) pressed by Enter and 
 elements, because the dashboard's stylesheets hide every `section` and style every `button` under `#ov-body`. On `brain.html`,
 `KurootoView.take(json)` (`{snap, computer, reach, off, palette}`) sets the palette as CSS variables and feeds it.
 
+(0.9.0, `mind.console.edit`) The console's only write path: `POST /api/brain/console {act, id}` →
+`mind/tom/prefs.console_edit` (`wrong` → `model.wrong`, with an `offer` when the row is a `help:` pref whose line
+`kurooto_line` finds under `remember.TOLD`/`PICKED`/`LEARNED`; `forget` → `model.forget`; `unline` → `remember.remove_line`
+only for a row already marked wrong and still a Kurooto line). `console.model()` adds `edit`; `brainconsole.js` draws the
+`data-edit` spans when `edit` and `opts.post` (home.js) are there. Fix: `prefs.sync` skips a line whose row is marked wrong
+(it used to re-put it as `said`, which cleared the flag). Ledger rows aren't on the console yet.
+
 Tests: `tests/unit/test_brain_console.py` (a made-up log and stores: decisions and evidence, part and day filters, paging, search,
 nothing named for money or health, part settings, the phone's copy), `tests/unit/test_brain_phone.py` (the sealed copy while
 watched, off copies, the page files), `test_views.py` (Chrome 58 build of `brainconsole.js`), `test_panes.py` (the page key).
@@ -1302,6 +1320,10 @@ imports (missing means yes); from `LAST_HOUR` (06:00) they're written with `use_
 - `outcomes(app, day)`: events ending `_undone`/`_undo` by feature, `mind-pest.json` pending rows settled as
   ignored/less/mute by `(kind, band)`, `<state>/voice/gate-turns.jsonl` rows labelled 0 (and `voice_pattern`), and ToM
   rows with `wrong` set that day. `distil` turns counts of 2+ (any wrong guess) into at most `LESSONS_MAX` lines.
+  (0.9.0) Also from the events: `case_kept` with `wrong` by `did` (`mind.dream.from_wrong`, registered in
+  `modules/cases.py`), `call_reviewed` lessons (`from_calls`) and `proposal_discarded` by the `source` of its
+  `proposal_made` (`from_proposals`): `cases`, `calls`, `proposals` in the result; distil adds `case` (a did, or "ai"),
+  `calls` (2+ lessons) and `proposal` (2+ from one source) lines.
 - `section(app, send)` is the morning message's part through a new Dreaming hook: any enabled module's
   `dreaming_section(send) -> (text, button rows)` (`modules/dreaming.py` `report`); `Mind.dreaming_section` calls it. Only
   a sent message counts as showing; `SHOWN_MAX` (2) shows without a tap let it go (`decided` keeps `c:<slug>` and

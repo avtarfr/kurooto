@@ -132,7 +132,7 @@ class Alarm(Module):
         self.action("prep", self._prep)
         self.action("awake", lambda p: self.keep_awake())
         self.every("plan", PLAN_EVERY, lambda p: self._plan())
-        self.every("suggest", "every 30m", lambda p: self.suggest())
+        self.every("suggest", "every 30m", lambda p: self.suggest() or self.phone_mismatch())
         self.app.availability.sleep = self.sleep_windows
         self._plan()
         self.keep_awake()
@@ -756,10 +756,46 @@ class Alarm(Module):
         self.app.events.emit("alarm_suggested", at=wake.isoformat())
         return text
 
+    def phone_mismatch(self) -> str:
+        """(0.9.0, availability.night.phone_alarm) The phone's own alarm (its alarm sense) and the next one here are
+        for the same morning but at different times: ask once per pair whether to keep both. Neither alarm changes
+        without your tap; the phone's time is used here only."""
+        if not (self.app.settings.get("availability.night") or {}).get("phone_alarm"):
+            return ""
+        try:
+            from kurooto.mind.senses import phone
+
+            at = phone.next_alarm(self.app)
+        except Exception:
+            return ""
+        mine = self.next()
+        if at is None or mine is None:
+            return ""
+        pa, t = dt.datetime.fromtimestamp(at).replace(second=0, microsecond=0), now()
+        gap = abs((pa - mine).total_seconds())
+        if not (t < pa and t < mine) or gap < 15 * 60 or gap > 4 * 3600 or mine - t > dt.timedelta(hours=18):
+            return ""
+        f = self.app.paths.state / "alarm-phone.json"
+        pair = f"{pa:%Y%m%d%H%M}|{mine:%Y%m%d%H%M}"
+        if (jload(f, {}) or {}).get("pair") == pair:
+            return ""
+        jsave(f, {"pair": pair})
+        text = f"Your phone's alarm is at {pa:%H:%M}, mine at {mine:%H:%M}. Keep both?"
+        self.app.notify(
+            text,
+            kind="question",
+            why="alarm.phone_mismatch",
+            buttons=[[("Keep both", "alm:phone:keep"), (f"Ring me at {pa:%H:%M} too", f"alm:{pa:%Y%m%d%H%M}:set")]],
+        )
+        self.app.events.emit("alarm_phone_mismatch")
+        return text
+
     def callbacks(self):
         return {"alm": self._suggest_button}
 
     def _suggest_button(self, ref: str, act: str) -> str:
+        if ref == "phone":
+            return "Both stay as they are."
         if act != "set":
             return "OK, no alarm."
         try:

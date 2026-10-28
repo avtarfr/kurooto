@@ -7,6 +7,8 @@ Files, in <state>/reserve/ (one more folder an AI may read: core/places.py):
     alarm.md        the next alarm and the daily one (written by the alarm feature as it changes)
     deadlines.md    what's due, nearest first
     calendar.md     the next two weeks of events
+    today.md        (0.9.0, reserve.today) today at a glance: the next alarm, today's classes (skipped ones marked),
+                    what's due today and tomorrow, today's events; never health, money, mood or the senses
     settings.md     every setting that differs from its default, and which features are on (never a secret)
     addons.md       your add-ons and whether each loaded
     agent-guide.md  what an AI program may read, write and run here, the tools it has, and the chat commands
@@ -27,9 +29,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kurooto.core.clock import now
+from kurooto.core.config import register_defaults
 
 if TYPE_CHECKING:
     from kurooto.app import App
+
+register_defaults("reserve", {"today": True})  # 0.9.0: today.md, today at a glance for every AI request to read
 
 SECRET = re.compile(r"(?i)(token|secret|password|passphrase|api[_-]?key|\bkey\b|credential|cookie)")
 
@@ -78,6 +83,53 @@ def calendar_md(app: App) -> str:
         lines.append(f"- {s:%H:%M} {e.get('title') or e.get('summary') or 'event'}")
     if not events:
         lines.append("\nNo events.")
+    return "\n".join(lines) + "\n"
+
+
+def today_md(app: App) -> str:
+    """(0.9.0, reserve.today) Today at a glance, from the features that are on. Lines about health or money are left
+    out (modules/remember.py: sensitive), and nothing about your mood, Brain's read of you or the senses is here."""
+    if not app.settings.get("reserve.today"):
+        return "# Today\n\nOff (reserve.today).\n"
+    from kurooto.modules.remember import sensitive
+
+    t = now()
+    ok = lambda s: sensitive(str(s or "")) is None  # noqa: E731
+    lines = ["# Today", "", f"{t:%A %d %B %Y}."]  # no clock time: the file is rewritten only when this changes
+    al = app.modules.get("alarm")
+    if al is not None and app.is_on("alarm"):
+        nxt = al.next()
+        lines += ["", "## Alarm", f"- next: {nxt:%a %H:%M}" if nxt else "- none set"]
+    sj = app.modules.get("subjects")
+    if sj is not None and app.is_on("subjects"):
+        skipped = sj.skipped(t.date())
+        cs = sj.classes_on(t.date(), include_skipped=True)
+        lines += ["", "## Classes"]
+        lines += [f"- {c['start']}-{c['end']} {c['name']}{' (skipped)' if c['subject'] in skipped else ''}"
+                  for c in cs if ok(c["name"])] or ["- none today"]  # fmt: skip
+    dl = app.modules.get("deadlines")
+    if dl is not None and app.is_on("deadlines"):
+        days = {t.date().isoformat(), (t.date() + dt.timedelta(days=1)).isoformat()}
+        soon = [(it, h) for _id, it, h in dl.upcoming(48) if it["due"][:10] in days and ok(it.get("title"))]
+        lines += ["", "## Due today and tomorrow"]
+        lines += [f"- {it['due'][11:16]} {'today' if it['due'][:10] == t.date().isoformat() else 'tomorrow'}: "
+                  f"{it['title']}" for it, _h in soon] or ["- nothing"]  # fmt: skip
+    cal = app.modules.get("calendar")
+    if cal is not None and app.is_on("calendar"):
+        start = t.replace(hour=0, minute=0, second=0, microsecond=0)
+        try:
+            events = cal.events(start, start + dt.timedelta(days=1))
+        except (OSError, ValueError, KeyError):
+            events = []
+        lines += ["", "## Events"]
+        out = []
+        for e in events:
+            s = e.get("start")
+            s = s if isinstance(s, dt.datetime) else dt.datetime.fromisoformat(str(s))
+            title = e.get("title") or e.get("summary") or "event"
+            if ok(title):
+                out.append(f"- {s:%H:%M} {title}")
+        lines += out or ["- none"]
     return "\n".join(lines) + "\n"
 
 
@@ -172,6 +224,11 @@ def guide_md(app: App) -> str:
             f"- {folder(app) / 'alarm.md'}: alarms",
             f"- {folder(app) / 'deadlines.md'}: what's due",
             f"- {folder(app) / 'calendar.md'}: the next two weeks",
+            *(
+                [f"- {folder(app) / 'today.md'}: today at a glance (alarm, classes, what's due, events)"]
+                if app.settings.get("reserve.today")
+                else []
+            ),  # fmt: skip
             f"- {folder(app) / 'settings.md'}: settings and which features are on",
             f"- {folder(app) / 'addons.md'}: your add-ons",
             f"- {folder(app) / 'self.md'}: what Kurooto is running (version, AIs and models, features and their "
@@ -188,6 +245,7 @@ def guide_md(app: App) -> str:
 BUILDERS = {
     "deadlines.md": deadlines_md,
     "calendar.md": calendar_md,
+    "today.md": today_md,
     "settings.md": settings_md,
     "addons.md": addons_md,
     "agent-guide.md": guide_md,

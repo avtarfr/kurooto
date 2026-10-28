@@ -324,6 +324,12 @@ class Live:
                 sess.stale = not sess.ended
         fast.stamp(turn, "answer")
         sess.q = None
+        try:  # (0.9.0, mind.promises.answers) a promise it made at the desk is written down like its messages'
+            from kurooto.mind import promises
+
+            promises.said(self.v.app, "".join(said), "desk")
+        except Exception:
+            pass
         return "".join(heard), "".join(said)
 
     def _first(self, q: queue.Queue, heard: list, said: list, turn: dict) -> bytes | None:

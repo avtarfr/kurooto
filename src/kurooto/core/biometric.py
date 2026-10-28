@@ -171,6 +171,11 @@ def note_others(app: App | Any, seconds: float = 60) -> None:
     _others[id(app)] = max(_others.get(id(app), 0.0), time.monotonic() + float(seconds))
 
 
+def voice_others(app: App | Any) -> bool:
+    """(0.9.0) A voice that isn't the owner's lately (Voice ID), only."""
+    return time.monotonic() < _others.get(id(app), 0.0)
+
+
 def others_present(app: App | Any) -> bool:
     """A voice that isn't the owner's lately, or (Face presence, core/nearby.py) a second face at the desk."""
     if time.monotonic() < _others.get(id(app), 0.0):

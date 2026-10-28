@@ -95,7 +95,7 @@ def pick(app: App, text: str, call: bool = False) -> list[tuple[str, dict]]:
         rows = [
             r
             for r in ledger.everything(app, live_days=1 if call else ledger.LIVE_DAYS)
-            if r["kind"] in ("gist", "meeting", "day") and r["at"] >= lo
+            if r["kind"] in ("gist", "meeting", "day", "dayrow") and r["at"] >= lo  # dayrow: memory.day_rows (0.9.0)
         ]
         for r in rows:
             mine = ledger.words(r["text"])

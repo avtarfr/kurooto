@@ -69,6 +69,12 @@ tip = "With check-ins by call and an alarm set, the night check-in waits for the
 when = "Turn it off to be called anyway."
 needs = "`checkins.by_call` and the Morning alarm."
 
+[s."checkins.asleep_follows_brain"]
+tip = "When Brain's sleep says you're asleep, that counts as the night: check-ins and calls Kurooto places by itself wait."
+what = "Brain's sleep follows the phone (screen off, dark, charging), Face presence and the bedside. While it says asleep, the night holds calls Kurooto starts by itself and check-ins as the night hours do; a night check-in by call moves to your wake-up call with the usual message. Calls you asked for, the alarm and your own reminders still come."
+when = "Turn it on so a goodnight call doesn't ring after you've already fallen asleep."
+needs = "Brain (its sleep part)."
+
 [s."checkins.ai_notes"]
 tip = "After a check-in call, your AI writes your journal and study logs from what you said."
 when = "Turn it off to have your words go into the journal as they are."

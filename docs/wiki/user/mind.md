@@ -210,6 +210,9 @@ from what you do next:
   counts for it, an **Undo** counts three times against it (and stops it for a week), a complaint five times, and silence counts a
   little, but only for something you saw on the Sunday list ("What I did on my own this week", with an Undo for each and
   **Seen it**). Higher classes count each reaction for more, so a pile of tiny OKs can't buy trust in something big.
+  (0.9.0, `mind.act.record_asked`, on) The Sunday list also has "What you asked me to change on calls and in chats":
+  what a tool changed because you asked (never an order or money), with Undo where it has one. Those don't count for or
+  against its trust (`mind.trust.from_asked_undo`, off, makes their Undo count).
 - **Always asks, whatever its trust** (nothing unlocks these): deleting your data, sending anything to anyone, money, setting or
   moving alarms, placing calls, attaching repositories, installing anything, editing the files that keep Brain honest, applying
   a proposal. An action Kurooto has never been classified for asks too, until you tell it a class with
@@ -329,7 +332,9 @@ a tap on one of its buttons, Less of this or the time running out closes it, and
 numbers, never the words). **Why?** under the message on Telegram, and **Why this?** under the phone app chat's copy, now
 also say what the gate did, what the door did ("waited 35 min at the door, then went (at a break: you switched windows
 after a long stretch); it won over 2 others"), what it expected and what came of it, and how many it has sent by itself
-today.
+today. (0.9.0, `mind.why.console_link`) It ends with a link that opens that decision in the Brain console on this
+computer's dashboard (what it weighed, what came of it, the evidence), and the console's decision shows the message's
+Why? in turn.
 
 Switches: `mind.workspace.arbiter`, `mind.workspace.breaks`, `mind.expect.on`, `mind.why.on` (Settings → Brain; all on
 with Brain). *Undo:* turn `mind.workspace.arbiter` off and messages go as they come, as before 0.8.14; whatever waited
@@ -580,7 +585,9 @@ When Kurooto says it will do something at a time ("I'll check back at 6", "I'll 
 down with the time frozen. A kept promise is silent. A broken one it owns up to first, in one line, before you notice
 ("I said I'd check back at 6 and didn't: the computer was off. Checking now."), with the fix and no grovelling. If it
 changes a promise, the old one is marked broken and a new one made. `/promises` lists the open and recent ones, with how many
-were kept and broken.
+were kept and broken. (0.9.0, `mind.promises.answers`, on) Not only in messages it starts: a promise in its answers to
+you, its side of a call and what it says at the desk counts too. They're read on this computer with the same rules and
+sent nowhere.
 
 When this computer is down, your call line says it's offline once, and now adds which things in the next 12 hours (reminders,
 its promises) have no guarantee until it's back. Switches: `mind.promises.on`, `mind.heartbeat.on`.
@@ -599,7 +606,9 @@ drop. Nothing is added or written until you tap; a line shown on two mornings wi
   recall them next to your own cards. `mind.dream.cards_max` (3) sets how many a night. Needs Quiz and `mind.tom.on`.
 - **How to help you, from the day's outcomes** (`mind.dream.lessons`, on). It replays what you undid, its messages you
   left unanswered or gave Less of this, the times you told Voice off, and its guesses about you that you marked wrong
-  (`/model wrong`). A clear pattern becomes a line for your how-to-help-me note, like "Fewer nudges in the evening (2
+  (`/model wrong`). From 0.9.0 also your Wrong taps (`mind.dream.from_wrong`), how many things the look back after calls
+  flagged (`mind.dream.from_calls`) and proposals you discarded (`mind.dream.from_proposals`), counts only. A clear
+  pattern becomes a line for your how-to-help-me note, like "Fewer nudges in the evening (2
   went unanswered or got Less of this)". **Keep** writes it under "Learned in the nightly look back" (with Undo); **Not
   that** drops it for good.
 - **What Voice learned** (`mind.dream.voice`, on). With Voice's nightly learning on (`voice.listen.learn_nightly`), one
@@ -847,7 +856,10 @@ ten tabs and one search box. It's live: it asks your computer again every few se
   settings are switches (the same as Settings); a part that's off says it's doing nothing.
 - **Beliefs** (with their source and confidence, and how each kind of source has fared), **Experiments** (the lab's projects,
   self-improvement's challengers, play), **Skills**, **Plans** (milestones and the chance of missing each from the last plan),
-  **Model of you** (each row with its source and evidence), **Memory** (what it forgot: how often and how many, never what;
+  **Model of you** (each row with its source and evidence; on the dashboard, 0.9.0 `mind.console.edit`, **Wrong** and
+  **Forget** beside each row, as `/model wrong` and `/model forget` do. A Wrong on a line Kurooto wrote in your
+  how-to-help-me note offers to take that line out too, only when you tap **Take it out**; your own lines are never
+  offered), **Memory** (what it forgot: how often and how many, never what;
   stops and crashes; today's limits; promises; the journal's and life story's headings, never their sentences).
 - **Search** looks through the log's kinds and fields, beliefs, the model of you, skills, plans, lab projects and every Brain
   setting.

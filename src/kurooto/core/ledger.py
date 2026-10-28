@@ -7,6 +7,9 @@ and a way to forget it. Always encrypted at rest.
     fact      a dated line Kurooto keeps in your how-to-help-me note (modules/remember.py)
     day       a daily note's headings and lines (your journal and plans)
     meeting   a dated line under a project note's "## Meetings" (core/infer.py writes them; you can too)
+    dayrow    (0.9.0, memory.day_rows) one line a day, written each night: about how long you were at the desk
+              (coarse, from Face presence), what you studied (study sessions) and the classes you said you skipped
+              or attended (your own taps); never a place, never read from the senses
 
 Facts, days and meetings are read from your notes when a note changes (at most once a minute, and nightly), so your
 notes stay the source of truth: a row forgotten here stays forgotten here (a keyed hash of it is kept, so reading the
@@ -44,11 +47,14 @@ from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from kurooto.core.clock import now
+from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock
 from kurooto.core.state import owner_only
 
 if TYPE_CHECKING:
     from kurooto.app import App
+
+register_defaults("memory", {"day_rows": False})  # 0.9.0: a nightly row of the day (desk, study, classes) in the ledger
 
 KEY = "ledger.key"  # the secret's name (core/secrets.py); never in the profile (core/profile.py:NEVER)
 SCHEMA = """
@@ -66,6 +72,7 @@ NAMES = {  # kind -> how a row is named to you
     "fact": "how-to-help-me line",
     "day": "daily note",
     "meeting": "meeting",
+    "dayrow": "day summary",
 }
 NOTES = ("fact", "day", "meeting")  # read from your notes
 REFRESH_S = 60  # notes are looked at again at most this often (and nightly)
@@ -512,6 +519,8 @@ def label(r: dict) -> str:
         return f"meeting, {day} ({r.get('source')})"
     if k == "day":
         return f"daily note, {day} ({r.get('source')})"
+    if k == "dayrow":
+        return f"day summary, {day}"
     return f"in {r.get('source')}"
 
 
@@ -621,6 +630,8 @@ def day_story(app: App, day: dt.date) -> str:
             out.append(f"- Your daily note ({r.get('source')}): {_snippet(r['text'], set(), 400)}")
         elif r["kind"] == "fact":
             out.append(f"- Kept in {r.get('source')}: {r['text']}")
+        elif r["kind"] == "dayrow":
+            out.append(f"- The day in short: {r['text'][:300]}")
         elif r["kind"] in ("meeting",):
             out.append(f"- {r['text'][:300]}")
         else:
@@ -747,6 +758,73 @@ def export(app: App, items: list[dict] | None = None) -> str:
     return f"Wrote {n} line{'s' if n != 1 else ''} (gists and threads) to {layout.shown(app, f)}."
 
 
+def _hm(minutes: float) -> str:
+    h, m = divmod(int(round(minutes)), 60)
+    return f"{h} h {m} min" if h and m else f"{h} h" if h else f"{m} min"
+
+
+def day_row(app: App, day: dt.date) -> str:
+    """(0.9.0, memory.day_rows) The day in one line, from events only: the desk in coarse words (Face presence's
+    face_back / face_left, to the nearest hour), study minutes by subject (study_logged, study_session_end) and the
+    classes you skipped or attended by your own tap (class_skip, class_attend). "" when there's nothing."""
+    lo = dt.datetime.combine(day, dt.time()).timestamp()
+    hi = lo + 86400
+    evs = []
+    for e in app.events.tail(20000, {"face_back", "face_left", "study_logged", "study_session_end", "class_skip",
+                                     "class_attend"}):  # fmt: skip
+        try:
+            t = dt.datetime.fromisoformat(str(e.get("ts"))).timestamp()
+        except ValueError:
+            continue
+        if lo <= t < hi:
+            evs.append((t, e))
+    desk, since = 0.0, None
+    study: dict[str, float] = {}
+    classes: dict[str, str] = {}
+    for t, e in sorted(evs, key=lambda x: x[0]):
+        k = e.get("kind")
+        if k == "face_back":
+            since = t
+        elif k == "face_left" and since is not None:
+            desk, since = desk + (t - since), None
+        elif k in ("study_logged", "study_session_end") and e.get("subject"):
+            study[str(e["subject"])] = study.get(str(e["subject"]), 0.0) + float(e.get("minutes") or 0)
+        elif k in ("class_skip", "class_attend"):
+            for s in e.get("subjects") or []:
+                classes[str(s)] = "skipped" if k == "class_skip" else "attended"
+    sj = app.modules.get("subjects")
+    name = (lambda s: sj.name_of(s) or s) if sj is not None else (lambda s: s)  # noqa: E731
+    bits = []
+    if desk >= 3600:
+        bits.append(f"at the desk about {round(desk / 3600)} h")
+    if study:
+        bits.append("studied " + ", ".join(f"{name(s)} {_hm(m)}" for s, m in study.items() if m >= 1))
+    for what in ("skipped", "attended"):
+        names = [name(s) for s, v in classes.items() if v == what]
+        if names:
+            bits.append(f"{what} {', '.join(names)}")
+    return "; ".join(b for b in bits if b and not b.endswith("studied ")) + ("." if bits else "")
+
+
+def write_day_row(app: App, day: dt.date) -> bool:
+    """The nightly day row, sealed like every row; the day's earlier one is replaced. False when it's off, empty or
+    the ledger is locked."""
+    if not app.settings.get("memory.day_rows"):
+        return False
+    text = day_row(app, day)
+    if not text:
+        return False
+    led = of(app)
+    try:
+        led.key()
+        noon = _noon(day.isoformat())
+        led.drop("dayrow", noon - 1, noon + 1)
+        led.add("dayrow", text, at=noon)
+    except Locked:
+        return False
+    return True
+
+
 def start(app: App) -> None:
     """Nightly: the notes read again, and threads nobody touched close (core/threads.py)."""
     import asyncio
@@ -758,6 +836,7 @@ def start(app: App) -> None:
         try:
             out["notes"] = of(app).refresh(force=True)
             out["threads"] = threads.expire(app)
+            out["day_row"] = write_day_row(app, now().date() - dt.timedelta(days=1))  # (0.9.0, memory.day_rows)
         except Locked:
             pass
         return out

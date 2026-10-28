@@ -66,3 +66,8 @@ tip = "`kurooto uninstall` also removes the programs and models Kurooto installe
 values = "`true` (everything on the install receipt goes too), `false` (only Kurooto, its settings and data; Ollama, Node and the rest stay)."
 when = "Turn it off before uninstalling if you want to keep using Ollama, Node or the other programs on your own."
 cost = "With it on, models you pulled through Kurooto are deleted and have to be downloaded again if you want them back."
+
+[s."reserve.today"]
+tip = "Keep today.md in the reserve folder: today's alarm, classes, what's due today and tomorrow and events, for every AI request to read."
+what = "A plain file in Kurooto's state folder (`reserve/`), rewritten when its contents change. Lines about health or money are left out, and nothing about your mood or the senses is in it."
+when = "Turn it off if you'd rather your AI read only the separate files."

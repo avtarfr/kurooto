@@ -44,6 +44,9 @@ register_defaults(
     {
         "console": {
             "on": True,  # the Brain console: the dashboard page and the phone's Brain view that read what Brain keeps
+            # 0.9.0: Wrong and Forget beside each row of the model of you on the dashboard's console, only on your
+            # click (the phone's view stays read-only)
+            "edit": True,
         }
     },
 )
@@ -426,6 +429,11 @@ def decision(app: App, did: str) -> dict | None:
         return None
     d = _decision_row(*rows[0], _outcomes(app, int(rows[0][0])))
     d["evidence"] = evidence(app, d)
+    from kurooto.mind import records  # (0.9.0) the message it sent, with Calm's Why?, linked back
+
+    msg = records.message_of(app, did)
+    if msg:
+        d["message"] = msg
     return d
 
 
@@ -914,6 +922,7 @@ def model(app: App, limit: int = 80) -> dict:
         )
     return {
         "on": mind.part_on(app, "tom"),
+        "edit": bool(app.settings.get("mind.console.edit")),
         "counts": counts,
         "rows": out[:limit],
         "forgot": len(st.get("forgot") or []),

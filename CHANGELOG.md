@@ -5,6 +5,55 @@
 - **Deadline, quiz and after-class messages count double at Brain's door while they're on its mind** (L24). They now
   say which deadline, quiz or class they're about. Tiring and holding them like Brain's own promises is a separate
   switch, `mind.workspace.item_fatigue`, off.
+- **A message that waited says what changed meanwhile** (L25, `notify.calm.recheck`). Released from the evening
+  bundle, focus, the night, a network outage or Brain's door, a deadline reminder ends with "(Since then: done 14:10.)"
+  or "moved to Fri 17:00", an after-class question with "class skipped". It still comes; `drop` leaves such ones out.
+- **Tune Calm in plain words** (L126, `notify.calm.talk`, on): "why did you send that?", "less of this", "stop the
+  after-class questions", "send me what's waiting", "how many messages today?", typed, on a call or at the desk. Each
+  change has Undo.
+- **Why? links to its decision in the Brain console** (L83, `mind.why.console_link`). The link opens the dashboard's
+  Brain console at that decision, and the decision shows the message's Why? in turn.
+- **Add-ons can give their messages Why? and Less of this** (L79). `calm.register_reason` lets an add-on declare the
+  kinds it sends; your Stop applies to them, and Calm's other holds only when the add-on's own setting asks for them.
+- **Follow me** (L76, all off). With Face presence, `notify.follow_me` sends the desktop's messages to the phone app while
+  you're away (the pop-up still waits); at the desk, `notify.desk_silent_phone` keeps Telegram quiet and
+  `notify.desk_first` pops everything up on the screen.
+- **Someone else at the desk** (L78, off). `notify.guests_hold` makes the pop-up say only "A message from Kurooto";
+  `voice.speak.guests_private` keeps an answer on screen with a Read it aloud button instead of reading it out.
+- **A question's desktop pop-up closes once it's answered anywhere** (L77, `notify.desktop_retract`, Linux), and one
+  held while you were away doesn't show.
+- **Brain's sleep can count as the night** (L12, `checkins.asleep_follows_brain`, off). Check-ins and calls Kurooto
+  places by itself wait while Brain says you're asleep; calls you asked for and the alarm still ring.
+- **The phone's own alarm ends the night early** (L13, `availability.night.phone_alarm`, with the phone's alarm sense),
+  never later; when it and Kurooto's alarm disagree, one question: Keep both, or Ring me then too.
+- **The phone's Do Not Disturb and motion** (L86, `notify.respect_phone_dnd`, `calls.hold_moving`, off). Under Do Not
+  Disturb what can wait queues as during focus and goes when it ends; on the move, Kurooto's own calls wait.
+- **On another call on the phone** (L87, `calls.phone_busy`, `voice.listen.phone_call`, off). Your computer accepts the
+  phone app's "busy until" (never who); Kurooto's own calls and retries, and desk listening, can wait for it. The phone
+  app's side isn't in this build yet.
+- **Wrong works in more places** (L81, `cases.surfaces`): the phone app's chat and the dashboard's chat get the Wrong
+  button, and saying "that's wrong" just after a spoken answer marks it (your voice only).
+- **One Wrong teaches more** (L82, L75, L99, each with its switch): the nightly lessons, the nightly look back, a
+  skill's lessons, Dreaming's morning message (an answer from your notes marked Wrong is worth a look) and, off by
+  default, Brain's trust. The nightly lessons also count what the look back after calls flagged and proposals you
+  discarded.
+- **Its promises in answers, calls and at the desk** (L95, `mind.promises.answers`). "I'll check back at 6" in an
+  answer, on a call or said at the desk is written down and kept or owned up to, like its own messages'.
+- **The Sunday list shows what you asked it to change** (L98, `mind.act.record_asked`): tools that changed something
+  on a call or in a chat, apart from what it did on its own, with Undo where there is one; they don't move its trust.
+- **today.md for every AI request** (L33, `reserve.today`): today's alarm, classes, what's due today and tomorrow and
+  events in one file of the reserve folder, without health or money lines.
+- **Wrong and Forget in the Brain console** (L90, `mind.console.edit`): beside each row of the model of you on the
+  dashboard; a Wrong on a line Kurooto wrote in your how-to-help-me note offers to take it out, on your confirm.
+- **Fix:** a how-to-help-me line marked wrong no longer comes back as right the next time the note is read.
+- **A line a day in the memory ledger** (L91, `memory.day_rows`, off): about how long you were at the desk, what you
+  studied and the classes you said you skipped or attended, sealed like every row; "what was I doing last Thursday?"
+  uses it. Never a place, never read from the senses.
+- **A Memory page on the dashboard** (L89, `look.memory_page`, Alt+U): the memory ledger, open threads, what was set up
+  from what you said, what it learned, topics you aren't interested in, Brain's model of you (with Wrong and Forget) and
+  add-ons' counts, side by side.
+- **"Want to go through them?" now goes through them** (L41, `voice.answers_questions`): after the greeting, a spoken
+  yes reads the waiting questions one by one and takes your spoken answers; approvals stay a tap.
 
 ## 0.8.18 (2026-10-29)
 

@@ -478,6 +478,10 @@ def release(app: App) -> int:
             except Exception:  # noqa: S110 (can't tell: it goes)
                 pass
         try:
+            m = app.notifier._recheck(Message(**body))  # (0.9.0) what changed overnight, said with it
+            if m is None:
+                continue
+            body["text"] = m.text
             app.notifier.send(body.pop("text"), **body)
             n += 1
         except Exception as e:

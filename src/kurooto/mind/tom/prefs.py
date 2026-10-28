@@ -26,6 +26,9 @@ def sync(app: App) -> int:
 
         for line in (help_brief(app) or "").splitlines():
             line = line.strip(" -*\t")
+            old = model.get(app, model.key(PART, f"help:{model.norm(line)[:30]}", line))
+            if old is not None and old.get("wrong"):
+                continue  # you marked it wrong: reading the note again doesn't bring it back (0.9.0 fix)
             if len(line) >= 8 and model.put(
                 app,
                 PART,
@@ -40,6 +43,52 @@ def sync(app: App) -> int:
     except Exception:  # noqa: S110 (no note yet)
         pass
     return n
+
+
+def console_edit(app: App, act: str, rid: str) -> dict:
+    """(0.9.0, mind.console.edit) The Brain console's Wrong and Forget on a row of the model of you, only on your
+    click. A Wrong on a line from your how-to-help-me note offers to take that line out of the note, but only a line
+    Kurooto wrote there (under one of its own headings), and only when you confirm ("unline")."""
+    if not app.settings.get("mind.console.edit"):
+        return {"ok": False, "said": "Editing from the console is off (mind.console.edit)."}
+    r = model.get(app, rid)
+    if r is None:
+        return {"ok": False, "said": "That row is gone."}
+    if act == "forget":
+        return {"ok": True, "said": model.forget(app, rid)}
+    if act == "wrong":
+        out: dict = {"ok": True, "said": model.wrong(app, rid)}
+        if r["part"] == PART and str(r["subject"]).startswith("help:") and kurooto_line(app, r["claim"]):
+            out["offer"] = {"act": "unline", "id": rid, "line": r["claim"]}
+        return out
+    if act == "unline":
+        from kurooto.modules.remember import remove_line
+
+        if not r.get("wrong") or not kurooto_line(app, r["claim"]):
+            return {"ok": False, "said": "Only a line Kurooto wrote, marked wrong first, can be taken out here."}
+        done = remove_line(app, r["claim"])
+        app.events.emit("mind_console_unline", ok=done)
+        return {"ok": done, "said": "Taken out of your how-to-help-me note." if done else "It isn't in the note as "
+                "written any more, so nothing changed."}  # fmt: skip
+    return {"ok": False, "said": "No such action."}
+
+
+def kurooto_line(app: App, line: str) -> bool:
+    """Is "- line" in your how-to-help-me note under one of the headings Kurooto writes under (modules/remember.py:
+    TOLD, PICKED, LEARNED)? Your own lines elsewhere are never offered."""
+    from kurooto.modules import remember
+
+    try:
+        text = remember.help_file(app).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return False
+    heading = ""
+    for ln in text.split("\n"):
+        if ln.startswith("#"):
+            heading = ln.lstrip("#").strip()
+        elif ln.rstrip() == f"- {line}".rstrip():
+            return heading in (remember.TOLD, remember.PICKED, remember.LEARNED)
+    return False
 
 
 def from_undo(app: App, what: str) -> None:

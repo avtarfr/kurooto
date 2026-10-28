@@ -616,6 +616,9 @@ class Presence:
                 msg = Message(**d)
             except (ValueError, TypeError):
                 continue
+            msg = self.app.notifier._recheck(msg)  # (0.9.0) what changed while the network was down
+            if msg is None:
+                continue
             mark = f"Delayed, from {when(at, self.clock())}"
             msg.title = f"{mark}: {msg.title}" if msg.title else mark
             try:

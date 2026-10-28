@@ -995,15 +995,26 @@ class Face(Module):
         until = left + dt.timedelta(minutes=float(self.setting("away.hold_max_min") or 60))
         return ("you've stepped away from your desk", until) if t < until else None
 
-    def hold_desktop(self, title: str, text: str, urgent: bool = False) -> None:
-        self.held.append((title, text, urgent))
+    def hold_desktop(self, title: str, text: str, urgent: bool = False, key: tuple | None = None) -> None:
+        """key: (map_kind, map_ref, button data) of what it's about, so drop_held can take it back once that's dealt
+        with elsewhere (0.9.0, notify.desktop_retract)."""
+        self.held.append((title, text, urgent, key))
+
+    def drop_held(self, gone) -> int:
+        """Pop-ups held while you're away whose question was dealt with meanwhile (gone(key) is True) don't show."""
+        keep = [h for h in self.held if not (h[3] is not None and gone(h[3]))]
+        n = len(self.held) - len(keep)
+        if n:
+            self.held.clear()
+            self.held.extend(keep)
+        return n
 
     def flush_desktop(self) -> int:
         from kurooto.core import desktop
 
         n = 0
         while self.held:
-            title, text, urgent = self.held.popleft()
+            title, text, urgent = self.held.popleft()[:3]
             try:
                 desktop.notify(title, text, urgent=urgent)
                 n += 1
@@ -1048,6 +1059,10 @@ class Face(Module):
         gr.update({"day": day, "n": (int(gr.get("n") or 0) if gr.get("day") == day else 0) + 1, "last": t.timestamp()})
         self._write_status()
         self.app.events.emit("face_greeted", **_event_safe(parts=parts, talk=opened == "talk"))
+        if opened == "talk" and text.endswith("Want to go through them?"):  # (0.9.0) a yes starts it (walkthrough.py)
+            from kurooto.core import walkthrough
+
+            walkthrough.offered(self.app)
         return True
 
     def _write_status(self) -> None:

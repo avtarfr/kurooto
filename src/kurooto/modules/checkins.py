@@ -66,6 +66,10 @@ register_defaults(
         "ai_notes": True,  # with Chat on: after a check-in call, the AI writes your journal and study logs
         "day_starts": "05:00",  # a check-in day runs from here to here: a night check-in at 00:30 is the evening's
         "asleep_defers": True,  # by call, alarm set and you've gone to bed: the night check-in waits for the morning
+        # 0.9.0: Brain's sleep (which follows the phone, Face presence and the bedside) counts as the night too:
+        # check-ins and calls Kurooto places by itself wait while it says you're asleep (calls you asked for and the
+        # alarm don't)
+        "asleep_follows_brain": False,
         "learn_times": True,  # a check-in you keep moving or answering late moves to when you do it (with Undo)
         "reflect": True,  # the evening check-in lists up to 3 things today's records show you did, asks about tomorrow
     },

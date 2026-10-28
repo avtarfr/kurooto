@@ -328,6 +328,16 @@ plate" taken as "what's due").
 - Short requests no instant request understood (they went to the AI, or nowhere with Chat off) are kept as cases
   too, so you see what Kurooto keeps missing.
 - Never kept: messages over 120 characters, several requests in one, and anything about health, money or passwords.
+- (0.9.0, `cases.surfaces`) The phone app's chat and the dashboard's chat get the **Wrong** button too, and saying
+  "that's wrong" just after an answer to something you said aloud marks it (your voice only; the words still go to your
+  AI as before).
+- (0.9.0) One Wrong teaches more than a test case, each with its own switch: the nightly lessons
+  (`mind.dream.from_wrong`: two on the same kind of request suggest a how-to-help-me line you Keep or not), the nightly
+  look back (`retro.case_text`: it reads what you marked, never one about health, money or other people), a skill's
+  lessons (`learning.from_wrong`: a Wrong on a skill's answer is a correction), Dreaming's morning message
+  (`cases.to_dreaming`: an answer from your notes or the concept graph marked Wrong is listed as worth a look; nothing
+  in the notes changes) and, off by default, Brain's trust (`mind.trust.from_wrong`: Kurooto asks first before doing
+  that kind of thing on its own).
 
 **Teaching it your words.**
 - **At once:** `/wrong what's due` right after the reply: "what you meant" in words Kurooto already understands.

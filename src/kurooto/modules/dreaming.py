@@ -201,6 +201,13 @@ class Dreaming(Module):
         if not self.setting("loose_ends"):
             return []
         out = []
+        wrong = [e for e in ev if e.get("kind") == "case_wrong_notes"]  # (0.9.0, cases.to_dreaming)
+        if wrong and self.app.settings.get("cases.to_dreaming"):
+            n = len(wrong)
+            out.append(
+                f"{n} answer{'s' if n != 1 else ''} from your notes or the concept graph you marked Wrong: worth a "
+                "look at the notes behind them (/cases lists them; nothing was changed)."
+            )
         doubts = self.open_doubts()
         if doubts:
             more = f" (and {len(doubts) - 2} more)" if len(doubts) > 2 else ""

@@ -17,6 +17,12 @@ tip = "Listening through the microphone, all on this computer."
 [parent."voice.audio"]
 tip = "How sound reaches the speakers and comes in from the microphone."
 
+[s."voice.answers_questions"]
+tip = "After the greeting's \"Want to go through them?\", a yes said aloud reads the waiting questions one by one and takes your spoken answers."
+what = "\"skip\" or \"later\" leaves one, \"stop\" ends it. Approvals are only counted; they still need your tap on the phone or Telegram. Only your voice counts (Voice ID), and nothing is read while someone else is here."
+when = "Turn it off to have a yes go to your AI as before."
+needs = "Voice listening and Face presence's greeting with `face.greet.talk`."
+
 [s."voice.speak.on"]
 tip = "Kurooto speaks through this computer's speakers."
 when = "Turn it off to keep Voice for listening only, or for a silent room."
@@ -118,6 +124,11 @@ needs = "`voice.listen.on`."
 tip = "Keep listening while you're on a phone call (off: listening pauses during calls)."
 when = "Turn it on only if your calls are on another device out of earshot."
 needs = "`voice.listen.on`."
+
+[s."voice.listen.phone_call"]
+tip = "Stop listening while the phone app says it's in another call (WhatsApp, Meet), not only during Kurooto's own calls."
+when = "Turn it on so the desk stays quiet while you're on a call on the phone."
+needs = "`voice.listen.on` and a phone app that reports being in another call."
 
 [s."voice.listen.stt_model"]
 tip = "How big the speech-to-text model is: tiny (75 MB), base (145 MB) or small (484 MB, more accurate)."
@@ -544,6 +555,12 @@ spoken when it's done, as before. /voice stop, mute and talking over it stop it 
 values = "`true` (default) or `false` (the whole answer first, as before 0.8.16)."
 when = "Turn it off if you'd rather hear only the finished answer."
 needs = "`voice.speak.on`."
+
+[s."voice.speak.guests_private"]
+tip = "With someone else at the desk, an AI answer isn't read aloud by itself: it stays on screen, and a message offers Read it aloud."
+what = "Only for answers read out because `voice.speak.what` is `all`. Someone else means two faces looking at the screen (Face presence) or a voice that isn't yours lately (Voice ID)."
+when = "Turn it on if answers about your work shouldn't be heard by whoever is with you."
+needs = "`voice.speak.what` = `all`, and Face presence or Voice ID to notice others."
 
 [s."voice.listen.timing"]
 tip = "Time each spoken turn from your last word to Kurooto's first sound, as numbers only."

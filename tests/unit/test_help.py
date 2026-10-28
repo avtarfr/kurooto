@@ -158,6 +158,7 @@ def test_every_plain_english_request_is_in_help_and_understood(env):
         "set up from what you say": lambda t: bool(infer.observe(app, t)),
         "meeting minutes": lambda t: bool(meetings.EXPLICIT.search(t)),
         "a project from its repository": lambda t: repoproject.asked(t) is not None,
+        "quieter messages": lambda t: app.calm.intent(t) is not None,
     }
     for key, what, examples, _needs in commands.CORE_SAY:
         assert commands.find_group(key) is not None, key

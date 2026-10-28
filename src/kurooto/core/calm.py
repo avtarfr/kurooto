@@ -45,6 +45,7 @@ from __future__ import annotations
 import contextlib
 import datetime as dt
 import json
+import re
 import sqlite3
 import threading
 import uuid
@@ -75,6 +76,14 @@ register_defaults(
             "fewer": {},  # kind -> at most this many a day; more wait for the evening (Less of this → Fewer)
             "habituate": {},  # kind -> after this many in a row unanswered, they wait for the evening until you answer
             "windows": {},  # kind -> "10:00-18:00": outside these hours they wait for the evening bundle
+            # 0.9.0: a held message is checked again when it's let out (the evening bundle, the end of focus, the
+            # morning, the network back, Brain's door): "rewrite" adds what changed meanwhile ("done 14:10", "moved
+            # to Fri 17:00", "class skipped", "quiz over") and still sends it; "drop" leaves such a one out; false
+            # sends it as it was
+            "recheck": "rewrite",
+            # 0.9.0: say it in plain words, on a call or at the desk: "why did you send that?", "less of this",
+            # "stop the after-class questions", "send me what's waiting", "how many today?" (each change has Undo)
+            "talk": True,
         }
     },
 )
@@ -144,6 +153,9 @@ class Reason:
     feature: str = ""
     counted: bool = True  # False: not counted against the daily limit, and never held by it
     fold: bool = False  # several in a day fold into one (Calm._fold)
+    # (0.9.0) a setting that brings Calm's holds (exam season, a quiet week, Another time, Fewer, the per-kind rules,
+    # the daily limit) to this kind; while it's off only your Stop applies. Add-on reasons (register_reason) use it.
+    rules: str = ""
 
     @property
     def owner(self) -> str:
@@ -234,6 +246,97 @@ def streak(rows, at: float) -> int:
             break
         n += 1
     return n
+
+
+ADDON_REASONS: set[str] = set()  # reason ids an add-on registered (register_reason), never a built-in one
+RID_OK = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$")
+
+
+def register_reason(
+    rid: str, what: str, setting: str = "", counted: bool = False, exempt: str = "", rules: str = "", **kw
+) -> Reason:
+    """(0.9.0) An add-on declares a kind of message it sends by itself, so its messages get Why? and Less of this and
+    obey your Stop like Kurooto's own. `rid` is "<add-on>.<what>"; a built-in reason can't be replaced (ValueError).
+    `counted` False keeps it out of the daily limit; `rules` names the add-on's setting that brings Calm's other holds
+    (evening, Fewer, windows, exam season, the limit) to it, so by default nothing it sends today waits. `exempt` is
+    one of EXEMPT. Registering again (the add-on reloaded) replaces its own earlier entry."""
+    if not RID_OK.match(rid or ""):
+        raise ValueError(f"a reason id is <add-on>.<what> in lower case: {rid!r}")
+    if rid in REASONS and rid not in ADDON_REASONS:
+        raise ValueError(f"{rid} is one of Kurooto's own reasons")
+    if exempt and exempt not in EXEMPT:
+        raise ValueError(f"exempt is one of {sorted(EXEMPT)}")
+    r = Reason(rid, str(what)[:200], setting=setting, counted=counted, exempt=exempt, rules=rules, **kw)
+    REASONS[rid] = r
+    ADDON_REASONS.add(rid)
+    return r
+
+
+def unregister_reason(rid: str) -> None:
+    """An add-on that was removed takes its reasons back (built-in ones stay)."""
+    if rid in ADDON_REASONS:
+        ADDON_REASONS.discard(rid)
+        REASONS.pop(rid, None)
+
+
+STILL_MARK = "(Since then: "
+
+
+def still(app: App, m) -> str:
+    """(0.9.0) What changed about a held message's item since it was written, as a short line ("done 14:10", "moved to
+    Fri 17:00", "class skipped", "quiz over"); "" when nothing did or it can't tell. Reads Message.ws_item (or a
+    deadline's map_ref), the deadlines' own file (modules/deadlines.py) and the day's skipped classes
+    (modules/subjects.py). Never raises."""
+    try:
+        ws = str(getattr(m, "ws_item", None) or "")
+        if not ws and getattr(m, "map_kind", None) == "deadline" and getattr(m, "map_ref", None):
+            ws = f"deadline:{m.map_ref}"
+        head, _, ref = ws.partition(":")
+        if not ref:
+            return ""
+        if head in ("deadline", "quiz"):
+            dl = app.modules.get("deadlines") if app.is_on("deadlines") else None
+            it = (dl.items() if dl is not None else {}).get(ref)
+            if not it:
+                return ""
+            st = it.get("status") or "open"
+            if st == "done":
+                at = it.get("done_at")
+                return f"done {dt.datetime.fromisoformat(at):%H:%M}" if at else "done"
+            if st == "ignored":
+                return "marked not yours"
+            if st != "open":
+                return "dropped"
+            due = dt.datetime.fromisoformat(it["due"]) if it.get("due") else None
+            if head == "quiz" and due is not None and due.replace(tzinfo=None) < now().replace(tzinfo=None):
+                return "quiz over"
+            was = getattr(m, "due", None)
+            if due is not None and was and str(was) != str(it["due"]):
+                return f"moved to {due:%a %H:%M}"
+            return ""
+        if head == "class":
+            sj = app.modules.get("subjects") if app.is_on("subjects") else None
+            return "class skipped" if sj is not None and ref in sj.skipped() else ""
+    except Exception as e:  # can't tell: it goes as it was
+        app.events.emit("calm_failed", error=f"still: {type(e).__name__}"[:60])
+    return ""
+
+
+def recheck(app: App, m: Message) -> Message | None:
+    """(0.9.0, notify.calm.recheck) A held message, as it should go out now: with what changed meanwhile added to its
+    text ("rewrite", the default), left out ("drop", None) or as it was (off). A message is rewritten once."""
+    from dataclasses import replace
+
+    mode = app.settings.get("notify.calm.recheck")
+    if not mode or STILL_MARK in (m.text or ""):
+        return m
+    line = still(app, m)
+    if not line:
+        return m
+    app.events.emit("calm_rechecked", what="dropped" if mode == "drop" else "rewritten")
+    if mode == "drop":
+        return None
+    return replace(m, text=f"{m.text}\n\n{STILL_MARK}{line}.)")
 
 
 def R(rid: str, what: str, **kw) -> Reason:
@@ -565,6 +668,13 @@ REASONS: dict[str, Reason] = {
             "an alarm suggested before your usual bedtime, with none set",
             setting="alarm.suggest",
             stop=to(False, "no more alarm suggestions"),
+            later=False,
+        ),
+        R(
+            "alarm.phone_mismatch",
+            "a question, once per pair, when your phone's own alarm and Kurooto's alarm disagree",
+            setting="availability.night.phone_alarm",
+            stop=to(False, "the phone's own alarm is ignored (no more of these, and it no longer ends the night)"),
             later=False,
         ),
         R(
@@ -951,6 +1061,11 @@ class Calm:
                 return "deadline"
         return ""
 
+    def rules_apply(self, r: Reason | None) -> bool:
+        """Do Calm's holds (beyond your Stop) apply to this kind? Always, unless it names a `rules` setting that's
+        off (an add-on's reason, register_reason)."""
+        return r is None or not r.rules or bool(self.app.settings.get(r.rules))
+
     def exam_keep(self) -> tuple | None:
         """During exam season (with its budget part on): the features whose messages still come during the day."""
         es = self.app.modules.get("exam_season")
@@ -1041,7 +1156,7 @@ class Calm:
             self.app.events.emit("calm_stopped", why=msg.why)
             return "stop"
         counted = r is None or r.counted
-        wait = self._wait(msg.why, rec["feature"], t, counted)
+        wait = self._wait(msg.why, rec["feature"], t, counted) if self.rules_apply(r) else ""
         if wait:
             body = {k: v for k, v in msg.__dict__.items() if k not in ("rid", "extra", "state_read", "before")}
             body["buttons"] = _jsonable(msg.buttons)
@@ -1137,6 +1252,12 @@ class Calm:
                 m = Message(**{k: v for k, v in body.items() if k in Message.__dataclass_fields__})
             except (ValueError, TypeError):
                 m = Message(rec.get("text") or "", kind=rec.get("kind") or "info")
+            m2 = recheck(self.app, m)  # (0.9.0) what changed meanwhile, said with it
+            if m2 is None:
+                with self._db() as db:
+                    db.execute("update sent set state='settled', msg=null where id=?", (rec["id"],))
+                continue
+            m = m2
             with self._db() as db:
                 db.execute("update sent set state='sent', budgeted=1, msg=null where id=?", (rec["id"],))
             m.rid = rec["id"]
@@ -1229,7 +1350,7 @@ class Calm:
                 self._insert({**rec, "state": "skipped", "held": "stopped"})
                 self.app.events.emit("calm_stopped", why=why)
                 return False
-            wait = self._wait(why, feature, t, counted=r.counted if r else True)
+            wait = self._wait(why, feature, t, counted=r.counted if r else True) if self.rules_apply(r) else ""
             if wait:
                 self._insert({**rec, "state": "skipped", "held": wait})
                 return False
@@ -1305,6 +1426,9 @@ class Calm:
     def tick(self) -> dict:
         """Every few minutes: once it's evening, the bundle (and the monthly suggestion, when it's time)."""
         t = now()
+        if self.app.settings.get("notify.respect_phone_dnd"):  # (0.9.0) Do Not Disturb over: what waited for it goes
+            with contextlib.suppress(Exception):
+                self.app.notifier.flush_dnd()
         st = jload(self.state_file, {}) or {}
         out: dict = {}
         if t >= self.evening_at(t.date()) and st.get("bundle_day") != t.date().isoformat():
@@ -1335,9 +1459,14 @@ class Calm:
                     continue
             try:
                 body = json.loads(rec.get("msg") or "{}")
-                items.append((rec, Message(**{k: v for k, v in body.items() if k in Message.__dataclass_fields__})))
+                m = Message(**{k: v for k, v in body.items() if k in Message.__dataclass_fields__})
             except (ValueError, TypeError):
-                items.append((rec, Message(rec.get("text") or "", kind=rec.get("kind") or "info")))
+                m = Message(rec.get("text") or "", kind=rec.get("kind") or "info")
+            m2 = recheck(self.app, m)  # (0.9.0) what changed since it waited: said with it, or left out ("drop")
+            if m2 is None:
+                settled.append(rec["id"])
+                continue
+            items.append((rec, m2))
         if settled:
             with self._db() as db:
                 db.executemany("update sent set state='settled', msg=null where id=?", [(x,) for x in settled])
@@ -1480,6 +1609,8 @@ class Calm:
         stop = self._change(r, r.stop, rec, "stop")
         if stop is not None:
             out.append(("stop", "Stop", stop))
+        if not self.rules_apply(r):  # (0.9.0) Fewer and Another time would do nothing for it: only Stop
+            return out
         fewer = self._change(r, r.fewer, rec, "fewer")
         if fewer is not None:
             out.append(("fewer", "Fewer", fewer))
@@ -1806,6 +1937,153 @@ class Calm:
         _, buttons = self.less_text(rec)
         head = f'The last one ({dt.datetime.fromtimestamp(float(rec["ts"])):%a %H:%M}): "{rec["text"][:80]}"\n'
         return head + self.why_text(rec), [[("Less of this", f"calm:{rec['id']}:less")]] if buttons else None
+
+    # --------------------------------------------------------------------- said in plain words (0.9.0)
+    def talk_on(self) -> bool:
+        return self.on() and bool(self.s("talk", True))
+
+    def kind_named(self, words: str) -> Reason | None:
+        """The kind of message these words name ("after-class questions", "research watch"), from what Calm knows
+        and has sent; None when nothing fits clearly."""
+        w = _norm(words)
+        if len(w) < 4:
+            return None
+        hits = []
+        for r in REASONS.values():
+            if r.exempt:
+                continue
+            names = {_norm(r.plural), _norm(r.what)}
+            if any(w == n or (" " in w and len(w) >= 8 and w in n) for n in names if n):
+                hits.append(r)
+        if len(hits) > 1:  # prefer one that has actually come
+            sent = [r for r in hits if self._latest(r.id)]
+            hits = sent or hits
+        return hits[0] if len(hits) == 1 else None
+
+    def less_of(self, kind: str = "", act: str = "") -> tuple[str, list | None]:
+        """Less of this, said: the last message's options as buttons, or for a named kind with an act ("stop",
+        "fewer", "later") that change made at once, through apply() so it has Undo."""
+        if kind:
+            r = self.kind_named(kind)
+            if r is None:
+                return f'I don\'t know which messages "{kind}" means. /calm lists what comes by itself.', None
+            rec = self._latest(r.id) or {"why": r.id, "setting": r.setting}
+        else:
+            rec = self.last()
+            if rec is None:
+                return "Nothing has come by itself yet.", None
+        opt = next((c for a, _, c in self.options(rec) if a == act), None) if act else None
+        if opt is None and rec.get("id"):
+            return self.less_text(rec)
+        if opt is None:  # a kind that hasn't come yet: no record to put buttons under
+            r = self.reason(rec.get("why"))
+            return f"Nothing to turn down for {r.plural if r else 'those'}: it's done already, or not possible.", None
+        ok, said, uid = self.apply(opt, rec.get("why") or "")
+        if not ok:
+            return said, None
+        return f"Done: {said}.", [[("Undo", f"calm:{uid}:undo")]]
+
+    def send_held(self) -> str:
+        """What waits for the evening bundle, now (only when you ask)."""
+        n = self.bundle()
+        return f"Sent the {n} that waited." if n else "Nothing is waiting."
+
+    def intent(self, text: str) -> tuple[str, str, list | None] | None:
+        """(name, reply, buttons) for a plain-English Calm request, or None when it isn't one (or notify.calm.talk is
+        off)."""
+        t = text.strip()
+        if not t or not self.talk_on():
+            return None
+        if TALK_WHY.search(t):
+            return ("calm_why", *self.why_last())
+        if TALK_LESS.search(t):
+            return ("calm_less", *self.less_of())
+        if TALK_HELD.search(t):
+            return "calm_held", self.send_held(), None
+        if TALK_COUNT.search(t):
+            return ("calm_count", *self.command(""))
+        for rx, act in ((TALK_STOP, "stop"), (TALK_FEWER, "fewer")):
+            m = rx.match(t)
+            if m and self.kind_named(m.group("kind")) is not None:
+                return (f"calm_{act}", *self.less_of(m.group("kind"), act))
+        return None
+
+    def call_tools(self) -> list:
+        """On a call or at the desk (Live): the same four things, said."""
+        from kurooto.modules.calls.tools import Tool, arg
+
+        if not self.talk_on():
+            return []
+        acts = {"stop": "stop", "fewer": "fewer", "later": "later", "another time": "later", "evening": "later"}
+        return [
+            Tool(
+                "why_that_message",
+                "Why the last message Kurooto sent by itself came: which feature, which setting, what it was about.",
+                lambda a: self.why_last()[0],
+                offline="brief",
+                writes=False,
+            ),
+            Tool(
+                "less_of_these",
+                'Turn down a kind of message Kurooto sends by itself, when they ask ("stop the after-class '
+                'questions", "fewer of these"). kind: their words for it, or empty for the last one. action: stop, '
+                "fewer or later (they wait for the evening). Each change comes with an Undo on their chat.",
+                lambda a: self._less_tool(str(a.get("kind") or ""), acts.get(str(a.get("action") or "").lower(), "")),
+                {
+                    "kind": arg("what kind of messages, in their words; empty: the last one"),
+                    "action": arg("stop, fewer or later"),
+                },  # fmt: skip
+                ("action",),
+                offline="queue",
+                writes=True,
+            ),
+            Tool(
+                "send_waiting_messages",
+                "Send now what waits for the evening bundle. Only when they ask for it.",
+                lambda a: self.send_held(),
+                offline="queue",
+                writes=True,
+            ),
+            Tool(
+                "messages_today",
+                "How many messages Kurooto sent by itself today, the daily limit and how many wait.",
+                lambda a: self.command("")[0],
+                offline="brief",
+                writes=False,
+            ),
+        ]
+
+    def _less_tool(self, kind: str, act: str) -> str:
+        text, buttons = self.less_of(kind, act)
+        if buttons and text.startswith("Done:"):
+            self._say(text, buttons)  # the Undo, on their chat
+            return text + " (Undo is on their chat.)"
+        return text
+
+
+# (0.9.0, notify.calm.talk) the plain-English ways to reach Why?, Less of this, the bundle and /calm
+TALK_WHY = re.compile(
+    r"^(why (did|do) (you|i|that|this|it) (send|sent|get|got|come|came|say|said)\b|why (that|this) (message|ping|one)"
+    r"\b|why did (that|this) (come|arrive))",
+    re.I,
+)
+TALK_LESS = re.compile(
+    r"^(less of (this|that|these|those)|fewer of (these|those|them)|(send|show) me less of (this|that))\W*$", re.I
+)
+TALK_STOP = re.compile(
+    r"^(stop|no more|turn off) (sending me |sending |the |those |these |all )*(?P<kind>.+?)[.!]?$", re.I
+)
+TALK_FEWER = re.compile(r"^(fewer|less) (of )?(the |those |these )?(?P<kind>.+?)[.!]?$", re.I)
+TALK_HELD = re.compile(
+    r"^(send|give|show) me (what'?s|what is|everything|all that'?s|the messages?) (waiting|held|that waited|you held)"
+    r"|^(send|release) (the )?(held|waiting) (messages|ones)",
+    re.I,
+)
+TALK_COUNT = re.compile(r"^how many (messages )?(have you sent|did you send|today|so far)\b", re.I)
+
+
+def _norm(s: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
 
 
 HELD = {

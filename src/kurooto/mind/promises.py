@@ -15,6 +15,7 @@ the laptop was off. Checking now."). Renegotiating writes `broken` first, then a
 (deleted with Brain's data).
 
     seen(app, text, why)    a message Kurooto sent: any promise in it is recorded
+    said(app, text, where)  (0.9.0, mind.promises.answers) its own words elsewhere: an answer, a call, the desk
     review(app)             every 5 minutes: kept ones close silently, broken ones are said and recorded
     slack(app)              the body budget's promise_slack variable, in [-1, 1] (1: nothing open)
     listing(app)            /promises
@@ -43,7 +44,9 @@ PART = "promises"  # its switch: mind.promises.on
 register_defaults(
     "mind",
     {
-        "promises": {"on": True},  # its own promises: noticed, kept or owned up to first
+        # its own promises: noticed, kept or owned up to first; answers (0.9.0): also in its answers to you, its side
+        # of a call and what it says at the desk (read here with the same rules, never sent anywhere)
+        "promises": {"on": True, "answers": True},
         "heartbeat": {"on": True},  # when this computer is down, what the next 12 hours don't have a guarantee for
     },
 )
@@ -143,6 +146,18 @@ def seen(app: App, text: str, why: str = "") -> int:
         st["rows"] = st["rows"][-200:]
         _save(app, st)
     return len(found)
+
+
+def said(app: App, text: str, where: str) -> int:
+    """(0.9.0, mind.promises.answers) Kurooto's own words outside the messages it starts: an answer to you ("answer"),
+    its side of a call ("call"), what it said at the desk ("desk"). The same local rules; the source is "said.<where>".
+    Never raises."""
+    try:
+        if not app.settings.get("mind.promises.answers") or not text:
+            return 0
+        return seen(app, str(text)[:4000], f"said.{where}")
+    except Exception:
+        return 0
 
 
 def _log(app: App, kind: str, row: dict, **extra) -> None:
