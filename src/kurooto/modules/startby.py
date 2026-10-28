@@ -844,9 +844,9 @@ class StartBy(Module):
                 t = now()
                 title = it.get("title") or "Deadline"
                 if now_h >= 0.5:
-                    plan.plan_block(t, t + dt.timedelta(hours=now_h), title)
+                    plan.plan_block(t, t + dt.timedelta(hours=now_h), title, i)
                     blocks.append([t.replace(second=0, microsecond=0).isoformat(), title])
-                plan.plan_block(at, at + dt.timedelta(hours=later), title)
+                plan.plan_block(at, at + dt.timedelta(hours=later), title, i)
                 blocks.append([at.replace(second=0, microsecond=0).isoformat(), title])
                 said += "; blocks are in your Agent plan calendar"
             except Exception as e:

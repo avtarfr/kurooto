@@ -512,17 +512,30 @@ your others.
 - `/blocks`: today's blocks.
 - `/blocks add 14:00-15:30 problem set 4` (also `2pm-3:30pm`, `14:00 to 15:30`): add one.
 - `/blocks clear`: remove today's blocks (only Kurooto's own).
+- `/blocks remove bayesian`, `/blocks remove after 22:00`, `/blocks remove all`: take some blocks out (by title or
+  subject, from a time on, or all of tonight's); `/blocks undo` puts them back.
 - `/blocks shift [19:00]`, `/blocks shift by 2 hours`: reschedule the day (below); `/blocks undo` puts it back.
+
+**Each block knows what it's for.** A block is tied to the deadline, quiz or exam its title names (from
+[Deadlines](reminders-and-deadlines.md)) and to that one's due date when it was planned. A block for something done,
+dropped or already over (revision for a quiz that was this morning) isn't planned.
 
 **Reschedule the day.** "Reschedule my day", "I just woke up, reschedule my day", "reschedule my day from 19:00",
 "push my day by 2 hours", `/blocks shift [19:00]`, `/blocks shift by 2 hours`, or on a call: today's blocks you
-haven't done move to start from now (or the time you give), in their order, each as long as it was, with the breaks
-between them kept (up to 45 minutes). Starting over takes the blocks you slept through too; pushing by some time moves
-only the ones not over yet. A block planned twice keeps its first; one that would end after 03:00 is left out and
-named. The new plan also goes in today's daily note. `/blocks undo` puts them back.
+haven't done move to start from now (or the time you give), each as long as it was, with the breaks between them kept
+(up to 45 minutes). Starting over takes the blocks you slept through too, and puts what's due soonest first (blocks
+tied to nothing keep their places); an order you give on a call ("homework first, then quiz prep") comes before that.
+Pushing by some time moves only the ones not over yet, in their order. Blocks for something done, over, or moved past
+"due soon" (`deadlines.plan_h`, 3 days) since they were planned are dropped and named ("Dropped, nothing left to do for
+them: ..."). A block planned twice keeps its first; one that would end after 03:00 is left out and named, and so is
+what's due within a day with no block yet. Tonight's blocks past midnight count too. The new plan also goes in today's
+daily note. `/blocks undo` puts them back.
 
-**On calls.** Agree to a time on a call ("let's do the problem set from 2 to 4") and the call puts the block in.
-Today's blocks are in the call's brief.
+**On calls.** Agree to a time on a call ("let's do the problem set from 2 to 4") and the call puts the block in. A
+block that would overlap one already planned goes in the first free time after it, and the call says the time it got;
+when there's none before 03:00 it isn't planned and the call says so. "Remove those blocks", "clear everything after
+10" takes blocks out (with Undo under the message it sends, or "put them back"). Today's blocks are in the call's
+brief.
 
 **Settings that matter** (Dashboard → Settings → agent_plan):
 
@@ -532,7 +545,8 @@ Today's blocks are in the call's brief.
 | `agent_plan.name` | `Agent plan` | the calendar's name |
 
 **Limits and edge cases.** A block must end after it starts, be at most 12 hours long, and fall between now and a month
-ahead. The same block twice is refused ("Already planned"). Hide or delete the calendar in Google Calendar any time;
+ahead. The same block twice is refused ("Already planned"); so is one for a quiz or exam that's over, or a deadline
+that's done. Hide or delete the calendar in Google Calendar any time;
 Kurooto makes a new one the next time it plans something. Moving the feature to another account (`/google use plan
 personal`) makes a new Agent plan calendar there. To see the blocks in Kurooto's own Calendar too, add the Agent plan
 calendar's private iCal link to Calendar.
