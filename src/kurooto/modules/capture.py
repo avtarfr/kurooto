@@ -139,6 +139,7 @@ class Capture(Module):
             why="capture.after_class",
             about=p["name"],
             item=p["subject"],
+            ws_item=f"class:{p['subject']}",
         )
         self._set(p["day"], p["subject"], status="asked", qid=qid)
         self.app.events.emit("capture_asked", subject=p["subject"])

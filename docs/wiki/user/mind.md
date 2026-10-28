@@ -301,7 +301,9 @@ Everything Kurooto says by itself now goes through one door: check-ins, Calm's s
 lighter-day line), research watch, Dreaming's results, a feeling said aloud, and an add-on's ideas. After Brain's gate,
 each one **bids**: how much it matters (by its kind, scaled by how welcome that kind has been lately), how soon (its due
 time, and how long it has already waited) and how unexpected it is. The top few (`mind.workspace.capacity`, 3) win; a
-message about something already on its mind counts double. Losers wait and bid again next minute; one that kept losing
+message about something already on its mind counts double (0.9.0: deadline, Start-by, quiz and after-class
+messages say which deadline, quiz or class they're about, so they count double too; `mind.workspace.item_fatigue`, off,
+also lets them tire like its own promises: told three times today, the next waits). Losers wait and bid again next minute; one that kept losing
 for 6 hours (`mind.workspace.fold_h`) goes into the evening bundle, with its own line saying why. Nothing is dropped
 quietly: `/mind gate` lists what waits, what went and what was let go (a question you'd already answered, a time that
 passed).

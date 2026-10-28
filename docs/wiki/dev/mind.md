@@ -694,7 +694,11 @@ skipped, a vetoed bidder isn't called, and a bidder that raises never stops the 
 `cycle_s` is the least gap between two cycles and `poke` forces one. State (words included) is `<state>/mind-workspace.json`; the log gets ids, kinds and
 numbers (the kinds include `read`: a name, not a reading). **Deviation:** the spec says to replace the assembler's item selection; the assembler is
 left alone and "On my mind" is added to `headless_context` (additive, no regression risk). **Deviation:** only messages that declare a `kind:id`
-item are held to the winner rule, as no existing message does yet; health, curiosity, Dreaming and research bidders arrive with their stages through
+item are held to the winner rule. (0.9.0) Deadlines, Start-by, quizzes and after-class questions name their item in
+`Message.ws_item` (`deadline:<id>`, `quiz:<deadline id>`, `class:<subject>`), apart from `item` (the bare id Less of this
+reads): it counts double at the door (`ON_MIND`; a quiz matches its exam's `deadline:` id) and Calm's recheck reads it.
+The stage-10 block and fatigue apply to it only with `mind.workspace.item_fatigue` (off), since they would hold
+reminders people get today; health, curiosity, Dreaming and research bidders arrive with their stages through
 `register_bidder`.
 
 ### The attention schema

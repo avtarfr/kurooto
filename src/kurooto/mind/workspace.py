@@ -72,6 +72,10 @@ register_defaults(
             "max_hold_min": 90,  # ...but never longer than this many minutes (unless Kurooto is asleep)
             "break_after_min": 25,  # a window switch is a break after this many minutes in one window
             "fold_h": 6,  # a message that kept losing this many hours goes into the next evening bundle instead
+            # 0.9.0: a deadline, class or quiz message's workspace id (Message.ws_item) also tires at the door and
+            # needs its item to have won (the gate's stage 10) like a promise does; off: it only counts double while
+            # the item is on its mind
+            "item_fatigue": False,
         },
         "attention": {"on": True},  # a model of its own attention; "what are you thinking about?" is answered from it
         # 0.8.14 (mind/records.py; registered here, as records.py is also the scorekeeper's and stays lean):
@@ -365,7 +369,20 @@ def won(app: App, item_id: str, cycles: int = 1) -> bool:
     return any(item_id in h["items"] for h in st["history"][-cycles:]) if on(app) else True
 
 
-ITEM_PREFIXES = ("deadline", "promise", "goal", "read", "forecast", "event", "lab")  # an item id a message may declare
+# an item id a message may declare ("class" and "quiz", 0.9.0: Message.ws_item)
+ITEM_PREFIXES = ("deadline", "promise", "goal", "read", "forecast", "event", "lab", "class", "quiz")
+
+
+def item_fatigue(app: App) -> bool:
+    return bool(app.settings.get("mind.workspace.item_fatigue"))
+
+
+def _ws_ids(item: str) -> set[str]:
+    """The stage ids a workspace item id stands for: a quiz is about its exam's deadline too."""
+    if not item:
+        return set()
+    head, _, rest = item.partition(":")
+    return {item, f"deadline:{rest}"} if head == "quiz" and rest else {item}
 
 
 def allows(app: App, msg) -> bool:
@@ -373,6 +390,8 @@ def allows(app: App, msg) -> bool:
     that item to have won one of the last two cycles. A message with no such item is not held to it. With the door on
     (0.8.14) nothing is blocked here: the message bids at the door instead, and its item counts double there."""
     item = str(getattr(msg, "item", "") or "")
+    if ":" not in item and item_fatigue(app):  # (0.9.0) a deadline, class or quiz message's workspace id
+        item = str(getattr(msg, "ws_item", "") or "")
     if not on(app) or item.split(":", 1)[0] not in ITEM_PREFIXES or ":" not in item or arbiter_on(app):
         return True
     cycle(app)
@@ -447,7 +466,7 @@ DUE_SPAN_H = 72.0  # a due time this far off adds nothing to urgency; closer, mo
 AGE_WEIGHT = 0.5  # waiting raises urgency by up to this much, reaching it at max_hold_min: losers aren't starved
 ON_MIND = 2.0  # a message about something that's on its mind (a stage winner) counts this many times over
 KEPT = ("text", "title", "buttons", "kind", "urgent", "reply_to", "map_kind", "map_ref", "file", "tail", "why",
-        "setting", "about", "item", "due", "purpose", "bid")  # fmt: skip
+        "setting", "about", "item", "due", "purpose", "bid", "ws_item")  # fmt: skip
 ID_RE = re.compile(r"^[A-Za-z0-9_.:@+-]{1,64}$")
 
 # (stake, urgency) of a message's default bid, by the kind its Calm reason makes it (bid_kind)
@@ -601,8 +620,10 @@ def _score(app: App, e: dict, now: float, stage: set, ws: dict, hold_s: float) -
     waited = max(0.0, now - float(e.get("at") or now))
     aged = clip01(urg + AGE_WEIGHT * min(1.0, waited / max(hold_s, 60.0)))
     item = str(e.get("item") or "")
-    sal = salience(Bid(e["key"], "message", stake=stake * p, urgency=aged, surprise=sur), fatigue(ws, item, now))
-    if item and item in stage:
+    wsi = str(e.get("ws_item") or "")  # (0.9.0) Message.ws_item: tires here only with mind.workspace.item_fatigue
+    tired = item if ":" in item or not (wsi and item_fatigue(app)) else wsi
+    sal = salience(Bid(e["key"], "message", stake=stake * p, urgency=aged, surprise=sur), fatigue(ws, tired, now))
+    if (item and item in stage) or (_ws_ids(wsi) & stage):
         sal = round(sal * ON_MIND, 6)
     return {"key": e["key"], "src": "message", "salience": sal, "urgent": urg >= URGENT_AT, "at": e.get("at", now),
             "stake": round(stake * p, 4), "urgency": round(aged, 4), "welcome": round(p, 4)}  # fmt: skip
@@ -694,6 +715,7 @@ def door(app: App, msg) -> tuple[bool, str]:
             key = _key(msg)
             old = next((e for e in d["pending"] if e["key"] == key), None)
             e = {"key": key, "why": msg.why, "bkind": bid_kind(msg.why or "", msg.kind), "item": msg.item or "",
+                 "ws_item": getattr(msg, "ws_item", None) or "",
                  "at": old["at"] if old else round(now, 1), "lost": old["lost"] if old else 0, "msg": _dump(msg),
                  "bid": msg.bid if isinstance(getattr(msg, "bid", None), dict) else None}  # fmt: skip
             d["pending"] = [x for x in d["pending"] if x["key"] != key] + [e]

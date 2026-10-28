@@ -348,6 +348,12 @@ tip = "Hours a message may keep losing at the door before it goes into the eveni
 when = "Lower it to clear the door sooner; nothing is ever dropped, only moved to the bundle."
 needs = "`mind.workspace.arbiter` and Calm (`notify.calm.on`); with Calm off it simply goes."
 
+[s."mind.workspace.item_fatigue"]
+tip = "Deadline, class and quiz reminders also tire at the door, and need their item to be on Brain's mind, like its promises."
+what = "These messages name their item for Brain's workspace (a deadline, a class or a quiz). By default that only makes one count double at the door while the item is on Brain's mind. On, it also counts toward the item's fatigue (told three times today, it drops out) and, with the door off, the gate holds one whose item didn't win."
+when = "Turn it on if reminders about the same thing come too often; more of them then wait for the evening bundle."
+needs = "`mind.workspace.on`."
+
 [s."mind.expect.on"]
 tip = "Each message Kurooto starts says what it expects (a reply, or done within 2 hours), and what came of it is recorded."
 what = "A question or check-in expects a reply within 3 hours; a nudge expects to be acted on within 2. Your reply, a tap on one of its buttons or the time running out closes it; the scorekeeper writes the outcome. Ids and numbers only, never the words."

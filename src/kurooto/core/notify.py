@@ -72,6 +72,11 @@ class Message:
     setting: str | None = None  # the setting it comes from, when more precise than the reason's own
     about: str | None = None  # the deadline, class or item that triggered it, in words (Why? says it)
     item: str | None = None  # that item's id (a subject, a deadline), for Less of this
+    # (0.9.0) the same item as Brain's workspace names it ("deadline:<id>", "class:<subject>", "quiz:<deadline id>"),
+    # kept apart from `item` so Less of this keeps reading the bare id: it counts double at the door while the item is
+    # on Brain's mind, and Calm's recheck (core/calm.py: still) reads it; the gate's stage-10 rule and fatigue use it
+    # only with mind.workspace.item_fatigue on
+    ws_item: str | None = None
     due: str | None = None  # a deadline's due time (ISO): less than 12 hours away, it always comes
     rid: str | None = None  # its record in Calm's ledger (set by Calm)
     extra: list | None = None  # Telegram-only rows (Why? / Less of this)

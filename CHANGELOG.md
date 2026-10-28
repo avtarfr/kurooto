@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0 (unreleased)
+
+- **Deadline, quiz and after-class messages count double at Brain's door while they're on its mind** (L24). They now
+  say which deadline, quiz or class they're about. Tiring and holding them like Brain's own promises is a separate
+  switch, `mind.workspace.item_fatigue`, off.
+
 ## 0.8.18 (2026-10-29)
 
 Kurooto keeps its eyes and ears shut while it sleeps, stays up while you're at the desk, and anyone's look opens a conversation.

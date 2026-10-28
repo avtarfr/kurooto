@@ -517,6 +517,7 @@ class Quiz(Module):
                 kind="info",
                 why="quiz.offer",
                 about=e["title"],
+                ws_item=f"quiz:{e['id']}",
             )
             return
         row = [("Quiz me now", f"qo:{e['id']}:now")]
@@ -529,6 +530,7 @@ class Quiz(Module):
             buttons=[row],
             why="quiz.offer",
             about=e["title"],
+            ws_item=f"quiz:{e['id']}",
         )
         self.app.events.emit("quiz_offered", day=day)
 
@@ -557,6 +559,7 @@ class Quiz(Module):
             buttons=[row],
             why="quiz.exam_daily",
             about=e["title"],
+            ws_item=f"quiz:{e['id']}",
         )
         self.app.events.emit("quiz_checkin", via="message", exam=True)
 

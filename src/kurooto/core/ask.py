@@ -88,6 +88,7 @@ class Ask:
         why: str | None = None,
         about: str | None = None,
         item: str | None = None,
+        ws_item: str | None = None,
     ) -> str:
         """Ask now (Telegram, desktop, phone app; the next call) and return the question's id.
 
@@ -96,6 +97,7 @@ class Ask:
         `expires` is a datetime, a timedelta, or text like "2d", "6h", "tomorrow 9am"; None means the default (two
         days). `title` replaces the "Question" label. `why`, `about`, `item`: the envelope (core/calm.py): why it's
         asked (a reason id, or "asked" when it follows something you just did), what it's about, that item's id.
+        `ws_item`: the same item as Brain's workspace names it (core/notify.py: Message.ws_item).
         """
         kind = kind if kind in KINDS else "question"
         text = str(text or "").strip()
@@ -129,6 +131,7 @@ class Ask:
             "why": why,
             "about": about,
             "item": item,
+            "ws_item": ws_item,
         }
         self._save(q)
         if deliver:
@@ -173,6 +176,7 @@ class Ask:
             why=why or q.get("why"),
             about=q.get("about"),
             item=q.get("item"),
+            ws_item=q.get("ws_item"),
         )
 
     def resend(self, qid: str) -> bool:
