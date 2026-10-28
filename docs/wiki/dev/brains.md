@@ -355,10 +355,21 @@ folder, answer style, "nobody can answer follow-up questions", the tool rules (a
 scripts to look inside Kurooto), a pointer to `<state>/reserve/`, the
 profile brief (`core/aboutyou.py`), "how to help me" (`modules/remember.py:help_brief`), the persona card and the
 boundaries rule (`core/persona.py:card_text`, `rule`), the notes layout (`core/layout.py:describe`) and a line pointing
-at `kurooto_self` / `reserve/self.md` for questions about Kurooto itself; a request about Kurooto
+at `kurooto_self` / `reserve/self.md` for questions about Kurooto itself; (0.9.0) the not-interested topics
+(`not_interested_part`, `notinterested.tell_ai`, after how-to-help-me); a request about Kurooto
 (`core/selfdoc.py:wanted`) also gets `self.md` itself in its context (`for_request`, at most `CONTEXT_MAX`). Chat's own
 requests also end with one register line (`core/persona.py:register_line`, marked `[Reply style]`, left out of chat
 history by `strip_register`).
+
+**The shared parts (0.9.0).** `profile_part`, `help_part(skip=)`, `not_interested_part` and `held_part` are the pieces
+`headless_context` joins (its text is byte-identical to 0.8.18's with `notinterested.tell_ai` off, a test compares
+them). `call_context(app)` (`calls.context_brief`) joins the same pieces for a phone call (`Calls.pending(context=True)`,
+the `pending_items` tool, key `about_them`) and for a desk Live session (`voice/live.py:Live.setup` appends it to the
+system instruction, and its `run_tool` drops `about_them` from `pending_items` so the desk doesn't hear it twice). It
+leaves out the help note's "Learned on calls" section (`remember.LEARNED_CALLS`: a call hears its lessons from
+`config_template`) and the read's tone hint (`feelings.prompt(read_hint=False)`: R7, the read never reaches a call).
+`Calls.pending()` without `context` (the look back, turn-by-turn calls) is unchanged: those already get
+`headless_context`.
 
 ## Adding a brain
 

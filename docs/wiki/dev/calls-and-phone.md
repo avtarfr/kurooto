@@ -266,6 +266,11 @@ transcripts, events and answers until the computer takes them (`Calls.take_queue
   way. Before, "I skipped all classes" made Live call `skip_class` seven times in two seconds, each its own line.
 - What needs attention: `Calls.pending` merges every enabled module's `call_brief()` with `app.ask.call_brief()` and
   `core/assembler.py:call_brief()` (`open_threads`, `earlier`: the last day's gists, within `memory.budget_tokens`).
+  (0.9.0, `calls.context_brief`) The `pending_items` tool calls `pending(context=True)`, which adds `about_them`:
+  `providers/context.py:call_context`, the parts of `headless_context` a call didn't hear (profile brief, how-to-help-me
+  without "Learned on calls", not-interested topics, `feelings.prompt(read_hint=False)`, `held_part`). The look back and
+  `fallback.turn_prompt` call `pending()` without it (they get `headless_context`). Desk Live gets the same text in its
+  setup ([brains.md](brains.md#headless-context)).
   `save_transcript` also hands the user's lines to `core/threads.py:from_call` ("I'll send the draft tonight" opens a
   thread).
 - Module hooks the calls module looks for (`hasattr` in `modules/calls/__init__.py`): `call_tools`, `call_brief`,

@@ -28,9 +28,9 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Your AI](#your-ai): 34 settings
 - [Messages and where they reach you](#messages-and-where-they-reach-you): 31 settings
 - [When it may interrupt you](#when-it-may-interrupt-you): 13 settings
-- [Phone calls and the call line](#phone-calls-and-the-call-line): 35 settings
+- [Phone calls and the call line](#phone-calls-and-the-call-line): 36 settings
 - [Morning alarm](#morning-alarm): 11 settings
-- [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 34 settings
+- [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 35 settings
 - [Check-ins, journal and the week](#check-ins-journal-and-the-week): 18 settings
 - [Classes and timetable](#classes-and-timetable): 15 settings
 - [Calendar](#calendar): 11 settings
@@ -1274,6 +1274,19 @@ Show the being in the phone app's Views: the dashboard's own body of Kurooto, dr
   Views is open.
 - **Depends on:** Phone views (`calls.views`).
 
+### `calls.context_brief`
+
+Calls and desk Live talks hear what every AI request is told: your profile's brief, how to help you, topics you skip.
+
+Only text your AI already gets with every request. Never your read, mood, tone or senses; the call's lessons go once, as
+before.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you'd rather calls knew only what's due and the persona. Takes effect on the
+  next call or desk talk.
+- **Costs and what leaves this computer:** That text goes to Google's Gemini Live with each call or desk talk, and to
+  your call line in the offline brief.
+
 ## Morning alarm
 
 Kurooto wakes you with a call that rings on the alarm stream (so it rings on silent), placed by your call line so it
@@ -1664,6 +1677,18 @@ An event you tap Add on (from a photo, mail or a shared calendar) is reminded th
 - **Values:** Minutes. **Default:** `60`.
 - **When to change it:** Change it to how much warning you like for such events.
 - **Depends on:** Reminders.
+
+### `notinterested.tell_ai`
+
+Every AI request, call and desk talk is told your not-interested topics, so it doesn't bring them up.
+
+Only the topics as written, never the reasons after the dash. Asked about one, it helps as usual.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you'd rather the AI didn't know the list (the deadline, mail and Classroom
+  filters still use it).
+- **Costs and what leaves this computer:** The topics go to the AI you picked and, on calls, to Gemini Live.
+- **Depends on:** A not-interested list (`/ignore`).
 
 ## Check-ins, journal and the week
 

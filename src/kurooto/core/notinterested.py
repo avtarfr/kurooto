@@ -9,6 +9,10 @@ Other features use it like this (it works whether or not Deadlines is on):
     is_ignored(app, "Drama club auditions on Friday")  # -> "drama club" (the matching topic) or None
 
 Matching is case-insensitive, on whole words or phrases.
+
+(0.9.0) notinterested.tell_ai (on): every AI request, call and desk talk is told the topics (providers/context.py), so
+it doesn't bring them up on its own. notinterested.filter.<reader> (each off): that reader puts a matching item last
+and tags it "you said not interested in X" (tag()), never hiding it.
 """
 
 from __future__ import annotations
@@ -18,19 +22,33 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from kurooto.core import layout
+from kurooto.core.config import register_defaults
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from kurooto.app import App
 
+register_defaults(
+    "notinterested",
+    {
+        "tell_ai": True,  # every AI request, call and desk talk is told your not-interested topics (just the topics)
+    },
+)
+
 NOTE = "about-me/not-interested.md"  # in the default notes layout; note_file() is where it is
+TELL_MAX = 30  # the most topics an AI is told (the first ones on the list)
 LINE = re.compile(r"^\s*[-*]\s+(?!\[[ xX]\])(.+?)\s*$")
 WHY = re.compile(r"\s+(?:—|–|--|-)\s+.*$")
 
 
 def note_file(app: App) -> Path:
     return layout.path(app, "not_interested")
+
+
+def rel(app: App) -> str:
+    """The note's place in your notes, for messages ("about-me/not-interested.md")."""
+    return layout.rel(app, "not_interested")
 
 
 def _topic(line: str) -> str | None:

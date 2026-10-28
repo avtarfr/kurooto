@@ -188,6 +188,10 @@ meanwhile.
 - **It only says what it did.** The call is told never to say it planned, moved, removed, set or sent something
   unless a tool's answer on that call says so; when nothing can do what you asked, it says that instead.
 - **Your persona:** `calls.persona` adds words on how to talk, e.g. "be brief and a bit cheeky".
+- **It knows you as your AI does** (0.9.0, `calls.context_brief`, on). A call, and a Live talk at the desk, hears what
+  every AI request is told: the "In brief" part of your profile, your how-to-help-me note, the topics on your
+  not-interested list and the Brain's own state. Never your read, mood, tone or senses. Off: calls hear only what's
+  due, the story and the persona, as before.
 
 The call's transcript is kept on your computer (Kurooto's state folder → `calls/transcripts/`, readable only by your
 user account). A check-in's transcript becomes your journal and study logs; the wake-up call's becomes today's plan.

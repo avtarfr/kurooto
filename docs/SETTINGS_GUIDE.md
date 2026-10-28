@@ -202,6 +202,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `calls.chat_files_inline` | `true` | Files in the app's chat show inline and open in the app. ([guide](wiki/user/settings-guide.md#callschatfilesinline)) |
 | `calls.chat_sessions` | `true` | Separate chats in the phone app, each its own conversation whose context carries over. ([guide](wiki/user/settings-guide.md#callschatsessions)) |
 | `calls.chat_titles` | `"first words"` | How a new chat gets its title: its first words, or a short title from your AI. ([guide](wiki/user/settings-guide.md#callschattitles)) |
+| `calls.context_brief` | `true` | Calls and desk Live talks hear what every AI request is told: your profile's brief, how to help you, topics you skip. ([guide](wiki/user/settings-guide.md#callscontextbrief)) |
 | `calls.later_min` | `30` | Minutes until it calls back after you tap Later on a ringing call. ([guide](wiki/user/settings-guide.md#callslatermin)) |
 | `calls.lessons_max` | `12` | How many lessons from past calls every call is told; a repeat replaces the older one. ([guide](wiki/user/settings-guide.md#callslessonsmax)) |
 | `calls.live_model` | `"gemini-3.8-live"` | The Gemini Live model calls try first. ([guide](wiki/user/settings-guide.md#callslivemodel)) |
@@ -868,6 +869,12 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `notify.presence.line` | `true` | While this computer can't speak (asleep, crashed, offline), your call line tells you so. ([guide](wiki/user/settings-guide.md#notifypresenceline)) |
 | `notify.presence.line_telegram` | `null` | Whether your call line may keep your bot's token, so it can tell you on Telegram while the computer is away. ([guide](wiki/user/settings-guide.md#notifypresencelinetelegram)) |
 | `notify.presence.on` | `true` | Tell you when Kurooto goes offline, and again when it's back with what it caught up on. ([guide](wiki/user/settings-guide.md#notifypresenceon)) |
+
+### `notinterested`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `notinterested.tell_ai` | `true` | Every AI request, call and desk talk is told your not-interested topics, so it doesn't bring them up. ([guide](wiki/user/settings-guide.md#notinterestedtellai)) |
 
 ### `overlay`
 

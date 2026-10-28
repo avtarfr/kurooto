@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0 (unreleased)
+
+- **Calls know you as your AI does** (`calls.context_brief`, on). A phone call and a Live talk at the desk now hear
+  what every AI request is told: your profile's brief, your how-to-help-me note, your not-interested topics and the
+  Brain's own state. Never your read, mood, tone or senses.
+- **Your AI knows your not-interested list** (`notinterested.tell_ai`, on). Every request, call and desk talk is told
+  the topics (not your reasons), so it doesn't bring them up on its own.
+
 ## 0.8.18 (2026-10-29)
 
 Kurooto keeps its eyes and ears shut while it sleeps, stays up while you're at the desk, and anyone's look opens a conversation.

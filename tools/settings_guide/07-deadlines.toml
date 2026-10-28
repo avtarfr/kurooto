@@ -180,3 +180,10 @@ tip = "An event you tap Add on (from a photo, mail or a shared calendar) is remi
 values = "Minutes."
 when = "Change it to how much warning you like for such events."
 needs = "Reminders."
+
+[s."notinterested.tell_ai"]
+tip = "Every AI request, call and desk talk is told your not-interested topics, so it doesn't bring them up."
+what = "Only the topics as written, never the reasons after the dash. Asked about one, it helps as usual."
+when = "Turn it off if you'd rather the AI didn't know the list (the deadline, mail and Classroom filters still use it)."
+cost = "The topics go to the AI you picked and, on calls, to Gemini Live."
+needs = "A not-interested list (`/ignore`)."

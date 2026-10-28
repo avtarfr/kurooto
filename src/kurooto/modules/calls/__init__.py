@@ -85,6 +85,9 @@ register_defaults(
         "chat_files_inline": True,  # files in the phone app's chat both ways, shown in place (photos, documents, audio)
         "chat_edit": True,  # edit (15 minutes), delete and pin your messages in the phone app's chat
         "chat_titles": "first words",  # a new chat's name: "first words" of its first message, or "ai" (a short title)
+        # (0.9.0) what every AI request is told goes to calls and desk Live talks too: your profile's brief, how to help
+        # you, your not-interested topics, Brain's state (never the read, mood, tone or senses; providers/context.py)
+        "context_brief": True,
     },
 )
 
@@ -489,7 +492,7 @@ class Calls(Module):
                 "pending_items",
                 "What needs their attention now: deadlines soon, today's classes and check-ins, scheduled calls, "
                 "open questions. Call it at the start of every call.",
-                lambda a: self.pending(),
+                lambda a: self.pending(context=True),
                 offline="brief",
                 hint="At the start of every call, call pending_items and bring up what matters, briefly.",
             ),
@@ -605,7 +608,10 @@ class Calls(Module):
 
         return zones.canonical(self.app.settings.get("you.timezone")) or "this computer's time zone"
 
-    def pending(self) -> dict:
+    def pending(self, context: bool = False) -> dict:
+        """What needs attention now (pending_items). context=True (the call's own tool): also who they are and how to
+        help them, as every AI request is told (calls.context_brief; the look back and turn-by-turn calls get that from
+        headless_context already)."""
         out: dict = {"now": f"{now():%A %d %B, %H:%M}, their local time ({self._zone()})"}
         for m in self.app.enabled():
             if hasattr(m, "call_brief"):
@@ -644,7 +650,14 @@ class Calls(Module):
         upcoming = [f"{dt.datetime.fromtimestamp(c['at']):%H:%M} {c['reason']}" for c in self.schedule_list()[:5]]
         if upcoming:
             out["calls_planned"] = upcoming
-        return out if len(out) > 1 else {**out, "note": "nothing needs attention right now"}
+        out = out if len(out) > 1 else {**out, "note": "nothing needs attention right now"}
+        if context:  # (0.9.0) who they are and how to help them, after what needs attention (providers/context.py)
+            from kurooto.providers.context import call_context
+
+            about = call_context(self.app)
+            if about:
+                out["about_them"] = about
+        return out
 
     def _search(self, a: dict):
         q = str(a.get("query", ""))

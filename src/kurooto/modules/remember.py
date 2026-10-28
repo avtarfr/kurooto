@@ -49,6 +49,7 @@ HELP_NOTE = "about-me/how-to-help-me.md"  # in the default notes layout; help_fi
 TOLD = "You told me"
 PICKED = "Picked up from your chats and calls"  # what Learns from its own work keeps by itself (modules/learning.py)
 LEARNED = "Learned in the nightly look back"  # what you approved from the nightly look back (modules/retro.py)
+LEARNED_CALLS = "Learned on calls"  # (0.9.0, calls.lessons_everywhere) each call lesson, copied (calls/review.py)
 MANAGED = (TOLD, PICKED, LEARNED)  # the sections Kurooto writes in; only their dated lines are ever rechecked
 RECHECK_WHEN = "daily 18:30"
 RECHECK_WEEK = 2  # at most this many "Still true?" in 7 days...
@@ -192,14 +193,17 @@ def keep(app: App, fact: str, via: str = "telegram", section: str = TOLD) -> tup
     return "kept", line
 
 
-def help_brief(app: App, limit: int = 1500) -> str:
-    """The note without its title and the standard intro, for the AI's context; cut at `limit` characters."""
+def help_brief(app: App, limit: int = 1500, skip: tuple[str, ...] = ()) -> str:
+    """The note without its title and the standard intro, for the AI's context; cut at `limit` characters. `skip`:
+    "## section" names left out with their lines (a call's brief skips LEARNED_CALLS: it hears its lessons already)."""
     try:
         text = help_file(app).read_text(encoding="utf-8", errors="replace")
     except OSError:
         return ""
     text = re.sub(r"\A---\n.*?\n---\n", "", text, flags=re.S)
     text = text.replace(INTRO.format(name=app.name), "")
+    if skip:
+        text = _without_sections(text, skip)
     lines = [ln.rstrip() for ln in text.splitlines() if not re.match(r"^#\s", ln)]
     body = re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
     if not re.search(r"^\s*[-*]\s+\S|^[^#\s]", body, re.M):  # only headings left: nothing to tell
@@ -207,6 +211,17 @@ def help_brief(app: App, limit: int = 1500) -> str:
     if len(body) > limit:
         body = body[:limit].rsplit("\n", 1)[0] + f"\n(…the rest is in {help_rel(app)})"
     return body
+
+
+def _without_sections(text: str, names: tuple[str, ...]) -> str:
+    """The text with each "## name" section (its heading and lines, up to the next heading) taken out."""
+    out, cut = [], False
+    for ln in text.splitlines():
+        if re.match(r"^#{1,2}\s", ln):
+            cut = ln.startswith("## ") and ln[3:].strip() in names
+        if not cut:
+            out.append(ln)
+    return "\n".join(out)
 
 
 # ------------------------------------------------------------------------------------------- rechecking

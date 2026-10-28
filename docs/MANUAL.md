@@ -723,7 +723,9 @@ Topics you don't care about (a club, a kind of event, a course you dropped): `/i
 care about the drama club". `/ignored` lists them, `/unignore drama club` takes one off. The list is a note,
 `about-me/not-interested.md`, one per line (`- drama club`, or `- drama club — not this term`); edit it freely.
 Matching deadlines are left out of the list and the chase, and the mail and Classroom digests only count matching
-items instead of making tasks from them. Matching is on whole words, ignoring case.
+items instead of making tasks from them. Matching is on whole words, ignoring case. Every AI request, call and desk
+talk is told the topics (not your reasons) so it doesn't bring them up (0.9.0). *Undo:* `notinterested.tell_ai` =
+`false`.
 
 ### Exam mode
 On by itself two weeks before a quiz or exam (from the deadline list), for that subject; off after it. You're told
@@ -1921,6 +1923,10 @@ placed by itself when that ends. "call me now" (or "ring me about the essay") ca
 the earpiece / earphones. The mic gate slider makes it need a louder voice in a noisy room. Open questions and
 approvals come up at the start of the call, and you can answer them there; an approval that comes in during a call is
 asked right away.
+
+**Calls know you as your AI does (0.9.0).** A call, and a Live talk at the desk, hears what every AI request is told:
+your profile's brief, your how-to-help-me note, your not-interested topics and the Brain's own state (never your read,
+mood, tone or senses). *Undo:* `calls.context_brief` = `false`.
 
 **Questions on your phone:** with Phone calls on, your paired phones also get Kurooto's questions and approvals (from
 any feature: a check-in, after-class notes, a quiz, a suggestion to approve), as well as Telegram. Answer wherever is

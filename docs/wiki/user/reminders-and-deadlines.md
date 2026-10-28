@@ -351,9 +351,14 @@ at most 6 words; "that" or "it" alone isn't taken.
 topic per line: `- drama club`, or `- drama club — not this term` (the part after the dash is your reason and isn't
 matched). Edit it freely. Matching is on whole words and phrases, ignoring case.
 
-**What leaves your computer.** Nothing.
+**Your AI knows the list** (0.9.0, `notinterested.tell_ai`, on). Every AI request, call and Live talk at the desk is
+told the topics (only the topics, never your reasons), so it doesn't bring them up on its own; ask about one and it
+helps as usual. Off: the AI isn't told.
 
-**Turn it off.** Empty the note, or `/unignore` each topic.
+**What leaves your computer.** The topics, to the AI you picked and, on calls, to Gemini Live (with
+`notinterested.tell_ai` on). Nothing else.
+
+**Turn it off.** Empty the note, or `/unignore` each topic; `notinterested.tell_ai` off keeps the list from the AI.
 
 ---
 

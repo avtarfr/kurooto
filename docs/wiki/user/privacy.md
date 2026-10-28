@@ -111,7 +111,7 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 
 | Feature | What leaves | Where to |
 |---|---|---|
-| Phone calls (live voice) | call audio and what's said; the call's setup (your name, the assistant's name, which tools exist, the lessons from earlier calls) | Google (Gemini Live, your key) |
+| Phone calls (live voice) | call audio and what's said; the call's setup (your name, the assistant's name, which tools exist, the lessons from earlier calls); with `calls.context_brief` (on, 0.9.0) also what every AI request is told: your profile's brief, your how-to-help-me note, your not-interested topics and the Brain's own state (never your read, mood, tone or senses). A Live talk at the desk hears the same | Google (Gemini Live, your key) |
 | Phone calls: transcripts while the computer is off | the call's transcript, held by your call line until the computer is back | your call line |
 | Phone calls: while the computer is off | a short brief (what's due, today's classes and check-ins, open questions, quiz questions, the alarm), the steps for check-in, wake-up and Sunday calls with what they need, and your notes' titles, headings and first lines | your own Cloudflare account (your call line) |
 | Phone calls: turn by turn | your speech, to your phone's speech recognizer (on Android 13+ with your language downloaded it stays on the phone; otherwise usually Google's, or Apple's on iPhone); the text of each turn | your phone's speech service; Google (Gemini, your key) or the model on your computer (`calls.turn_brain` = `local`) |

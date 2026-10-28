@@ -236,10 +236,19 @@ class Live:
             }
             for t in cfg.get("tools") or []
         ]
+        si = desk(str(cfg.get("systemInstruction") or ""))
+        try:  # (0.9.0, calls.context_brief) who they are and how to help them, as every AI request is told
+            from kurooto.providers.context import call_context
+
+            about = call_context(self.app)
+        except Exception:
+            about = ""
+        if about:
+            si += "\n" + about
         return {
             "model": f"models/{model}",
             "generationConfig": gen,
-            "systemInstruction": {"parts": [{"text": desk(str(cfg.get("systemInstruction") or ""))}]},
+            "systemInstruction": {"parts": [{"text": si}]},
             "tools": tools,
             "inputAudioTranscription": {},
             "outputAudioTranscription": {},
@@ -490,6 +499,8 @@ class Live:
             out = tap.ask_first(self.app, tool, action, args, via="voice") if action else calls.run_tool(name, args)
         except Exception as e:
             out = f"That failed: {type(e).__name__}"
+        if isinstance(out, dict) and name == "pending_items":  # (0.9.0) the desk's setup already says who they are
+            out = {k: v for k, v in out.items() if k != "about_them"}
         try:
             json.dumps(out)
         except (TypeError, ValueError):

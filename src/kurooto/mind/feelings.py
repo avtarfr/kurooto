@@ -247,9 +247,10 @@ def hint(app: App) -> str:
     return ""
 
 
-def prompt(app: App) -> str:
+def prompt(app: App, read_hint: bool = True) -> str:
     """What goes into every AI request's system text when Brain's feelings are on: the honesty rule, the current state
-    about its item, and (rarely) the tone hint. "" with Brain or the feelings off."""
+    about its item, and (rarely) the tone hint. "" with Brain or the feelings off. read_hint=False leaves the tone hint
+    out: it comes from the read, which a call's brief never carries (providers/context.py call_context)."""
     if not mind.part_on(app, "feelings"):
         return ""
     lines = [RULE]
@@ -266,7 +267,7 @@ def prompt(app: App) -> str:
     gentle = [c["item"] for c in (st.get("concerns") or []) if c.get("concern", 0) >= GENTLE_AT][:4]
     if gentle and empathy_on(app):
         lines.append("Be gentle when you mention these; they are at risk: " + "; ".join(gentle) + ".")
-    h = hint(app)
+    h = hint(app) if read_hint else ""
     if h:
         lines.append(h)
     return "\n".join(lines)

@@ -4,6 +4,10 @@ mind.context (Brain, 0.8.14, `mind.context.on`): with Brain on, every request al
 answer it, read from its files with no model call (under 50 ms): mastery hints (the concepts its model of your mind
 says you're shaky on, from knowledge tracing) and what's on its mind (the workspace's winners that aren't about you).
 Your read, tone, mood and body state never go in: they stay on this computer. Answers use it silently.
+
+(0.9.0) The parts are shared: headless_context joins them for every brain, call_context (calls.context_brief) joins the
+ones a phone call or desk Live talk didn't hear yet, and not_interested_part (notinterested.tell_ai) lists the topics on
+the not-interested list.
 """
 
 from __future__ import annotations
@@ -89,6 +93,85 @@ def p95_ms() -> float | None:
     return round(xs[min(len(xs) - 1, int(0.95 * len(xs)))], 2) if xs else None
 
 
+# ------------------------------------------------------------------- the parts every brain and (0.9.0) calls share
+def profile_part(app: App) -> str:
+    """Who they are: the "In brief" part of about-me/profile.md, which they can edit; what they ask now wins over it."""
+    brief = app.about.brief() if hasattr(app, "about") else ""
+    if not brief:
+        return ""
+    from kurooto.core import layout
+
+    return (
+        f"Who they are (their profile, {layout.rel(app, 'profile')} in their notes; their requests override it):"
+        f"\n{brief}"
+    )
+
+
+def help_part(app: App, skip: tuple[str, ...] = ()) -> str:
+    """How they like to be helped: what they told Kurooto (and approved from the nightly look back); they edit it, so
+    it wins. `skip`: sections of the note left out (a call already hears its lessons from calls/review.py)."""
+    from kurooto.modules.remember import help_brief, help_rel
+
+    helps = help_brief(app, skip=skip)
+    if not helps:
+        return ""
+    return f"How they like to be helped ({help_rel(app)} in their notes; follow it, their requests win):\n{helps}"
+
+
+def not_interested_part(app: App) -> str:
+    """(0.9.0, notinterested.tell_ai) The topics on their not-interested list, so an AI doesn't bring them up by
+    itself. Only the topics as written (not why); "" with the switch off or the list empty (core/notinterested.py)."""
+    from kurooto.core import notinterested
+
+    if not app.settings.get("notinterested.tell_ai"):
+        return ""
+    topics = notinterested.ignored_topics(app)[: notinterested.TELL_MAX]
+    if not topics:
+        return ""
+    said = "; ".join(topics)[:600]
+    return (
+        f"Topics they said they're not interested in ({notinterested.rel(app)} in their notes): {said}. Don't bring "
+        "these up on your own; if they ask about one, help as usual."
+    )
+
+
+def held_part(app: App) -> str:
+    """(0.8.14) mind.context holds the workspace's winners with the mastery hints; off, the winners go as in 0.8.13."""
+    from kurooto import mind
+    from kurooto.mind import workspace
+
+    return mind_context(app) if mind.part_on(app, "context") else workspace.context(app)
+
+
+def call_context(app: App) -> str:
+    """(0.9.0, calls.context_brief) What a phone call and a desk Live talk hear of what every brain is told: who they
+    are, how they like to be helped (without "Learned on calls": the call has those as its lessons), the not-interested
+    topics, Brain's honesty rule and its own state, and what's on its mind. Never the read, their mood, tone or senses:
+    the tone hint drawn from the read stays out (mind/feelings.py). The story, the register's opener and the persona
+    card go already (Calls.pending, Calls.config_template). "" with the switch off."""
+    if not app.settings.get("calls.context_brief"):
+        return ""
+    from kurooto.mind import feelings
+    from kurooto.modules.remember import LEARNED_CALLS
+
+    parts = []
+    for build in (
+        profile_part,
+        lambda a: help_part(a, skip=(LEARNED_CALLS,)),
+        not_interested_part,
+        lambda a: feelings.prompt(a, read_hint=False),
+        held_part,
+    ):
+        try:  # one part failing never costs the call the rest
+            part = build(app)
+        except Exception as e:
+            app.events.emit("calls_brief_failed", module="context", error=f"{type(e).__name__}"[:80])
+            part = ""
+        if part:
+            parts.append(part)
+    return "\n".join(parts)
+
+
 def headless_context(app: App, extra: str = "", lane: str = "you") -> str:
     you = app.settings.get("you") or {}
     who = you.get("name") or "the user"
@@ -118,35 +201,19 @@ def headless_context(app: App, extra: str = "", lane: str = "you") -> str:
         f"For a question about {app.name} itself (what's on, which AI or model, why something didn't happen), read "
         f"what it's running first: the tool kurooto_self, or the file {app.paths.state / 'reserve' / 'self.md'}.",
     ]
-    brief = app.about.brief() if hasattr(app, "about") else ""
-    from kurooto.core import layout
-
-    if brief:  # from about-me/profile.md, which they can edit; what they ask now wins over it
-        lines.append(
-            f"Who they are (their profile, {layout.rel(app, 'profile')} in their notes; their requests override it):"
-            f"\n{brief}"
-        )
-    from kurooto.modules.remember import help_brief, help_rel
-
-    helps = help_brief(app)
-    if helps:  # what they told Kurooto (and approved from the nightly look back); they edit it, so it wins
-        lines.append(
-            f"How they like to be helped ({help_rel(app)} in their notes; follow it, their requests win):\n{helps}"
-        )
-    from kurooto import mind
+    for part in (profile_part(app), help_part(app), not_interested_part(app)):
+        if part:
+            lines.append(part)
     from kurooto.mind import (  # (Brain) its story first, the honesty rule about feelings and its state, if on
         feelings,
         register,
         story,
-        workspace,
     )
 
-    # (0.8.14) mind.context holds the workspace's winners with the mastery hints; off, the winners go as in 0.8.13
-    held = mind_context(app) if mind.part_on(app, "context") else workspace.context(app)
-    for part in (story.prompt(app), feelings.prompt(app), held, register.line(app, lane)):
+    for part in (story.prompt(app), feelings.prompt(app), held_part(app), register.line(app, lane)):
         if part:
             lines.append(part)
-    from kurooto.core import persona  # your persona card and the boundaries it keeps (core/persona.py)
+    from kurooto.core import layout, persona  # your persona card and the boundaries it keeps (core/persona.py)
 
     for part in (persona.card_text(app), persona.rule(app)):
         if part:
