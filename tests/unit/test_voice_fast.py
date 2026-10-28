@@ -492,3 +492,83 @@ def test_an_api_streams_through_the_queue(tmp_path, monkeypatch):
     finally:
         ai.close()
         app.close()
+
+
+# ------------------------------------------------------------------------------------------- early (0.8.17)
+class _Mic:
+    def __init__(self, data):
+        self.data = data
+
+    def frames(self):
+        f = 1024
+        for i in range(0, len(self.data) - f + 1, f):
+            yield self.data[i : i + f]
+
+    def close(self):
+        pass
+
+
+class _Vad:
+    """Speech where the sample isn't zero."""
+
+    def prob(self, f):
+        return 0.9 if any(f) else 0.0
+
+    def reset(self):
+        pass
+
+
+class _Early:
+    def __init__(self, end=None):
+        self.paused, self.end = [], end
+
+    def pause(self, pcm, flags):
+        self.paused.append(len(pcm))
+
+    def end_ms(self, spoke):
+        return self.end
+
+
+def _speech(seconds):
+    return b"\x10\x00" * int(16000 * seconds)
+
+
+def test_the_listener_hands_the_stretch_on_at_its_first_pause_and_may_end_sooner():
+    from kurooto.modules.voice import audio
+
+    data = _speech(1.0) + bytes(int(32000 * 0.4)) + _speech(0.5) + bytes(int(32000 * 1.0))
+    got, early = [], _Early()
+    audio.Listener(_Mic(data), _Vad(), None, on_speech=lambda *a: got.append(a), early=early)._run()
+    assert len(early.paused) == 2 and early.paused[0] < early.paused[1]  # each pause once, the stretch so far
+    assert len(got) == 1  # one stretch: the 0.4 s pause didn't end it
+    early = _Early(end=350)
+    got = []
+    data = _speech(1.0) + bytes(int(32000 * 0.45)) + _speech(0.5) + bytes(int(32000 * 1.0))
+    audio.Listener(_Mic(data), _Vad(), None, on_speech=lambda *a: got.append(a), early=early)._run()
+    assert len(got) == 2  # finished words: 0.35 s of quiet ended it, and what came after is a stretch of its own
+
+
+def test_early_words_are_used_only_when_nothing_more_was_said(sv, monkeypatch):
+    e = fast.Early(sv)
+    monkeypatch.setattr(sv, "_early_text", lambda pcm, flags: "What's due tomorrow?")
+    e.pause(b"\x01" * 4096, b"\x01" * 4)
+    assert e.take(b"\x01" * 4096 + bytes(4096), b"\x01" * 4 + b"\x00" * 4) == "What's due tomorrow?"
+    assert e.end_ms(4096) is None  # taken: a new stretch starts clean
+    e.pause(b"\x01" * 4096, b"\x01" * 4)
+    e.got["done"].wait(2)
+    assert e.end_ms(4096) == fast.Early.QUESTION_END_MS
+    assert e.take(b"\x01" * 8192, b"\x01" * 8) is None  # more speech after the pause: written out again whole
+
+
+def test_early_never_writes_out_another_voice_with_the_gate(sv, monkeypatch):
+    from types import SimpleNamespace
+
+    vid = sv.voiceid
+    monkeypatch.setattr(vid, "on", lambda: True)
+    monkeypatch.setattr(vid, "check", lambda *a, **k: SimpleNamespace(decision="guest"))
+    wrote = []
+    monkeypatch.setattr(sv, "_write_out", lambda pcm: wrote.append(1) or "hello")
+    sv.portal.open = False
+    assert sv._early_text(b"\x01" * 4096, b"\x01" * 4) is None and wrote == []
+    monkeypatch.setattr(vid, "check", lambda *a, **k: SimpleNamespace(decision="owner"))
+    assert sv._early_text(b"\x01" * 4096, b"\x01" * 4) == "hello"

@@ -341,6 +341,14 @@ ID 0.6 s, Claude Code at low effort 4 s, then Kokoro and an add-on output on a p
   for `via == "voice"` (button offers; the helper's pick could wait up to `local_helper.timeout_s`). **First clause**
   (`fast.Stream.feed`): while nothing is queued yet and no sentence has ended, a `,;:` boundary at least `CLAUSE_MIN`
   (20) characters in is queued, so speech starts before the first sentence is written out.
+- **(0.8.17) Early** (`voice.listen.early`, `fast.Early`). `Listener(early=...)`: `spoke` tracks buf's length at its
+  last non-quiet frame; when quiet reaches `audio.EARLY_MS` (300) once per `spoke`, `early.pause(prefix, flags)`
+  (levelled by `Gain` like the final stretch) queues it for the `voice-early` thread, which runs
+  `Voice._early_text` (Voice ID's gate first: not the owner with no portal open -> None, never written out) and sets
+  `end_ms`: 350 for text ending "?", 550 for ".", "!" with 3+ words. Each quiet frame asks `early.end_ms(spoke)` for a
+  sooner end than `END_MS`. `hear()` calls `early.take(audio, flags)` before `_write_out`: the early words when the
+  stretch is the prefix plus frames with no speech flag, waiting up to `WAIT_S` for a job in flight; else None and the
+  whole stretch is written out. `on_start` (`_stretch_start`) and a newer pause mark the older job stale.
 - **Acknowledgement** (`voice.speak.ack`: `tone`, `word`, `off`). `ask_brain` calls `_ack(turn)`; only while a
   listener runs (a heard turn), with speaking on. A `voice-ack` thread waits `ACK_WAIT_S` (0.25 s), skips when the
   turn has `first_text`/`answer` or the speaker is holding, then `Speaker.ack(pcm, sr, turn)`: a non-blocking take of

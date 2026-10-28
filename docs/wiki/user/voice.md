@@ -241,7 +241,10 @@ program like Claude Code takes a few seconds to start and answer), making the fi
   12 turns, from your last word): words 0.7 s, decided 1.2 s, sent 1.3 s, first words from the AI 4.1 s, first sound
   made 4.6 s, playing 4.7 s." Numbers only, never words, for the last 20 turns.
 
-Since 0.8.17 the line also splits "decided" to "sent": "handed on", "add-on intents" (an add-on's classifier of
+Since 0.8.17 it also writes your words out at your first short pause (`voice.listen.early`, on): if you don't go on,
+the turn uses those words straight away, and a finished question ends your turn after 0.35 s of quiet instead of 0.7 s.
+Nothing is sent early; only the writing out happens sooner, and with Voice ID's gate another voice is never written
+out early. The line also splits "decided" to "sent": "handed on", "add-on intents" (an add-on's classifier of
 plain-English requests) and "intents" (Kurooto's own), so a slow step there shows by name. By voice it no longer
 waits for the offers that come as buttons (two close readings of a request, a feature that's off), which it can't
 show you anyway; and before anything is said, the first clause of an answer is spoken as soon as it's written

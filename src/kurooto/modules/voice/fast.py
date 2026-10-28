@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import collections
 import math
+import queue
 import re
 import struct
 import threading
@@ -104,6 +105,96 @@ def tone(sr: int = ACK_RATE) -> bytes:
         x = 0.1 * env * (math.sin(phase) + 0.25 * math.sin(phase / 2))
         out += struct.pack("<h", int(max(-1.0, min(1.0, x)) * 32767))
     return bytes(out)
+
+
+# ------------------------------------------------------------------------------------------- early (0.8.17)
+FRAME_BYTES = 1024  # one listener frame (512 samples, 16-bit)
+
+
+class Early:
+    """voice.listen.early: the words are written out at your first short pause (audio.EARLY_MS), while the listener
+    still waits to see if you go on. When the stretch then ends with no more speech, hear() takes those words instead of
+    writing the whole stretch out again; and a finished question (or a finished sentence of three words or more) ends
+    the stretch sooner than the usual 0.7 s of quiet. More speech after the pause: it's thrown away and the stretch is
+    written out as before. Only what would be written out anyway is: with Voice ID's gate, a voice that isn't yours,
+    with no conversation open, isn't written out here (hear() then does as it always did). Memory only."""
+
+    QUESTION_END_MS = 350
+    SENTENCE_END_MS = 550
+    WAIT_S = 3.0  # hear() waits this long for words still being written out (still sooner than starting again)
+
+    def __init__(self, v):
+        self.v = v
+        self.lock = threading.Lock()
+        self.got: dict | None = None  # {"n", "text", "end_ms", "done"}: the latest pause's
+        self.jobs: queue.Queue = queue.Queue(maxsize=1)
+        self.thread: threading.Thread | None = None
+
+    def reset(self) -> None:
+        """A new stretch began: the last one's pause, if any, is of no use now."""
+        with self.lock:
+            if self.got is not None:
+                self.got["stale"] = True
+            self.got = None
+
+    def pause(self, pcm: bytes, flags: bytes) -> None:
+        """(the listener's thread; never blocks) The stretch up to its last speech, at a first short pause."""
+        job = {"n": len(pcm), "text": None, "end_ms": None, "done": threading.Event(), "stale": False}
+        with self.lock:
+            if self.got is not None:
+                self.got["stale"] = True  # spoke again since: that pause's words are of no use
+            self.got = job
+            if self.thread is None:
+                self.thread = threading.Thread(target=self._loop, name="voice-early", daemon=True)
+                self.thread.start()
+        try:
+            self.jobs.put_nowait((job, pcm, flags))
+        except queue.Full:  # an older pause still waiting: this one replaces it
+            try:
+                self.jobs.get_nowait()[0]["done"].set()
+            except queue.Empty:
+                pass
+            try:
+                self.jobs.put_nowait((job, pcm, flags))
+            except queue.Full:
+                job["done"].set()
+
+    def end_ms(self, spoke: int) -> float | None:
+        """(the listener's thread) A sooner end, when the words up to `spoke` bytes are in and sound finished."""
+        with self.lock:
+            j = self.got
+        if j is None or j["n"] != spoke or not j["done"].is_set():
+            return None
+        return j["end_ms"]
+
+    def take(self, pcm: bytes, flags: bytes) -> str | None:
+        """(hear) The words written out early, when the stretch is what was paused on plus quiet; else None."""
+        with self.lock:
+            j, self.got = self.got, None
+        if j is None or len(pcm) < j["n"]:
+            return None
+        if any(flags[j["n"] // FRAME_BYTES :]):  # spoke again after the pause
+            return None
+        j["done"].wait(self.WAIT_S)
+        return j["text"] or None
+
+    def _loop(self) -> None:
+        while True:
+            job, pcm, flags = self.jobs.get()
+            try:
+                if not job["stale"]:
+                    text = self.v._early_text(pcm, flags)
+                    job["text"] = text
+                    t = (text or "").strip()
+                    if t.endswith("?"):
+                        job["end_ms"] = self.QUESTION_END_MS
+                    elif t.endswith((".", "!")) and len(t.split()) >= 3:
+                        job["end_ms"] = self.SENTENCE_END_MS
+            except Exception as e:
+                self.v.app.events.emit("voice_failed", part="early", error=f"{type(e).__name__}"[:100])
+            finally:
+                job["done"].set()
+                del pcm
 
 
 # ---------------------------------------------------------------------------------------------- streaming

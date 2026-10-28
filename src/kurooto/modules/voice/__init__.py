@@ -122,6 +122,7 @@ register_defaults(
             "stt_model": "base",  # the transcriber's size: tiny (75 MB), base (145 MB) or small (484 MB, better)
             "language": "",  # the language you speak, e.g. en or hi; empty: worked out each time
             "device": "",  # the microphone: empty is the system's default; a name or number from sounddevice
+            "early": True,  # write the words out at your first short pause; a finished question ends the turn sooner
             "auto_gain": True,  # hearing follows the room: speech must stand above its noise; quiet voices evened up
             "auto_gain_snr_db": 6,  # with auto_gain: how far above the room's noise speech must be (dB; higher: strict)
             "levels": True,  # send the microphone's loudness to the dashboard for its waveform (numbers only)
@@ -463,6 +464,7 @@ class Voice(Module):
         self._retry_at = 0.0
         self.voiceid = VoiceID(self)  # (voice id) the owner's voice: voiceid.py
         self.barge = Barge(self)  # talking over it while it speaks: barge.py
+        self.early = fast.Early(self)  # (voice.listen.early, 0.8.17) the words written out at a first pause
         self._once: dict | None = None  # listen_once's hold: the next stretch goes to it, not to hear()
         self._once_lock = threading.Lock()  # one holder at a time
         self._face_hold_at = 0.0  # (need_face) when the camera hold was last renewed; 0: not held
@@ -848,6 +850,16 @@ class Voice(Module):
             return helper._generate(prompt, 40, 8)  # Ollama on this computer (core/helper.py)
         return None
 
+    def _early_text(self, pcm: bytes, flags: bytes) -> str | None:
+        """(fast.Early, voice.listen.early) The words of a stretch so far, at a first pause; None when they wouldn't be
+        written out in full anyway (Voice ID's gate: not your voice, no conversation open)."""
+        vid = self.voiceid
+        if vid.on() and vid.s("gate", True) and not self.portal.open:
+            speech_s = sum(1 for f in flags if f) * 512 / 16000 if flags else len(pcm) / 32000
+            if vid.check(pcm, speech_s, adapt=False).decision != "owner":
+                return None
+        return self._write_out(pcm)
+
     def _write_out(self, pcm: bytes) -> str:
         try:
             return self.stt().text(pcm)
@@ -896,6 +908,8 @@ class Voice(Module):
                     self.portal.state("listening", CHATTER)
                     return None
                 heard = ""
+        if h.speech and not h.text and audio is not None and self.early is not None:
+            h.text = self.early.take(audio, flags) or ""  # (voice.listen.early) written out at the first pause
         if h.speech and not h.text and audio is not None:
             h.text = self._write_out(audio)
         fast.stamp(turn, "text")
@@ -1631,15 +1645,21 @@ class Voice(Module):
             wake,
             on_speech=self._heard_audio,
             on_level=self._level,
-            on_start=lambda: self.portal.state("hearing"),
+            on_start=self._stretch_start,
             hold=lambda: self.speaker.holding() or self.portal.busy,
             wake_threshold=float(self.setting("listen.wake_threshold") or 0.5),
             barge=self.barge,
             gain=self._new_gain(),
+            early=self.early if self.setting("listen.early") else None,
         )
         self.listener.start()
         self.portal.state("addressed" if self.portal.open else "listening")
         self._warm()
+
+    def _stretch_start(self) -> None:
+        if self.early is not None:
+            self.early.reset()
+        self.portal.state("hearing")
 
     def _new_gain(self):
         """(voice.listen.auto_gain, 0.8.17) The listener's audio.Gain, or None when it's off."""

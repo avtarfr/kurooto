@@ -666,6 +666,9 @@ class Gain:
         return {"noise_db": noise, "gain": self.gain}
 
 
+EARLY_MS = 300  # (voice.listen.early) a pause this long hands the stretch so far on early
+
+
 # ------------------------------------------------------------------------------------------------- listener
 class Listener:
     """Cuts the microphone's sound into stretches of speech and hands each one on (with whether the wake word fired),
@@ -690,8 +693,12 @@ class Listener:
         wake_threshold: float = 0.5,
         barge=None,
         gain: Gain | None = None,
+        early=None,
     ):
         self.gain = gain  # voice.listen.auto_gain: the room's noise floor and one level (Gain)
+        # (voice.listen.early, 0.8.17) at a first short pause the stretch so far goes to early.pause(pcm, flags), and
+        # early.end_ms(nbytes) may end the stretch sooner than END_MS when what was said there is finished
+        self.early = early
         self.mic, self.vad, self.wake = mic, vad, wake
         self.on_speech, self.on_level, self.on_start, self.hold = on_speech, on_level, on_start, hold
         self.wake_threshold = wake_threshold
@@ -722,6 +729,8 @@ class Listener:
         buf: bytearray | None = None
         flags = bytearray()  # (voice id) speech or not, per frame of buf: speech seconds and the noise floor
         quiet = 0
+        spoke = 0  # (early) bytes of buf up to its last speech frame
+        paused = -1  # (early) the `spoke` the last early.pause() was handed
         wake_buf = bytearray()
         woke_at = 0.0
         barging = False
@@ -777,13 +786,25 @@ class Listener:
                 buf += frame
                 flags.append(1 if p >= self.START else 0)
                 quiet = quiet + 1 if p < self.STOP else 0
-                if quiet * frame_ms >= self.END_MS or len(buf) >= self.MAX_S * RATE * 2:
+                end_ms = self.END_MS
+                if self.early is not None:
+                    if not quiet:
+                        spoke = len(buf)
+                    elif quiet * frame_ms >= EARLY_MS and paused != spoke:
+                        paused = spoke
+                        n = spoke // (FRAME * 2)
+                        pre_, pf = bytes(buf[:spoke]), bytes(flags[:n])
+                        self.early.pause(self.gain.level(pre_, pf) if self.gain is not None else pre_, pf)
+                    if quiet:
+                        end_ms = self.early.end_ms(spoke) or end_ms
+                if quiet * frame_ms >= end_ms or len(buf) >= self.MAX_S * RATE * 2:
                     seconds = len(buf) / (RATE * 2)
                     woke = time.monotonic() - woke_at <= seconds + 2
                     audio, cut = bytes(buf), bytes(flags)
                     if self.gain is not None:
                         audio = self.gain.level(audio, cut)
                     buf, quiet, flags = None, 0, bytearray()
+                    spoke, paused = 0, -1
                     self.vad.reset()
                     self.on_speech(audio, woke, seconds, cut)
                     del audio

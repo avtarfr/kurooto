@@ -12,6 +12,9 @@
 - **Voice answers start sooner.** The first clause of an answer is spoken as soon as it's written, not after its
   whole sentence; a spoken turn no longer waits for offers that only come as buttons (two close readings, a feature
   that's off), including the local helper's pick; and /voice's speed line now times the routing steps by name.
+- **Your words are written out at your first pause** (`voice.listen.early`, on): if you don't go on, the turn uses
+  them straight away, and a finished question ends your turn after 0.35 s of quiet instead of 0.7 s. Nothing is sent
+  early, and with Voice ID's gate another voice is never written out early.
 - **Voice language:** the settings guide now says to set `voice.listen.language`; left to be worked out on each short
   clip, an accent is often taken for another language and Kurooto's name is missed.
 

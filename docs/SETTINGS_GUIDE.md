@@ -1219,6 +1219,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.conversation_mode` | `true` | While another voice is here, Kurooto stays out of people talking: only its name said to it opens a talk. ([guide](wiki/user/settings-guide.md#voicelistenconversationmode)) |
 | `voice.listen.conversation_s` | `60` | Seconds after the other person last spoke before Kurooto stops staying out of the conversation. ([guide](wiki/user/settings-guide.md#voicelistenconversations)) |
 | `voice.listen.device` | `""` | Which microphone to use; empty is the system's default. ([guide](wiki/user/settings-guide.md#voicelistendevice)) |
+| `voice.listen.early` | `true` | Write the words out at your first short pause, so the turn goes on the moment you've finished. ([guide](wiki/user/settings-guide.md#voicelistenearly)) |
 | `voice.listen.face_near` | `0.5` | How close counts: a face at least this share of your usual face height at the desk (0.5 is about twice as far). ([guide](wiki/user/settings-guide.md#voicelistenfacenear)) |
 | `voice.listen.face_yaw_deg` | `35` | How directly someone must face the camera: turned at most this many degrees away (an estimate). ([guide](wiki/user/settings-guide.md#voicelistenfaceyawdeg)) |
 | `voice.listen.fast_brain` | `"same"` | Which AI answers plain chat said aloud: your AI as usual, the model on this computer, or the quickest. ([guide](wiki/user/settings-guide.md#voicelistenfastbrain)) |

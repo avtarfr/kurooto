@@ -43,7 +43,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
 - [Brain](#brain): 124 settings
-- [Voice and voice notes](#voice-and-voice-notes): 67 settings
+- [Voice and voice notes](#voice-and-voice-notes): 68 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
@@ -5916,6 +5916,22 @@ The language you speak, e.g. `en` or `hi`; empty works it out each time.
 - **Values:** A language code, or empty. **Default:** empty.
 - **When to change it:** Set it if it guesses your language wrong, or misses its name: worked out on each short clip, an
   accent is often taken for another language (English for Hindi or Urdu) and the name never comes out right.
+- **Depends on:** `voice.listen.on`.
+
+### `voice.listen.early`
+
+Write the words out at your first short pause, so the turn goes on the moment you've finished.
+
+At your first pause of about 0.3 seconds, what you've said so far is written out (on this computer) while Kurooto still
+waits to see if you go on. If you don't, the turn goes straight on with those words instead of writing the whole stretch
+out again, and a finished question (or a finished sentence of three words or more) ends the turn after 0.35 to 0.55
+seconds of quiet instead of 0.7. If you go on talking, the early words are thrown away. With Voice ID's gate on, a voice
+that isn't yours (with no conversation open) is never written out early. Nothing is sent anywhere early: only the
+writing out happens sooner.
+
+- **Values:** `true` (default), `false` (the words are written out after 0.7 seconds of quiet, as before). **Default:**
+  on.
+- **When to change it:** Turn it off if Kurooto starts answering while you're only pausing mid-thought.
 - **Depends on:** `voice.listen.on`.
 
 ### `voice.listen.auto_gain`
