@@ -21,6 +21,10 @@ checked (judge(): the first failing check is the reason shown); accepted samples
     repeat      the same as the step's last sample (cosine > 0.97, moved < 3 px)  Move a little: ...
     not you     5 samples or more, and this one unlike them (cosine < 0.25)      That doesn't look like the earlier ...
 
+Calibrate my eyes (0.8.17, kind "gaze"): CAL_S seconds of frames of you, recognised, alone and facing the camera,
+while you look at its lens; each frame gives two numbers for your eyes (gaze.py) and the head's yaw and pitch; their
+medians go to your template (Face._gaze_done). No frame, crop or point is kept.
+
 Samples live in memory only, in the Session, until training seals them into the template; Discard, a stop, turning
 the feature off, or 30 minutes without training drops them. Preview frames are JPEGs made in memory for the page
 (GET /api/face/frame), never written anywhere. What's pushed to the page is rounded numbers, never an embedding.
@@ -38,8 +42,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from kurooto.core.biometric import dot, mean_unit
+from kurooto.modules.face.gaze import CAL_YAW, Calibration
 from kurooto.modules.face.model import Sample
-from kurooto.modules.face.vision import SCORE_ENROL, SCORE_OTHER, Face, Pose, Stats, moved, pose
+from kurooto.modules.face.vision import SCORE_ENROL, SCORE_OTHER, Face, Pose, Stats, moved, pose, px_scale
 
 # quality limits (§4.3); BLUR_MIN is a first guess, to be tuned on the first real run
 BLUR_MIN = 60.0
@@ -80,6 +85,9 @@ R_BRIGHT = "Too bright: is a light shining at the camera or behind you?"
 R_REPEAT = "Move a little: that's the same as the last one."
 R_NOT_YOU = "That doesn't look like the earlier samples. Is someone else in view?"
 R_LIGHT = "Change the light a little more: a lamp, the room light, the window."
+R_EYES = "Can't see your eyes clearly: more light on your face, or come a little closer."
+R_LENS = "Look at the camera's lens, with your head turned to it."
+R_NOT_OWNER = "That doesn't look like you: only you should be in view."
 
 
 @dataclass(frozen=True)
@@ -163,7 +171,7 @@ class Enrolment:
     ):
         self.min_face_px = int(min_face_px)
         self.have = dict(have or {})  # Add samples: what the template already holds per step
-        self.baseline = dict(baseline or {})  # the front step's medians: pitch, height, light
+        self.baseline = dict(baseline or {})  # the front step's medians: pitch, height, light, share (of the frame)
         self.prior = list(prior or [])  # Add samples: the template's centroids, for the "not you" check
         self.mirror = mirror
         self.samples: list[Sample] = []
@@ -172,7 +180,7 @@ class Enrolment:
         self._dark = 0
         self._last_ok = -1e9
         self._last: dict[str, tuple[list[float], Face]] = {}
-        self._front: dict[str, list[float]] = {"pitch": [], "height": [], "light": []}
+        self._front: dict[str, list[float]] = {"pitch": [], "height": [], "light": [], "share": []}
         self._advance()
 
     # ------------------------------------------------------------------------------------------ progress
@@ -243,8 +251,11 @@ class Enrolment:
         return "There's no such action."
 
     # --------------------------------------------------------------------------------------------- judging
-    def _step_rule(self, key: str, p: Pose, face: Face, frame_h: float = 480.0) -> str:
+    def _step_rule(self, key: str, p: Pose, face: Face, frame_h: float = 480.0, scale: float = 1.0) -> str:
         b = self.baseline
+        # (0.8.17) the front face's height as a share of the frame where it's known: Add samples after the camera got
+        # sharper (480x640 to 1080x1440) still compares like with like; an older template's pixels otherwise
+        hb = b["share"] * frame_h if b.get("share") else b.get("height")
         if key == "front":
             return "" if abs(p.yaw) < 0.12 and abs(p.roll) < 12 else "Look straight at the camera."
         if key == "left":
@@ -263,7 +274,6 @@ class Enrolment:
                 return "" if p.pitch < base - 0.06 else "Tilt your chin up a little more."
             return "" if p.pitch > base + 0.06 else "Tilt your chin down a little more."
         if key == "near":
-            hb = b.get("height")
             if not hb:
                 return "Look straight at the camera first."
             want = near_target(hb, frame_h)
@@ -272,8 +282,7 @@ class Enrolment:
             way = max(0, min(99, round(100 * (face.height - hb) / max(1.0, want - hb))))
             return f"Lean in a little closer ({way}% of the way)."
         if key == "far":
-            hb = b.get("height")
-            if face.height < self.min_face_px + 20:
+            if face.height < (self.min_face_px + 20) * scale:
                 return R_FAR
             return "" if hb and face.height <= 0.75 * hb else "Sit back a little more."
         if key == "glasses":
@@ -303,7 +312,8 @@ class Enrolment:
         if sum(1 for f in faces if f.score >= SCORE_OTHER) > 1:
             return Verdict(False, R_TWO, key)
         f = sure[0]
-        if f.height < self.min_face_px:
+        scale = px_scale(w, h)  # (0.8.17) min_face_px and the repeat check are pixels of a 480-high frame
+        if f.height < self.min_face_px * scale:
             return Verdict(False, R_FAR, key, f)
         if f.height > 0.7 * h:
             return Verdict(False, R_CLOSE, key, f)
@@ -315,7 +325,7 @@ class Enrolment:
         p = pose(f, self.mirror)
         if abs(p.roll) > TILT_MAX:
             return Verdict(False, R_TILT, key, f, p)
-        nudge = self._step_rule(key, p, f, h)
+        nudge = self._step_rule(key, p, f, h, scale)
         if nudge:
             return Verdict(False, nudge, key, f, p)
         st = measure(f)
@@ -333,7 +343,7 @@ class Enrolment:
             return Verdict(False, "", key, f, p, st, quiet=True)
         e = embed(f)
         last = self._last.get(key)
-        if last is not None and dot(e, last[0]) > REPEAT_COS and moved(last[1], f) < REPEAT_PX:
+        if last is not None and dot(e, last[0]) > REPEAT_COS and moved(last[1], f) < REPEAT_PX * scale:
             return Verdict(False, R_REPEAT, key, f, p, st)
         known = [s.e for s in self.samples] + self.prior
         if len(self.samples) + sum(self.have.values()) >= NOT_YOU_AFTER and known:
@@ -347,6 +357,7 @@ class Enrolment:
             self._front["pitch"].append(p.pitch)
             self._front["height"].append(f.height)
             self._front["light"].append(st.mean)
+            self._front["share"].append(f.height / h if h else 0.0)
             self.baseline.update({k: round(statistics.median(v), 4) for k, v in self._front.items() if v})
         self._advance()
         return Verdict(True, "", key, f, p, st, s)
@@ -375,6 +386,7 @@ class Vision:
     detector: Any
     embedder: Any
     frames: Any
+    gazer: Any = None  # (0.8.17) gaze.Gazer, for Calibrate my eyes
 
 
 @dataclass
@@ -382,7 +394,8 @@ class Session:
     """One enrolment or test: the camera, the preview, and (enrolment) the samples in memory.
 
     kind "enrol": every frame goes through Enrolment.judge. kind "test": every face is scored against the template
-    (classify) and the decision shown; mark("me" | "other") looks for MARK_S seconds and keeps only the result."""
+    (classify) and the decision shown; mark("me" | "other") looks for MARK_S seconds and keeps only the result.
+    kind "gaze": Calibrate my eyes; on_gaze(numbers) gets the calibration's numbers once, then it ends."""
 
     kind: str
     cid: int | None
@@ -394,6 +407,7 @@ class Session:
     thresholds: tuple[float, float] = (0.0, 0.0)
     clock: Callable[[], float] = time.monotonic
     on_mark: Callable[[str, dict], None] | None = None
+    on_gaze: Callable[[dict], None] | None = None
     id: str = field(default_factory=lambda: secrets.token_urlsafe(12))
     state: str = "capturing"  # capturing, paused (why), ended
     why: str = ""
@@ -412,6 +426,7 @@ class Session:
         self.recent: deque[bool] = deque(maxlen=4)  # test: owner or not, the last four frames
         self.marking: dict | None = None
         self.camera_open = False
+        self.cal = Calibration()  # (kind "gaze") numbers only, in memory
 
     # ------------------------------------------------------------------------------------------- the camera
     def open_camera(self) -> None:
@@ -475,6 +490,8 @@ class Session:
             faces = v.detector.detect(frame, SCORE_OTHER)
             if self.kind == "enrol":
                 out = self._enrol(frame, faces, size, now)
+            elif self.kind == "gaze":
+                out = self._gaze(frame, faces, now)
             else:
                 out = self._test(frame, faces, size, now)
         finally:
@@ -543,6 +560,51 @@ class Session:
             {"faces": rows, "decision": decision, "frames_ok": frames_ok, "t_hi": round(hi, 3), "t_lo": round(lo, 3),
              "marking": (self.marking or {}).get("who", "")}
         )  # fmt: skip
+
+    def _gaze(self, frame, faces, now) -> dict:
+        """Calibrate my eyes: one frame. Only your face, alone and facing the lens, gives a reading."""
+        v = self.vision
+        sure = [f for f in faces if f.score >= SCORE_ENROL]
+        reason = ""
+        if not sure:
+            reason = R_NO_FACE
+        elif sum(1 for f in faces if f.score >= SCORE_OTHER) > 1:
+            reason = R_TWO
+        else:
+            f = sure[0]
+            p = pose(f)
+            if abs(p.yaw) > CAL_YAW:
+                reason = R_LENS
+            else:
+                if self.classify is not None:
+                    crop = v.embedder.align(frame, f)
+                    e = v.embedder.feature(crop)
+                    del crop
+                    klass, _s = self.classify(e)
+                    del e
+                    if klass != "owner":
+                        reason = R_NOT_OWNER
+                if not reason:
+                    eyes = v.gazer.eyes(frame, f) if v.gazer is not None else None
+                    if eyes is None:
+                        reason = R_EYES
+                    else:
+                        self.cal.feed(eyes, p.yaw, p.pitch, now)
+        out = self._push({"ok": not reason, "reason": reason, "share": self.cal.share(now)})
+        if self.cal.done(now):
+            res = self.cal.result(time.time())
+            if isinstance(res, dict):
+                if self.on_gaze:
+                    self.on_gaze(res)
+                self._push(
+                    {"kind": "gaze_result", "ok": True, "message": "Calibrated: look to talk goes by your eyes."}
+                )
+                self.end("calibrated")
+            else:
+                self._push({"kind": "gaze_result", "ok": False, "message": res})
+                self.end("not calibrated")
+            self.cal = Calibration()
+        return out
 
     def mark(self, who: str) -> str:
         if self.kind != "test" or who not in ("me", "other"):

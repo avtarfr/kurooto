@@ -2215,7 +2215,9 @@ never approves, unlocks or allows anything. Details: [the user guide](wiki/user/
 
 *Leaves:* nothing. Frames are looked at in memory and dropped; strangers are a count only. Your template (numbers,
 never a picture) is kept encrypted under the key `face.key`, never in backups, Profile sync or diagnostics. Setting up
-downloads from media.githubusercontent.com and PyPI.
+downloads from media.githubusercontent.com and PyPI; the optional eye model (look to talk by your eyes, 0.8.17: Get
+the eye model, then Calibrate my eyes on the Face page, which keeps four numbers in the sealed template) from
+storage.googleapis.com.
 *Undo:* turn Face presence off (the camera closes at once; it offers Delete my face data); `/face forget`,
 `kurooto face forget` or Forget everything on the Face page deletes the key, the template and its status. To free the
 space, delete the `face` folder in Kurooto's app folder (`kurooto paths`, `app`).

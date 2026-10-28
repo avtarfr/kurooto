@@ -1027,8 +1027,9 @@ class Api:
         return 404, {"error": "not found"}
 
     def _face(self, action: str, b: dict) -> tuple[int, dict]:
-        """POST face/<action>. enrol/start and test/start open the camera (the guarded action camera.open: the Face
-        page's Start and Test buttons only); forget deletes the face model (data.delete: a button after a confirm)."""
+        """POST face/<action>. enrol/start, test/start and gaze/start open the camera (the guarded action camera.open:
+        the Face page's Start, Test and Calibrate my eyes buttons only); forget deletes the face model (data.delete: a
+        button after a confirm)."""
         f = self.app.modules.get("face")
         if f is None:
             return 404, {"error": "no Face presence here"}
@@ -1055,6 +1056,14 @@ class Api:
             return out(f.test_mark(sid, str(b.get("who") or "")))
         if action == "test/stop":
             return out(f.test_stop(sid))
+        if action == "gaze/start":  # (0.8.17) Calibrate my eyes: camera.open, the button only
+            return out(f.gaze_start(b.get("cid")))
+        if action == "gaze/stop":
+            return out(f.test_stop(sid))
+        if action == "gaze/clear":
+            return out(f.gaze_clear())
+        if action == "gaze/setup":  # Get the eye model (2.6 MB, pinned)
+            return 200, self._background(f.gaze_setup)
         if action == "retrain":
             return out(f.retrain())
         if action == "undo":  # the last training (Add samples, Start over), this run only

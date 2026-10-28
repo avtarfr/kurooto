@@ -43,14 +43,14 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
 - [Brain](#brain): 124 settings
-- [Voice and voice notes](#voice-and-voice-notes): 73 settings
+- [Voice and voice notes](#voice-and-voice-notes): 77 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
 - [Dashboard and terminal](#dashboard-and-terminal): 27 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 26 settings
-- [Face presence](#face-presence): 33 settings
+- [Face presence](#face-presence): 34 settings
 
 ## You and how it talks to you
 
@@ -6395,6 +6395,53 @@ Looking away this long, before you've said anything, closes it again.
 - **When to change it:** Raise it if it closes while you glance at your notes before asking.
 - **Depends on:** `voice.listen.look_to_talk`.
 
+### `voice.listen.look_gaze`
+
+With your eyes calibrated on the Face page, a look counts by your eyes on the camera, not your head's turn.
+
+Needs the eye model (Get the eye model on the Face page: MediaPipe Iris, 2.6 MB) and Calibrate my eyes (about three
+seconds looking at the camera's lens). Then each frame, while Voice listens, the irises are found in your eyes (cut from
+the camera's full picture) and combined with your head's turn: eyes on the lens count even with your head a little
+turned, and eyes on the screen below the camera don't, even with your head facing it. Calibration keeps four numbers in
+your sealed face model (where your irises sat and how your head was turned), never a picture; Clear on the Face page
+drops them, and Forget drops them with the rest. Without the model or a calibration, or with this off, the head's turn
+counts (voice.listen.look_yaw_deg and look_pitch_deg), and /voice says which.
+
+- **Values:** `true` (default), `false` (the head's turn only). **Default:** on.
+- **When to change it:** Turn it off if glasses or the light make your eyes hard to read and looks stop opening it.
+- **Costs and what leaves this computer:** About 7 ms of one processor core per frame while Voice listens, for the eyes
+  (measured on a Ryzen 7 laptop).
+- **Depends on:** `voice.listen.look_to_talk`; the eye model and a calibration (the Face page).
+
+### `voice.listen.look_gaze_dwell_s`
+
+By the eyes: how long your eyes must be on the camera before it starts listening (0: at once).
+
+With your eyes calibrated, eyes on the lens are a clear sign, so by default the first frame that sees them there opens
+the conversation (Face presence looks up to 5 times a second while Voice listens: face.watch.look_fps). Without a
+calibration, voice.listen.look_dwell_s applies instead.
+
+- **Values:** Seconds, 0 to 5 (default 0). **Default:** `0.0`.
+- **When to change it:** Raise it a little (0.3) if a passing glance at the camera opens it.
+- **Depends on:** `voice.listen.look_gaze` and a calibration.
+
+### `voice.listen.look_gaze_yaw_deg`
+
+By the eyes: how close to the camera's lens your gaze must be, left or right (an estimate in degrees).
+
+- **Values:** Degrees, 3 to 30 (default 10). **Default:** `10`.
+- **When to change it:** Raise it if looking at the camera doesn't open it; lower it if looking at a screen beside it
+  does. The Face page shows your last look's angles while Voice listens.
+- **Depends on:** `voice.listen.look_gaze` and a calibration.
+
+### `voice.listen.look_gaze_pitch_deg`
+
+By the eyes: how close to the camera's lens your gaze must be, up or down (an estimate in degrees).
+
+- **Values:** Degrees, 3 to 30 (default 10). **Default:** `10`.
+- **When to change it:** Raise it if it misses you; lower it if looking at the screen just below the camera opens it.
+- **Depends on:** `voice.listen.look_gaze` and a calibration.
+
 ### `voice.listen.learn_nightly`
 
 Every night Kurooto learns from how its voice turns went: ones you carried on with, and ones you told off.
@@ -7699,6 +7746,8 @@ Recognised in this many of the last 4 frames means you're here.
 
 Faces smaller than this many pixels are ignored: too far away to judge.
 
+Pixels of a 640x480 (or 480x640) picture; a sharper camera scales it (2.25 times at 1080x1440).
+
 - **Values:** A whole number. **Default:** `60`.
 - **When to change it:** Lower it if you sit far from the camera.
 
@@ -7729,6 +7778,21 @@ Frames a second while the computer is on battery.
 
 - **Values:** A number. **Default:** `0.33`.
 - **When to change it:** Lower it (or to 0) to save battery.
+
+### `face.watch.look_fps`
+
+While Voice listens for a look (voice.listen.look_to_talk), the camera checks at least this many pictures a second.
+
+A look opens the conversation after voice.listen.look_dwell_s of frames (by your eyes, at the first one:
+voice.listen.look_gaze_dwell_s), so a faster rate makes it react sooner. It applies only while Voice holds the camera to
+listen; otherwise face.watch.fps does. At most 5; a slow computer halves it as it does face.watch.fps.
+
+- **Values:** Frames a second, 0 to 5 (default 5; 0 keeps face.watch.fps). **Default:** `5.0`.
+- **When to change it:** Lower it to save processor time; raise it if a look is slow to open it.
+- **Costs and what leaves this computer:** A frame takes about 50 ms of one processor core at 1080x1440 (finding faces
+  14, recognising you 29, your eyes 7; a Ryzen 7 laptop), so 5 a second is about a quarter of one core while Voice
+  listens.
+- **Depends on:** `voice.listen.look_to_talk`; Voice listening.
 
 ### `face.watch.idle_s`
 

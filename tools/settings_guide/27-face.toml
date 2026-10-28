@@ -155,6 +155,7 @@ when = "Raise it if it thinks you've arrived when you only passed by."
 
 [s."face.recognise.min_face_px"]
 tip = "Faces smaller than this many pixels are ignored: too far away to judge."
+what = "Pixels of a 640x480 (or 480x640) picture; a sharper camera scales it (2.25 times at 1080x1440)."
 when = "Lower it if you sit far from the camera."
 
 [s."face.recognise.strictness"]
@@ -173,6 +174,16 @@ when = "Lower it to save processor time; raise it if it's slow to notice you."
 [s."face.watch.fps_battery"]
 tip = "Frames a second while the computer is on battery."
 when = "Lower it (or to 0) to save battery."
+
+[s."face.watch.look_fps"]
+tip = "While Voice listens for a look (voice.listen.look_to_talk), the camera checks at least this many pictures a second."
+what = """A look opens the conversation after voice.listen.look_dwell_s of frames (by your eyes, at the first one:
+voice.listen.look_gaze_dwell_s), so a faster rate makes it react sooner. It applies only while Voice holds the camera to listen; otherwise face.watch.fps does. At most 5; a slow
+computer halves it as it does face.watch.fps."""
+values = "Frames a second, 0 to 5 (default 5; 0 keeps face.watch.fps)."
+when = "Lower it to save processor time; raise it if a look is slow to open it."
+cost = "A frame takes about 50 ms of one processor core at 1080x1440 (finding faces 14, recognising you 29, your eyes 7; a Ryzen 7 laptop), so 5 a second is about a quarter of one core while Voice listens."
+needs = "`voice.listen.look_to_talk`; Voice listening."
 
 [s."face.watch.idle_s"]
 tip = "Seconds with no keyboard or mouse before the camera looks; while you type it doesn't need to."

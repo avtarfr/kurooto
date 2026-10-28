@@ -13,7 +13,12 @@ been idle, only a wake, an unlock or a confirmation opens it, and it closes when
 face.watch.when_locked on, a locked screen counts as idle.
 
 Rate: face.watch.fps (fps_battery on battery); 2 a second for up to 5 s after the first frame it recognises you in;
-halved (down to 0.2) when one frame takes more than 150 ms on a slow machine.
+halved (down to 0.2) when one frame takes more than 150 ms on a slow machine. (0.8.17) While Voice listens for a look
+(cfg "look_fps", face.watch.look_fps), at least that many a second (at most LOOK_MAX_FPS, halved the same way).
+
+Sizes (0.8.17): face.recognise.min_face_px and the still-picture check are pixels of a frame whose shorter side is 480
+(vision.px_scale), so a camera switched from 480x640 to 1080x1440 judges the same faces; "view" carries the frame's
+size (frame) so Face.close_facing compares shares of it.
 
 Arrival: 3 (face.recognise.frames) of the last 4 frames are you, within 6 s, after at least face.greet.after_absent_min
 with no sign of you (no face of yours, no input while unlocked; a locked screen isn't presence), and the frames aren't
@@ -36,6 +41,10 @@ frame to frame) and a micro-movement number, emitted as "faces" (positions, the 
 describe a face). TRACK_FAST (a dashboard in sight, or an add-on holding the camera "to track") adds detection-only
 frames between the recognition frames at face.track.fps: YuNet only, never SFace, so recognition keeps its own rate.
 Tracking never opens the camera: it only looks faster while the rules above have it open.
+
+Eyes (0.8.17, voice.listen.look_gaze): while `gaze()` hands a gazer (look to talk on, the eye model here, your eyes
+calibrated), the owner's best face in each recognition frame gets its iris offsets read from the full frame
+(gaze.py), handed with "view" as eyes=(h, v): two numbers, never the eyes' pictures, dropped with the frame.
 """
 
 from __future__ import annotations
@@ -49,7 +58,7 @@ from typing import Any
 
 from kurooto.core.biometric import dot
 from kurooto.modules.face.enrol import BLOWN, BLUR_MIN, BRIGHT, COVERED, COVERED_FRAMES, DARK
-from kurooto.modules.face.vision import SCORE_OTHER, SCORE_WATCH, moved, pose
+from kurooto.modules.face.vision import SCORE_OTHER, SCORE_WATCH, moved, pose, px_scale
 
 WAKE_S = 10  # after an unlock or a wake the camera may look this long
 INPUT_GRACE_S = 6  # input active again: recognition gets this long before the camera closes
@@ -59,6 +68,7 @@ WINDOW_S = 6  # the frames of an arrival fall within this
 RETURN_S = 30  # a return (presence after an absence) waits this long for your face, then it was someone else
 SLOW_MS = 0.150
 MIN_FPS = 0.2
+LOOK_MAX_FPS = 5.0  # (0.8.17) face.watch.look_fps, while Voice listens for a look, never above this
 BUSY_RECHECK_S = 60
 COVERED_RECHECK_S = 300
 BLOCKED_RECHECK_S = 300
@@ -129,6 +139,7 @@ class Watcher:
     held: Callable[[], bool] = lambda: False  # an add-on keeps the camera looking (after every pause reason)
     people: Callable[[], bool] = lambda: False  # an add-on watches who's in view: "people" each frame
     tracking: Callable[[], int] = lambda: TRACK_OFF  # who wants every face's place (TRACK_*; face.track.on checked)
+    gaze: Callable[[], Any] = lambda: None  # (0.8.17) a gaze.Gazer when the owner's eyes are wanted now, else None
     counts: Counts = field(default_factory=Counts)
 
     def __post_init__(self):
@@ -164,6 +175,7 @@ class Watcher:
         self.track_slow = 1.0
         self._quick = 0
         self._faces_shown = False  # the last "faces" had someone in it (an empty one is sent once, on the change)
+        self._scale = 1.0  # (0.8.17) vision.px_scale of the last frame looked at
 
     # --------------------------------------------------------------------------------------------- reading
     def problem_now(self) -> str:
@@ -176,6 +188,9 @@ class Watcher:
         c = self.cfg()
         fps = float(c.get("fps_battery" if self.on_battery() else "fps") or 1.0)
         fps = max(MIN_FPS, min(2.0, fps)) / self.slow
+        look = float(c.get("look_fps") or 0)  # (0.8.17) set only while Voice listens for a look (Face._watch_cfg)
+        if look > 0:
+            fps = max(fps, min(LOOK_MAX_FPS, look) / self.slow)
         if self.clock() < self.confirm_until:
             fps = max(fps, CONFIRM_FPS)
         return max(MIN_FPS, fps)
@@ -391,14 +406,16 @@ class Watcher:
                 self._close("camera covered")
             return
         self._dark = 0
-        min_px = float(c.get("min_face_px") or 60)
+        full = self.frames.size(frame)
+        self._scale = px_scale(*full)  # (0.8.17) min_face_px and the still check are pixels of a 480-high frame
+        min_px = float(c.get("min_face_px") or 60) * self._scale
         faces = self.detector.detect(frame, SCORE_OTHER)
         best: tuple[float, list[float], Any, dict] | None = None
         judged: dict[int, bool] = {}  # index in faces -> recognised as you (for the tracks' owner flag)
         best_i = -1
         n_other = 0
         seen: list[dict] | None = [] if self.people() else None
-        size = self.frames.size(frame) if seen is not None else (0, 0)
+        size = full if seen is not None else (0, 0)
         for i, f in enumerate(faces):
             p = _person(f, size) if seen is not None and f.score >= SCORE_WATCH else None
             if p is not None:
@@ -442,7 +459,7 @@ class Watcher:
         if self._track != TRACK_OFF:
             if best_i >= 0:
                 judged[best_i] = True
-            self._update_tracks(now, faces, self.frames.size(frame), judged)
+            self._update_tracks(now, faces, full, judged)
         n_faces = sum(1 for f in faces if f.score >= SCORE_OTHER)
         # (0.8.13) for Voice ID's face assist: how many faces, and whether the only one is the owner's; and for
         # voice.listen.need_face each face's height (pixels) and yaw, numbers that say how close it is and where it
@@ -450,7 +467,13 @@ class Watcher:
         sizes = [(float(f.height), _yaw(f)) for f in faces if f.score >= SCORE_OTHER]
         # (0.8.17, voice.listen.look_to_talk) the owner's face: height, yaw and pitch, for Face.looking (never who else)
         mine = (float(best[2].height), _yaw(best[2]), _pitch(best[2])) if best is not None else None
-        self.emit("view", faces=n_faces, owner_alone=best is not None and n_other == 0, sizes=sizes, owner=mine)
+        # (0.8.17, voice.listen.look_gaze) and where his eyes sit in them: two numbers (gaze.py), only while wanted;
+        # frame: its (width, height), so "close" is a share of the frame at any camera resolution
+        eyes = self._eyes(frame, best[2]) if best is not None else None
+        self.emit(
+            "view", faces=n_faces, owner_alone=best is not None and n_other == 0, sizes=sizes, owner=mine, eyes=eyes,
+            frame=full,
+        )  # fmt: skip
         others = n_faces >= 2
         if others != self.others or others:  # while it lasts, every frame refreshes it (core/nearby.py's STALE_S)
             self.others = others
@@ -462,7 +485,7 @@ class Watcher:
         self.recent.append(Seen(now, True, e, f, n_other > 0))
         # where your face is in the frame (its box's centre, -1..1, and width 0..1), for the being's eyes to find you:
         # the box only, never the picture or the numbers
-        fw, fh = self.frames.size(frame)
+        fw, fh = full
         if fw and fh:
             x, y, w, h = f.box
             self.emit(
@@ -491,7 +514,7 @@ class Watcher:
         mine = [x for x in win if x.owner]
         if len(mine) < need:
             return
-        if self.still(mine):
+        if self.still(mine, STILL_PX * self._scale):
             return  # a picture propped up in front of the camera: wait for movement
         gap = self.returning["gap"]
         self.returning = None
@@ -570,8 +593,19 @@ class Watcher:
             self._faces_shown = False
             self.emit("faces", faces=[])
 
+    def _eyes(self, frame, face) -> tuple[float, float] | None:
+        """(0.8.17) The owner's iris offsets (gaze.Eyes' h and v), when a gazer is wanted now; None otherwise or
+        when the eyes can't be read (a blink, glare, too small)."""
+        try:
+            g = self.gaze()
+            e = g.eyes(frame, face) if g is not None else None
+        except Exception as ex:
+            self.emit("failed", part="reading the eyes", error=type(ex).__name__)
+            return None
+        return (round(e.h, 4), round(e.v, 4)) if e is not None else None
+
     @staticmethod
-    def still(mine: list[Seen]) -> bool:
+    def still(mine: list[Seen], px: float = STILL_PX) -> bool:
         if len(mine) < 2:
             return False
         for i in range(len(mine)):
@@ -579,7 +613,7 @@ class Watcher:
                 a, b = mine[i], mine[j]
                 if a.e is None or b.e is None:
                     return False
-                if not (dot(a.e, b.e) > STILL_COS and moved(a.face, b.face) < STILL_PX):
+                if not (dot(a.e, b.e) > STILL_COS and moved(a.face, b.face) < px):
                     return False
         return True
 

@@ -54,11 +54,14 @@ Look at it to talk (0.8.17, voice.listen.look_to_talk, on by default; like need_
 presence is on and enrolled): the owner's face, close and turned to the camera within look_yaw_deg and look_pitch_deg
 (tighter than face_yaw_deg), for look_dwell_s, opens the conversation as its name alone would, silently
 (Portal.look, gate rule 5b): what he says next counts without the name. YuNet gives the head's direction, not the
-eyes', so this is "your head turned to it". It stays open while he keeps looking; looking away for look_away_s before
-anything was said closes it (a conversation going on is left to close_s and follow_s). One look opens it once: after it
-closes, he looks away and back. Never while Voice is off, muted, blocked (a call, the night, paused), on any call, or
-while Kurooto is asleep; the stretch still goes through Voice ID (someone else's voice isn't written out, as when the
-conversation is closed) and the chatter rules. Only two times are kept, in memory (core/nearby.py)."""
+eyes', so without more this is "your head turned to it"; with look_gaze on, the eye model here and his eyes calibrated
+on the Face page (0.8.17, modules/face/gaze.py), it's his eyes on the camera (the head's turn and the irises together,
+within look_gaze_yaw_deg and look_gaze_pitch_deg), and the status's look_to_talk.by says which. It stays open while
+he keeps looking; looking away for look_away_s before anything was said closes it (a conversation going on is left to
+close_s and follow_s). One look opens it once: after it closes, he looks away and back. Never while Voice is off,
+muted, blocked (a call, the night, paused), on any call, or while Kurooto is asleep; the stretch still goes through
+Voice ID (someone else's voice isn't written out, as when the conversation is closed) and the chatter rules. Only
+two times are kept, in memory (core/nearby.py)."""
 
 from __future__ import annotations
 
@@ -118,7 +121,7 @@ register_defaults(
             "ack": "tone",  # while the AI thinks, a soft sound says it heard you: tone, word ("Hmm.") or off
             "stream": True,  # speak the answer a sentence at a time as the AI writes it (when the AI can stream)
         },
-        "listen": {
+        "listen": {  # hearing: what it listens for, when, and what counts as said to it
             "on": False,  # listen through the microphone, all on this computer; only turns said to Kurooto leave
             "wake_word": "",  # a wake word model of your own (an openWakeWord .onnx path); empty: its name wakes it
             "wake_threshold": 0.5,  # how sure the wake word model must be (0 to 1)
@@ -154,6 +157,10 @@ register_defaults(
             "look_yaw_deg": 15,  # looking at it: head turned at most this many degrees left or right of the camera
             "look_pitch_deg": 15,  # and nodded at most this many degrees up or down from your enrolment's front face
             "look_away_s": 3.0,  # looking away this long, with nothing said to it yet, closes it again
+            "look_gaze": True,  # with your eyes calibrated on the Face page: your eyes on the camera, not your head
+            "look_gaze_yaw_deg": 10,  # by the eyes: gaze at most this many degrees left or right of the camera's lens
+            "look_gaze_pitch_deg": 10,  # and at most this many degrees above or below it
+            "look_gaze_dwell_s": 0.0,  # by the eyes: looking this long opens it (0: the first frame with them on it)
             "timing": True,  # time each turn from your last word to its first sound (numbers only; medians in /voice)
             "fast_brain": "same",  # plain chat by voice: same (your AI), local (this computer's model) or fastest
             "warm_up": True,  # when listening starts, warm the transcriber and the voice so the first turn is quick
@@ -574,7 +581,7 @@ class Voice(Module):
         face = self.face_line()
         face = f"; {face}" if face else ""
         if not self._look_why():
-            face += "; looking at it opens a conversation"
+            face += f"; looking at it opens a conversation ({self._look_by()[1]})"
         return f"{speak}; listening here (its name{own} wakes it){face}{tail}"
 
     def face_line(self) -> str:
@@ -768,6 +775,8 @@ class Voice(Module):
                 "pitch_deg": s("listen.look_pitch_deg"),
                 "away_s": s("listen.look_away_s"),
                 "opened": self.look_count,
+                "by": self._look_by()[0],  # (0.8.17) "eyes" (calibrated) or "head"
+                "gaze": self._look_by()[2],  # Face presence's gaze status: words, a date, rounded degrees
             },
         }
 
@@ -1137,9 +1146,22 @@ class Voice(Module):
             return "not listening"
         return ""
 
+    def _look_by(self) -> tuple[str, str, dict]:
+        """(0.8.17, look_gaze) What a look is judged by: ("eyes" | "head", the words for /voice, Face's gaze status)."""
+        face = self.app.modules.get("face")
+        try:
+            g = face.gaze_status() if face is not None and self.app.is_on("face") else {}
+        except Exception:
+            g = {}
+        if g.get("using") == "eyes":
+            return "eyes", "by your eyes on the camera", g
+        why = g.get("why") or "Face presence is off"
+        return "head", f"by your head's turn: {why}", g
+
     def look_tick(self) -> None:
         """(look_to_talk) From Face presence each frame it looks at, and every second from background(): a steady look
-        (look_dwell_s of frames with the owner looking at it, core/nearby.py) opens the conversation (Portal.look);
+        (look_dwell_s of frames with the owner looking at it, core/nearby.py; by his eyes, look_gaze_dwell_s: 0, the
+        first such frame) opens the conversation (Portal.look);
         while it's open by a look and nothing was said yet, looking keeps it open and looking away for look_away_s
         closes it. One run of looks opens it once (or is spent when it finds it open already)."""
         p = self.portal
@@ -1153,6 +1175,8 @@ class Voice(Module):
                 p.close("looked away")
             return
         dwell = _num(self.setting("listen.look_dwell_s"), 1.0)
+        if self._look_by()[0] == "eyes":  # (0.8.17) eyes on the lens are a clear sign: at once, by default
+            dwell = _num(self.setting("listen.look_gaze_dwell_s"), 0.0)
         if since is None or last is None or not now_looking or since == self._look_used or last - since < dwell:
             return
         if self._look_why():

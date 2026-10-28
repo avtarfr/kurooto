@@ -442,6 +442,41 @@ values = "Seconds, 0 to 30 (default 3)."
 when = "Raise it if it closes while you glance at your notes before asking."
 needs = "`voice.listen.look_to_talk`."
 
+[s."voice.listen.look_gaze"]
+tip = "With your eyes calibrated on the Face page, a look counts by your eyes on the camera, not your head's turn."
+what = """Needs the eye model (Get the eye model on the Face page: MediaPipe Iris, 2.6 MB) and Calibrate my eyes
+(about three seconds looking at the camera's lens). Then each frame, while Voice listens, the irises are found in your
+eyes (cut from the camera's full picture) and combined with your head's turn: eyes on the lens count even with your
+head a little turned, and eyes on the screen below the camera don't, even with your head facing it. Calibration keeps
+four numbers in your sealed face model (where your irises sat and how your head was turned), never a picture; Clear on
+the Face page drops them, and Forget drops them with the rest. Without the model or a calibration, or with this off,
+the head's turn counts (voice.listen.look_yaw_deg and look_pitch_deg), and /voice says which."""
+values = "`true` (default), `false` (the head's turn only)."
+when = "Turn it off if glasses or the light make your eyes hard to read and looks stop opening it."
+cost = "About 7 ms of one processor core per frame while Voice listens, for the eyes (measured on a Ryzen 7 laptop)."
+needs = "`voice.listen.look_to_talk`; the eye model and a calibration (the Face page)."
+
+[s."voice.listen.look_gaze_dwell_s"]
+tip = "By the eyes: how long your eyes must be on the camera before it starts listening (0: at once)."
+what = """With your eyes calibrated, eyes on the lens are a clear sign, so by default the first frame that sees them
+there opens the conversation (Face presence looks up to 5 times a second while Voice listens: face.watch.look_fps).
+Without a calibration, voice.listen.look_dwell_s applies instead."""
+values = "Seconds, 0 to 5 (default 0)."
+when = "Raise it a little (0.3) if a passing glance at the camera opens it."
+needs = "`voice.listen.look_gaze` and a calibration."
+
+[s."voice.listen.look_gaze_yaw_deg"]
+tip = "By the eyes: how close to the camera's lens your gaze must be, left or right (an estimate in degrees)."
+values = "Degrees, 3 to 30 (default 10)."
+when = "Raise it if looking at the camera doesn't open it; lower it if looking at a screen beside it does. The Face page shows your last look's angles while Voice listens."
+needs = "`voice.listen.look_gaze` and a calibration."
+
+[s."voice.listen.look_gaze_pitch_deg"]
+tip = "By the eyes: how close to the camera's lens your gaze must be, up or down (an estimate in degrees)."
+values = "Degrees, 3 to 30 (default 10)."
+when = "Raise it if it misses you; lower it if looking at the screen just below the camera opens it."
+needs = "`voice.listen.look_gaze` and a calibration."
+
 [s."voice.listen.learn_nightly"]
 tip = "Every night Kurooto learns from how its voice turns went: ones you carried on with, and ones you told off."
 what = """Each turn the gate let through is labelled once it's known how it went: you went on talking to it (good), or

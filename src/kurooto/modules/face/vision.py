@@ -24,6 +24,9 @@ SCORE_WATCH = 0.8
 SCORE_ENROL = 0.9
 SCORE_OTHER = 0.6  # a second face at this score counts as someone else in view
 PREVIEW_W, PREVIEW_H, PREVIEW_Q = 320, 240, 60  # the enrolment page's preview: JPEGs made in memory, never kept
+# (0.8.17) sizes in pixels that settings and rules give (face.recognise.min_face_px, still and repeat checks) are for a
+# frame whose shorter side is REF_PX (640x480, or a phone's 480x640); a sharper camera scales them (px_scale)
+REF_PX = 480
 
 
 @dataclass
@@ -103,6 +106,12 @@ def pitch_degrees(pitch: float, front: float) -> float:
     return math.degrees(math.atan(abs(float(pitch) - float(front)) / PITCH_K))
 
 
+def px_scale(w: float, h: float) -> float:
+    """How many of this frame's pixels make one REF_PX-frame pixel: 1 at 640x480 or 480x640, 2.25 at 1080x1440."""
+    short = min(float(w or 0), float(h or 0))
+    return short / REF_PX if short > 0 else 1.0
+
+
 def moved(a: Face | None, b: Face | None) -> float:
     """How far the landmarks moved between two sightings, in pixels (the largest of the five)."""
     if a is None or b is None:
@@ -129,7 +138,10 @@ class CvDetector:
     def detect(self, frame, min_score: float) -> list[Face]:
         h, w = frame.shape[:2]
         k = DETECT_W / float(w) if w > DETECT_W else 1.0
-        small = self.cv2.resize(frame, (round(w * k), round(h * k))) if k != 1.0 else frame
+        # INTER_AREA: a sharp camera's frame (1080x1440) shrinks 3.4 times without aliasing, so YuNet sees the same
+        # small picture at any capture size; its points are scaled back to the full frame (the eyes are cut from that)
+        area = self.cv2.INTER_AREA
+        small = self.cv2.resize(frame, (round(w * k), round(h * k)), interpolation=area) if k != 1.0 else frame
         self.det.setInputSize((small.shape[1], small.shape[0]))
         _, rows = self.det.detect(small)
         del small
@@ -182,7 +194,7 @@ class CvFrames:
         return int(frame.shape[1]), int(frame.shape[0])
 
     def mean(self, frame) -> float:
-        small = self.cv2.resize(frame, (64, 48))
+        small = self.cv2.resize(frame, (64, 48), interpolation=self.cv2.INTER_AREA)  # every pixel counts, any size
         return float(small.mean())
 
     def jpeg(self, frame) -> bytes:

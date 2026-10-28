@@ -35,6 +35,17 @@ Look at it to talk (0.8.17, voice.listen.look_to_talk): each frame, whether the 
 camera within the tight look angles (looking()) goes to core/nearby.py as a time, and Voice is told at once
 (Voice.look_tick), so a steady look opens its conversation as if its name was said.
 
+By the eyes (0.8.17, voice.listen.look_gaze): with the eye model here (Get the eye model on the Face page: MediaPipe
+Iris, 2.6 MB) and your eyes calibrated (Calibrate my eyes: three seconds looking at the lens; four numbers kept in the
+sealed template, never a picture), looking() goes by where your eyes point (gaze.py: the head's turn and the irises'
+place together), so eyes on the screen below the camera don't count and a head a little turned with the eyes on the lens
+does. Without either, the head's turn as before; status()["gaze"] and /voice say which. While Voice listens for a look
+the watcher looks at face.watch.look_fps frames a second (at most 5).
+
+Camera resolution (0.8.17): sizes are shares of the frame (close_facing, owner_desk_height, enrolment's front face) or
+pixels of a 480-high frame scaled to the camera's (vision.px_scale), so a camera switched from 480x640 to 1080x1440
+changes nothing but sharper eyes. YuNet always looks at a 320-wide copy.
+
 Tracking (0.8.12, face.track.on): while the camera is open and a dashboard is in sight or an add-on holds the camera,
 every face in view goes out as {"t": "face", "kind": "faces", "faces": [{id, x, y, h, owner, m}]} (at most 10 a
 second; watch.py's tracking), so the being's eye can follow anyone; watch_faces(cb) hands the same to an add-on. A
@@ -56,10 +67,11 @@ from kurooto.core.biometric import Locked, TemplateStore, load_impostors
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jsave
 from kurooto.modules.base import Answer, Command, Incoming, Intent, Module
+from kurooto.modules.face import gaze as gaze_mod
 from kurooto.modules.face import parts as face_parts
 from kurooto.modules.face.enrol import MINIMUM, PLAN, TARGET, TARGETS, Enrolment, Session, Vision
 from kurooto.modules.face.model import FLOOR, MODEL, STRICTNESS, Template
-from kurooto.modules.face.vision import pitch_degrees, yaw_degrees
+from kurooto.modules.face.vision import pitch_degrees, px_scale, yaw_degrees
 from kurooto.modules.face.watch import PAUSES, TRACK_FAST, TRACK_OFF, TRACK_SLOW, Watcher
 
 if TYPE_CHECKING:
@@ -76,6 +88,7 @@ register_defaults(
         "watch": {
             "fps": 1.0,  # frames a second it looks at while watching for you (0.2 to 2)
             "fps_battery": 0.33,  # frames a second on battery
+            "look_fps": 5.0,  # while Voice listens for a look: at least this many frames a second (0: as usual; max 5)
             "idle_s": 60,  # seconds with no keyboard or mouse before the camera looks (while you type, it doesn't)
             "when_locked": False,  # also look while the screen is locked (off: paused while locked)
             "night": False,  # also look during the night hours (availability.night); off: paused at night
@@ -125,6 +138,8 @@ FACES_EVERY_S = 0.09  # "faces" to the pages at most about 10 a second
 HOLD_MAX_S = 600.0  # an add-on's hold lasts at most this long unless renewed: a crashed add-on can't keep the camera
 DESK_EVERY_S = 5.0  # your face's size at the desk is noted at most this often (a running median, in memory)
 DESK_MIN = 10  # sightings before the running median is trusted over the enrolment's front step
+BLINK_HOLD_S = 1.0  # (look by the eyes) a frame whose eyes can't be read keeps the last verdict this long
+EYE_MB = 2.64  # the eye model (parts.py's iris)
 CONFIRM_FORGET_S = 7 * 86400  # Delete my face data, offered when Face presence is turned off, works this long
 IMPOSTORS = "face-impostors.npz"
 SIZE_GB = 0.18
@@ -139,6 +154,7 @@ LICENCES = [
     },
 ]
 EARLY = PAUSES[:3] + ("template locked",)  # no watcher is built for these
+STAGES = {"enrol": "capturing", "test": "testing", "gaze": "calibrating"}  # a session's kind -> the page's stage
 SAY_PARTS = ("next", "waiting", "deadline", "held")
 TOGGLES = {
     "greet.on": "Greet me when I sit down",
@@ -222,6 +238,9 @@ class Face(Module):
         self._hooks_lock = threading.Lock()
         self._desk: deque = deque(maxlen=240)  # (pixels, share) of your face's height, sightings 5 s apart
         self._desk_at = 0.0
+        self._gazer: object | None = None  # (0.8.17) the eye model, loaded once it's wanted (gaze.CvGazer)
+        self._gazer_failed = -1e9  # when loading it last failed (monotonic): not tried again for a minute
+        self._gaze_last: dict = {}  # the last frame's gaze: degrees and the verdict, numbers only, in memory
 
     # ------------------------------------------------------------------------------------------- the parts
     def wants(self) -> list[str]:
@@ -240,7 +259,12 @@ class Face(Module):
         return self.parts.install(self.wants(), progress, free_gb=free)
 
     def install_from(self, folder: str, progress=print) -> tuple[bool, str]:
-        return self.parts.install_from(folder, self.wants(), progress)
+        from pathlib import Path
+
+        out = self.parts.install_from(folder, self.wants(), progress)
+        if (Path(folder).expanduser() / face_parts.IRIS).is_file():  # (0.8.17) the optional eye model, when it's there
+            self.parts.install_from(folder, face_parts.EYES, progress)
+        return out
 
     def health(self) -> tuple[bool, str]:
         ok, why = self.ready()
@@ -440,6 +464,7 @@ class Face(Module):
             "away_after_min": s("away.after_min"),
             "track_on": s("track.on"),
             "track_fps": s("track.fps"),
+            "look_fps": s("watch.look_fps") if self._look_listening() else 0,
         }
 
     def _classify(self, e) -> tuple[str, float]:
@@ -477,6 +502,7 @@ class Face(Module):
             held=self._held_now,
             people=self._people_on,
             tracking=self._track_mode,
+            gaze=self._gaze_now,
         )
 
     def tick(self) -> None:
@@ -576,8 +602,9 @@ class Face(Module):
             nearby.set_others(self.app, "face", bool(f.get("on")))
         elif kind == "view":  # (0.8.13) how many faces, and whether the only one is yours: memory only, never an event
             nearby.set_view(self.app, int(f.get("faces") or 0), bool(f.get("owner_alone")))
-            nearby.set_facing(self.app, int(f.get("faces") or 0), self.close_facing(f.get("sizes") or []))
-            nearby.set_look(self.app, self.looking(f.get("owner")))  # (0.8.17) look to talk: a time only
+            size = f.get("frame")  # (0.8.17) the frame's (width, height): sizes as shares of it
+            nearby.set_facing(self.app, int(f.get("faces") or 0), self.close_facing(f.get("sizes") or [], size))
+            nearby.set_look(self.app, self.looking(f.get("owner"), f.get("eyes"), size))  # (0.8.17) look to talk
             voice = self.app.modules.get("voice")
             if voice is not None and self.app.is_on("voice"):
                 try:
@@ -719,11 +746,12 @@ class Face(Module):
                 self._core_holds.discard(k)
             return sorted(k for k in self._holds if on or k in self._core_holds)
 
-    def close_facing(self, sizes: list) -> int:
+    def close_facing(self, sizes: list, frame: tuple | None = None) -> int:
         """(voice.listen.need_face) How many of a frame's faces, given as (height in pixels, pose yaw), are close (at
         least voice.listen.face_near of your usual desk face height, the same idea as Curiosity's distance) and facing
         the camera (|yaw| within voice.listen.face_yaw_deg). Without a desk height yet, face.recognise.min_face_px
-        stands in. A face without a yaw doesn't count."""
+        stands in. A face without a yaw doesn't count. frame (0.8.17): the frame's (width, height); with it, heights are
+        compared as shares of the frame (a sharper camera's pixels change nothing) and min_face_px is scaled."""
         if not sizes:
             return 0
         get = self.app.settings.get
@@ -733,22 +761,28 @@ class Face(Module):
         except (TypeError, ValueError):
             near, limit = 0.5, 35.0
         desk = self.owner_desk_height()
-        if desk and desk.get("px"):
+        fw, fh = (float(x or 0) for x in (frame or (0, 0)))
+        if fh > 0 and desk and desk.get("h") and desk.get("measured"):  # an older enrolment's "h" is a guess
+            base = float(desk["h"]) * fh * near
+        elif desk and desk.get("px"):
             base = float(desk["px"]) * near
         else:
-            base = float(self.setting("recognise.min_face_px") or 60)
+            base = float(self.setting("recognise.min_face_px") or 60) * (px_scale(fw, fh) if fw and fh else 1.0)
         n = 0
         for h_px, yaw in sizes:
             if yaw is not None and float(h_px) >= base and yaw_degrees(yaw) <= limit:
                 n += 1
         return n
 
-    def looking(self, owner) -> bool:
+    def looking(self, owner, eyes=None, frame=None) -> bool:
         """(voice.listen.look_to_talk, 0.8.17) Whether the owner's face in a frame, given as (height in pixels, pose
-        yaw, pose pitch) or None, is looking at the camera: close (as close_facing), turned at most
-        voice.listen.look_yaw_deg from it, and nodded at most look_pitch_deg from your enrolment's front step (none on
-        record: the yaw alone). YuNet's five points give the head's direction, not the eyes': "your head turned to
-        it" is the nearest honest stand-in for eye contact, hence angles tighter than face_yaw_deg."""
+        yaw, pose pitch) or None, is looking at the camera. It must be close (as close_facing; frame: the frame's
+        (width, height)). Then, with your eyes calibrated (gaze_calibration()), by the eyes: `eyes` (the irises'
+        (h, v), gaze.py) and the head together within look_gaze_yaw_deg and look_gaze_pitch_deg of the lens, the head
+        within face_yaw_deg (beyond it the irises can't be read well); a frame without eyes (a blink) keeps the last
+        verdict for BLINK_HOLD_S. Otherwise by the head: turned at most look_yaw_deg from the camera and nodded at
+        most look_pitch_deg from your enrolment's front step (none on record: the yaw alone), the nearest honest
+        stand-in for eye contact YuNet's five points give, hence angles tighter than face_yaw_deg."""
         if not owner or not self.app.settings.get("voice.listen.look_to_talk", True):
             return False
         h_px, yaw, pitch = (list(owner) + [None, None])[:3]
@@ -758,7 +792,12 @@ class Face(Module):
             pitch_max = float(get("voice.listen.look_pitch_deg", 15))
         except (TypeError, ValueError):
             yaw_max = pitch_max = 15.0
-        if yaw is None or h_px is None or not self.close_facing([(h_px, 0.0)]) or yaw_degrees(yaw) > yaw_max:
+        if yaw is None or h_px is None or not self.close_facing([(h_px, 0.0)], frame):
+            return False
+        cal = self.gaze_calibration()
+        if cal is not None:
+            return self._looking_by_eyes(yaw, pitch, eyes, cal)
+        if yaw_degrees(yaw) > yaw_max:
             return False
         t = self._template_or_none()
         front = (t.baseline or {}).get("pitch") if t is not None else None
@@ -766,24 +805,142 @@ class Face(Module):
             return True
         return pitch is not None and pitch_degrees(pitch, front) <= pitch_max
 
+    def _looking_by_eyes(self, yaw: float, pitch, eyes, cal: dict) -> bool:
+        get = self.app.settings.get
+        try:
+            head_max = float(get("voice.listen.face_yaw_deg", 35))
+            h_max = float(get("voice.listen.look_gaze_yaw_deg", 10))
+            v_max = float(get("voice.listen.look_gaze_pitch_deg", 10))
+        except (TypeError, ValueError):
+            head_max, h_max, v_max = 35.0, 10.0, 10.0
+        now = time.monotonic()
+        if yaw_degrees(yaw) > head_max:
+            self._gaze_last = {"t": now, "looking": False, "why": "head turned away"}
+            return False
+        if not eyes or pitch is None:  # a blink, glare: the last verdict holds for a moment
+            last = self._gaze_last
+            return bool(last.get("looking")) and now - float(last.get("t") or 0) <= BLINK_HOLD_S
+        gh, gv = gaze_mod.angles(float(eyes[0]), float(eyes[1]), float(yaw), float(pitch), cal)
+        ok = abs(gh) <= h_max and abs(gv) <= v_max
+        self._gaze_last = {"t": now, "looking": ok, "yaw_deg": round(gh, 1), "pitch_deg": round(gv, 1)}
+        return ok
+
+    # ------------------------------------------------------------------------------- your eyes (0.8.17, gaze.py)
+    def gaze_calibration(self) -> dict | None:
+        """Your eyes' calibration when look to talk goes by the eyes: voice.listen.look_gaze on, the eye model here
+        and a calibration in your template. Else None (the head's turn)."""
+        if not self.app.settings.get("voice.listen.look_gaze", True) or not self.parts.has_model("iris"):
+            return None
+        t = self._template_or_none()
+        cal = dict(t.gaze or {}) if t is not None else {}
+        return cal if gaze_mod.valid(cal) else None
+
+    def _look_listening(self) -> bool:
+        """Voice listens for a look now: look_to_talk on and Voice's own hold on the camera."""
+        if not self.app.settings.get("voice.listen.look_to_talk", True):
+            return False
+        return any(h in self._core_holds for h in self.holds())
+
+    def _gaze_model(self):
+        """The eye model, loaded once (a failure is retried after a minute); None when it can't be."""
+        if self._gazer is None:
+            if time.monotonic() - self._gazer_failed < 60:
+                return None
+            try:
+                self.parts.importable()
+                self._gazer = gaze_mod.opencv_gazer(self.parts.path(face_parts.IRIS))
+            except Exception as e:
+                self._gazer_failed = time.monotonic()
+                self._failed("loading the eye model", e)
+                return None
+        return self._gazer
+
+    def _gaze_now(self):
+        """For the watcher: the eye model while Voice listens for a look and your eyes are calibrated, else None (no
+        eyes are read: nothing runs that nobody uses)."""
+        if not self._look_listening() or self.gaze_calibration() is None:
+            return None
+        return self._gaze_model()
+
+    def gaze_status(self) -> dict:
+        """What look to talk goes by, words and rounded degrees only: the switch, the model, the calibration's date,
+        "eyes" or "head" and why, and the last frame's gaze (5 s fresh) for tuning look_gaze_*_deg."""
+        on = bool(self.app.settings.get("voice.listen.look_gaze", True))
+        model = self.parts.has_model("iris")
+        t = self._template_or_none()
+        cal = dict(t.gaze or {}) if t is not None else {}
+        calibrated = gaze_mod.valid(cal)
+        using = "eyes" if on and model and calibrated else "head"
+        if using == "eyes":
+            why = ""
+        elif not on:
+            why = "voice.listen.look_gaze is off"
+        elif not model:
+            why = "the eye model isn't here (Get the eye model on the Face page)"
+        else:
+            why = "your eyes aren't calibrated (Calibrate my eyes on the Face page)"
+        last = self._gaze_last
+        fresh = bool(last) and time.monotonic() - float(last.get("t") or 0) <= 5
+        return {"on": on, "model": model, "calibrated": calibrated, "at": cal.get("at") if calibrated else None,
+                "using": using, "why": why, "now": {k: v for k, v in last.items() if k != "t"} if fresh else None,
+                "mb": EYE_MB}  # fmt: skip
+
+    def gaze_start(self, cid=None) -> tuple[bool, dict]:
+        """Calibrate my eyes: the camera opens (the guarded action camera.open, the Face page's button only) for
+        about three seconds of you looking at its lens."""
+        return self._start("gaze", cid)
+
+    def _gaze_done(self, numbers: dict) -> None:
+        t = self._template_or_none()
+        if t is None:
+            return
+        t.gaze = {k: numbers[k] for k in (*gaze_mod.NUMBERS, "n", "at") if k in numbers}
+        self._save(t)
+        self._gaze_last = {}
+        self.app.events.emit("face_gaze", calibrated=True)
+
+    def gaze_clear(self) -> tuple[bool, str]:
+        t = self._template_or_none()
+        if t is None or not t.gaze:
+            return False, "Your eyes aren't calibrated."
+        t.gaze = {}
+        self._save(t)
+        self._gaze_last = {}
+        self.app.events.emit("face_gaze", calibrated=False)
+        return True, "Eye calibration cleared: look to talk goes by your head's turn."
+
+    def gaze_setup(self, progress=print) -> tuple[bool, str]:
+        """Get the eye model (MediaPipe Iris, 2.6 MB, pinned by sha256) into the face models' folder."""
+        from kurooto.core.prereqs import Prereqs
+
+        free = lambda: Prereqs.free_gb(self.parts.models_dir.parent)  # noqa: E731
+        ok, msg = self.parts.install(face_parts.EYES, progress, free_gb=free)
+        return ok, ("The eye model is here: now Calibrate my eyes." if ok else msg)
+
     def _held_now(self) -> bool:
         return bool(self.holds())
 
     def owner_desk_height(self) -> dict | None:
         """How tall your face usually is at the desk: {"px", "h" (share of the frame's height), "n", "from"}: the
         running median of your recent sightings ("seen", from DESK_MIN of them), else the enrolment's front step
-        ("enrolment": its pixels over face.camera.height), else None. Sizes only, in memory."""
+        ("enrolment": its share of the frame, measured since 0.8.17; an older one's pixels over face.camera.height),
+        else None. "px" is in the pixels of the frames it was seen in: after the camera's resolution changes, "h"
+        is the one to compare (close_facing does). Sizes only, in memory."""
         if len(self._desk) >= DESK_MIN:
             import statistics
 
             px = statistics.median(p for p, _ in self._desk)
             hs = [h for _, h in self._desk if h]
             return {"px": round(px, 1), "h": round(statistics.median(hs), 4) if hs else None, "n": len(self._desk),
-                    "from": "seen"}  # fmt: skip
+                    "from": "seen", "measured": bool(hs)}  # fmt: skip
         t = self._template_or_none()
-        base = float((t.baseline or {}).get("height") or 0) if t is not None else 0.0
+        b = (t.baseline or {}) if t is not None else {}
+        base = float(b.get("height") or 0)
         if base <= 0:
             return None
+        if b.get("share"):
+            return {"px": round(base, 1), "h": round(float(b["share"]), 4), "n": 0, "from": "enrolment",
+                    "measured": True}  # fmt: skip
         fh = float(self.setting("camera.height") or 480)
         return {"px": round(base, 1), "h": round(base / fh, 4) if fh else None, "n": 0, "from": "enrolment"}
 
@@ -988,22 +1145,28 @@ class Face(Module):
             t = self._template_or_none()
             if t is None:
                 return False, {"message": "Enrol first: there's nothing to test yet."}
+            if kind == "gaze" and not self.parts.has_model("iris"):
+                return False, {"message": f"Get the eye model first ({EYE_MB:g} MB)."}
         try:
             det, emb, frames = self._vision_objects(4 if kind == "enrol" else 1)
         except Exception as e:
             self._failed("loading the models", e)
             return False, {"message": f"The models didn't load: {type(e).__name__}."}
+        gazer = self._gaze_model() if kind == "gaze" else None
+        if kind == "gaze" and gazer is None:
+            return False, {"message": "The eye model didn't load: try again in a minute."}
         cid_i = int(cid) if str(cid or "").isdigit() else None
         sess = Session(
             kind,
             cid_i,
             camera,
-            Vision(det, emb, frames),
+            Vision(det, emb, frames, gazer),
             push=lambda m: self._push(m, cid_i),
             plan=plan,
-            classify=self._classify if kind == "test" else None,
+            classify=self._classify if kind in ("test", "gaze") else None,
             thresholds=(t.hi, t.lo) if (t is not None and kind == "test") else (0.0, 0.0),
             on_mark=self._test_result if kind == "test" else None,
+            on_gaze=self._gaze_done if kind == "gaze" else None,
         )
         self.session = sess
         if self.watcher is not None:
@@ -1022,7 +1185,7 @@ class Face(Module):
                 sess.end(f"the camera didn't open ({why})")
 
         sess.start_thread(before)
-        out = {"session": sess.id, "stage": "capturing" if kind == "enrol" else "testing"}
+        out = {"session": sess.id, "stage": STAGES[kind]}
         if plan is not None:
             out["plan"] = plan.progress()
         return True, out
@@ -1151,6 +1314,7 @@ class Face(Module):
             self._tpl = None
             self._previous = None
             self._desk.clear()
+            self._gaze_last = {}
             gone = self.store.forget()
         self._greets = {}
         self.app.events.emit("face_forgotten")
@@ -1225,7 +1389,7 @@ class Face(Module):
             return "setup"
         s = self.session
         if s is not None and s.state != "ended":
-            return "capturing" if s.kind == "enrol" else "testing"
+            return STAGES.get(s.kind, "testing")
         if not self.enrolled() or self.reenrol_needed():
             return "enrol"
         return "manage"
@@ -1287,6 +1451,7 @@ class Face(Module):
             "switches": {k: bool(self.setting(k)) for k in TOGGLES},
             "holds": self.holds(),
             "voice_speaks": bool(vo is not None and self.app.is_on("voice") and not vo.muted()),
+            "gaze": self.gaze_status(),  # (0.8.17) look to talk by the eyes or the head; never the numbers
         }
 
     def card(self) -> dict:

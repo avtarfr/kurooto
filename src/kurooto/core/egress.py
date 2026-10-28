@@ -75,6 +75,7 @@ HOSTS = {  # host (".domain": any host under it) -> what reaches it; docs/PRIVAC
     "model)",
     "huggingface.co": "Voice: downloading the speech-to-text model and the Piper voice",
     "media.githubusercontent.com": "Face presence: downloading its two models (OpenCV's model zoo)",
+    "storage.googleapis.com": "Face presence: downloading the eye model (MediaPipe's model store), when you ask",
     "api.cloudflare.com": "Phone calls: setting up your call line",
     ".workers.dev": "Phone calls: your call line",
     "ntfy.sh": "Phone calls: ringing your phone",
