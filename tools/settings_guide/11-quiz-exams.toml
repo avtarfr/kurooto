@@ -10,6 +10,14 @@ needs = "The Quiz feature (Exam season is a feature of its own)."
 tip = "Questions in one quiz."
 when = "Raise it for longer sessions; lower it for a quick daily habit."
 
+[s."quiz.learning_now"]
+tip = "A quiz session ends with one extra card on a concept you're learning now (marked by another feature)."
+what = """Another feature (an add-on) may mark concepts you keep coming back to this week on Brain's frontier. Then a
+session asks its usual cards first, in the same order, and one more that names a marked concept, headed \"learning
+now\". A card you already answered today isn't picked."""
+when = "Turn it off to keep sessions to the cards that are due."
+needs = "Quiz, Brain's model of what you know (`mind.tom.on`), and a feature that marks concepts."
+
 [s."quiz.exam_per_session"]
 tip = "Questions in one quiz while exam mode is on."
 when = "Raise it if you want heavier practice close to exams."
@@ -144,6 +152,12 @@ needs = "`exam_season.revision`."
 tip = "Minutes in one revision block (one topic each)."
 when = "Shorten it if you focus better in short bursts."
 needs = "`exam_season.revision`."
+
+[s."exam_season.learning_now"]
+tip = "/revise <course> starts with a line of its topics you're learning now (concepts another feature marked)."
+what = "A line above the ranked topics; the ranking and the plan's blocks are the same as without it."
+when = "Turn it off to see only the ranked list."
+needs = "`exam_season.revision`, Brain's model of what you know, and a feature that marks concepts."
 
 [s."exam_season.revision_ask"]
 tip = "Each evening: did you cover today's revision topics? (Counts like a quiz answer.)"

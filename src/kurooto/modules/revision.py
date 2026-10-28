@@ -572,7 +572,27 @@ class Revision:
                 tags.append("covered")
             rows.append(f"- {t['name']}" + (f" ({', '.join(tags)})" if tags else ""))
         more = f"\n... and {len(ranked) - 20} more." if len(ranked) > 20 else ""
-        return f"{name}: {len(ranked)} topics from {where}, weakest first:\n" + "\n".join(rows) + more
+        now_on = self.learning(ranked)
+        top = f"Learning now: {', '.join(now_on)}.\n" if now_on else ""
+        return top + f"{name}: {len(ranked)} topics from {where}, weakest first:\n" + "\n".join(rows) + more
+
+    def learning(self, ranked: list[dict]) -> list[str]:
+        """(exam_season.learning_now) The course's topics that name a concept marked "learning now" (Brain's frontier,
+        marked by another feature), for a line above the ranked list; the ranking itself is unchanged."""
+        if self.es.setting("learning_now") is False:
+            return []
+        try:
+            from kurooto.mind import frontier
+            from kurooto.mind.tom import knowledge
+
+            marked = frontier.learning_now(self.app)
+            notes = knowledge.concepts(self.app) if marked else {}
+            want = {s: notes[s] for s in marked if s in notes}
+            if not want:
+                return []
+            return [t["name"] for t in ranked if knowledge.mentions(t["name"], want)][:5]
+        except Exception:
+            return []
 
     # ------------------------------------------------------------------------------- the evening question
     def ask_at(self, day: dt.date) -> dt.datetime:

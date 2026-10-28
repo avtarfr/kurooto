@@ -68,6 +68,9 @@ register_defaults(
         "revision_share": 50,  # % of your free time (Start-by's, less commitments) revision blocks may take
         "block_min": 60,  # one revision block, in minutes (one topic each)
         "revision_ask": True,  # the evening: did you cover today's topics? (counts like a quiz answer)
+        # (0.9.0) /revise <course> starts with a line of the topics you're learning now (concepts another feature
+        # marked on Brain's frontier); the ranking below it is unchanged
+        "learning_now": True,
     },
 )
 

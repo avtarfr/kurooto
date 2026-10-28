@@ -15,6 +15,11 @@ a grade:
     grades(app)               every concept's grade, worked out at most every CACHE_S seconds
 
 A file read and plain arithmetic: no model, nothing leaves this computer. The grades are kept in memory only.
+
+"Learning now" (0.9.0): another feature (an add-on) may mark concepts you keep coming back to this week
+(mark_learning: concept slugs and a number of days, at most LEARNING_MAX_DAYS); learning_now(app) lists the marks still
+running, for Quiz's one extra card and the revision plan's top line. Kept in <state>/mind-learning.json: slugs and
+dates only. Off with the model of what he knows (mind.tom.on).
 """
 
 from __future__ import annotations
@@ -120,4 +125,49 @@ def score(app: App, text: str) -> float:
         return 0.0
 
 
-__all__ = ["score", "on_frontier", "grades", "masteries", "prereqs", "forget_cache"]
+LEARNING_FILE = "mind-learning.json"
+LEARNING_MAX_DAYS = 14  # a "learning now" mark lasts at most this long unless marked again
+LEARNING_MAX = 20  # concepts marked at once, at most (the latest kept)
+
+
+def mark_learning(app: App, slugs: list[str], days: float = 7) -> int:
+    """(0.9.0) Concepts he's learning now, from another feature (concept slugs as the notes name them, and how many
+    days the mark lasts). Unknown slugs are left out. How many were marked; 0 with the model off. Never raises."""
+    try:
+        if not model.on(app) or not slugs:
+            return 0
+        from kurooto.core.lock import Lock
+        from kurooto.core.state import jload, jsave
+
+        notes = _load(app)[0]
+        until = time.time() + max(0.0, min(float(days), LEARNING_MAX_DAYS)) * 86400
+        got = [s for s in dict.fromkeys(str(x) for x in slugs) if s in notes]
+        if not got:
+            return 0
+        with Lock(app.paths.state, "mind-learning"):
+            d = jload(app.paths.state / LEARNING_FILE, {}) or {}
+            d = {k: v for k, v in d.items() if isinstance(v, (int, float)) and v > time.time()}
+            for s in got:
+                d.pop(s, None)
+                d[s] = round(until, 1)
+            jsave(app.paths.state / LEARNING_FILE, dict(list(d.items())[-LEARNING_MAX:]))
+        return len(got)
+    except Exception:
+        return 0
+
+
+def learning_now(app: App) -> list[str]:
+    """(0.9.0) The concepts marked "learning now" whose mark still runs, the latest first; [] with the model off."""
+    try:
+        if not model.on(app):
+            return []
+        from kurooto.core.state import jload
+
+        d = jload(app.paths.state / LEARNING_FILE, {}) or {}
+        t = time.time()
+        return [k for k, v in reversed(list(d.items())) if isinstance(v, (int, float)) and v > t]
+    except Exception:
+        return []
+
+
+__all__ = ["score", "on_frontier", "grades", "masteries", "prereqs", "forget_cache", "mark_learning", "learning_now"]

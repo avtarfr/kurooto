@@ -152,3 +152,81 @@ def test_a_features_context_lines_join_requests_never_a_guests(env, monkeypatch)
     )
     env.app.settings.set("mind.context.addons", False)
     assert context.addon_context(env.app) == "" and "Topics: chaos" not in context.headless_context(env.app)
+
+
+# ---------------------------------------------------------------------------- "learning now" on the frontier (L143)
+def learning_env(env, monkeypatch):
+    from types import SimpleNamespace
+
+    from kurooto.mind import frontier
+    from kurooto.mind.tom import knowledge, model
+
+    notes = {"zettel/eigenvalues": SimpleNamespace(slug="zettel/eigenvalues", names=["Eigenvalues"])}
+    monkeypatch.setattr(model, "on", lambda app: True)
+    monkeypatch.setattr(frontier, "_load", lambda app: (notes, {}))
+    monkeypatch.setattr(knowledge, "concepts", lambda app: notes)
+    return frontier
+
+
+def test_marks_last_a_while_and_only_for_known_concepts(env, monkeypatch):
+    frontier = learning_env(env, monkeypatch)
+    assert frontier.learning_now(env.app) == []
+    assert frontier.mark_learning(env.app, ["zettel/eigenvalues", "zettel/not-a-note"], days=60) == 1
+    assert frontier.learning_now(env.app) == ["zettel/eigenvalues"]
+    raw = (env.app.paths.state / frontier.LEARNING_FILE).read_text()
+    until = list(__import__("json").loads(raw).values())[0]
+    assert until <= time.time() + frontier.LEARNING_MAX_DAYS * 86400 + 5  # capped
+    monkeypatch.setattr(time, "time", lambda real=time.time: real() + 15 * 86400)
+    assert frontier.learning_now(env.app) == []
+
+
+def test_a_quiz_session_ends_with_one_extra_learning_now_card(env, monkeypatch):
+    from tests.unit.test_study import last_buttons, write_prep
+
+    frontier = learning_env(env, monkeypatch)
+    env.app.settings.set("availability.night.enabled", False)
+    env.on("subjects", "deadlines", "quiz")
+    env.say("/subject add Linear Algebra (la, linalg)")
+    write_prep(env.app, n=3)
+    prep = env.app.workspace / "linear-algebra" / "exam-prep.md"
+    prep.write_text(prep.read_text() + "- Eigenvalues of a symmetric matrix are real.\n", encoding="utf-8")
+    env.app.settings.set("quiz.per_session", 2)
+    frontier.mark_learning(env.app, ["zettel/eigenvalues"])
+    assert env.say("/quiz la") == "4 due in linear-algebra."
+    asked = []
+    for _ in range(3):
+        asked.append(env.fake.texts()[-1])
+        env.reply_to_last("an answer")
+        out = env.press([b for b in last_buttons(env) if b["text"] == "Easy"][0]["callback_data"])
+    assert "learning now" not in asked[0] and "learning now" not in asked[1]  # the usual two first, as before
+    assert "learning now" in asked[2] and "Eigenvalues" in asked[2]
+    assert out.endswith("That's the session. /quiz for more.")
+
+
+def test_no_extra_card_without_a_mark_or_with_the_switch_off(env, monkeypatch):
+    frontier = learning_env(env, monkeypatch)
+    env.on("subjects", "deadlines", "quiz")
+    quiz = env.app.modules["quiz"]
+    from tests.unit.test_study import write_prep
+
+    env.say("/subject add Linear Algebra (la, linalg)")
+    write_prep(env.app, n=1)
+    prep = env.app.workspace / "linear-algebra" / "exam-prep.md"
+    prep.write_text(prep.read_text() + "- Eigenvalues of a symmetric matrix are real.\n", encoding="utf-8")
+    assert quiz._learning_extra() is None
+    frontier.mark_learning(env.app, ["zettel/eigenvalues"])
+    assert quiz._learning_extra()[2]["text"].startswith("Eigenvalues")
+    env.app.settings.set("quiz.learning_now", False)
+    assert quiz._learning_extra() is None
+
+
+def test_revise_names_the_topics_youre_learning_now_above_the_unchanged_ranking(env, monkeypatch):
+    frontier = learning_env(env, monkeypatch)
+    env.on("deadlines", "exam_season")
+    rev = env.app.modules["exam_season"].revision
+    ranked = [{"name": "Rank and nullity"}, {"name": "Eigenvalues and eigenvectors"}]
+    assert rev.learning(ranked) == []
+    frontier.mark_learning(env.app, ["zettel/eigenvalues"])
+    assert rev.learning(ranked) == ["Eigenvalues and eigenvectors"]
+    env.app.settings.set("exam_season.learning_now", False)
+    assert rev.learning(ranked) == []

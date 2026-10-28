@@ -61,6 +61,10 @@ for you** with a box for the answer; self-grading comes as the next card ([phone
   **Hard** (3), **Good** (4), **Easy** (5).
 - A session is `quiz.per_session` questions (3; 6 in exam mode). It ends with "That's the session. /quiz for more."
   A session left unfinished is forgotten at midnight.
+- **One extra on what you're learning now** (0.9.0, `quiz.learning_now`, on): when another feature (an add-on) has
+  marked concepts you keep coming back to this week, a session ends with one more card that names one of them (marked
+  "learning now" in its heading), after the usual ones, which come first and in the same order as before. A card you
+  already answered today isn't picked. Nothing changes while nothing is marked.
 
 **The evening before a quiz or exam.** From 19:00 (`quiz.offer_at`) the evening before something on your deadline list
 that's a quiz or exam: "Linear Algebra quiz is tomorrow at 10:00. Practise? 7 questions are due." with **Quiz me now**,
@@ -237,6 +241,10 @@ of your own; a missed-class stub counts until you fill it in); **weak recall** (
 evening question average under 3 of 5); the rest. In each group the weakest recall comes first, then the course's
 order. A topic's quiz items are the quiz questions that name it or link to its note. A topic you said **Yes** to isn't
 laid again for `revision_days`.
+
+**What you're learning now** (0.9.0, `exam_season.learning_now`, on): `/revise <course>` starts with a line naming the
+course's topics that match concepts another feature marked as ones you're learning now ("Learning now: Eigenvalues.").
+The ranked list under it and the plan's blocks are the same as without it.
 
 **When the blocks go.** Into [Start-by's](reminders-and-deadlines.md#start-by-dates-and-crunch-weeks) free time: each day's window
 (`startby.window`, so never at night) less your classes and calendar events, and here also your

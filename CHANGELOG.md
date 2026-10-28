@@ -2,6 +2,9 @@
 
 ## 0.9.0 (unreleased)
 
+- **What you're learning now, in quizzes and /revise** (`quiz.learning_now`, `exam_season.learning_now`, on). When
+  another feature marks concepts you keep coming back to, a quiz session ends with one extra card on one of them, and
+  `/revise <course>` names them in a line above its list; the usual cards and the ranking are unchanged.
 - **An add-on can add a line to your AI requests** (`mind.context.addons`, on). At most four short lines, only when the
   add-on's own switch allows it; never in a guest's request.
 - **Fewer interruptions while you're deep in one thing** (`mind.workspace.deep_hold`, on). When an add-on says you're
