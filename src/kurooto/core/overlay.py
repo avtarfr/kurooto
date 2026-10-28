@@ -36,6 +36,8 @@ Extension points an add-on feature (a Module in modules/) may define, besides wh
                                 problem; None is a note)
     health_check() -> core.health.Check | None   its one check for the daily pass, the dashboard and doctor: how
                                 often it should work (an event it emits) and/or a read-only probe
+    reminder_buttons(what) -> [(label, data)]   (0.9.0) a row of its own buttons on a reminder as it fires
+                                (modules/reminders.py; reminders.addon_buttons)
 """
 
 from __future__ import annotations

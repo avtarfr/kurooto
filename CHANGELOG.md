@@ -2,6 +2,8 @@
 
 ## 0.9.0 (unreleased)
 
+- **An add-on can put a button on a reminder** (`reminders.addon_buttons`, on). A row of its own under +10 min and
+  +1 h as the reminder fires, for example "Order on Zepto" under "buy milk"; nothing starts until you tap it.
 - **A guest an add-on recognises is greeted by name** (`voice.addons.guest_name`, on). When an add-on knows who the
   guest in front of it is, the first answer starts "Hi Sam." Kurooto makes that greeting itself; the name reaches the
   guest's AI only when guests are answered on this computer.

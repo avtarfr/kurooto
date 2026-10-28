@@ -175,6 +175,14 @@ when = "Turn it on to use places you saved in the Android app."
 cost = "Where your places are never leaves the phone; the computer and call line only see their names."
 needs = "Reminders and the Android app, with places saved in it."
 
+[s."reminders.addon_buttons"]
+tip = "Let an add-on put its own buttons under a reminder as it fires (for example Order on Zepto under \"buy milk\")."
+what = """A row under +10 min and +1 h, at most two buttons, each answered by the add-on that added it. A button does
+nothing until you tap it; what it starts (an order, say) asks you again before it pays or sends anything."""
+when = "Turn it off to keep reminders to their snooze buttons only."
+cost = "Nothing."
+needs = "Reminders, and an add-on that offers buttons."
+
 [s."date_offers.remind_min"]
 tip = "An event you tap Add on (from a photo, mail or a shared calendar) is reminded this long before."
 values = "Minutes."

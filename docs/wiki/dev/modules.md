@@ -563,7 +563,11 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   fires at once with `while_off`, "late: Reminders was off"). Asks lidsafe whether the phone already said it. The
   plain-English intent reads the time with `modules/text.py:when_from`, which takes a weekday only where
   `text.WHEN_DAY` says it's the when ("friday at 5pm", "on friday"; "next friday" returns None, to the AI);
-  `/remind` and `/due` use `core/clock.py:parse_when`, where a bare number is minutes.
+  `/remind` and `/due` use `core/clock.py:parse_when`, where a bare number is minutes. (0.9.0) `_addon_buttons(what)`:
+  each enabled feature's `reminder_buttons(what) -> [(label, data)]` (an add-on's hook; `reminders.addon_buttons`)
+  goes in a second row under the snooze row: at most `ADDON_BUTTONS` (2), a label cut at 30, data with a `prefix:`
+  that fits Telegram's 64 bytes, answered by that feature's own `callbacks()`. A failing one emits
+  `reminder_buttons_failed` (its id and the error's type) and is skipped.
 - **checkins** (`modules/checkins.py`): evening/midday/night prompts by message or call, answers into the daily note;
   `checkins:plan` books the day's `checkins:<name>` jobs; call hooks `call_schedule`, `call_outcome`,
   `call_reschedule`, `call_transcript`. A check-in day starts at `checkins.day_starts` (05:00). `learn()`
