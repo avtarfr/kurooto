@@ -95,6 +95,9 @@ register_defaults(
             "look_fps": 5.0,  # while Voice listens for a look: at least this many frames a second (0: as usual; max 5)
             "idle_s": 60,  # seconds with no keyboard or mouse before the camera looks (while you type, it doesn't)
             "when_locked": False,  # also look while the screen is locked (off: paused while locked)
+            # (0.9.0) keep looking during focus and a study timer: look to talk, the desk keeping it awake and an
+            # add-on's eye go on while you study (off: paused in focus, as before)
+            "in_focus": True,
             "night": False,  # also look during the night hours (availability.night); off: paused at night
         },
         "recognise": {
@@ -426,6 +429,8 @@ class Face(Module):
             return lambda: self.watcher is not None and self.watcher.problem_now() == name
 
         def focus() -> bool:
+            if s("watch.in_focus") is not False:  # (0.9.0) study mode doesn't close the camera
+                return False
             try:
                 return app.availability.focus_until(now()) is not None
             except Exception:

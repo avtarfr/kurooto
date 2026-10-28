@@ -2,6 +2,12 @@
 
 ## 0.9.0 (unreleased)
 
+- **One person is one face** (a fix). A smaller face box inside a bigger one (half a face, a reflection in glasses)
+  is no longer counted as a second person, which kept "others nearby" flickering and made Kurooto careful with its
+  name when you were alone.
+- **Study mode keeps the camera on** (`face.watch.in_focus`, on). Focus and a study timer no longer pause Face
+  presence, so look to talk, the desk keeping Kurooto awake and the desk phone's eye go on while you study. Off: paused
+  in focus, as before. (Listening never paused for focus.)
 - **Calls know you as your AI does** (`calls.context_brief`, on). A phone call and a Live talk at the desk now hear
   what every AI request is told: your profile's brief, your how-to-help-me note, your not-interested topics and the
   Brain's own state. Never your read, mood, tone or senses.

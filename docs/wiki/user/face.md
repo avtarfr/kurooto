@@ -215,7 +215,8 @@ nothing. A photo propped up in front of the camera doesn't move, so it waits for
 
 **It pauses** (and says why on the card and in `/face`) when: Face presence is off; you haven't enrolled; it isn't set
 up; you paused it (`/face pause 1h`); Kurooto is paused, or on battery in pause mode; the screen is locked
-(`face.watch.when_locked` to look anyway); you're on a call; focus; the night hours (`face.watch.night` to look
+(`face.watch.when_locked` to look anyway); you're on a call; focus, only with `face.watch.in_focus` off (0.9.0: it
+keeps looking during focus and a study timer by default); the night hours (`face.watch.night` to look
 anyway); Kurooto is asleep (0.8.18, `mind.sleep.senses_off`: `/wake`, a message, a tap or a call wakes it, and the
 camera with it); your phone is out (0.9.0, only with `face.away.places_close_camera` on); you're enrolling; another program uses the camera (checked again every minute); there's no camera; the system
 blocks it; it's covered (10 dark frames; checked again every 5 minutes); or its key can't be read.

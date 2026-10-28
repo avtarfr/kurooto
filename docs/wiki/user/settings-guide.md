@@ -50,7 +50,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Dashboard and terminal](#dashboard-and-terminal): 27 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 26 settings
-- [Face presence](#face-presence): 45 settings
+- [Face presence](#face-presence): 46 settings
 
 ## You and how it talks to you
 
@@ -8280,6 +8280,15 @@ Also look during the night hours (Availability's night); off pauses it at night.
 
 - **Values:** On or off. **Default:** off.
 - **When to change it:** Turn it on if you work at your desk at night and want the greeting then too.
+
+### `face.watch.in_focus`
+
+Keep looking during focus and a study timer; off pauses the camera in focus, as before 0.9.0.
+
+Look to talk, the desk keeping Kurooto awake, and an add-on's eye (the desk phone's face) go on while you study.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you want focus to mean no camera.
 
 ### `face.watch.when_locked`
 

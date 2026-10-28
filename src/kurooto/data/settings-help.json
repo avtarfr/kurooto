@@ -273,6 +273,7 @@
 "face.watch.fps": "How many pictures a second it checks while waiting for you (0.2 to 2).",
 "face.watch.fps_battery": "Frames a second while the computer is on battery.",
 "face.watch.idle_s": "Seconds with no keyboard or mouse before the camera looks; while you type it doesn't need to.",
+"face.watch.in_focus": "Keep looking during focus and a study timer; off pauses the camera in focus, as before 0.9.0.",
 "face.watch.look_fps": "While Voice listens for a look (voice.listen.look_to_talk), the camera checks at least this many pictures a second.",
 "face.watch.night": "Also look during the night hours (Availability's night); off pauses it at night.",
 "face.watch.when_locked": "Also look while the screen is locked; off pauses it while locked.",

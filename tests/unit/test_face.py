@@ -641,6 +641,8 @@ def test_every_pause_reason_in_order(app, monkeypatch):
     assert f.pause_reason() == "you're on a call"
     monkeypatch.setattr(f, "_on_call", lambda: False)
     app.availability.set_focus(dt.datetime.now() + dt.timedelta(hours=1))
+    assert f.pause_reason() != "focus"  # (0.9.0) face.watch.in_focus: it keeps looking while you study
+    app.settings.set("face.watch.in_focus", False)
     assert f.pause_reason() == "focus"
     app.availability.set_focus(None)
     app.power.pause(30)
@@ -1818,3 +1820,14 @@ def test_a_new_camera_setting_takes_effect_without_a_restart(app):
     app.settings.set("face.camera.device", "Integrated Camera")
     assert face._camera_changed()
     face.watcher = None
+
+
+def test_a_face_inside_a_bigger_face_is_part_of_it():
+    """(0.9.0, a fix) 29 Oct: a 0.15-high box inside the owner's 0.34 one made "others nearby" flicker."""
+    from kurooto.modules.face.watch import drop_nested
+
+    you = Face((500, 200, 360, 370), (), 0.95)
+    inner = Face((520, 300, 160, 165), (), 0.7)  # its centre is inside yours
+    other = Face((100, 220, 300, 310), (), 0.9)  # beside you: a second person
+    assert drop_nested([inner, you, other]) == [you, other]
+    assert drop_nested([you]) == [you] and drop_nested([]) == []

@@ -109,6 +109,24 @@ class Seen:
 
 
 @dataclass
+def drop_nested(faces: list) -> list:
+    """(0.9.0, a fix) A face whose centre lies inside a bigger face's box is part of it (half a face, a reflection in
+    glasses), never a second person: dropped, so one person isn't counted as two (29 Oct: a box at 0.15 of the frame's
+    height inside the owner's at 0.34 kept "others nearby" flickering). The order of the rest is kept."""
+    big = sorted(faces, key=lambda f: -f.box[2] * f.box[3])
+    gone: set[int] = set()
+    for i, f in enumerate(big):
+        if id(f) in gone:
+            continue
+        x, y, w, h = f.box
+        for g in big[i + 1 :]:
+            gx, gy, gw, gh = g.box
+            cx, cy = gx + gw / 2, gy + gh / 2
+            if x <= cx <= x + w and y <= cy <= y + h:
+                gone.add(id(g))
+    return [f for f in faces if id(f) not in gone]
+
+
 class Track:
     """One face followed frame to frame: its place in pixels, its landmarks relative to its centre in face heights."""
 
@@ -293,7 +311,7 @@ class Watcher:
             return
         t0 = self.clock()
         try:
-            faces = self.detector.detect(frame, SCORE_OTHER)
+            faces = drop_nested(self.detector.detect(frame, SCORE_OTHER))
             size = self.frames.size(frame)
         finally:
             del frame
@@ -442,7 +460,7 @@ class Watcher:
         full = self.frames.size(frame)
         self._scale = px_scale(*full)  # (0.8.17) min_face_px and the still check are pixels of a 480-high frame
         min_px = float(c.get("min_face_px") or 60) * self._scale
-        faces = self.detector.detect(frame, SCORE_OTHER)
+        faces = drop_nested(self.detector.detect(frame, SCORE_OTHER))
         best: tuple[float, list[float], Any, dict] | None = None
         judged: dict[int, bool] = {}  # index in faces -> recognised as you (for the tracks' owner flag)
         best_i = -1

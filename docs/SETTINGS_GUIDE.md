@@ -448,6 +448,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `face.watch.fps` | `1.0` | How many pictures a second it checks while waiting for you (0.2 to 2). ([guide](wiki/user/settings-guide.md#facewatchfps)) |
 | `face.watch.fps_battery` | `0.33` | Frames a second while the computer is on battery. ([guide](wiki/user/settings-guide.md#facewatchfpsbattery)) |
 | `face.watch.idle_s` | `60` | Seconds with no keyboard or mouse before the camera looks; while you type it doesn't need to. ([guide](wiki/user/settings-guide.md#facewatchidles)) |
+| `face.watch.in_focus` | `true` | Keep looking during focus and a study timer; off pauses the camera in focus, as before 0.9.0. ([guide](wiki/user/settings-guide.md#facewatchinfocus)) |
 | `face.watch.look_fps` | `5.0` | While Voice listens for a look (voice.listen.look_to_talk), the camera checks at least this many pictures a second. ([guide](wiki/user/settings-guide.md#facewatchlookfps)) |
 | `face.watch.night` | `false` | Also look during the night hours (Availability's night); off pauses it at night. ([guide](wiki/user/settings-guide.md#facewatchnight)) |
 | `face.watch.when_locked` | `false` | Also look while the screen is locked; off pauses it while locked. ([guide](wiki/user/settings-guide.md#facewatchwhenlocked)) |

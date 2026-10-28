@@ -248,6 +248,11 @@ when = "Raise it to keep the camera off more of the time."
 tip = "Also look during the night hours (Availability's night); off pauses it at night."
 when = "Turn it on if you work at your desk at night and want the greeting then too."
 
+[s."face.watch.in_focus"]
+tip = "Keep looking during focus and a study timer; off pauses the camera in focus, as before 0.9.0."
+what = "Look to talk, the desk keeping Kurooto awake, and an add-on's eye (the desk phone's face) go on while you study."
+when = "Turn it off if you want focus to mean no camera."
+
 [s."face.watch.when_locked"]
 tip = "Also look while the screen is locked; off pauses it while locked."
 when = "Turn it on if you want it to notice you arriving at a locked computer."
