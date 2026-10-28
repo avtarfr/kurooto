@@ -14,6 +14,11 @@ time, so calls and messages wait, and the minutes logged here), then a break; pa
 Works on Windows, macOS (it asks once for permission to see window titles) and Linux on X11, Hyprland or Sway;
 other Linux desktops can only log by hand. How it tells you're away: core/idle.py (on Wayland desktops without an idle
 API, your idle tool can tell it: `kurooto idle away` / `kurooto idle back`).
+
+Seen minutes (0.9.0, study.seen): another feature (an add-on) may add minutes it saw you on a subject's topic where the
+window doesn't name the subject itself (add_seen: a subject and seconds, never a title). They're kept apart
+("<subject>|seen"), count in the totals, and /study says how much of the day was seen that way; never while a session
+or Study mode's focus runs (that time is the session's).
 """
 
 from __future__ import annotations
@@ -48,6 +53,9 @@ register_defaults(
         "focus_min": 25,  # Study mode's timer: minutes of focus (calls and messages wait; the time is logged)
         "break_min": 5,  # Study mode's timer: minutes of break after each focus
         "timer_ends_mode": False,  # when a focus ends, Study mode ends too (look.study_mode), instead of a break
+        # (0.9.0) another feature (an add-on) may add minutes it saw you on a subject's topic, kept apart as "seen"
+        # and never while a session runs; nothing is counted until one does
+        "seen": True,
     },
 )
 # "turn on study mode", "leave study mode", "study mode off": the dashboard's Study mode (core/actions.py)
@@ -151,6 +159,28 @@ class Study(Module):
             d[key] = round(d.get(key, 0) + seconds)
             jsave(self._file(day), d)
 
+    def add_seen(self, slug: str, seconds: float) -> bool:
+        """(0.9.0, study.seen) Seconds another feature saw you on this subject's topic (a subject's slug and a number,
+        nothing else), kept as "<slug>|seen" beside the tracker's own. Not while a session or Study mode's focus runs,
+        not for a subject that isn't yours, at most 10 minutes a call. True when counted."""
+        if self.setting("seen") is False or not seconds or seconds <= 0 or self.session().get("subject"):
+            return False
+        subj = self.app.modules.get("subjects")
+        known = {s["slug"] for s in subj.subjects()} if subj is not None else set()
+        if slug not in known and slug != RESEARCH:
+            return False
+        self.add(f"{slug}|seen", min(float(seconds), 600.0))
+        return True
+
+    def seen_seconds(self, days: int = 1) -> float:
+        """(study.seen) The seen seconds over the last `days` days."""
+        return sum(
+            v
+            for i in range(days)
+            for k, v in self.day(now().date() - dt.timedelta(days=i)).items()
+            if k.endswith("|seen")
+        )
+
     def name_of(self, slug: str) -> str:
         if slug == RESEARCH and not any(s["slug"] == RESEARCH for s in self.app.modules["subjects"].subjects()):
             return "Research"
@@ -231,6 +261,9 @@ class Study(Module):
         name = self.name_of
         rows = [f"{name(k)}: {v / 3600:.1f} h" for k, v in sorted(t.items(), key=lambda kv: -kv[1])]
         head = "Today" if days == 1 else f"Last {days} days"
+        seen = self.seen_seconds(days)
+        if seen >= 360:  # (study.seen) how much of it another feature saw, from a tenth of an hour
+            rows.append(f"(of which {seen / 3600:.1f} h seen on screen, not timed)")
         return f"{head} ({sum(t.values()) / 3600:.1f} h):\n" + "\n".join(rows)
 
     def log(self, text: str) -> str:

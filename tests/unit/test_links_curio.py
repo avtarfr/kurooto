@@ -60,3 +60,22 @@ def test_bad_or_failing_buttons_are_left_out_and_the_switch_stops_them(env, monk
     env.say("remind me in 20 minutes to buy bread")
     run_due(env.app, dt.timedelta(minutes=21))
     assert len(keyboard(env)) == 1
+
+
+# ------------------------------------------------------------------------------------ seen minutes for Study (L118)
+def test_seen_minutes_count_apart_never_during_a_session_and_have_a_switch(env):
+    from tests.unit.test_m6 import SUBJECTS
+
+    env.app.settings.set("subjects.list", SUBJECTS)
+    env.on("subjects", "study")
+    st = env.app.modules["study"]
+    assert st.add_seen("linear-algebra", 1200) is True  # at most 10 minutes a call
+    assert st.add_seen("not-a-subject", 60) is False
+    assert st.day() == {"linear-algebra|seen": 600} and st.totals() == {"linear-algebra": 600}
+    assert "(of which 0.2 h seen on screen, not timed)" in st.report()
+    st.start_session("linear algebra")
+    assert st.add_seen("linear-algebra", 60) is False  # a session counts that time itself
+    st.stop_session()
+    env.app.settings.set("study.seen", False)
+    assert st.add_seen("linear-algebra", 60) is False
+    assert st.seen_seconds() == 600

@@ -782,6 +782,9 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `_timer_end`; focus time through `core/availability.py`; see
   [web.md](web.md#the-today-page-and-actions-coreactionspy)).
   `/study mode on|off` and the `study_mode` intent call `core/actions.py:study_mode`.
+  (0.9.0) `add_seen(slug, seconds)` for an add-on (`study.seen`): a known subject (or Research) and a number only,
+  at most 600 s a call, refused while `session()` has a subject (sessions and the timer's focus); kept under
+  `"<slug>|seen"`, so `totals()` counts it and `seen_seconds(days)` gives the line `report()` adds.
 - **skills** (`modules/skills.py`): runs `SKILL.md` files (shipped `data/skills`, add-ons, prompts with `skill: true`,
   the user's own) as AI jobs; routines (`/every`), drafts (`/newskill`), LaTeX revision packs (Tectonic `--untrusted`,
   else `latexmk` or `pdflatex` with `-no-shell-escape`: the AI wrote the LaTeX), study packs, `send_file(s)` (over

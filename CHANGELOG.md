@@ -2,6 +2,8 @@
 
 ## 0.9.0 (unreleased)
 
+- **Seen minutes in the Study tracker** (`study.seen`, on). An add-on may add minutes it saw you on a subject's topic
+  where the window doesn't name the subject; they count apart, never during a session, and /study says how much.
 - **An add-on can put a button on a reminder** (`reminders.addon_buttons`, on). A row of its own under +10 min and
   +1 h as the reminder fires, for example "Order on Zepto" under "buy milk"; nothing starts until you tap it.
 - **A guest an add-on recognises is greeted by name** (`voice.addons.guest_name`, on). When an add-on knows who the
