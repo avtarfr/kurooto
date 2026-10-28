@@ -20,7 +20,7 @@ let n = 0;
 async function page({ search, app = null, speech = true, voice = 'auto', tokens = () => null, heard = [] }) {
   const els = {};
   const el = (id) => ({ id, textContent: '', hidden: false, className: '', disabled: false, dataset: {}, style: {}, value: '1', children: [], append(c) { this.children.push(c); }, scrollIntoView() {} });
-  const seen = { calls: [], spoken: [], els };
+  const seen = { calls: [], spoken: [], els, on: {} };
   globalThis.__live = { steps: [], connects: [], sessions: [] };
   globalThis.document = { getElementById: (id) => (els[id] ||= el(id)), createElement: () => el(''), addEventListener() {}, visibilityState: 'visible', title: '' };
   globalThis.location = { hash: '#d1.test', search, pathname: '/' };
@@ -28,13 +28,14 @@ async function page({ search, app = null, speech = true, voice = 'auto', tokens 
   globalThis.localStorage = { getItem: () => null, setItem() {} };
   Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { language: 'en-GB', mediaDevices: { getUserMedia: async () => ({ getTracks: () => [{ stop() {} }] }) } } });
   globalThis.window = globalThis;
+  globalThis.addEventListener = (type, f) => (seen.on[type] ||= []).push(f); // the page's pagehide / beforeunload
   globalThis.AudioWorkletNode = class { constructor() { this.port = {}; } };
   globalThis.AudioContext = class { constructor() { this.audioWorklet = { addModule: async () => {} }; this.currentTime = 0; } createMediaStreamSource() { return { connect() {} }; } close() {} };
   globalThis.KurootoApp = app;
   let turns = 0;
   globalThis.fetch = async (path, opts) => {
     const body = opts && opts.body ? JSON.parse(opts.body) : undefined;
-    seen.calls.push([path, body]);
+    seen.calls.push([path, body, opts]);
     let status = 200, out = { ok: true };
     if (path === '/status') out = { computer: 'online', assistant: 'Kurooto', owner: 'Sam', voice };
     else if (path === '/token') {
@@ -183,6 +184,50 @@ const reports = (s) => s.bodies('/call-report');
   s.els.call.onclick();
   await until(() => s.els.status.textContent === 'Connected', 4000, 'Live');
   s.els.call.onclick();
+}
+
+// ---- 8. "I skipped all classes": Live's seven skip_class calls (and a repeated search) are one line each, not nine
+{
+  const s = await page({ search: '?p=Evening%20debrief&s=12' });
+  const fc = (name, args, i) => ({ id: `t${i}`, name, args });
+  __live.steps.push({ ok: true, tools: [
+    ...['Linear Algebra', 'Statistics', 'Linear Algebra'].map((x, i) => fc('skip_class', { subject: x }, i)),
+    fc('search_notes', { query: 'lab' }, 5), fc('search_notes', { query: 'lab' }, 6), fc('search_notes', { query: 'lab' }, 7),
+    fc('skip_class', { subjects: ['all'] }, 8),
+  ] });
+  s.els.call.onclick();
+  await until(() => s.bodies('/tool').length === 7, 4000, 'the tools run');
+  assert.deepEqual(s.els.log.children.map((c) => c.textContent), ['skipping Linear Algebra, Statistics', 'searching notes: lab ×3', "skipping today's classes"]);
+  s.els.call.onclick();
+}
+
+// ---- 9. the page going away mid-call (the app's screen closed, the tab closed): the end and transcript go anyway,
+// with keepalive, once; a long call's oldest lines go first so it fits
+{
+  const s = await page({ search: '?p=Evening%20debrief&s=13' });
+  __live.steps.push({ ok: true, say: 'How was your day? '.repeat(4000) });
+  s.els.call.onclick();
+  await until(() => s.els.status.textContent === 'Connected', 4000, 'connected');
+  await sleep(30);
+  s.on.beforeunload.forEach((f) => f());
+  s.on.pagehide.forEach((f) => f());
+  const ends = s.calls.filter((c) => c[0] === '/transcript');
+  assert.equal(ends.length, 1);
+  assert.equal(ends[0][2].keepalive, true);
+  assert.equal(ends[0][1].ended, true); assert.equal(ends[0][1].since, '13'); assert.equal(ends[0][1].layer, 'live');
+  assert.ok(ends[0][2].body.length <= 60000);
+  s.els.call.onclick(); // Hang up after that: nothing more to send
+  await sleep(20);
+  assert.equal(s.bodies('/transcript').length, 1);
+}
+{ // a short one goes whole
+  const s = await page({ search: '?s=14' });
+  __live.steps.push({ ok: true, say: 'Hi.' });
+  s.els.call.onclick();
+  await until(() => s.els.status.textContent === 'Connected', 4000, 'connected');
+  await sleep(30);
+  s.on.pagehide.forEach((f) => f());
+  assert.deepEqual(s.bodies('/transcript')[0].lines, [{ who: 'Kurooto', text: 'Hi.' }]);
 }
 
 console.log('callpage ok');

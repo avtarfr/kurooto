@@ -2,6 +2,20 @@
 
 ## 0.8.17 (unreleased)
 
+- **Back no longer hangs up a call** (Android app). Back during a call now leaves it running behind your other apps,
+  the way a phone call does, with an "On a call with Kurooto" notification: tap it to go back to the call, or use its
+  **Hang up**. Only Hang up ends a call. The app holds the microphone for it meanwhile, so Kurooto still hears you.
+  Back while a call rings just closes the ringing screen: it keeps ringing, and the notification still answers or
+  declines.
+- **Every call's transcript reaches your computer.** A call whose screen closed some other way than Hang up (Back
+  before this release, a closed browser tab) lost its transcript, and your computer kept thinking you were on a call
+  for a while. Now the call page sends the end and the transcript as it closes (the end of a very long call, if it's
+  over 60 KB), the app hangs up properly a call its screen was closed on, and the same end arriving twice is kept once.
+- **"I skipped all classes" is one step on a call.** Calls can skip several classes, or all of today's, at once
+  (`skip_class` takes a list, or "all"; `skip_commitment` the same for commitments), and are told to, instead of one
+  tool call per class. The call screen also stops repeating itself: the same note again shows once with "×3", and
+  classes skipped one after another show as one line, "skipping Linear Algebra, Probability" or "skipping today's
+  classes".
 - **Claude Code stays running for a conversation** (`brain.claude.session`, on): your chat's and voice's turns go to
   one Claude Code kept running for that conversation instead of starting the program for every message, so answers
   start sooner. Same permissions, tools and folders as before; it closes after 10 idle minutes

@@ -6,7 +6,7 @@ package io.github.avtarfr.kurooto;
 final class CallRules {
     private CallRules() { }
 
-    static final int FINISH = 0, IGNORE = 1, RING = 2, ANSWER = 3;
+    static final int FINISH = 0, IGNORE = 1, RING = 2, ANSWER = 3, HANG_UP = 4;
 
     /** An intent's job: no call link and not this phone's own alarm, close; the alarm while a call is on, nothing;
      *  the alarm, or a ringing call while none is on, ring; else (a call link to open) straight into the call. */
@@ -16,6 +16,13 @@ final class CallRules {
         if (local && inCall) return IGNORE;
         if (local || (ringing && !inCall)) return RING;
         return ANSWER;
+    }
+
+    /** The ongoing call's notification (0.8.17: Back leaves a call running): a tap only brings the call back, its
+     *  Hang up ends the call through the call page; with the call already over, the screen just closes. */
+    static int fromNotice(boolean inCall, boolean hangup) {
+        if (!inCall) return FINISH;
+        return hangup ? HANG_UP : IGNORE;
     }
 
     /** Who's calling: this phone's own alarm, the wake-up call, or the assistant. */

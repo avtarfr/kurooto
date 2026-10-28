@@ -172,7 +172,11 @@ meanwhile.
 - **Mic gate** slider: needs a louder voice before it counts as speech. Move it right in a noisy room.
 - **Earpiece / Speaker**: switches output. Some browsers can't switch; use earphones then. In the Android app the
   screen goes off at your ear.
-- **Mute**, **Hang up**.
+- **Mute**, **Hang up**. Only Hang up ends a call: in the Android app, **Back** leaves the call running behind your
+  other apps, with an "On a call with Kurooto" notification to go back to it (a tap) or end it (its **Hang up**). However a
+  call's screen closes, its transcript still reaches your computer (0.8.17).
+- **Skipping classes:** "I'm skipping all my classes today" or "skipping LA and stats" is one step, not one per class;
+  the call screen shows it as one line ("skipping today's classes"). Notes that repeat show once with "×N".
 - **Open questions and approvals come first.** Every call starts with what needs you (`pending_items`): open
   questions, approvals, deadlines soon, today's classes and check-ins, calls booked. Answer them by voice. An approval
   that arrives during a call is asked right away.
@@ -205,7 +209,7 @@ Each feature you turn on adds what calls can do; a feature that's off adds nothi
 | Move, skip or defer a check-in; the check-in's steps | Check-ins | yes (queued) |
 | Mark a deadline done, add or move one, ignore a topic, add a recurring quiz | Deadlines | yes (queued) |
 | When should I start X; this is about a day of work | Start-by dates | start dates from the last brief; sizes queued |
-| I'm skipping a class today | Subjects | yes (queued) |
+| I'm skipping a class, several, or all of today's | Subjects | yes (queued) |
 | Quiz me (questions, grading); schedule a quiz | Quiz | questions from the last brief; grades and scheduling queued |
 | Set, skip or turn off the alarm; when is my alarm | Morning alarm | yes |
 | Log study time; how much did I study | Study tracker | logging queued; totals need the computer |

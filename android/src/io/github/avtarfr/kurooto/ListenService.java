@@ -55,8 +55,8 @@ import java.net.URL;
  * one ring as one (AlarmPlan), and a reminder's or deadline's notification carries Done and Snooze (Buttons).
  */
 public class ListenService extends Service {
-    static final String CH_SERVICE = "service", CH_CALL = "calls_v2", CH_MSG = "messages", CH_ASK = "questions";
-    static final int ID_SERVICE = 1, ID_CALL = 2, ID_SEALED = 8;
+    static final String CH_SERVICE = "service", CH_CALL = "calls_v2", CH_MSG = "messages", CH_ASK = "questions", CH_ONCALL = "oncall";
+    static final int ID_SERVICE = 1, ID_CALL = 2, ID_SEALED = 8, ID_ONCALL = 3;
     static final String ACTION_ALARM = "io.github.avtarfr.kurooto.LOCAL_ALARM";
     static final int SDK = Build.VERSION.SDK_INT;
 
@@ -68,6 +68,7 @@ public class ListenService extends Service {
     private Vibrator vibrator;
     private String ringingSince = ""; // "local:<s>" while this phone's own alarm rings without its call
     private boolean ringingAlarm = false;
+    private boolean callHeld = false; // a call is on: this service's notification is the call's, and it holds the mic
     private final Handler main = new Handler(Looper.getMainLooper());
     private android.content.BroadcastReceiver dock; // bedside mode opening by itself while charging (BedsideActivity)
 
@@ -134,6 +135,10 @@ public class ListenService extends Service {
             nm.createNotificationChannel(call);
             nm.createNotificationChannel(msg);
             nm.createNotificationChannel(ask);
+            NotificationChannel on = new NotificationChannel(CH_ONCALL, "Call in progress", NotificationManager.IMPORTANCE_LOW);
+            on.setShowBadge(false);
+            on.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+            nm.createNotificationChannel(on);
         } catch (Throwable ignored) {
         }
     }
@@ -157,9 +162,12 @@ public class ListenService extends Service {
     }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
-        Notification n = listening();
-        if (SDK >= 34) startForeground(ID_SERVICE, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING);
-        else startForeground(ID_SERVICE, n);
+        try {
+            foreground(callHeld ? callNotice(this) : listening(), callHeld); // started again during a call: still the call's
+        } catch (Exception e) {
+            callHeld = false;
+            foreground(listening(), false);
+        }
         if (!Prefs.paired(this)) { stopSelf(); return START_NOT_STICKY; }
         if (intent != null && ACTION_ALARM.equals(intent.getAction())) {
             final long at = intent.getLongExtra("at", 0);
@@ -199,6 +207,61 @@ public class ListenService extends Service {
         } else if (Prefs.paired(c)) {
             try { start(c); } catch (Exception ignored) { } // Android may refuse a start from the background
         }
+    }
+
+    /** A call is on (0.8.17) or over. Back leaves a call running behind other apps, so while it's on an ongoing
+     *  notification brings its screen back (a tap) or ends it (Hang up), and this service holds the microphone for it
+     *  (Android 11+ silences the microphone of an app in the background without that). The service's own
+     *  notification turns into the call's; without the service (not paired, or Android won't have it in the
+     *  foreground with the microphone), a separate notification. Over: back to "can call you". */
+    static void onCall(Context c, boolean on) {
+        NotificationManager nm = (NotificationManager) c.getSystemService(NOTIFICATION_SERVICE);
+        ListenService s = instance;
+        if (!on) {
+            nm.cancel(ID_ONCALL);
+            if (s != null && s.callHeld) {
+                s.callHeld = false;
+                try { s.foreground(s.listening(), false); } catch (Exception ignored) { }
+            }
+            return;
+        }
+        Notification n = callNotice(c);
+        if (s != null) {
+            try { s.foreground(n, true); s.callHeld = true; return; } catch (Exception ignored) { } // not allowed now
+        }
+        try { nm.notify(ID_ONCALL, n); } catch (Exception ignored) { }
+    }
+
+    /** The service in the foreground with `n`; `mic`: with the microphone too (a call is on). */
+    private void foreground(Notification n, boolean mic) {
+        if (SDK >= 34) {
+            startForeground(ID_SERVICE, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING
+                    | (mic ? ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE : 0));
+        } else if (SDK >= 30 && mic) {
+            startForeground(ID_SERVICE, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
+        } else {
+            startForeground(ID_SERVICE, n);
+        }
+    }
+
+    /** The call's notification: tap to go back to the call, Hang up to end it (both through its screen, which
+     *  ends the call as its own Hang up does). */
+    static Notification callNotice(Context c) {
+        int flags = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
+        Intent back = new Intent(c, CallActivity.class).putExtra("back", true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        PendingIntent backPi = PendingIntent.getActivity(c, 5, back, flags);
+        PendingIntent endPi = PendingIntent.getActivity(c, 6, new Intent(back).putExtra("hangup", true), flags);
+        return builder(c, CH_ONCALL)
+                .setSmallIcon(R.drawable.ic_stat)
+                .setContentTitle("On a call with " + Prefs.assistant(c))
+                .setContentText("Tap to go back to the call")
+                .setCategory(Notification.CATEGORY_CALL)
+                .setContentIntent(backPi)
+                .addAction(new Notification.Action.Builder(null, "Hang up", endPi).build())
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
+                .build();
     }
 
     /** Is this phone connected straight to the call line right now (the main screen says so)? */
@@ -313,6 +376,7 @@ public class ListenService extends Service {
     }
 
     private void repostListening() {
+        if (callHeld) return; // the call's notification stands in for it until the call ends
         try { ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify(ID_SERVICE, listening()); } catch (Exception ignored) { }
     }
 

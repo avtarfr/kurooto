@@ -142,7 +142,8 @@ object CallScreen {
 
     /**
      * Runs in the call page once it has loaded: a MutationObserver on the page sends a snapshot of what its elements
-     * show (at most every 60 ms, the transcript only when it changed) to window.KurootoScreen.state. The element ids are
+     * show (at most every 60 ms, the transcript only when it changed: its length or its last line, which a repeated tool
+     * line's "×N" changes in place, 0.8.17) to window.KurootoScreen.state. The element ids are
      * the call page's (src/kurooto/data/worker/public/index.html; tests/unit/test_calls.py checks they're all there).
      * Running it again only asks for a fresh snapshot.
      */
@@ -164,7 +165,7 @@ o.gate={on:on(el('gatebox')),v:g?Number(g.value)||1:1,t:tx(el('gateval'))};
 o.level={w:lv?(parseFloat(lv.style.width)||0):0,open:lv?/ok/.test(lv.style.background||''):false};
 o.mode={on:on(el('mode')),t:tx(el('mode'))};o.heard={on:on(el('heard')),t:tx(el('heard'))};
 o.talk={on:on(t),t:tx(t),s:t&&t.dataset?(t.dataset.state||''):'',off:t?!!t.disabled:false};
-var k=lg?lg.children:[],n=k.length,sig=n+':'+(n?tx(k[n-1]).length:0);
+var k=lg?lg.children:[],n=k.length,sig=n+':'+(n?tx(k[n-1]):'');
 if(sig!==last){last=sig;var a=[];for(var i=Math.max(0,n-80);i<n;i++)a.push({c:String(k[i].className||'').replace(/^m\s*/,''),t:tx(k[i])});o.log=a;}
 }
 S.state(JSON.stringify(o));

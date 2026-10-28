@@ -34,6 +34,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.activity.ComponentActivity;
+import androidx.activity.OnBackPressedCallback;
 import androidx.activity.EdgeToEdge;
 import androidx.activity.SystemBarStyle;
 
@@ -63,6 +64,12 @@ import java.util.regex.Pattern;
  * builds only, Demo.ON): a made-up ring with no call link (the extras "reason", "alarm" and "local" as usual); its
  * buttons send nothing, and Answer shows a stand-in call page (Demo.callPage: no microphone, nothing fetched, no audio
  * changes). With "placed" too it goes straight into that stand-in call, as a call you place from the app does.
+ *
+ * Back during a call (0.8.17) leaves it running behind other apps, as a phone call does: the call's ongoing
+ * notification (ListenService.onCall) brings this screen back or hangs up, and only Hang up ends a call. Back while it
+ * rings closes the ringing screen and nothing else: it keeps ringing, and its notification still answers or declines.
+ * However else this screen goes with a call still up, the call page sends the call's end and transcript (its own Hang
+ * up, then pagehide as it's left).
  */
 public class CallActivity extends ComponentActivity {
     static final int SDK = Build.VERSION.SDK_INT;
@@ -85,6 +92,10 @@ public class CallActivity extends ComponentActivity {
     private String url;
     private boolean fresh, demo; // the Compose screen (Prefs.newCallScreen); made-up, nothing sent (Demo.ON)
     private CallUi ui; // the Compose call screen's state, mirrored from the call page (fresh only)
+    // Back during a call: the call goes on behind other apps (on from callStarted to callEnded)
+    private final OnBackPressedCallback back = new OnBackPressedCallback(false) {
+        @Override public void handleOnBackPressed() { moveTaskToBack(true); }
+    };
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -96,6 +107,7 @@ public class CallActivity extends ComponentActivity {
         overLockScreen();
         am = (AudioManager) getSystemService(AUDIO_SERVICE);
         setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
+        getOnBackPressedDispatcher().addCallback(this, back);
         handle(getIntent());
     }
 
@@ -117,6 +129,13 @@ public class CallActivity extends ComponentActivity {
     }
 
     private void handle(Intent i) {
+        if (i.getBooleanExtra("back", false)) { // the call's notification: back to it, or Hang up
+            switch (CallRules.fromNotice(inCall, i.getBooleanExtra("hangup", false))) {
+                case CallRules.HANG_UP: hangUpPage(); return;
+                case CallRules.FINISH: ListenService.onCall(this, false); finish(); return;
+                default: return;
+            }
+        }
         url = i.getStringExtra("url");
         boolean local = url == null && i.getBooleanExtra("local", false); // this phone's own alarm (Alarms)
         if (demo && url == null && i.getBooleanExtra("placed", false)) { demoPage(); return; } // made up: a call you placed
@@ -317,6 +336,11 @@ public class CallActivity extends ComponentActivity {
         @Override public void close() { finish(); }
     };
 
+    /** The call page's own Hang up (it tells your computer the call is over), on either screen. */
+    private void hangUpPage() {
+        if (fresh) actions.hangUp(); else js(CallScreen.press("call"));
+    }
+
     private void js(String s) {
         if (web != null && s != null && !s.isEmpty()) web.evaluateJavascript(s, null);
     }
@@ -404,13 +428,15 @@ public class CallActivity extends ComponentActivity {
         }
         @JavascriptInterface public void callStarted() {
             inCall = true;
+            h.post(() -> { back.setEnabled(true); ListenService.onCall(CallActivity.this, true); });
             // The WebView's own audio setup can override routing a moment later, so set it again.
             h.post(CallActivity.this::route);
             h.postDelayed(() -> { if (inCall) route(); }, 1000);
             h.postDelayed(() -> { if (inCall) route(); }, 3000);
         }
         @JavascriptInterface public void callEnded() {
-            h.post(() -> { stopSpeech(); endAudio(); h.postDelayed(CallActivity.this::finish, 1500); });
+            h.post(() -> { back.setEnabled(false); ListenService.onCall(CallActivity.this, false); stopSpeech(); endAudio();
+                h.postDelayed(CallActivity.this::finish, 1500); });
         }
 
         // turn by turn: this phone's own speech (answers come back on window.kurootoSpeech, see Speech.java)
@@ -522,9 +548,19 @@ public class CallActivity extends ComponentActivity {
     }
 
     @Override protected void onDestroy() {
+        boolean up = inCall;
         stopSpeech();
         endAudio();
-        if (web != null) { web.loadUrl("about:blank"); web.destroy(); }
+        ListenService.onCall(this, false);
+        if (web != null) {
+            final WebView w = web;
+            web = null;
+            // a call still up (this screen closed some other way than Hang up): the page's own Hang up sends its end
+            // and transcript, and leaving the page sends whatever that didn't (pagehide); the WebView goes a moment
+            // later so both get out
+            if (up) w.evaluateJavascript(CallScreen.press("call"), null);
+            h.postDelayed(() -> { w.loadUrl("about:blank"); h.postDelayed(w::destroy, 1000); }, up ? 2500 : 0);
+        }
         super.onDestroy();
     }
 }

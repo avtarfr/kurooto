@@ -249,7 +249,20 @@ transcripts, events and answers until the computer takes them (`Calls.take_queue
   `call_tools()`. With the computer off, each tool's `offline` value decides: `brief` (answered from the last pushed
   brief), `queue` (done later), `needs` (the assistant says it can't).
 - `/tasks` is polled for finished jobs and approvals; `Calls.on_call` keeps `availability.set_on_call` 90 s ahead
-  (`ON_CALL_S`), so nothing else rings and updates wait.
+  (`ON_CALL_S`), so nothing else rings and updates wait. The end: the page's `/transcript` (`ended: true`) clears it at
+  once (`Calls._transcript`, and the Worker's `oncall`); a call that never sent one ends 90 s after its last `/tool` or
+  `/tasks`.
+- The end of a call (0.8.17): `app.js:sendEnd(closing)` sends `/transcript` once (it empties `transcript` and clears
+  `live`/`announced`), from `hangup()` and from `pagehide`/`beforeunload` (a closed tab, the app's WebView navigated
+  away). It uses `fetch` with `keepalive` (the header carries the key, which `sendBeacon` can't), capped at 64 KB, so a
+  closing page drops a long call's oldest lines (or halves one huge line) until it fits under `KEEPALIVE_MAX`.
+  `visibilitychange` to hidden never ends a call. `Calls._transcript` keeps the sha256 of the last 20
+  `[since, lines]` it saved (`_kept`) and answers a repeat `{"ok": true, "again": true}` without saving it again.
+- Tool lines on the page (0.8.17): `sayTool` folds a run of the same `toolLabel` into one line with "×N", and a run of
+  `skip_class` / `skip_commitment` into one line naming everything skipped (`skipLabel`: "skipping today's classes" for
+  "all"). `skip_class` takes `subject` (one, as before) or `subjects` (a list, `["all"]` for every class today,
+  `subjects.ALL_TODAY`) and has a hint telling Live to use one call; `skip_commitment` takes `name` or `names` the same
+  way. Before, "I skipped all classes" made Live call `skip_class` seven times in two seconds, each its own line.
 - What needs attention: `Calls.pending` merges every enabled module's `call_brief()` with `app.ask.call_brief()` and
   `core/assembler.py:call_brief()` (`open_threads`, `earlier`: the last day's gists, within `memory.budget_tokens`).
   `save_transcript` also hands the user's lines to `core/threads.py:from_call` ("I'll send the draft tonight" opens a
@@ -1078,7 +1091,17 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     `reason`, `since`, `alarm`, `local`; `singleTask`, `onNewIntent`), `FLAG_KEEP_SCREEN_ON`, show-when-locked and turn
     screen on, `STREAM_VOICE_CALL`, the WebView and its `KurootoApp` bridge, `MIN_WEBVIEW` and the browser fallback, the
     microphone request, routing and the proximity wake lock, turn-by-turn speech, `showing`, and the clean-up in
-    `onDestroy`. `Prefs.newCallScreen` (Phone tab → Switches → **New call screen**, default on), read in `onCreate`, picks
+    `onDestroy`. Back (0.8.17): an `OnBackPressedCallback`, enabled from `callStarted` to `callEnded`, calls
+    `moveTaskToBack`; the activity has its own task (`taskAffinity=""`, still `excludeFromRecents`), so opening the app
+    meanwhile doesn't clear it, and `uiMode`/`screenLayout`/`smallestScreenSize` changes no longer recreate it (that
+    would end the call). `ListenService.onCall(c, on)` swaps the service's foreground notification for the call's
+    (`callNotice`, channel `oncall`, low importance: a tap is `CallActivity` with `back`, its Hang up adds `hangup`;
+    `CallRules.fromNotice`) and adds `FOREGROUND_SERVICE_TYPE_MICROPHONE` (Android 11+, manifest
+    `remoteMessaging|microphone` and `FOREGROUND_SERVICE_MICROPHONE`), since Android silences a background app's
+    microphone otherwise; without the service, or if Android refuses, a separate notification (`ID_ONCALL`). Back while
+    ringing keeps the default (the ringing screen closes, `ListenService` keeps ringing, the ring notification still
+    answers). `onDestroy` with the call still up presses the page's Hang up, then navigates the WebView to
+    `about:blank` 2.5 s later (its `pagehide` sends whatever that didn't) and destroys it a second after. `Prefs.newCallScreen` (Phone tab → Switches → **New call screen**, default on), read in `onCreate`, picks
     the screen: on, `EdgeToEdge.enable` with dark bars and `CallScreen.kt` (`ringing()`: always dark over `Sky` at 0.6, a
     turning, breathing `Cookie9Sided` badge, still with reduced motion, `displaySmallEmphasized` caller, and
     Decline/Later/Answer as 64dp expressive buttons in a floating pill; `call()`, 0.8.16, below); off, the framework
@@ -1099,7 +1122,8 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     `MutationObserver` that posts at most every 60 ms a snapshot of `#who`, `#reason`, `#status` (and its class),
     `#call` (text, `end`, disabled), `#mute`, `#out`, `#int`, `#gatebox`/`#gate`/`#gateval`, `#level` (width, open
     when its colour is `--ok`), `#mode`, `#heard`, `#talk` (text, `data-state`, disabled) and `#log` (the last 80 lines
-    with their class, only when the count or the last line's length changed). The buttons press the page's own
+    with their class, only when the count or the last line changed; 0.8.17: the last line's text, not its length, so a
+    tool line's "×2" turning "×3" shows). The buttons press the page's own
     (`CallScreen.press(id)`, only `call`, `mute`, `out`, `int`, `talk`; `gate(v)` sets the slider and fires `input`), so
     the page tells the line, mutes and calls `toggleSpeaker` exactly as before; Hang up before the page is ready, or
     with no call on, just closes. Speaker's state is the activity's own (`route()` sets `CallUi.speaker`), since the
