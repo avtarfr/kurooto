@@ -475,7 +475,8 @@ class Calls(Module):
 
     # ----------------------------------------------------------------------------------------- tools
     def tools(self) -> list[Tool]:
-        from kurooto.core.tools import now_tools, sync_tools  # sync_status, shared with unattended AI runs
+        from kurooto.core.rightnow import now_tools  # (0.9.0) kurooto_now
+        from kurooto.core.tools import sync_tools  # sync_status, shared with unattended AI runs
 
         out = self._own_tools() + self.app.ask.call_tools() + sync_tools(self.app)  # + answer_question/_approval
         out += now_tools(self.app)  # (0.9.0) kurooto_now: calls and desk Live too

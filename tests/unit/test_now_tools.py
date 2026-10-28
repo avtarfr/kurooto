@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from kurooto.core import tools
+from kurooto.core import rightnow, tools
 from kurooto.core.clock import now
 
 
@@ -32,12 +32,12 @@ def test_kurooto_now_with_face_presence(env, monkeypatch):
     monkeypatch.setattr(app, "is_on", lambda mid: mid in ("face", "telegram"))
     monkeypatch.setattr(face, "line", lambda: "camera on: looking for you")
     app.events.emit("face_arrived")
-    v = tools.now_view(app)
+    v = rightnow.now_view(app)
     assert v["camera"] == "camera on: looking for you"
     assert v["desk"].startswith("at the desk since ")
     app.events.emit("face_left")
-    assert tools.now_view(app)["desk"].startswith("away from the desk since ")
-    text = repr(tools.now_view(app))
+    assert rightnow.now_view(app)["desk"].startswith("away from the desk since ")
+    text = repr(rightnow.now_view(app))
     for word in ("mood", "tone", "read", "frame", "p_free"):
         assert word not in text
 

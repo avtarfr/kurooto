@@ -292,7 +292,7 @@ answered. `fell` comes from `handed()` (step 8 above).
 - `sync_tools()`: `sync_status`, `sync_now`.
 - `core/selfdoc.py:tool(app)`: `kurooto_self` (read-only): this computer's `self.md`, or with `part=manual` the shipped
   manual. See [self-manual.md](self-manual.md).
-- `now_tools()` (0.9.0, L124, `face.tools`): `kurooto_now` (`writes=False`, so MCP marks it read-only), also in
+- `core/rightnow.py:now_tools()` (0.9.0, L124, `face.tools`; kept out of core/tools.py, which never touches Face: tests/unit/test_face.py): `kurooto_now` (`writes=False`, so MCP marks it read-only), also in
   `Calls.tools()` (calls, desk Live). `now_view(app)`: `desk` from the last `face_arrived`/`face_back`/`face_left`
   event (`DESK_EVENTS`) and the watcher's `away`, `camera` = `Face.line()`, `call` from `web/tools_api.live_call`,
   `messages_go_to` from the notifier's channels (and `notify.app_chat`), `voice_id` = `VoiceID.last_word` (a
