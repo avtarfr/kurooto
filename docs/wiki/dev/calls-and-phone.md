@@ -370,7 +370,12 @@ on Telegram (`core/turnon.py` already offers its buttons for `via` `app`). `resp
 `core/calm.py:Calm.bundle` sends each held message by itself unless `notify.calm.bundle_one`.
 Jobs answer with `reply_to="app:<id>"`: `core/notify.py:Notifier._deliver` sends such a message to the `chat` channel
 only (and the desktop, by its kinds); with no `chat` channel it goes to Telegram without the reply_to. With
-`notify.app_chat` on, messages whose kind isn't in `notify.app_kinds` (and isn't `call`) also go to `chat`.
+`notify.app_chat` on, messages whose kind isn't in `notify.app_kinds` (and isn't `call`) also go to `chat`; a
+`Message.file` too since 0.9.0 (`files.to_app`, on: before, a file with Telegram was Telegram's document only).
+`PhoneChat.send` makes such a copy with `send_file(wait=True)` when the file is at most `FILE_MAX`, so it's on the line
+before the sender goes on: a sender may delete its file once `skills.send_file` says "Sent" (the Body add-on's order
+screenshots live in a RAM folder only while they're sent). `skills.send_file` says both places in its one reply
+(`skills.to_app`), and sends a file over Telegram's 50 MB straight to the chat when `to_app` holds.
 A button press runs `App.callback(data)` and says its answer in the chat unless it's empty or "ok"; under the answer
 to a counting button (`core/notify.py:counts`, a "+1"; 0.5.20) the same button again, so the chat's notification can
 offer it too.

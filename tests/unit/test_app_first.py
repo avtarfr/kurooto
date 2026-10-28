@@ -70,8 +70,52 @@ def test_with_telegram_on_the_chat_still_needs_app_chat(phone):  # noqa: F811
     assert not said(phone)  # nothing changes for Telegram users
     assert not phone.app.app_main()
     phone.app.settings.set("notify.app_chat", True)
+    phone.app.settings.set("files.to_app", False)
     phone.app.notify("report.pdf", kind="result", file=__file__, why="asked")
-    assert not said(phone)  # a file is Telegram's document then, not a second copy as a link
+    assert not said(phone)  # files.to_app off: a file is Telegram's document only, as before 0.9.0
+
+
+def test_with_telegram_and_app_chat_a_file_reaches_both(phone, tmp_path):  # noqa: F811
+    """N6 (0.9.0): an add-on's screenshot or `kurooto send` landed on Telegram only; it reaches the app's chat too,
+    before send_file returns (a sender may delete the file right after)."""
+    from kurooto.modules import skills
+
+    app = phone.app
+    phone.calls.connector.ws = object()  # looks connected
+    phone.calls.connector.admin_wait = lambda op, timeout=25, **kw: {"ok": True}
+    f = tmp_path / "order.png"
+    f.write_bytes(b"\x89PNG data")
+    ok, out = skills.send_file(app, f, "Your order")
+    assert ok and out == "Sent order.png to your Telegram."  # notify.app_chat off: Telegram only, as before
+    assert not said(phone)
+    app.settings.set("notify.app_chat", True)
+    n_docs = len([1 for m, _ in phone.fake.sent if m == "sendDocument"])
+    ok, out = skills.send_file(app, f, "Your order")
+    assert ok and out == "Sent order.png to your Telegram and the phone app's chat."
+    m = said(phone)[-1]  # already there: no waiting
+    assert m["buttons"][0]["url"].startswith(app.modules["calls"].worker_url() + "/file#")
+    assert "Your order" in m["text"]
+    assert len([1 for m, _ in phone.fake.sent if m == "sendDocument"]) == n_docs + 1  # Telegram still got it
+    f.unlink()  # what an add-on does once it's sent: the chat's copy is already made
+    app.settings.set("files.to_app", False)
+    n = len(said(phone))
+    f.write_bytes(b"\x89PNG data")
+    assert skills.send_file(app, f)[1] == "Sent order.png to your Telegram."
+    assert len(said(phone)) == n
+
+
+def test_a_file_too_big_for_telegram_goes_to_the_app_chat(phone, tmp_path, monkeypatch):  # noqa: F811
+    from kurooto.modules import skills
+
+    app = phone.app
+    app.settings.set("notify.app_chat", True)
+    phone.calls.connector.ws = None
+    monkeypatch.setattr(skills, "TELEGRAM_MAX", 3)
+    f = tmp_path / "scan.pdf"
+    f.write_bytes(b"%PDF-1.4 big")
+    ok, out = skills.send_file(app, f)
+    assert ok and "phone app's chat" in out
+    assert wait_for(lambda: [x for x in said(phone) if "scan.pdf" in x["text"]])
 
 
 # ---------------------------------------------------------------------------------------------- files

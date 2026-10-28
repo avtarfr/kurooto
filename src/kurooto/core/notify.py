@@ -9,7 +9,8 @@ Channels are registered by the modules that provide them (Telegram, the phone ap
 built in. An answer to something you wrote in the phone app's chat (reply_to "app:<id>") goes back to that chat only.
 Without Telegram (0.5.18: it's optional when the phone app is paired), the chat is where everything else goes, as with
 notify.app_chat on, Why? / Less of this included; a file (a long answer, `kurooto send`) comes there as a link
-(calls/chat.py: Google Drive with Drive upload on, else a sealed copy on your call line).
+(calls/chat.py: Google Drive with Drive upload on, else a sealed copy on your call line). With Telegram and
+notify.app_chat on, a file goes to both (files.to_app, 0.9.0).
 A channel that keeps its own copy of a question (the phone app) also registers a retract handler: when that question
 is dealt with anywhere (answered on Telegram, a button tapped, expired), retract() takes its copy down.
 A channel that can change a message it sent (Telegram) registers an edit handler: Calm folds several notices of one
@@ -239,7 +240,8 @@ class Notifier:
                 self.app.events.emit("notify_failed", channel="app", error=str(e)[:200])
         elif "chat" in self.channels and msg.kind != "call" and (self.app.app_main() or s.get("notify.app_chat")):
             try:  # without Telegram the chat is your channel: Calm's Why? / Less of this come there too, and files
-                if self.app.app_main() or not msg.file:  # (with Telegram, a file is Telegram's document)
+                # (with Telegram, a file is Telegram's document, and a link in the chat too with files.to_app, 0.9.0)
+                if self.app.app_main() or not msg.file or s.get("files.to_app"):
                     self.channels["chat"](tmsg if self.app.app_main() else records.with_why(self.app, msg))
             except Exception as e:
                 self.app.events.emit("notify_failed", channel="chat", error=str(e)[:200])

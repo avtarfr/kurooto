@@ -617,7 +617,11 @@ it on), `chat_files_inline`, `chat_edit`. Each stops at once and leaves the rest
 
 **Kurooto's own messages in the chat.** With `notify.app_chat` on (Dashboard → Settings → notify), reminders,
 results and other messages also show in the chat, besides Telegram. Without Telegram they always do. Questions and
-approvals stay under **Waiting for you**, with their answer buttons.
+approvals stay under **Waiting for you**, with their answer buttons. Since 0.9.0 files come too: a file Kurooto sends
+you (`kurooto send`, a file the AI sends, a long answer, a grocery order's screenshot from an add-on) lands on
+Telegram and, as a link, in the chat; Kurooto's reply says "Sent ... to your Telegram and the phone app's chat". A
+file too big for Telegram (over 50 MB) still reaches the chat when your call line or Drive upload can carry it.
+Turn the file copy off with `files.to_app` (Dashboard → Settings → files): files go to Telegram only, as before.
 
 **The same chat on your computer's dashboard (0.8.14).** The dashboard's **Chat** page (Alt+H) shows these chats
 and messages live, with Kurooto's buttons and what's waiting for you, and has a box to write in the open chat. What you

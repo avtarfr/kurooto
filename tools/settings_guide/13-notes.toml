@@ -26,6 +26,13 @@ tip = "The program that opens a note from the dashboard; empty uses the system's
 values = "A command, with `{path}` for the note: `kitty nvim {path}`."
 when = "Set it to open notes in your own editor."
 
+[s."files.to_app"]
+tip = "A file Kurooto sends you also comes to the phone app's chat as a link, not only to Telegram."
+what = "`kurooto send`, a file the AI sends, a long answer as a file, an add-on's picture (a grocery order's screenshot). Only while the chat gets Kurooto's messages (`notify.app_chat`); without Telegram files always come to the chat."
+when = "Turn it off to get files on Telegram only, as before 0.9.0."
+cost = "The file goes sealed with a one-time key through your call line (or your own Google Drive with Drive upload on); the line keeps it 24 hours."
+needs = "A paired phone app and `notify.app_chat` on."
+
 [s."files.folder"]
 tip = "A folder for files outside your notes (course files, PDFs); empty keeps them inside the notes."
 values = "A full folder path, or empty."

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0 (unreleased)
+
+- **Files reach the phone app too** (`files.to_app`, on). With the app's chat getting Kurooto's messages
+  (`notify.app_chat`), a file it sends you (`kurooto send`, the AI's file, a long answer, a grocery order's screenshot
+  from an add-on) comes to the chat as a link as well as to Telegram; one reply says both. A file too big for Telegram
+  goes to the chat. Off: Telegram only, as before.
+
 ## 0.8.18 (2026-10-29)
 
 Kurooto keeps its eyes and ears shut while it sleeps, stays up while you're at the desk, and anyone's look opens a conversation.

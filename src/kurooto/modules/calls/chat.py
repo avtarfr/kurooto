@@ -237,7 +237,11 @@ class PhoneChat:
         message. A file comes as a link, a moment later (send_file)."""
         re_id = msg.reply_to[len(PREFIX) :] if answers_app(msg) else ""
         if msg.file:
-            self.send_file(Path(msg.file), msg.text or "", re_id=re_id if ID.fullmatch(re_id) else "")
+            # a copy beside Telegram's (files.to_app): made before this returns, since a sender may delete the file
+            # once it's sent (an add-on's picture lives in memory only while it's sent); FILE_MAX bounds the wait
+            path = Path(msg.file)
+            mirror = not self.app.app_main() and path.is_file() and path.stat().st_size <= FILE_MAX
+            self.send_file(path, msg.text or "", re_id=re_id if ID.fullmatch(re_id) else "", wait=mirror)
             return None
         if not (msg.text or "").strip():
             return None
