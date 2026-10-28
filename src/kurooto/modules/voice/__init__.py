@@ -92,6 +92,7 @@ from kurooto.modules.voice.gate import (
     told_off,
 )
 from kurooto.modules.voice.learn import NIGHT_AT, Learner
+from kurooto.modules.voice.live import Live
 from kurooto.modules.voice.parts import KOKORO_VOICES, STT_MODELS, Parts
 from kurooto.modules.voice.portal import Portal
 from kurooto.modules.voice.voiceid import NO_VOICE, VoiceID
@@ -158,6 +159,7 @@ register_defaults(
             "fast_brain": "same",  # plain chat by voice: same (your AI), local (this computer's model) or fastest
             "warm_up": True,  # when listening starts, warm the transcriber and the voice so the first turn is quick
             "warm_brain": True,  # and the AI's program (Claude Code's files; with fast_brain local, the local model)
+            "live": False,  # your own turns answered by Gemini Live, speech to speech: their sound goes to Google
         },
         "speaker_id": {
             "on": False,  # Voice ID: only your voice can make Kurooto act; others can only chat (enrol first)
@@ -211,7 +213,6 @@ FACE_FREE = ("the wake word",)  # rules a face isn't needed for (told off never 
 WARM = ("warm",)  # (warm_up) the hearing thread's own item: warm the transcriber there, never beside a turn
 WARM_BRAIN_S = 600  # (warm_brain) at most this often
 FAST_BRAINS = ("same", "local", "fastest")
-
 
 class Speaker:
     """Speaks text a piece at a time (a sentence, or short ones joined: shape.join): the next piece is made while this
@@ -409,7 +410,6 @@ class Speaker:
     def holding(self) -> bool:
         return self.busy or time.monotonic() < self.until
 
-
 def _gated(app, fn):
     """(0.8.13) The nightly learner runs while you sleep (learn.py); (0.8.16) through Brain's body gate like its own
     heavy work (mind/senses/intero.py: it waits while your own work holds the machine, a call or the battery)."""
@@ -418,7 +418,6 @@ def _gated(app, fn):
     except ImportError:
         return fn()
     return intero.gated(app, "voice:learn", "cpu", fn, nightly=True)
-
 
 class Voice(Module):
     id = "voice"
@@ -484,6 +483,7 @@ class Voice(Module):
         self._once: dict | None = None  # listen_once's hold: the next stretch goes to it, not to hear()
         self._once_lock = threading.Lock()  # one holder at a time
         self._face_hold_at = 0.0  # (need_face) when the camera hold was last renewed; 0: not held
+        self._faced = False  # (need_face) face_check saw a face close and facing it for the turn being checked
         self._face_sleep = time.sleep  # (need_face) waiting for a frame; tests replace it
         self.face_counts = {"no_face": 0, "blind": 0}  # (need_face) turns it turned down since start: counts only
         self._turn_t: dict | None = None  # (0.8.16, fast.py) the turn being heard and answered now: its times
@@ -496,6 +496,7 @@ class Voice(Module):
         self._brain_warm_at = 0.0
         self._look_used: float | None = None  # (look_to_talk) the run of looks that opened it (or found it open)
         self.look_count = 0  # (look_to_talk) conversations a look opened since start: a count
+        self.live = Live(self)  # (voice.listen.live, 0.8.17) your own turns answered by Gemini Live: live.py
 
     # ------------------------------------------------------------------------------------------- the parts
     def wants(self) -> list[str]:
@@ -668,6 +669,7 @@ class Voice(Module):
         self.app.events.emit("voice_portal", open=is_open, why=why)  # when and why only, never words
         if not is_open:
             self.voiceid.portal_closed()  # (voice id) a guest's turns of this conversation are dropped
+            self.live.close()  # (voice.listen.live) its Live session ends with the conversation
 
     def _level(self, frame: bytes) -> None:
         if not self.setting("listen.levels"):
@@ -973,6 +975,7 @@ class Voice(Module):
         said = g.matcher.uncall(h.text) if h.wake or d.why == "its name" else h.text  # the call itself isn't sent
         if on and who is None and said and audio is not None:  # (voice id) the gate first is off: addressed only
             who = vid.check(audio, h.speech_s, h.voices)
+        self.live.keep(audio, who)  # (voice.listen.live) an owner's admitted turn: its sound, for this turn only
         del audio
         if on and who is None and said:  # nothing to check it with: unsure (fail closed)
             from kurooto.modules.voice.speakerid import UNSURE, Verdict
@@ -1071,6 +1074,7 @@ class Voice(Module):
                     limit = hi + FACE_SLOW_S
                     looked, ok = nearby.facing(self.app, lo, limit)
                 if ok:
+                    self._faced = True  # (voice.listen.live) a face was seen for this turn, not just let through
                     return d
                 left = limit - time.monotonic()
                 if left <= 0:
@@ -1248,6 +1252,7 @@ class Voice(Module):
                 if who is not None:
                     self.publish("voice_state", state="addressed", portal=True, listening=True, why="barged in",
                                  who=who.word)  # fmt: skip
+                self.live.keep(pcm, who)
                 reply = self._take(h, Decision(ADDRESSED, 0.9, "barged in"), said, who, turn)
             else:  # not "stop", not a question or a request ("mm", a cough): it says the cut sentence again, on
                 outcome = "resumed" if self.speaker.held() else "listen"
@@ -1276,6 +1281,10 @@ class Voice(Module):
         spoken as the AI writes them when it can stream (voice.speak.stream) and plain chat may go to a quicker AI
         (voice.listen.fast_brain), both through the queue's turn_options (core/jobs.py); the turn's times are kept."""
         turn = self._turn_t if self._turn_t is not None else {"end": time.monotonic()}
+        if who is not None and who.decision == "owner":  # (voice.listen.live) Gemini Live answers it aloud, or None
+            said = self.live.turn(text, turn)
+            if said is not None:
+                return said
         replies: list[str] = []
         msg = Incoming(
             text=text,
@@ -1381,7 +1390,10 @@ class Voice(Module):
     def _timed_face_check(self, h: Heard, d: Decision, turn: dict) -> Decision:
         """face_check, with how long it took (it waits for a frame only when none that counts was seen yet)."""
         t0 = time.monotonic()
+        self._faced = False
         out = self.face_check(h, d)
+        if self._faced and out.addressed:
+            turn["faced"] = 1  # (voice.listen.live) only such a turn may go to Live
         if d.addressed:
             turn["face_ms"] = round((time.monotonic() - t0) * 1000)
         fast.stamp(turn, "gate")
@@ -1394,6 +1406,7 @@ class Voice(Module):
             return self.portal.take(h, d, text=said, who=who)
         finally:
             self._turn_t = None
+            self.live.keep(None)
             st, self._stream = self._stream, None
             if st is not None:  # never finished (the portal spoke something else): nothing more of it is said
                 st.cancel()
@@ -1555,6 +1568,8 @@ class Voice(Module):
         """The portal's reply, aloud: not when muted or turned off meanwhile (the text is on the dashboard). An answer
         that was being spoken as it was written (voice.speak.stream) is finished: only what wasn't said yet."""
         st, self._stream = self._stream, None
+        if self.live.spoken():  # (voice.listen.live) Gemini Live said it already
+            return
         if self.portal_cut():
             if st is not None:
                 st.cancel()
@@ -2034,14 +2049,12 @@ class Voice(Module):
             + "\n/voice mute, /voice unmute, /voice stop, /voice say <text>; /voice id (Voice ID), /voice enrol"
         )  # fmt: skip
 
-
 def _num(v, default: float) -> float:
     """A number setting; 0 stays 0 (a dwell of 0 opens on the first look), anything unreadable is the default."""
     try:
         return default if v is None else float(v)
     except (TypeError, ValueError):
         return default
-
 
 def _drowsing(app) -> bool:
     try:
@@ -2053,7 +2066,6 @@ def _drowsing(app) -> bool:
     except Exception:
         return False
 
-
 def pause_after(tts, part: str, sr: int) -> bytes:
     """The silence after a piece when another follows (16-bit, at the piece's rate). kokoro-onnx trims the silence at
     both ends of what it makes and puts a pause back only between the batches it joins itself (0.25 s after a
@@ -2062,7 +2074,6 @@ def pause_after(tts, part: str, sr: int) -> bytes:
     if getattr(tts, "name", "") != "kokoro":
         return b""
     return bytes(2 * int(sr * (0.25 if part.rstrip()[-1:] in ".!?" else 0.1)))
-
 
 def _edges(pcm: bytes, seconds: float = 2.0) -> bytes:
     """(voice id) The first and last `seconds` of the sound with a short silence between: enough to hear its name

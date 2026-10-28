@@ -404,6 +404,57 @@ ID 0.6 s, Claude Code at low effort 4 s, then Kokoro and an add-on output on a p
   no request), or one local completion with `fast_brain` `local`. Each engine key is warmed once (`_warmed`).
   `tts()` loads under `_tts_lock` so the warm-up and a turn never load it twice.
 
+## Live at the desk (`live.py`, 0.8.17)
+
+`voice.listen.live` (off). An owner's admitted turn is answered by Gemini Live (speech to speech) instead of
+`app.handle` + Kokoro. The hooks in `__init__.py` are narrow:
+
+- `hear()` calls `live.keep(audio, who)` just before `del audio` on the addressed path (`barge_turn()` the same before
+  its `_take`): the stretch is kept, in memory, only when the switch is on and `who.decision == "owner"` (Voice ID on).
+  `_take()`'s `finally` calls `live.keep(None)`: it's dropped whatever happened.
+- `_timed_face_check()` sets `turn["faced"] = 1` only when `face_check()` returned through its `ok` branch (a face
+  close and facing it in the window, `nearby.facing`). Turns let through without a face (FACE_FREE: the wake word and
+  the request right after it; `face_gate()` "off" or "blind" with fallback "voice") have no `faced`, so never go to Live.
+- `ask_brain()`: for an owner's verdict, `live.turn(text, turn)` first; a string is the answer (said already), `None`
+  falls through to the usual path (so the ack, streaming and fast brain are untouched).
+- `_portal_speak()` returns at once when `live.spoken()` (the portal would otherwise say the reply again).
+- `_portal_changed(False)` calls `live.close()` (never waits): the portal closing ends the session.
+
+`Live.turn()`: needs the stretch, `turn["faced"]`, the switch, `speak.on`, not `portal_cut()`, a `gemini.api_key`
+and the calls module. A session (`Session`) is reused while `sess.portal == portal.session`; else `_open()` tries
+`models()` (`Calls.live_models()` minus `calls.live.gone()`, models that failed in the last `BAD_S` last) with
+`setup()`: `Calls.config_template()` as the raw `BidiGenerateContentSetup` (`models/<m>`, `generationConfig`
+{responseModalities AUDIO, speechConfig from `calls.voice` or `live_profiles()`' voice}, `systemInstruction.parts`,
+the tools' declarations without `behavior` (blocking: a turn waits for its tools), both transcriptions,
+`contextWindowCompression`, and `automaticActivityDetection.disabled`: Voice already cut the turn). `desk()` fills
+`%%NOW%%`, swaps "on a live voice call" and "Talk like a friend on a call", drops lines with "every call"
+(pending_items' hint) and adds `DESK`. The websocket (`websockets.asyncio.client.connect`) runs on its own loop thread
+(`voice-live`); the key is sent as the `x-goog-api-key` header, never in `LIVE_URL`, and the library's logger is a
+silenced one (`_log`). `egress.allow(LIVE_URL, "Voice")` counts it (generativelanguage.googleapis.com, already listed).
+
+A turn: `activityStart`, the PCM in 250 ms `realtimeInput.audio` messages (`audio/pcm;rate=16000`), `activityEnd`;
+`sent` stamped. `_read()` (a task per session) hands the turn's queue `audio` (24 kHz PCM), `in`/`out`
+(transcriptions), `tool`, `interrupted`, `done` (turnComplete) and `closed`. `_first()` waits `FIRST_S` (5 s; a tool
+call restarts it) for the first sound, else `Failed("first sound")`. `_play()` holds the Speaker's lock like
+`fast.Stream._run` (`busy`, `_turn = turn` so `_play` stamps `play`), and plays pieces with `Speaker.say_piece(pcm,
+24000)` (0.2 s first, then 0.6 to 2 s): outputs, `voice_speak` samples, hold/release and stop work as for Kokoro's
+pieces; the output transcription goes to `barge.speaking()`. Live's `interrupted` calls `speaker.stop()` from the
+reader. An answer cut off before its turnComplete marks the session `stale`: the rest is dropped as it arrives
+(`swallow` drops a turnComplete that follows an `interrupted`). Tool calls: `Live.run_tool()` on an executor: a tool
+`tap.action_of()` calls guarded goes to `tap.ask_first(via="voice")` (Approve / Deny; runs only on Approve), any other
+through `Calls.run_tool()`; the result goes back in `toolResponse.functionResponses`.
+
+After the answer: `turn["live"] = 1` (`fast.numbers` passes it to `voice_timing`), `answer` stamped,
+`chat.record_turn(input transcription or the written-out words, output transcription)` while Chat is on, and the reply
+text (or `ALOUD`) returns to the portal, which shows it. Any exception: the session is closed, the stamps Live added
+are taken off the turn, a `voice_live` event (stage, model, code, ms; never words) and `None`: the usual path answers.
+Events: `voice_live` with `stage` `answered` (`turns`), or `connect`/`setup`/`send`/`first sound`/`no key`/`no calls`/
+`error` (`fallback: true` when that turn went the usual way).
+
+Not verified against Google: the raw v1beta setup shape for the configured models, the `x-goog-api-key` header on the
+websocket, manual activity with a pre-cut stretch, and whether `interrupted` is followed by a turnComplete
+(tests/unit/test_voice_live.py runs a fake server on 127.0.0.1).
+
 ## Learning at night (`learn.py`, 0.8.13)
 
 `voice.listen.learn_nightly` (on). Rows in `<state>/voice/gate-turns.jsonl`, one JSON object per labelled turn:

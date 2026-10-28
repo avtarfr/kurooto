@@ -1229,6 +1229,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.language` | `""` | The language you speak, e.g. `en` or `hi`; empty works it out each time. ([guide](wiki/user/settings-guide.md#voicelistenlanguage)) |
 | `voice.listen.learn_nightly` | `true` | Every night Kurooto learns from how its voice turns went: ones you carried on with, and ones you told off. ([guide](wiki/user/settings-guide.md#voicelistenlearnnightly)) |
 | `voice.listen.levels` | `true` | Show the microphone's loudness as a waveform on the dashboard (numbers only). ([guide](wiki/user/settings-guide.md#voicelistenlevels)) |
+| `voice.listen.live` | `false` | Your own turns answered by Gemini Live, speech to speech, in about a second. Their sound goes to Google. ([guide](wiki/user/settings-guide.md#voicelistenlive)) |
 | `voice.listen.look_away_s` | `3.0` | Looking away this long, before you've said anything, closes it again. ([guide](wiki/user/settings-guide.md#voicelistenlookaways)) |
 | `voice.listen.look_dwell_s` | `1.0` | How long you look at the camera before it starts listening: a glance shorter than this doesn't count. ([guide](wiki/user/settings-guide.md#voicelistenlookdwells)) |
 | `voice.listen.look_pitch_deg` | `15` | How straight at the camera your head must point, up or down, judged against your face at enrolment. ([guide](wiki/user/settings-guide.md#voicelistenlookpitchdeg)) |
