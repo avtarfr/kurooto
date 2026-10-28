@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0 (unreleased)
+
+- **Quiz answers count for the concept a card is about.** A card Kurooto wrote counts for the concept it names, and a
+  link recall card for both of its concepts, in Brain's model of what you know; before, only a concept named in the
+  card's words counted, and link cards not at all.
+
 ## 0.8.18 (2026-10-29)
 
 Kurooto keeps its eyes and ears shut while it sleeps, stays up while you're at the desk, and anyone's look opens a conversation.

@@ -893,7 +893,7 @@ check has two fact checkers (backup, deadline) and runs only on those domains.
 
 **Deviations.** (1) `/model` is text with ids (Wrong, Forget as commands); no inline buttons, no dashboard page, no mastery overlay on the notes map. (2) Stating a belief in chat
 ("the deadline is Friday") isn't captured automatically yet: `beliefs_about.told(...)` is called with what Kurooto tells him (backup done on `/backup`, deadline reminders); his
-own statements need an intent hook. (3) Quiz cards are linked to concepts by name mention, since a card has no concept id. (4) Prerequisites in the frontier are a note's typed
+own statements need an intent hook. (3) Quiz cards are linked to concepts by the concept a card names (`concept` on a card Kurooto wrote, both ends `a` and `b` of a link recall card, 0.9.0, `knowledge.item_slugs`), and by name mention for the cards from his own quiz notes, which have no concept id. (4) Prerequisites in the frontier are a note's typed
 `prereq` links, else its links. (5) Exam results he reports aren't evidence yet. (6) Stated goals from chat text aren't parsed; deadlines and projects are.
 
 ## Stage 15: week-scale plans
