@@ -66,7 +66,7 @@ from pathlib import Path
 
 from kurooto import providers
 from kurooto.core import conceptgraph as cg
-from kurooto.core import graphmerge, layout, notedupes, proc, readbudget, segment
+from kurooto.core import graphmerge, layout, notedupes, power, proc, readbudget, segment
 from kurooto.core import graphwrite as gw
 from kurooto.core import integrate_ai as ai
 from kurooto.core.clock import now
@@ -102,7 +102,7 @@ register_defaults(
             "books",
             "classroom",
             "reference",
-        ],  # what's read into the graph: books, classroom, handwritten, repos, reference (files from the inbox)
+        ],  # what's read into the graph: books, classroom, handwritten, repos, reference (files from the inbox), papers
         "first": [],  # subjects to do first, e.g. ["deep-learning"]
         "order": "smallest",  # which books first: smallest (fewest pages: most books done soonest) | name
         "commit": True,  # one git commit per batch, when your notes are a repository
@@ -113,14 +113,16 @@ register_defaults(
         "auto_merge": True,  # look-alike concept notes that are clearly one concept merge by themselves (Undo each)
         "auto_merge_min": 0.97,  # how alike two notes' text must be (embeddings, 0.92 to 1) to merge without asking
         "notation": True,  # a Notation table when a second source writes a concept differently (a switch on the card)
+        "yield_to_owner": False,  # the next batch waits while you're in a Voice turn, and starts a minute after it ends
     },
 )
 STALE_S = 3 * 3600  # a request that didn't come back in this long is asked again
 TRIES = 3
 PAGE_MARK = re.compile(r'<a id="p-(\d+)"></a>\n## \[p\. \d+\]\n')
-SOURCES = ("books", "classroom", "handwritten", "repos", "reference")  # what integrate.sources may name
+SOURCES = ("books", "classroom", "handwritten", "repos", "reference", "papers")  # what integrate.sources may name
+LATE = ("papers",)  # read after the books, so class material and books keep the night's budget first (0.9.0)
 # less text (an announcement, a one-line post) isn't read; repos: a project's README, docs, notebooks' text, paper
-MIN_CHARS = {"classroom": 1500, "handwritten": 800, "repos": 600, "reference": 300}
+MIN_CHARS = {"classroom": 1500, "handwritten": 800, "repos": 600, "reference": 300, "papers": 300}
 PART_CHARS = 3000  # text with no pages of its own is cut into parts of about this many characters (about a page)
 SLIDE = re.compile(r"^--- slide \d+ ---$", re.M)  # how Classroom writes out a .pptx (google_classroom._xml_text)
 NAMED = {
@@ -129,6 +131,7 @@ NAMED = {
     "handwritten": ("handwritten", "handwritten"),
     "repos": ("repository file", "repository files"),
     "reference": ("document you gave it", "documents you gave it"),
+    "papers": ("paper", "papers"),
 }
 SEEN_HEAD = {  # what a "Seen in" block calls the lines each source adds to an existing note
     "books": "### Added from the books",
@@ -136,6 +139,7 @@ SEEN_HEAD = {  # what a "Seen in" block calls the lines each source adds to an e
     "handwritten": "### Added from your handwritten notes",
     "repos": "### Added from your projects' repositories",
     "reference": "### Added from documents you gave it",
+    "papers": "### Added from papers in your library",
 }
 
 
@@ -372,7 +376,29 @@ class Integrate(Module):
             reverse=True,
         )
         back = sorted((it for it in items if it.get("backfill")), key=lambda it: int(it.get("order") or 0))
-        return fresh + back
+        soon = set(self.exam_first())
+        if not soon:
+            return fresh + back
+        return sorted(fresh + back, key=lambda it: it.get("subject") not in soon)  # stable: only moved up, none dropped
+
+    def exam_first(self) -> list[str]:
+        """exam_season.graph_first (0.9.0, off): the subjects with an exam in the next revision_days, read first (their
+        class material and books, as integrate.first does by hand); never drops anything, only reorders."""
+        es = self.app.modules.get("exam_season")
+        if es is None or not self.app.is_on("exam_season") or not es.setting("graph_first"):
+            return []
+        try:
+            days = int(es.setting("revision_days") or 14)
+            t = now()
+            return list(
+                dict.fromkeys(
+                    e["subject"]
+                    for e in es.exams()
+                    if e.get("subject") and t.date() <= e["day"] <= t.date() + dt.timedelta(days=days)
+                )
+            )
+        except Exception:
+            return []
 
     def take_classroom(self, batch: dict) -> int:
         """Classroom → notes filed a batch (modules/google_classroom.py): each file in it with real text, and a post
@@ -410,6 +436,28 @@ class Integrate(Module):
                 subject = found[0]
         return self.queue_item(
             "reference", text, subject, title or Path(note).stem, self.rel(note), date=now().date().isoformat()
+        )
+
+    def take_paper(self, paper: dict) -> str | None:
+        """A paper you put in Zotero from the research digest (modules/zotero.py): its title, authors and abstract,
+        queued to be read after the books, when integrate.sources has "papers" (it doesn't by default). Subject: the
+        one subject its text names, else "papers"."""
+        if not self.app.is_on(self.id) or not self.reads("papers"):
+            return None
+        title = re.sub(r"\s+", " ", str(paper.get("title") or "")).strip()
+        abstract = re.sub(r"\s+", " ", str(paper.get("summary") or paper.get("abstract") or "")).strip()
+        if not title or not abstract:
+            return None
+        authors = ", ".join(str(a) for a in (paper.get("authors") or [])[:4])
+        text = f"{title}\n\n{authors}\n\n{abstract}\n\n{paper.get('link') or ''}".strip()
+        subject = "papers"
+        sj = self.app.modules.get("subjects")
+        if sj is not None and self.app.is_on("subjects"):
+            found = sj.find_in(f"{title} {abstract[:3000]}")
+            if len(found) == 1:
+                subject = found[0]
+        return self.queue_item(
+            "papers", text, subject, title, str(paper.get("link") or ""), date=now().date().isoformat()
         )
 
     def take_handwritten(
@@ -829,15 +877,15 @@ class Integrate(Module):
         first) and handwritten notes, then a backfill's, then the books."""
         self.inflight()  # forget requests that never came back, so they're asked again
         led = self.load("ledger.json", {})
-        out = []
+        out, late = [], []
         for it in self.queued_items():
             done_batches = self.entry(led, it).get("batches", {})
             for bt in self.plan(it, led):
                 if (done_batches.get(bt.id, {}) or {}).get("state") not in ("done", "failed", "queued", "checking"):
-                    out.append((it, bt))
+                    (late if self.source_of(it) in LATE else out).append((it, bt))
         if not self.reads("books"):
-            return out
-        first = [str(x) for x in self.setting("first") or []]
+            return out + late
+        first = [str(x) for x in self.setting("first") or []] + self.exam_first()
         library = self.books.library()
         metas = {self.key(b): self.books.meta(b) for b in library}
         smallest = str(self.setting("order") or "smallest") == "smallest"
@@ -860,7 +908,7 @@ class Integrate(Module):
                     continue
                 if all(p in have for p in range(bt.first, bt.last + 1)):
                     out.append((b, bt))
-        return out
+        return out + late
 
     # ---------------------------------------------------------------------------------------------- the ledger
     def record(self, b: dict, bt_id: str, **kw) -> dict:
@@ -969,6 +1017,12 @@ class Integrate(Module):
         todo = self.ready_batches()
         if not todo:
             return {**out, "idle": True}
+        busy = power.owner_turn(self.app) if self.setting("yield_to_owner") else ""
+        if busy:  # integrate.yield_to_owner (0.9.0): held only while it lasts; nothing skipped, the night goes on
+            later = now() + dt.timedelta(minutes=1)
+            self.app.scheduler.at(later, "integrate.soon", key=f"{self.id}:soon", module=self.id)
+            self.app.events.emit("integrate_held", why=busy)
+            return {**out, "held": busy}
         b, bt = todo[0]
         self.submit_batch(b, bt)
         out["submitted"] = 1
@@ -1859,6 +1913,7 @@ class Integrate(Module):
                 ("handwritten", "Read your handwritten notes"),
                 ("repos", "Read your projects' repositories (README, docs): /project add"),
                 ("reference", "Read documents you drop in the inbox (what was covered, a handout)"),
+                ("papers", "Read papers you add to Zotero from the research digest (their abstracts), after the books"),
             )
         ]
         toggles.append(

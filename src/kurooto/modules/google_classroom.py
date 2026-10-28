@@ -197,6 +197,13 @@ def remember_posts(app, course: dict, posts: list[tuple[str, dict]]) -> None:
 def posts_on(app, slug: str, day: dt.date) -> list[dict]:
     """That day's Classroom posts ({at, title, url}) of the courses filed under this subject; none while neither
     Classroom feature is on."""
+    return [p for p in posts_of(app, slug) if _local_day(p.get("at", "")) == day]
+
+
+def posts_of(app, slug: str) -> list[dict]:
+    """Every kept Classroom post ({at, title, url}, the last POSTS_DAYS) of the courses filed under this subject,
+    oldest first; none while neither Classroom feature is on. The course pages' timeline reads them
+    (modules/coursepages.py)."""
     if not (app.is_on("google") and app.settings.get("google.classroom")) and not app.is_on("classroom_notes"):
         return []
     chosen = app.settings.get("classroom_notes.folders") or {}
@@ -206,8 +213,8 @@ def posts_on(app, slug: str, day: dt.date) -> list[dict]:
         name = c.get("name", "")
         if (slugify(chosen[name]) if chosen.get(name) else known.get(name) or course_subject(app, name)) != slug:
             continue
-        out += [p for p in c.get("posts", {}).values() if _local_day(p.get("at", "")) == day]
-    return sorted(out, key=lambda p: p["at"])
+        out += list(c.get("posts", {}).values())
+    return sorted(out, key=lambda p: p.get("at", ""))
 
 
 def _local_day(stamp: str) -> dt.date | None:

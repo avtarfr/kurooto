@@ -13,8 +13,8 @@ tip = "An API key's prices per million tokens, for the night's cost estimate whe
 tip = "Which AI does the bulk reading, and which takes the second look."
 
 [s."integrate.sources"]
-tip = "What's read into the graph: books, Classroom files, handwritten notes, repositories, reference files."
-values = "A list of `books`, `classroom`, `handwritten`, `repos`, `reference` (files from the inbox)."
+tip = "What's read into the graph: books, Classroom files, handwritten notes, repositories, reference files, papers."
+values = "A list of `books`, `classroom`, `handwritten`, `repos`, `reference` (files from the inbox), `papers` (papers you add to Zotero from the research digest, read after the books)."
 when = "Add `handwritten` once your handwritten notes are written out; remove one to stop reading it."
 
 [s."integrate.at"]
@@ -129,6 +129,11 @@ when = "Turn it off to be asked about every pair. It only ever merges notes Kuro
 tip = "How alike two notes must be (0.92 to 1) to merge without asking."
 when = "Raise it if merges surprise you; it never goes below 0.92."
 needs = "`integrate.auto_merge`."
+
+[s."integrate.yield_to_owner"]
+tip = "The concept graph's next batch waits while you're in a Voice turn, and starts a minute after it ends."
+when = "Turn it on if the graph's reading on a local model slows Voice down."
+needs = "The Concept graph, and Voice (it only waits for a Voice turn)."
 
 [s."integrate.notation"]
 tip = "A Notation table when a second source writes a concept differently."

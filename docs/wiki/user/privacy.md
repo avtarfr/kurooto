@@ -84,7 +84,7 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | Study packs (`/studypack`) | nothing to your AI: Kurooto only collects files and fills in a prompt. The zip and the prompt come to your own Telegram (or as a Drive link when over 50 MB); you decide which other AI to give them to | Telegram (your bot); your Drive for big packs |
 | Hint ladder | the problem (photo or text), the course's AI-policy line and the notes the AI reads; with "no AI help" in that line, nothing | the AI you picked |
 | Quiz | with Chat on, the question from your notes and your answer, to grade it | the AI you picked |
-| Concept graph | a few pages of a book's text at a time, and the titles and opening lines of related notes; the checks and matching run here | the AI you picked |
+| Concept graph | a few pages of a book's text at a time (or of what else it reads: class files, documents, with `papers` on a paper's abstract), and the titles and opening lines of related notes; the checks and matching run here | the AI you picked |
 | Notes brain (GBrain) | on computers with a graphics card or Apple Silicon, nothing (the index is made here); on others, note text to make the index, unless you chose keyword-only | Google (Gemini, your key) |
 | Notes brain: your own GBrain | whatever your own brain is set up to use; with `gbrain.agy_mcp` and your approval, agy may use its tools | your brain's own services; Google (agy) |
 
@@ -149,6 +149,7 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | Google (Classroom, Gmail drafts) | nothing new: Kurooto reads Classroom and writes drafts in your Gmail, with your own sign-in | Google |
 | Classroom → notes | post text and the text of attached files, to write the notes | the AI you picked |
 | Mail digest | the text of the mail you chose (senders, domains and labels you named; your own school or work domain; what your mail query matches, where personal mail is only counted). Everything else, mail marked confidential and your never-read list: only counted, here | the AI you picked |
+| Mail digest and Classroom on calls (0.9.0, `mail_digest.on_calls`, `google.classroom_on_calls`, both off) | the last digest's "Needs you" line; the course names and titles of the last day's Classroom posts | your call line's brief, then the call's AI (Gemini Live on your key) |
 | Mail digest, local confidential summaries | nothing: a model on this computer reads it; the summary stays in Kurooto's data folder | stays here |
 | Email in (off by default) | the text of mail you forwarded to your +kurooto address or labelled for it; mail to +kurooto from anyone but you (and addresses you listed) is never opened | the AI you picked |
 | Email reply drafts | the draft, into your Gmail Drafts; sent only when you tap Send | Google (your Gmail) |
@@ -175,7 +176,8 @@ Details of each Google permission are in [google.md](google.md#what-each-feature
 ## Features that send nothing
 
 These work entirely on your computer: Reminders, Deadlines (with recurring quizzes, the not-interested list and exam
-mode), Start-by dates, Subjects and timetable, Doubt queue, First-week quests, Calendar (it only reads your calendar's
+mode), Start-by dates, Subjects and timetable, Doubt queue (unless `doubts.share` is on, 0.9.0: then open doubts go to
+your AI with a hint, and on a call before the class), First-week quests, Calendar (it only reads your calendar's
 private link; event descriptions are read only for `#nocall`, `#focus` and `#private` and aren't kept; private events
 are kept only as "Busy (private)", not even told to your AI), Study tracker (window titles are read and thrown away;
 only minutes per subject are kept; the idle check never reads what you type), Quick notes and prompts, Local AI models,

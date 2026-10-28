@@ -297,6 +297,12 @@ class Zotero:
         }
         self._keep(pid, rec)
         self.app.events.emit("zotero_added", via=way, linked=bool(key))
+        ig = self.app.modules.get("integrate")
+        if ig is not None:  # integrate.sources with "papers" (0.9.0, not there by default): the concept graph reads it
+            try:
+                ig.take_paper(paper)
+            except Exception as e:
+                self.app.events.emit("integrate_failed", error=f"paper: {type(e).__name__}"[:60])
         title = paper.get("title", "It")[:80]
         linked = self.link_notes() if key and self.r.setting("zotero_links") else 0
         where = "your Zotero library" if way == "web" else "Zotero (the app)"

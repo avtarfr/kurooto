@@ -25,6 +25,12 @@ values = "A time `HH:MM`."
 when = "Move it earlier if the computer's fan wakes you; later for big backlogs."
 needs = "Books and PDFs."
 
+[s."books.yield_to_owner"]
+tip = "The night's reading waits while you're in a Voice turn (heard, answered or spoken), then carries on."
+when = "Turn it on if a local reading model slows Voice down on this computer."
+what = "Only while the turn lasts; the night's end moves by the wait, so every page still gets its turn that night."
+needs = "Books and PDFs, and Voice (it only waits for a Voice turn)."
+
 [s."books.max_mb"]
 tip = "PDFs bigger than this (MB) are left alone."
 when = "Raise it for big scanned books; they take several nights."

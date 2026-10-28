@@ -471,6 +471,12 @@ REASONS: dict[str, Reason] = {
             suggest=True,
         ),
         R(
+            "quiz.to_doubts",
+            "after a call, the quiz questions you missed on it, offered as doubts",
+            setting="quiz.to_doubts",
+            stop=to(False, "no more doubt offers after calls"),
+        ),
+        R(
             "packs.offer",
             "an offer to build a revision pack before an exam",
             many="revision pack offers",

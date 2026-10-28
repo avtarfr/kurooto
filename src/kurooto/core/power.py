@@ -38,6 +38,34 @@ register_defaults("power", {"on_battery": "saver"})  # saver | normal | pause
 MODES = ("normal", "saver", "paused")
 
 
+def owner_turn(app: App) -> str:
+    """Why the computer is the owner's this moment ("" when it isn't): a Voice turn of theirs being heard, answered (by
+    your AI or Gemini Live) or spoken (modules/voice). The night's readers that yield (integrate.yield_to_owner,
+    books.yield_to_owner, 0.9.0) hold their next local-model step while it lasts and carry on as soon as it ends."""
+    v = app.modules.get("voice")
+    try:
+        if v is not None and app.is_on("voice"):
+            if getattr(v, "_turn_t", None) is not None:
+                return "a voice turn"
+            sp = getattr(v, "speaker", None)
+            if sp is not None and sp.holding():
+                return "Kurooto speaking"
+    except Exception:  # noqa: S110 (a voice that can't say never holds the reading)
+        pass
+    return ""
+
+
+def wait_for_owner(
+    app: App, most_s: float = 600.0, step_s: float = 0.5, sleep=time.sleep, clock=time.monotonic
+) -> float:
+    """Wait (on a worker thread) while owner_turn() says the computer is the owner's, at most most_s seconds. Returns
+    the seconds waited, so a reader with a deadline can add them to it."""
+    t0 = clock()
+    while owner_turn(app) and clock() - t0 < most_s:
+        sleep(step_s)
+    return clock() - t0
+
+
 def mains_online(root: Path = Path("/sys/class/power_supply")) -> bool | None:
     """Linux: whether a charger ("Mains" supply) is connected; None when there's no such supply to ask."""
     seen = None

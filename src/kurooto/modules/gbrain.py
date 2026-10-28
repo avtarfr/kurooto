@@ -65,6 +65,7 @@ register_defaults(
         "checkup": False,  # weekly checkup; a message only when something needs a look
         "checkup_line": True,  # once a week, one line on how the notes brain is (its doctor, read only)
         "course_pages": True,  # nightly: each course page gets its key concepts and a dated timeline (Kurooto's block)
+        "course_announcements": True,  # ...its timeline has the course's Classroom posts and Announcements lines too
         "contradictions": True,  # its last contradictions report joins Dreaming's morning section (Keep A / Keep B)
         "nightly": "daily 03:00",
         "checkup_when": "weekly sun 19:30",

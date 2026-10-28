@@ -71,6 +71,7 @@ register_defaults(
         # a Gmail search: mail it matches is read too, e.g. "-category:promotions -category:social"; empty: none
         "query": "",
         "first_days": 3,  # the first digest looks this far back
+        "on_calls": False,  # a call's brief gets the last digest's "Needs you" line (the call's AI reads it)
         "max_messages": 200,  # per check
         "save_note": True,  # a copy of each digest in your notes (mail/<date>-<time>.md, or your notes layout's place)
         # mail marked confidential is only counted: never read by the AI, summarised or answered with a draft
@@ -585,6 +586,9 @@ class MailDigest(GooglePart):
                 why="mail_digest.digest",
             )
             self.app.events.emit("mail_digest_done", messages=len(data.get("messages", [])))
+            needs = [x.strip() for x in result.text.strip().splitlines() if x.strip().lower().startswith("needs you:")]
+            if needs:  # what the digest already sent you, for a call's brief (mail_digest.on_calls)
+                jsave(self.dir / "last-needs.json", {"at": now().isoformat(), "line": needs[-1][:200]})
             de = self.app.modules.get("digest_email")
             if de is not None and self.app.is_on("digest_email") and result.text.strip():
                 de.send_digest(result.text.strip(), dt.datetime.fromisoformat(data.get("at") or now().isoformat()))
@@ -599,6 +603,19 @@ class MailDigest(GooglePart):
                 kind="info",
                 why="mail_digest.failed",
             )
+
+    def call_brief(self) -> dict:
+        """mail_digest.on_calls (0.9.0, off): the last digest's closing "Needs you: <n> ..." line, from the last day,
+        so a call can bring it up. Only what the digest already sent you; confidential and personal mail never reach
+        that line. The call's AI may be a cloud one, hence off until you turn it on."""
+        if not self.setting("on_calls"):
+            return {}
+        last = jload(self.dir / "last-needs.json", {}) or {}
+        try:
+            fresh = now() - dt.datetime.fromisoformat(str(last.get("at"))) < dt.timedelta(days=1)
+        except (TypeError, ValueError):
+            return {}
+        return {"mail_needs_you": f"{last['line']} (mail digest, {last['at'][11:16]})"} if fresh else {}
 
     # ----------------------------------------------------------------------------------------- commands
     def commands(self):

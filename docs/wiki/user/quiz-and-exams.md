@@ -72,6 +72,16 @@ some. Never during your night hours. Once per quiz or exam.
 on. In exam mode the call's brief says how many questions are due. A missed quiz call becomes a message: "Missed the
 quiz call. /quiz la practises here instead."
 
+**What you're ready for first** (0.9.0, `quiz.call_frontier`, off; needs Brain's model of what you know). Of the
+questions a call gets (the same due ones, in due order), those on concepts at your frontier or partly known come first,
+then their neighbours, then the rest; the call also gets those concepts' names as its focus. No question that isn't
+due is added and none is dropped. Only concept names go to the call's AI.
+
+**Missed on a call, kept as a doubt** (0.9.0, `quiz.to_doubts`, on; needs the Doubt queue). Questions graded below 3
+on a call are collected, and once the call is over one message lists them: **Add to doubts** puts each in its subject's
+doubts note (Kurooto's own line, as `/doubt` does), so it comes back before the next class; **Not now** leaves them out.
+Nothing is written before your tap. Off: no message after calls.
+
 **Settings that matter** (Dashboard → Settings → Quiz)
 
 | Setting | Default | Effect |
@@ -82,6 +92,8 @@ quiz call. /quiz la practises here instead."
 | `quiz.exam_daily` | empty (off) | a time like `18:00` turns on a daily practice check-in in exam mode |
 | `quiz.by_call` | off | on: `/quiz`, "quiz me" and quiz check-ins ring you (with Phone calls on) |
 | `quiz.call_min` | 10 | how long a quiz call is meant to take, in minutes |
+| `quiz.call_frontier` | off | on a call, the due questions on concepts you're ready for come first |
+| `quiz.to_doubts` | on | after a call, the questions you missed on it are offered as doubts (needs the Doubt queue) |
 
 **Messages it sends by itself.** The evening-before offer (Less of this → Stop empties `quiz.offer_at`), exam mode's
 daily practice check-in, quiz calls in exam mode, and the "Quiz time" check-ins you set (those are your own and never
@@ -155,6 +167,7 @@ grade.
 | `quiz.links_per_day` | 3 | the most a day (at most 5) |
 | `quiz.links_at` | `daily 11:00,16:00,20:00` | when one may come |
 | `quiz.links_check` | off | the local model's one-sentence check |
+| `quiz.links_frontier` | off | of the cards due the same day, those on concepts you're ready for (Brain's frontier) come first; never ahead of an overdue card (0.9.0) |
 
 **Messages it sends by itself.** The cards (Less of this → Stop turns `quiz.links` off; Fewer makes it one a day).
 
@@ -163,7 +176,9 @@ grade.
 **Turn it off / undo.** `/cards off`. What you graded stays in Kurooto's state folder (`quiz/_links.json`); a link you
 delete from your notes stops being asked.
 
-**Left out for now.** Papers from the research digest don't go through Books yet, so they don't get cards.
+**Papers.** Papers from the research digest don't go through Books. With `papers` in `integrate.sources` (0.9.0, not
+there by default), a paper you put in Zotero is read into the concept graph from its abstract, after the books, and the
+links that reading writes between concept notes become cards like any other.
 
 ## Exam mode
 
@@ -237,6 +252,15 @@ of your own; a missed-class stub counts until you fill it in); **weak recall** (
 evening question average under 3 of 5); the rest. In each group the weakest recall comes first, then the course's
 order. A topic's quiz items are the quiz questions that name it or link to its note. A topic you said **Yes** to isn't
 laid again for `revision_days`.
+- **An open doubt** (0.9.0, `doubts.to_revision`, on): a topic one of the course's open doubts names is ranked with the
+  weak-recall topics ("an open doubt").
+- **Results you report** (0.9.0, `mind.tom.from_chat`, with Brain): "I got 12/30 on the LA midterm" adds a dated line to
+  a Kurooto block in the course's exam prep note, counts for its concepts in Brain's model, and after a low score
+  offers more hours for its exams ([mind.md](mind.md#what-it-thinks-you-know-believe-and-want-and-how-to-correct-it)).
+- **Brain's mastery** (0.9.0, `exam_season.use_mastery`, off; needs Brain's model of what you know): a topic whose note
+  is a concept note Brain has evidence about, but that has no quiz grade or answer yet, is placed by that mastery
+  within its group, and a concept at your frontier comes first among equals. Your grades and answers still decide;
+  mastery never moves a topic to another group or out of the plan.
 
 **When the blocks go.** Into [Start-by's](reminders-and-deadlines.md#start-by-dates-and-crunch-weeks) free time: each day's window
 (`startby.window`, so never at night) less your classes and calendar events, and here also your
@@ -352,6 +376,10 @@ allowed, hints, off) comes first, and then nothing is asked.
 come in steps is never passed on (it could give the solution away): you get "No hints this time" and can `/hint` again.
 If the photo can't be read, it asks you to send it sharper or typed. It's the shipped `hint` skill: copy it into your
 skills folder (`/skills copy hint`) to change how hints are written.
+
+**A sign for Brain** (0.9.0, `hints.weak_sign`, on). With Brain's model of what you know on, needing the last rung
+(the key step) counts as a small sign of a gap for the concepts the problem and its idea name. It only changes how
+explanations are pitched and where quizzes aim; nothing is sent anywhere. Off: hints leave the model alone.
 
 **Limits.** Photos need an AI that opens files itself (agy or Claude Code). With a Gemini key or another API service,
 type the problem instead.

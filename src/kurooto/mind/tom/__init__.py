@@ -9,6 +9,7 @@ quieter (level and timing), never more persuasive. Invariants I-13, I-14, I-7.
     goals.py          stated goals and hedged inferred intentions; the workspace's standing goals
     prefs.py          how you like help, with its source and date
     attention_of.py   what you're on now; only ever delays a message
+    results.py        exam results you report: evidence, a line in exam prep, an offer of more preparation time
 """
 
 from kurooto.core.config import register_defaults
@@ -22,6 +23,7 @@ register_defaults(
             "on": True,  # a model of what you know, believe, want and prefer, each row with its source
             "false_beliefs": True,  # tell you once, with the evidence, when something you were told proved wrong
             "attention": False,  # hold a message while you're deep in something (needs the activity stream)
+            "from_chat": True,  # an exam result you report ("I got 12/30 on the LA midterm") counts as evidence (0.9.0)
         }
     },
 )

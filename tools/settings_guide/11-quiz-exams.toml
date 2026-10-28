@@ -181,3 +181,36 @@ values = "A number of pages for all the books together; `0`: off (cited pages sh
 when = "Lower it if the other AI can't hold that much; raise it for a long syllabus. INDEX.md lists each citation and the pages it became."
 cost = "Nothing leaves: the pages go into the zip you send yourself."
 needs = "Skills (`/studypack`), and Books having read the books."
+
+[s."quiz.to_doubts"]
+tip = "After a call, the quiz questions you missed on it (graded below 3) are offered as doubts, in one message."
+when = "Turn it off if you'd rather not get that message after quiz calls."
+needs = "The Doubt queue."
+
+[s."hints.weak_sign"]
+tip = "Needing the last hint (the key step) counts as a small sign of a gap in Brain's model of what you know."
+when = "Turn it off if hints shouldn't change how Kurooto pitches explanations."
+needs = "Brain, with its model of what you know (`mind.tom.on`)."
+
+[s."quiz.call_frontier"]
+tip = "On a call, the due questions on concepts you're ready for (Brain's frontier, or partly known) come first."
+what = "Only the order of the questions already due changes; none is added or dropped. The call's AI also gets those concepts' names."
+when = "Turn it on if you'd like a call's quiz to aim where you're learning now."
+needs = "Brain, with its model of what you know (`mind.tom.on`)."
+
+[s."exam_season.use_mastery"]
+tip = "The revision plan places topics with no quiz grade yet by Brain's mastery of their concept, frontier first."
+what = "Only within a topic's group (no note, a stub, weak recall, the rest); your grades and answers still decide, and no topic is dropped."
+when = "Turn it on with Brain if you'd like its model of what you know to order ungraded topics."
+needs = "Exam season, and Brain with its model of what you know (`mind.tom.on`)."
+
+[s."exam_season.graph_first"]
+tip = "In exam season, the concept graph reads the courses with an exam in the next revision days first."
+what = "Like putting them in `integrate.first` by hand until the exam: their class material and books move up the queue; nothing is dropped."
+when = "Turn it on if you'd like the graph to catch up on what you're about to be examined on."
+needs = "Exam season and the Concept graph."
+
+[s."quiz.links_frontier"]
+tip = "Of the link cards due the same day, those on concepts you're ready for (Brain's frontier) come first."
+when = "Turn it on if you'd like link cards to aim where you're learning now; an overdue card still comes first."
+needs = "`quiz.links` (or `/card`), and Brain's model of what you know."

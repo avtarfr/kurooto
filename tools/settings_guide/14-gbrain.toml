@@ -24,6 +24,11 @@ when = "Turn it off if you don't write dated log lines. No AI, nothing leaves."
 tip = "Nightly, each course page gets its key concepts and a dated timeline, in Kurooto's own block."
 when = "Turn it off if you don't want Kurooto's block on your course pages. Your own text is never touched."
 
+[s."gbrain.course_announcements"]
+tip = "The course page's timeline also has the course's Classroom posts and the dated lines under its Announcements heading."
+when = "Turn it off if announcements make the timeline too long."
+needs = "`gbrain.course_pages`."
+
 [s."gbrain.upkeep"]
 tip = "Nightly upkeep of the brain (links, facts, the index), light steps only; waits for the charger."
 when = "Turn it on for a tidier, faster brain over time."

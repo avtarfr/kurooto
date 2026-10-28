@@ -851,7 +851,11 @@ class Learning(Module):
                 "search past requests, calls and chats: /history lab report (or /history 7d ...)",
                 self._history,
             ),
-            Command("learned", "what it learned lately (skills, lessons, facts), each with Undo", self._learned),
+            Command(
+                "learned",
+                "what it learned lately (skills, lessons, facts), each with Undo; with Brain on, its tested skills too",
+                self._learned,
+            ),
         ]
 
     def _history(self, msg: Incoming, arg: str) -> str:
@@ -868,9 +872,23 @@ class Learning(Module):
         return "\n\n".join(f"{h['when']} · {h['kind']} · {h['title']}\n{h['passage']}" for h in hits)
 
     def _learned(self, msg: Incoming, arg: str) -> str | None:
+        """/learned, one command for both lists (0.9.0): Brain registers /learned too (modules/mind.py), and the first
+        feature that has it answers, so each hands over to the other. run/retire are Brain's skill library; the listing
+        is this feature's changes, each with Undo, then Brain's skills when Brain is on."""
+        from kurooto import mind
+        from kurooto.mind.skills import library as skill_library
+
+        words = (arg or "").split(None, 1)
+        brain = self.app.modules.get("mind")
+        if words and words[0].lower() in ("run", "retire"):
+            if brain is None or not mind.on(self.app):
+                return "Running and retiring learned skills is Brain's (Features → Brain)."
+            return brain.learned_cmd(msg, arg)
+        skills = skill_library.listing(self.app) if mind.on(self.app) else ""
         items = [c for c in self.changes() if not c.get("undone")][-10:]
         if not items:
-            return "Nothing learned lately. It learns from requests that take many steps and from your corrections."
+            nothing = "Nothing learned lately. It learns from requests that take many steps and from your corrections."
+            return f"{nothing}\n\n{skills}" if skills else nothing
         for c in reversed(items):
             what = {
                 "skill": f"a new skill, /{c.get('name')}",
@@ -880,7 +898,7 @@ class Learning(Module):
                 "remember": f"kept: {str(c.get('line', '')).rsplit(' (', 1)[0]}",
             }.get(c["kind"], c["kind"])
             msg.reply(f"{c['at'][:16].replace('T', ' ')}: {what}", buttons=[[("Undo", f"lrn:{c['id']}:undo")]])
-        return None
+        return skills or None
 
     def agent_tools(self):
         if not self.setting("search"):

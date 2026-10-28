@@ -42,9 +42,22 @@ register_defaults(
     "remember",
     {
         "recheck_days": 90,  # a kept line that hasn't come up in this many days gets one "Still true?" (0: never)
+        "offer_settings": True,  # a line with a time rule ("no calls before 8") offers the matching setting (a tap)
     },
 )
 
+HOUR = r"(?P<h>\d{1,2})(?:[:.](?P<m>\d{2}))?\s*(?P<ap>[ap]\.?m\.?)?"
+NO_CALLS = re.compile(  # "I hate calls before 8", "don't call me before 9am", "no calls after 10 pm"
+    r"\b(?:(?:hate|no|don'?t want|dislike|never)\s+(?:any\s+)?(?:phone\s+)?calls?"
+    r"|(?:don'?t|do not|never)\s+(?:ever\s+)?(?:call|ring|wake)\s+me)\s+(?P<side>before|after|past)\s+" + HOUR,
+    re.I,
+)
+UP_HOURS = re.compile(  # "I'm usually up from 8 to 23", "I work best between 9 and 6pm", "I study from 10am to 10pm"
+    r"\bi(?:'m| am)?\s+(?:usually\s+|mostly\s+|normally\s+)?(?:up|awake|free|around|work(?:ing)?(?: best)?|"
+    r"stud(?:y|ying)(?: best)?)\s+(?:from|between)\s+(?P<a>\d{1,2}(?:[:.]\d{2})?\s*(?:[ap]\.?m\.?)?)\s+"
+    r"(?:to|and|till|until|-)\s+(?P<b>\d{1,2}(?:[:.]\d{2})?\s*(?:[ap]\.?m\.?)?)",
+    re.I,
+)
 HELP_NOTE = "about-me/how-to-help-me.md"  # in the default notes layout; help_file() / help_rel() say where it is
 TOLD = "You told me"
 PICKED = "Picked up from your chats and calls"  # what Learns from its own work keeps by itself (modules/learning.py)
@@ -192,6 +205,44 @@ def keep(app: App, fact: str, via: str = "telegram", section: str = TOLD) -> tup
     return "kept", line
 
 
+def _hhmm(text: str, evening: bool = False) -> str | None:
+    """ "8", "8am", "10 pm", "22:30" -> "HH:MM"; a bare hour under 12 is taken in the evening when `evening`."""
+    m = re.fullmatch(r"\s*" + HOUR + r"\s*", text or "", re.I)
+    if not m:
+        return None
+    h, mi, ap = int(m["h"]), int(m["m"] or 0), (m["ap"] or "").lower()[:1]
+    if ap == "p" and h < 12:
+        h += 12
+    elif ap == "a" and h == 12:
+        h = 0
+    elif not ap and evening and h < 12:
+        h += 12
+    return f"{h:02d}:{mi:02d}" if h < 24 and mi < 60 else None
+
+
+def time_rules(app: App, fact: str) -> list[dict]:
+    """The settings a kept line's time rule maps to ({key, value, said}); none when it has none, or it's what they
+    are already. Only offered, never set without a tap (remember.offer_settings)."""
+    out = []
+    m = NO_CALLS.search(fact or "")
+    night = app.settings.get("availability.night") or {}
+    if m:
+        side = m["side"].lower()
+        at = _hhmm(m[0][m.start("h") - m.start() :], evening=side != "before")
+        if at and side == "before" and night.get("to") != at:
+            out.append({"key": "availability.night.to", "value": at, "said": f"no calls before {at} (night hours end)"})
+        elif at and side in ("after", "past") and night.get("from") != at:
+            out.append({"key": "availability.night.from", "value": at, "said": f"no calls after {at} (night hours)"})
+    w = UP_HOURS.search(fact or "")
+    if w:
+        a, b = _hhmm(w["a"]), _hhmm(w["b"])
+        if a and b and b <= a:
+            b = _hhmm(w["b"], evening=True)
+        if a and b and a < b and app.settings.get("startby.window") != f"{a}-{b}":
+            out.append({"key": "startby.window", "value": f"{a}-{b}", "said": f"plan work between {a} and {b}"})
+    return out
+
+
 def help_brief(app: App, limit: int = 1500) -> str:
     """The note without its title and the standard intro, for the AI's context; cut at `limit` characters."""
     try:
@@ -289,7 +340,53 @@ class Remember(Module):
             return REFUSE.format(what=WHAT[detail])
         if status == "known":
             return "I know that already."
+        self._offer_settings(fact)
         return f"Noted in {help_rel(self.app)}: {detail.rsplit(' (', 1)[0]}."
+
+    # ----------------------------------------------------------------------- time rules -> settings (0.9.0)
+    def _offer_settings(self, fact: str) -> None:
+        """remember.offer_settings: a time rule in what you asked it to remember ("I hate calls before 8") is offered
+        as the setting that does it, with Set it / No; a tap sets it through Calm (core/calm.py), with Undo."""
+        if not self.setting("offer_settings"):
+            return
+        try:
+            rules = time_rules(self.app, fact)
+        except Exception as e:
+            self.app.events.emit("remember_failed", error=f"rules: {type(e).__name__}"[:60])
+            return
+        if not rules:
+            return
+        rid = uuid.uuid4().hex[:8]
+        f = self.app.paths.state / "remember" / "offers.json"
+        offers = jload(f, {}) or {}
+        offers[rid] = rules
+        jsave(f, dict(list(offers.items())[-20:]))
+        said = "; ".join(r["said"] for r in rules)
+        self.app.notify(
+            f"Shall I set that too: {said}?",
+            kind="question",
+            buttons=[[("Set it", f"rms:{rid}:set"), ("No", f"rms:{rid}:no")]],
+            why="asked",
+        )
+
+    def _settings_button(self, ref: str, act: str) -> str:
+        f = self.app.paths.state / "remember" / "offers.json"
+        offers = jload(f, {}) or {}
+        rules = offers.pop(ref, None)
+        if rules is None:
+            return "That offer is gone."
+        jsave(f, offers)
+        if act != "set":
+            return "Left as it is; the line is still in your note."
+        from kurooto.core.calm import Change
+
+        done = []
+        for r in rules:
+            ok, said, uid = self.app.calm.apply(Change(r["said"], key=r["key"], value=r["value"]), why="asked")
+            if ok and uid:
+                done.append(said)
+                self.app.notify(f"Done: {said}.", kind="info", buttons=[[("Undo", f"calm:{uid}:undo")]], why="asked")
+        return f"Set: {'; '.join(done)}." if done else "Nothing changed."
 
     # ---------------------------------------------------------------------------------------- rechecking
     def recheck_days(self) -> float:
@@ -469,7 +566,7 @@ class Remember(Module):
         return self._change(x, text)
 
     def callbacks(self):
-        return {"rck": self._button}
+        return {"rck": self._button, "rms": self._settings_button}
 
     def replies(self):
         return {"recheck": self._reply}

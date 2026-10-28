@@ -553,6 +553,10 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   quiet longest past `remember.recheck_days`, at most `RECHECK_WEEK` (2) a week, `RECHECK_GAP_DAYS` (3) apart.
   Buttons `rck:<key>:keep|change|forget`, `rck:<undo>:undo`; replies (`recheck`): yes/no or the new wording,
   through `keep()`'s rules (`_change` → `_swap`). State `remember/recheck.json`.
+  0.9.0 `remember.offer_settings` (on): `Remember.remember()` after a kept line runs `time_rules(app, fact)`
+  (`NO_CALLS` before/after → `availability.night.to`/`from`; `UP_HOURS` → `startby.window`; none when already so),
+  keeps them in `remember/offers.json` and sends "Shall I set that too" with `rms:<id>:set|no`; Set applies each
+  through `Calm.apply(Change(...), why="asked")` and sends its `calm:<uid>:undo`.
 
 ### Time and attention
 
@@ -651,7 +655,11 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   time (`today()`, also from the tick, the card and `StartBy.morning_rows/morning_lines`, which append them). The tick
   sends `ask()` once a day (Calm reason `exam_season.revise`); buttons `rv:<yyyymmdd>-<n>:y|p|n` go to `answer()`,
   which grades the quiz items through `Quiz.grade` and keeps their previous state for `undo()` (`Quiz.restore`).
-  Commands `/revise`, intent "what should I revise today". Tests: `tests/unit/test_revision.py`.
+  Commands `/revise`, intent "what should I revise today". 0.9.0: `rank_key` uses `mastery5` (Brain's `frontier.masteries` x 5) for a topic
+  with no recall and `frontier` (grade FRONTIER) as a tiebreak, set only with `exam_season.use_mastery` and only for
+  topics whose note is a concept with evidence (`_mastery`); `doubts.to_revision` moves a tier-3 topic that an open
+  doubt names (`studypack.pattern` of its name, `Doubts.open`) to tier 2 with `doubt` (why "an open doubt").
+  Tests: `tests/unit/test_revision.py`, `tests/unit/test_links_notes.py`.
 - **alarm** (`modules/alarm.py`, requires `calls`): the wake-up call is booked on the call line so it rings with the
   computer asleep; `alarm:plan` every 30 min; the morning plan drafted `prep_min` before; sets
   `app.availability.sleep`; mirrors to `reserve/alarm.md`. Alarms you set are a list (`alarm-set.json`, `mine()`, at
@@ -721,6 +729,9 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 - **capture** (`modules/capture.py`): after each class, a question about what was worth keeping; answers to the class log,
   a `study-log` skill job with Chat on.
 - **doubts** (`modules/doubts.py`): a per-subject doubts list, sent before the next class.
+  0.9.0: `doubts.to_revision` (read by `revision.Revision._doubts`), and `doubts.share` (off): `shared(slug)` for
+  the hint ladder's request (`Hints._go`) and `call_brief()` → `open_doubts_before_class` for classes starting within
+  `doubts.share_h` hours. Read only: the note is never changed by these.
 - **quiz** (`modules/quiz.py`): spaced repetition over "must know" bullets in exam-prep notes; graded by the AI with Chat
   on; calls with Phone calls on. `sources()` finds the notes with `md_files(root, keep)`: `rglob("*.md")`'s files in
   its order, without going into hidden folders (a notes folder's `.git` was walked twice per Study-pane request
@@ -745,9 +756,20 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   (`classroom:<hash>`, `handwritten:<hash>`) to that item's subject (`Integrate.items()`). `recent()`: concepts with a
   seen row from an item dated in the last `RECENT_DAYS` (14), and dated course notes from then; cards touching one
   carry `recent`, and `next_card` puts new recent cards before other new ones.
+  0.9.0 `quiz.links_frontier` (off): `LinkCards.frontier()` (FRONTIER or STARTED grades) is a key in `next_card`'s
+  order after the due date, so it only reorders cards due the same day.
+  0.9.0 `quiz.to_doubts` (on): the `quiz_grade` tool (`_tool_grade`) keeps an item graded below 3 in
+  `quiz/call-weak.json` (`_weak_note`, Doubt queue on) and schedules `quiz.weak_offer` (`quiz:weak_offer`, 3 min,
+  rescheduled while `availability.on_call_until` is ahead); a quiz call's end (`call_transcript`) runs it at once. One
+  message (Calm `quiz.to_doubts`), buttons `qd:<id>:add|no`, offers kept in `quiz/weak-offers.json` (last 10); Add calls
+  `Doubts.add` per item whose subject is one of yours.
+  0.9.0 `quiz.call_frontier` (off): `_tool_next` passes the first 10 due items through `_frontier_first`, a stable sort
+  by the best `frontier.grades` grade of `knowledge.item_slugs` (FRONTIER or STARTED first, NEAR next), and adds
+  `focus` (up to 5 concept titles); the set is unchanged.
 - **hints** (`modules/hints.py`): a hint ladder for a problem, respecting a course's AI policy line. Since 0.6.0
   `Hints.policy(slug)` reads the subject's `ai_policy` first (mapped to `CHOICES`), so a course set to `off` refuses
-  without asking.
+  without asking. 0.9.0 `hints.weak_sign` (on): showing the last rung calls `knowledge.observe(slug, False, 0.2,
+  "hint:<id>")` for up to 5 concepts the problem and its idea name (`_weak_sign`, only with `mind.tom` on).
 - **subjects** AI policy (0.6.0): a subject row in `subjects.list` may carry `ai_policy` (`POLICIES`: `allowed`,
   `hints`, `off`). `Subjects.ai_policy(slug)` returns it, else Hint ladder's course-note line mapped through
   `hints.policy_kind`, else `None` (treated as allowed); `set_ai_policy(slug, value)` validates through `POLICY_WORDS`
@@ -830,7 +852,10 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   notes left out, up to 10, and `### Timeline` = `- **YYYY-MM-DD** | lecture|deadline|exam|term note — ...` lines in
   GBrain's timeline format, ±120 days, at most 40 nearest today). A missing page is made with the layout's
   frontmatter; an existing one is written only when `graphwrite.guarded` holds. Event `course_pages` (`changed`).
-  Tests: `tests/unit/test_gbrain_more.py`.
+  0.9.0 `gbrain.course_announcements` (on): `announcements(app, slug)` adds `| announcement — <title>` lines from
+  `google_classroom.posts_of` (the subject's courses in `classroom-posts.json`, by `_local_day`) and from `ANNOUNCED`
+  lines under `## Announcements` in `graphwrite.outside(course page)`, one per (day, title), inside the ±120 days.
+  Tests: `tests/unit/test_gbrain_more.py`, `tests/unit/test_links_notes.py`.
 - **local_models** (`modules/local_models.py`): installs Ollama and the models the hardware profile suggests; wires the
   helper model into `brain.models.ollama` and `brain.classify`; `rest()` unloads models on battery.
 - **backups** (`modules/backups.py`): a daily zip of config, data and state (notes, secrets, the GBrain index optional)
@@ -881,6 +906,10 @@ arrives.
 
 ### Computer
 
+  0.9.0 call briefs (both off): `MailDigest._done` keeps the answer's last "Needs you:" line in
+  `mail-digest/last-needs.json`; `MailDigest.call_brief` → `mail_needs_you` for a day (`mail_digest.on_calls`).
+  `Google.call_brief` (google.py) → `classroom_posts_today`: the last 24 h of `classroom-posts.json` titles
+  (`google.classroom_on_calls`).
 - **calls**: see [calls-and-phone.md](calls-and-phone.md).
 - **terminals** (`modules/terminals.py`): live PTYs behind the dashboard's Terminals tab (`UnixPty` via `os.openpty`,
   `WinPty` via pywinpty/ConPTY), 400 KB replay buffer, input 100 KB per request.
@@ -1015,6 +1044,10 @@ arrives.
   `remember.sensitive` or `learning.OTHERS`. `known()` (profile and how-to-help-me lines, `learning.similar`) and
   `decided` (hash → kept/no) filter; `second_look()` (`dreaming.fold_ai`, `consolidate._brain`, `AI_MAX` 8, one word
   KEEP / SKIP) after the lock. `items` hold the words (the file is `owner_only`), at most `PENDING_MAX` 20.
+  0.9.0 `dreaming.fold_inferred` (on): `inferred(app)` turns `core/infer.py`'s not-undone `project` and `class` items
+  into "about" lines (role from the `With:` line's brackets, topic from the project folder's name unless it names the
+  person; never a name), `src` "inferred", added by `scan` without a second look; `section` caps them separately
+  (`dreaming.fold_inferred_max`, 1) after your own lines.
   `section(app, send)` renders up to `dreaming.fold_max` with rows `(n: Keep, dfo:<ref>:keep)`, `(n: Not that,
   dfo:<ref>:no)`; shown `SHOWN_MAX` = 2 times without a tap, an item goes. `button` (`dfo`): `keep` writes
   `"<text> (from <where>, <day>)"`, an `about` line by `AboutYou.add_learned` (core/aboutyou.py: the
@@ -1061,6 +1094,9 @@ arrives.
     numbers), then `modules/remember.py:keep` (Remember's own rules: `MAX_FACT`, `sensitive()`, no duplicates) into
     the section `PICKED`; one message with an Undo per fact.
   - Calm reasons `learning.skill`, `learning.lesson`, `learning.remember`; events `learning_*`, `history_searched`.
+  - `/learned` (0.9.0): both this feature and Brain (`modules/mind.py:learned_cmd`) register it and `App.handle` runs
+    the first enabled one, so each hands over: `run`/`retire` go to Brain's skill library, the listing is this
+    feature's changes (each with Undo) followed by `skill_library.listing` when Brain is on.
 - **files** (`modules/files.py`): `take_files` for incoming files; with Chat on, an AI job files them.
 - **projects** (`modules/projects.py:Projects`, 0.7.0, Help with your project) and the whole `/project` family:
   `command(app, msg, arg)` (`App.handle` sends every `/project` here; the module registers no command of its own):

@@ -68,6 +68,8 @@ register_defaults(
         "revision_share": 50,  # % of your free time (Start-by's, less commitments) revision blocks may take
         "block_min": 60,  # one revision block, in minutes (one topic each)
         "revision_ask": True,  # the evening: did you cover today's topics? (counts like a quiz answer)
+        "graph_first": False,  # the concept graph reads the courses with an exam coming up first (it only reorders)
+        "use_mastery": False,  # revision: Brain's mastery ranks ungraded topics within their tier, frontier first
     },
 )
 

@@ -43,6 +43,7 @@ register_defaults(
             "when": "daily 07:55",  # when the line comes (before Start-by's morning pass, so its nudge is folded)
             "minutes": 25,  # the study time it offers
             "horizon_days": 7,  # deadlines this far ahead can be what it's uneasy about
+            "frontier": False,  # equally uneasy: the subject with concepts you are ready for; the line names one
         }
     },
 )
@@ -141,8 +142,29 @@ def pick(app: App) -> dict | None:
         )
         r["logged"] = logged_min(app, r["subject"])
         r["cards"] = cards_due(app, r["subject"])
-    best = max(rows, key=lambda r: (round(r["risk"], 2), -r["logged"], r["cards"] or 0))
+        r["next"] = next_concepts(app, r["subject"])
+    best = max(rows, key=lambda r: (round(r["risk"], 2), len(r["next"]), -r["logged"], r["cards"] or 0))
     return best if best["risk"] >= RISK_MIN else None
+
+
+def next_concepts(app: App, subject: str) -> list[str]:
+    """mind.study_push.frontier (0.9.0, off): the titles of the subject's concepts at your frontier (mind/frontier.py;
+    a concept is the subject's when its note sits in a folder named after it). Used only after deadline risk, to break
+    a tie, and to name one in the line. Else none."""
+    if app.settings.get("mind.study_push.frontier") is not True:
+        return []
+    try:
+        from kurooto.mind import frontier
+        from kurooto.mind.tom import knowledge
+
+        grades = frontier.grades(app)
+        if not grades:
+            return []
+        notes = knowledge.concepts(app)
+        mine = [s for s, g in grades.items() if g == frontier.FRONTIER and subject in s.split("/")[:-1] and s in notes]
+        return [notes[s].title for s in sorted(mine)][:3]
+    except Exception:
+        return []
 
 
 def slot(app: App, minutes: int, t: dt.datetime | None = None) -> dt.datetime | None:
@@ -180,6 +202,8 @@ def line(app: App, r: dict, at: dt.datetime | None, minutes: int, ask: bool = Tr
     if r.get("cards") is not None:
         bits.append(f"{r['cards']} card{'s' if r['cards'] != 1 else ''} due")
     head = f"Uneasy about {_name(app, r['subject'])}: " + ", ".join(bits) + "."
+    if r.get("next"):  # mind.study_push.frontier: where you're ready to go next in it
+        head += f" Next up there: {r['next'][0]}."
     if not ask:
         return head
     return head + (f" {minutes} min at {at:%H:%M}?" if at else f" {minutes} min today?")

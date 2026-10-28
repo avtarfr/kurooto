@@ -277,6 +277,11 @@ minutes and moves each to a folder you already have:
    pick one of your existing folders, with a confidence. Below `sorter.min_conf` (0.75) the note stays.
 3. **A note it can't place stays**, and `/sort` lists it with its best two guesses as **Move** buttons.
 
+**The class you were in, as a hint** (0.9.0, `sorter.by_class`, off; needs Subjects and the Doubt queue's timing). A
+note last written during a class, or within `doubts.recent_h` (3) hours after it, gets that class's folder as a hint:
+your rules above still come first; the AI's request says "a hint, not a rule"; and a note left waiting has that folder
+as its first **Move** button, before its other guesses. It never moves a note by itself.
+
 **What it never does:**
 - **Delete anything, merge anything or overwrite anything.** A name that's taken gets a number (`notes-2.md`).
 - **Move a note that isn't in the scratch folder**, into a new top-level folder, or into Kurooto's own folders (journal,
@@ -301,7 +306,8 @@ links it fixed). It keeps the move log as long as Kurooto's notes-moves.
 | `/sort undo` | put the last pass back |
 
 **Settings** (Settings → sorter): `folder` (inbox), `at` (daily 03:30), `per_night` (20), `settle_min` (10), `min_conf` (0.75),
-`ai` (on: ask your AI about a note the rules can't place; off: rules only), `recheck` (on), `learn` (on). Everything stays on
+`ai` (on: ask your AI about a note the rules can't place; off: rules only), `recheck` (on), `learn` (on), `by_class`
+(off). Everything stays on
 this computer except that one short AI request.
 
 ---
@@ -395,6 +401,12 @@ call, through note_timeline) can ask it "what's coming up in stats?". Only the b
 isn't there yet is made. Rules only, nothing leaves the computer. *Undo:* turn it off; the block stays until you
 delete it.
 
+**Announcements in the timeline** (0.9.0, `gbrain.course_announcements`, on). The timeline also has the course's
+Classroom posts (the time and title Classroom keeps of each, the last weeks) and the dated lines under
+`## Announcements` on the course page (`- 2026-10-20: lab moved to Friday`; the mail digest writes these for Courses
+mail, after its own filters: confidential mail is never read, personal mail only counted), each as
+`| announcement — ...`. Your lines are only read, never changed. Off: the timeline is as before.
+
 **Nightly upkeep** (`gbrain.upkeep`, off). GBrain's maintenance at 03:00 with light steps only: backlinks, facts,
 the index and orphaned pages (timelines are part of it when it's on). Steps that would rewrite your note files or
 call an AI model are left out. It's heavy, so on a laptop it waits for the charger. If it fails you get one message
@@ -458,6 +470,7 @@ MCP tools (asked first, with Approve / Deny); `gbrain.mcp_surface` (`full`, `sta
 | `gbrain.checkup` | off | The weekly checkup |
 | `gbrain.checkup_line` | on | One line a week on how the brain is |
 | `gbrain.course_pages` | on | Nightly key concepts and timeline on each course page |
+| `gbrain.course_announcements` | on | The timeline also has Classroom posts and the page's Announcements lines |
 | `gbrain.contradictions` | on | Its contradictions report joins Dreaming's morning section |
 | `gbrain.checkup_when` | `weekly sun 19:30` | When it runs |
 | `gbrain.checkup_ignore` | a list | Findings the checkup leaves out |
@@ -640,6 +653,10 @@ The relation words are: `needs`, `generalises`, `special-case-of`, `example-of`,
 
 **What gets read** (`integrate.sources`, default `["books", "classroom"]`):
 - `books`: each book Books and PDFs has read.
+- `papers` (0.9.0, not there unless you add it, or tick it on the card): each paper you put in Zotero from the
+  [research digest](research.md), its title, authors and abstract (what the digest has; no PDF), read **after** the
+  books so class material and books keep the night's budget first. Its subject is the one subject the paper names,
+  else `papers`.
 - `classroom`: each file [Classroom → notes](google.md) files with real text: lecture slides, handouts, PDFs,
   solutions, 1,500 characters or more (a one-line announcement isn't read). Its course is the subject, so its concept
   notes go where that course's do. The "Seen in" line points at the lecture note the file was filed into (else the
@@ -857,6 +874,8 @@ skipped.
 | `integrate.max_cost_per_night` | `0.5` | An API key: the most a night's reading may cost (USD) |
 | `integrate.price_per_mtok` | `{"in": 2.0, "out": 8.0}` | An API key that reports no cost: its USD per million tokens, for the estimate |
 | `integrate.first` | `[]` | Subjects to do first, e.g. `["linear-algebra"]` |
+| `integrate.yield_to_owner` | off | The next batch waits while you're in a Voice turn, and starts a minute after it ends; nothing is skipped (0.9.0) |
+| `exam_season.graph_first` | off | In exam season, the courses with an exam in the next `revision_days` are read first too (0.9.0; it only reorders) |
 | `integrate.order` | `smallest` | Which books first: `smallest` or `name` |
 | `integrate.garden` | on | The daily second pass |
 | `integrate.garden_per_day` | `40` | The most notes in that pass |

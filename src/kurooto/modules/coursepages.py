@@ -5,7 +5,10 @@ course as one page, with its timeline:
     Classes      the weekly timetable's slots for it
     Key concepts the concept notes the course's own notes link to most (and the ones in its folder), up to 10
     Timeline     dated lines in the brain's timeline format ("- **2026-10-20** | lecture — [[...]]"): its lecture
-                 notes, its deadlines (done ones too, 120 days back and ahead) and the term note's key dates for it
+                 notes, its deadlines (done ones too, 120 days back and ahead) and the term note's key dates for it;
+                 with gbrain.course_announcements (0.9.0), its Classroom posts (what Classroom keeps of them: the
+                 time and title) and the dated lines under "## Announcements" in the course page (the mail digest
+                 writes those, after its own filters: confidential mail is never read, personal mail only counted)
 
 Rules only, nothing leaves the computer. Only the block is written (core/graphwrite.py: a write that would change any
 text outside it is refused); a course page that isn't there yet is made (the same header the other features give
@@ -35,6 +38,7 @@ EVENTS_MAX = 40
 WINDOW_DAYS = 120
 DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 LECTURE = re.compile(r"^(\d{4}-\d{2}-\d{2})-.+\.md$")
+ANNOUNCED = re.compile(r"^\s*[-*]\s+(\d{4}-\d{2}-\d{2})\s*[:—-]\s*(\S.*)$")  # "- 2026-10-20: lab moved to Friday"
 
 
 def _rel(root: Path, f: Path) -> str:
@@ -107,10 +111,44 @@ def events(app: App, slug: str, lectures: list[Path]) -> list[tuple[str, str]]:
         if lo <= day <= hi:
             what = re.sub(r"\s+", " ", str(d.get("what") or "")).strip()
             out.append((day.isoformat(), f"- **{day.isoformat()}** | term note — {what}"))
+    if app.settings.get("gbrain.course_announcements"):
+        out += [x for x in announcements(app, slug) if lo.isoformat() <= x[0] <= hi.isoformat()]
     out.sort(key=lambda x: x[0])
     if len(out) > EVENTS_MAX:  # the ones nearest today
         out = sorted(out, key=lambda x: abs((dt.date.fromisoformat(x[0]) - today).days))[:EVENTS_MAX]
         out.sort(key=lambda x: x[0])
+    return out
+
+
+def announcements(app: App, slug: str) -> list[tuple[str, str]]:
+    """(date, line) for the course's Classroom posts and its course page's "## Announcements" lines (outside
+    Kurooto's own blocks), each once a day and title."""
+    out, seen = [], set()
+    try:
+        from kurooto.modules.google_classroom import _local_day, posts_of
+
+        for p in posts_of(app, slug):
+            day = _local_day(str(p.get("at") or ""))
+            title = re.sub(r"\s+", " ", str(p.get("title") or "")).strip()[:120]
+            if day and title and (day.isoformat(), title.lower()) not in seen:
+                seen.add((day.isoformat(), title.lower()))
+                out.append((day.isoformat(), f"- **{day.isoformat()}** | announcement — {title}"))
+    except Exception as e:  # Classroom's file unreadable: the rest of the page still comes
+        app.events.emit("course_pages_failed", error=f"posts: {type(e).__name__}"[:60])
+    f = layout.path(app, "course", subject=slug)
+    try:
+        text = gw.outside(f.read_text(encoding="utf-8")) if f.is_file() else ""
+    except (OSError, UnicodeDecodeError):
+        text = ""
+    section = False
+    for line in text.splitlines():
+        if line.startswith("## "):
+            section = line[3:].strip().lower() == "announcements"
+            continue
+        m = ANNOUNCED.match(line) if section else None
+        if m and (m[1], m[2].strip().lower()) not in seen:
+            seen.add((m[1], m[2].strip().lower()))
+            out.append((m[1], f"- **{m[1]}** | announcement — {m[2].strip()[:120]}"))
     return out
 
 

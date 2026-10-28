@@ -158,6 +158,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `books.ocr` | `"auto"` | Who reads scanned pages: Tesseract, a vision model on this computer, either, or nobody. ([guide](wiki/user/settings-guide.md#booksocr)) |
 | `books.ocr_lang` | `"eng"` | Tesseract's languages for scanned pages, e.g. `eng+deu`. ([guide](wiki/user/settings-guide.md#booksocrlang)) |
 | `books.until` | `"07:00"` | When the night's reading stops; it carries on the next night from that page. ([guide](wiki/user/settings-guide.md#booksuntil)) |
+| `books.yield_to_owner` | `false` | The night's reading waits while you're in a Voice turn (heard, answered or spoken), then carries on. ([guide](wiki/user/settings-guide.md#booksyieldtoowner)) |
 
 ### `brain`
 
@@ -322,6 +323,9 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 |---|---|---|
 | `doubts.before_min` | `30` | Open doubts for a subject come this many minutes before its next class. ([guide](wiki/user/settings-guide.md#doubtsbeforemin)) |
 | `doubts.recent_h` | `3` | A doubt that names no subject is filed under the class that's on, or ended this many hours ago. ([guide](wiki/user/settings-guide.md#doubtsrecenth)) |
+| `doubts.share` | `false` | Open doubts go with a hint request for that subject, and in the brief of a call in the hours before its class. ([guide](wiki/user/settings-guide.md#doubtsshare)) |
+| `doubts.share_h` | `3` | How many hours before a class a call carries its open doubts. ([guide](wiki/user/settings-guide.md#doubtsshareh)) |
+| `doubts.to_revision` | `true` | An open doubt about a topic ranks it with the weak-recall topics in Exam season's revision plan. ([guide](wiki/user/settings-guide.md#doubtstorevision)) |
 
 ### `drafts`
 
@@ -341,6 +345,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `dreaming.curious` | `true` | Mention a topic you asked about 3+ times this week that has no note, with Make a stub. ([guide](wiki/user/settings-guide.md#dreamingcurious)) |
 | `dreaming.fold` | `true` | In the morning message, offer lasting things you said for your profile (Keep / Not that). ([guide](wiki/user/settings-guide.md#dreamingfold)) |
 | `dreaming.fold_ai` | `"local"` | A second look at what the rules found for your profile: a model here, your AI, or none. ([guide](wiki/user/settings-guide.md#dreamingfoldai)) |
+| `dreaming.fold_inferred` | `true` | The morning's profile suggestions also offer the projects and classes it set up from what you said, with a role, never a name. ([guide](wiki/user/settings-guide.md#dreamingfoldinferred)) |
+| `dreaming.fold_inferred_max` | `1` | The most of those suggestions in one morning, besides `dreaming.fold_max`. ([guide](wiki/user/settings-guide.md#dreamingfoldinferredmax)) |
 | `dreaming.fold_max` | `3` | The most profile suggestions in one morning message. ([guide](wiki/user/settings-guide.md#dreamingfoldmax)) |
 | `dreaming.loose_ends` | `true` | The morning message also lists loose ends: open doubts, unlinked notes, broken links, tasks past due. ([guide](wiki/user/settings-guide.md#dreaminglooseends)) |
 | `dreaming.never_tune` | `["deadlines.reminder", "deadlines.call", "health.now", "a…` | Kinds of message it never tunes (besides the alarm, your reminders and calls, deadlines under 12 hours). ([guide](wiki/user/settings-guide.md#dreamingnevertune)) |
@@ -373,6 +379,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `exam_season.eve` | `true` | The evening before an exam, a checklist: where it is, your seat, calculator, ID card. ([guide](wiki/user/settings-guide.md#examseasoneve)) |
 | `exam_season.eve_at` | `"18:00"` | When the evening-before question can come. ([guide](wiki/user/settings-guide.md#examseasoneveat)) |
 | `exam_season.exam_min` | `180` | How long an exam lasts, in minutes (no calls then; the debrief comes half an hour after). ([guide](wiki/user/settings-guide.md#examseasonexammin)) |
+| `exam_season.graph_first` | `false` | In exam season, the concept graph reads the courses with an exam in the next revision days first. ([guide](wiki/user/settings-guide.md#examseasongraphfirst)) |
 | `exam_season.hold_updates` | `true` | During exams, updates that aren't critical wait until the exams are over. ([guide](wiki/user/settings-guide.md#examseasonholdupdates)) |
 | `exam_season.leave_alarm` | `true` | On an exam day, an alarm to leave (a call with Phone calls, else a message). ([guide](wiki/user/settings-guide.md#examseasonleavealarm)) |
 | `exam_season.leave_min` | `45` | Minutes before the exam the leave alarm goes, unless you say a time ("leave 8:10"). ([guide](wiki/user/settings-guide.md#examseasonleavemin)) |
@@ -384,6 +391,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `exam_season.revision_ask` | `true` | Each evening: did you cover today's revision topics? (Counts like a quiz answer.) ([guide](wiki/user/settings-guide.md#examseasonrevisionask)) |
 | `exam_season.revision_days` | `14` | Days before each exam that the revision plan starts. ([guide](wiki/user/settings-guide.md#examseasonrevisiondays)) |
 | `exam_season.revision_share` | `50` | The share of your free time (in %) revision blocks may take. ([guide](wiki/user/settings-guide.md#examseasonrevisionshare)) |
+| `exam_season.use_mastery` | `false` | The revision plan places topics with no quiz grade yet by Brain's mastery of their concept, frontier first. ([guide](wiki/user/settings-guide.md#examseasonusemastery)) |
 
 ### `face`
 
@@ -449,6 +457,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `gbrain.checkup_line` | `true` | Once a week, one line on how the notes brain is (read only). ([guide](wiki/user/settings-guide.md#gbraincheckupline)) |
 | `gbrain.checkup_when` | `"weekly sun 19:30"` | When the weekly checkup runs. ([guide](wiki/user/settings-guide.md#gbraincheckupwhen)) |
 | `gbrain.contradictions` | `true` | The brain's last contradictions report joins Dreaming's morning section, with Keep A / Keep B. ([guide](wiki/user/settings-guide.md#gbraincontradictions)) |
+| `gbrain.course_announcements` | `true` | The course page's timeline also has the course's Classroom posts and the dated lines under its Announcements heading. ([guide](wiki/user/settings-guide.md#gbraincourseannouncements)) |
 | `gbrain.course_pages` | `true` | Nightly, each course page gets its key concepts and a dated timeline, in Kurooto's own block. ([guide](wiki/user/settings-guide.md#gbraincoursepages)) |
 | `gbrain.embeddings` | `"auto"` | How the notes brain makes its search-by-meaning index: a model here, Google's, or keywords only. ([guide](wiki/user/settings-guide.md#gbrainembeddings)) |
 | `gbrain.exe` | `""` | Your own GBrain: your gbrain program; empty uses the one on your PATH. ([guide](wiki/user/settings-guide.md#gbrainexe)) |
@@ -472,6 +481,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `google.classroom` | `true` | Read Classroom: courses, assignments and announcements, for deadlines. ([guide](wiki/user/settings-guide.md#googleclassroom)) |
 | `google.classroom_every` | `"every 3h"` | How often Classroom is checked for new deadlines. ([guide](wiki/user/settings-guide.md#googleclassroomevery)) |
 | `google.classroom_notes` | `false` | Permission for Classroom → notes: materials and attached Drive files, read-only. ([guide](wiki/user/settings-guide.md#googleclassroomnotes)) |
+| `google.classroom_on_calls` | `false` | A call's brief gets the titles of the last day's Classroom posts. ([guide](wiki/user/settings-guide.md#googleclassroomoncalls)) |
 | `google.digest_email` | `false` | Permission to send the mail digest to your own inbox (send only). ([guide](wiki/user/settings-guide.md#googledigestemail)) |
 | `google.drive_upload` | `false` | Permission to put files you send yourself into a Kurooto folder in Drive (its own files only). ([guide](wiki/user/settings-guide.md#googledriveupload)) |
 | `google.endpoints.auth` | `"https://accounts.google.com/o/oauth2/v2/auth"` | Google's sign-in address. Leave it alone. ([guide](wiki/user/settings-guide.md#googleendpointsauth)) |
@@ -525,6 +535,12 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `health.on` | `true` | The daily health pass: it checks what matters and tells you only when something needs you. ([guide](wiki/user/settings-guide.md#healthon)) |
 | `health.when` | `"daily 21:00"` | When the daily health pass runs; tonight's alarm is checked then. ([guide](wiki/user/settings-guide.md#healthwhen)) |
 
+### `hints`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `hints.weak_sign` | `true` | Needing the last hint (the key step) counts as a small sign of a gap in Brain's model of what you know. ([guide](wiki/user/settings-guide.md#hintsweaksign)) |
+
 ### `infer`
 
 | Setting | Default | What it does |
@@ -569,8 +585,9 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `integrate.roles.bulk` | `""` | The AI that does the bulk reading; empty is chosen for you. ([guide](wiki/user/settings-guide.md#integraterolesbulk)) |
 | `integrate.roles.check` | `""` | The AI that takes the second look at doubtful answers; empty is chosen for you. ([guide](wiki/user/settings-guide.md#integraterolescheck)) |
 | `integrate.share_pct` | `60` | The most of a subscription's usage window (or a free key's day) the reading may take, in %. ([guide](wiki/user/settings-guide.md#integratesharepct)) |
-| `integrate.sources` | `["books", "classroom", "reference"]` | What's read into the graph: books, Classroom files, handwritten notes, repositories, reference files. ([guide](wiki/user/settings-guide.md#integratesources)) |
+| `integrate.sources` | `["books", "classroom", "reference"]` | What's read into the graph: books, Classroom files, handwritten notes, repositories, reference files, papers. ([guide](wiki/user/settings-guide.md#integratesources)) |
 | `integrate.summary` | `true` | One line each morning about what the reading changed. ([guide](wiki/user/settings-guide.md#integratesummary)) |
+| `integrate.yield_to_owner` | `false` | The concept graph's next batch waits while you're in a Voice turn, and starts a minute after it ends. ([guide](wiki/user/settings-guide.md#integrateyieldtoowner)) |
 
 ### `jobs`
 
@@ -661,6 +678,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mail_digest.mail_in_senders` | `[]` | Your other email addresses that may send mail into your notes (your own always can). ([guide](wiki/user/settings-guide.md#maildigestmailinsenders)) |
 | `mail_digest.max_messages` | `200` | The most mails looked at per check. ([guide](wiki/user/settings-guide.md#maildigestmaxmessages)) |
 | `mail_digest.never_read` | `[]` | Senders, @domains or labels the digest never reads, even if chosen elsewhere. ([guide](wiki/user/settings-guide.md#maildigestneverread)) |
+| `mail_digest.on_calls` | `false` | A call's brief gets the last digest's "Needs you" line, so the call can bring it up. ([guide](wiki/user/settings-guide.md#maildigestoncalls)) |
 | `mail_digest.own_domain` | `true` | On a school or work account, mail from your own organisation's domain is read too. ([guide](wiki/user/settings-guide.md#maildigestowndomain)) |
 | `mail_digest.query` | `""` | A Gmail search: mail it matches is read too, e.g. everything but Promotions and Social. ([guide](wiki/user/settings-guide.md#maildigestquery)) |
 | `mail_digest.read` | `[]` | What the AI may read for the digest: senders, @domains or Gmail labels you chose. ([guide](wiki/user/settings-guide.md#maildigestread)) |
@@ -791,6 +809,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.stimulation.on` | `true` | Its senses felt as a body (heat, load, touch), for its feelings and the dashboard. ([guide](wiki/user/settings-guide.md#mindstimulationon)) |
 | `mind.story.on` | `true` | One life story every part of Kurooto reads first: a fixed core, then its recent weeks. ([guide](wiki/user/settings-guide.md#mindstoryon)) |
 | `mind.story.tokens` | `800` | The life story's summary is at most this many tokens (about 4 characters each). ([guide](wiki/user/settings-guide.md#mindstorytokens)) |
+| `mind.study_push.frontier` | `false` | Between subjects it's equally uneasy about, the one with concepts you're ready for wins, and the line names one. ([guide](wiki/user/settings-guide.md#mindstudypushfrontier)) |
 | `mind.study_push.horizon_days` | `7` | How far ahead a deadline can be for Brain to be uneasy about it. ([guide](wiki/user/settings-guide.md#mindstudypushhorizondays)) |
 | `mind.study_push.minutes` | `25` | How long a study stretch the morning line offers. ([guide](wiki/user/settings-guide.md#mindstudypushminutes)) |
 | `mind.study_push.on` | `true` | One morning line about the subject Brain is most uneasy about (due date, minutes logged, cards due), with Yes and Later. ([guide](wiki/user/settings-guide.md#mindstudypushon)) |
@@ -799,6 +818,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.talk.on` | `true` | Being talked to is a small reward for Brain (at most 0.2 a day; nothing for answers to its own pings). ([guide](wiki/user/settings-guide.md#mindtalkon)) |
 | `mind.tom.attention` | `false` | Hold a message (at most 15 minutes) while you're deep in one project. ([guide](wiki/user/settings-guide.md#mindtomattention)) |
 | `mind.tom.false_beliefs` | `true` | When something you were told turns out wrong, tell you once, with the evidence. ([guide](wiki/user/settings-guide.md#mindtomfalsebeliefs)) |
+| `mind.tom.from_chat` | `true` | An exam result you report ("I got 12/30 on the LA midterm") counts as evidence of what you know. ([guide](wiki/user/settings-guide.md#mindtomfromchat)) |
 | `mind.tom.on` | `true` | A model of what you know, believe, want and prefer, each row with its source (`/model`). ([guide](wiki/user/settings-guide.md#mindtomon)) |
 | `mind.tone.on` | `false` | Tag each message you write with one word (calm, tired…), using the model on this computer only. ([guide](wiki/user/settings-guide.md#mindtoneon)) |
 | `mind.values.on` | `true` | Brain learns which kinds of things help (values), never affecting a choice in the shadow days. ([guide](wiki/user/settings-guide.md#mindvalueson)) |
@@ -947,15 +967,18 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | Setting | Default | What it does |
 |---|---|---|
 | `quiz.by_call` | `false` | /quiz, "quiz me" and quiz check-ins ring you instead of coming as text. ([guide](wiki/user/settings-guide.md#quizbycall)) |
+| `quiz.call_frontier` | `false` | On a call, the due questions on concepts you're ready for (Brain's frontier, or partly known) come first. ([guide](wiki/user/settings-guide.md#quizcallfrontier)) |
 | `quiz.call_min` | `10` | Minutes a quiz call is meant to take. ([guide](wiki/user/settings-guide.md#quizcallmin)) |
 | `quiz.exam_daily` | `""` | In exam mode, a practice check-in every day at this time; empty: never. ([guide](wiki/user/settings-guide.md#quizexamdaily)) |
 | `quiz.exam_per_session` | `6` | Questions in one quiz while exam mode is on. ([guide](wiki/user/settings-guide.md#quizexampersession)) |
 | `quiz.links` | `false` | Recall cards from the links in your concept graph come by themselves. ([guide](wiki/user/settings-guide.md#quizlinks)) |
 | `quiz.links_at` | `"daily 11:00,16:00,20:00"` | When a link card may come (never during a class, focus time or the night). ([guide](wiki/user/settings-guide.md#quizlinksat)) |
 | `quiz.links_check` | `false` | A model on this computer says how close your answer to a link card came. ([guide](wiki/user/settings-guide.md#quizlinkscheck)) |
+| `quiz.links_frontier` | `false` | Of the link cards due the same day, those on concepts you're ready for (Brain's frontier) come first. ([guide](wiki/user/settings-guide.md#quizlinksfrontier)) |
 | `quiz.links_per_day` | `3` | The most link cards in a day (at most 5). ([guide](wiki/user/settings-guide.md#quizlinksperday)) |
 | `quiz.offer_at` | `"19:00"` | The evening before a quiz or exam, practice is offered from this time; empty: never. ([guide](wiki/user/settings-guide.md#quizofferat)) |
 | `quiz.per_session` | `3` | Questions in one quiz. ([guide](wiki/user/settings-guide.md#quizpersession)) |
+| `quiz.to_doubts` | `true` | After a call, the quiz questions you missed on it (graded below 3) are offered as doubts, in one message. ([guide](wiki/user/settings-guide.md#quiztodoubts)) |
 
 ### `quota`
 
@@ -971,6 +994,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 
 | Setting | Default | What it does |
 |---|---|---|
+| `remember.offer_settings` | `true` | A line you ask it to remember with a time rule ("I hate calls before 8") offers the setting that does it, with Set it / No. ([guide](wiki/user/settings-guide.md#rememberoffersettings)) |
 | `remember.recheck_days` | `90` | A kept line that hasn't come up in this many days gets one "Still true?"; 0: never. ([guide](wiki/user/settings-guide.md#rememberrecheckdays)) |
 
 ### `reminders`
@@ -1072,6 +1096,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 |---|---|---|
 | `sorter.ai` | `true` | Ask your AI about a note the rules can't place; off, rules only. ([guide](wiki/user/settings-guide.md#sorterai)) |
 | `sorter.at` | `"daily 03:30"` | When the nightly sorting pass runs (`/sort now` runs one any time). ([guide](wiki/user/settings-guide.md#sorterat)) |
+| `sorter.by_class` | `false` | A note written in or just after a class gets that class's folder as a hint: in the AI's request, and the first Move button if it waits. ([guide](wiki/user/settings-guide.md#sorterbyclass)) |
 | `sorter.duplicates` | `true` | A note in the scratch folder that copies one you have is asked about, not filed. ([guide](wiki/user/settings-guide.md#sorterduplicates)) |
 | `sorter.folder` | `"inbox"` | The scratch folder inside your notes: what lands here is sorted into place. ([guide](wiki/user/settings-guide.md#sorterfolder)) |
 | `sorter.learn` | `true` | A note you move again after it was filed teaches the sorter where such notes go. ([guide](wiki/user/settings-guide.md#sorterlearn)) |

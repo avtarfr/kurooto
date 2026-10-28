@@ -78,6 +78,21 @@ tip = "Open doubts for a subject come this many minutes before its next class."
 when = "Raise it if you want time to look them over before class."
 needs = "The Doubt queue."
 
+[s."doubts.to_revision"]
+tip = "An open doubt about a topic ranks it with the weak-recall topics in Exam season's revision plan."
+when = "Turn it off if doubts shouldn't change the revision plan."
+needs = "The Doubt queue and Exam season's revision plan."
+
+[s."doubts.share"]
+tip = "Open doubts go with a hint request for that subject, and in the brief of a call in the hours before its class."
+when = "Turn it on if you'd like hints and calls to connect to what you're unsure of."
+cost = "The open doubts' words go to your AI (and the call's AI, which may be a cloud one)."
+
+[s."doubts.share_h"]
+tip = "How many hours before a class a call carries its open doubts."
+when = "Raise it if your calls before class come earlier in the day."
+needs = "`doubts.share`."
+
 [s."doubts.recent_h"]
 tip = "A doubt that names no subject is filed under the class that's on, or ended this many hours ago."
 when = "Lower it if doubts land under the wrong class."
