@@ -24,8 +24,8 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 
 ## Contents
 
-- [You and how it talks to you](#you-and-how-it-talks-to-you): 11 settings
-- [Your AI](#your-ai): 34 settings
+- [You and how it talks to you](#you-and-how-it-talks-to-you): 12 settings
+- [Your AI](#your-ai): 36 settings
 - [Messages and where they reach you](#messages-and-where-they-reach-you): 31 settings
 - [When it may interrupt you](#when-it-may-interrupt-you): 13 settings
 - [Phone calls and the call line](#phone-calls-and-the-call-line): 45 settings
@@ -42,15 +42,15 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 49 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
-- [Brain](#brain): 130 settings
-- [Voice and voice notes](#voice-and-voice-notes): 80 settings
+- [Brain](#brain): 131 settings
+- [Voice and voice notes](#voice-and-voice-notes): 81 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
 - [Dashboard and terminal](#dashboard-and-terminal): 27 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 26 settings
-- [Face presence](#face-presence): 35 settings
+- [Face presence](#face-presence): 45 settings
 
 ## You and how it talks to you
 
@@ -156,6 +156,18 @@ By the message's length only: nothing changes with the time of day or partway th
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off if you want the same style of answer whatever you send. A length on your persona
   card wins over it either way.
+
+### `persona.templates`
+
+Rule-made words (the desk greeting, "Good morning" after "I'm awake", check-in messages) use your persona card's name
+and avoid line.
+
+The desk greeting says the name only while nobody else is in view, and the name never pushes a part out of it. The avoid
+line is honoured as punctuation: exclamation marks become full stops, emojis go; nothing they say is dropped. Check-in
+messages keep their start for the phone's card, so they take the avoid line only.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you'd rather the rule-made words stay exactly as they were.
 
 ### `persona.boundaries`
 
@@ -529,6 +541,32 @@ Offer the offline helper once if your free limit keeps running short or the inte
 - **When to change it:** Turn it off if you never want to be asked. `/helper on` works either way.
 - **Costs and what leaves this computer:** Nothing: one message with Install / Not now, two weeks after setup, and only
   when it fits.
+
+### `chat.context_line`
+
+Each message carries one line for your AI on how it came: typed where, a call, stepped away from the desk.
+
+Plain words only: typed on Telegram, in the phone app or on this computer; whether you're on a call; and, with Face
+presence noticing when you leave, that you stepped away from the desk and when. Spoken turns have their own line (who
+Kurooto recognised). Never a place unless chat.context_places is on.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to send only what you typed.
+- **Costs and what leaves this computer:** One line more in each request to the AI you picked.
+
+### `chat.context_places`
+
+Add your phone's last saved place and the Wi-Fi's name you gave it to that line.
+
+From Brain's phone senses (the places you saved in the phone app, and Wi-Fi codes you labelled with /senses wifi label):
+"Their phone left the place they saved as home (14:10)". Labels only, never a position. Off by default: the place names
+go to the AI you picked.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you want answers that know where you are, and are happy for your AI to see those
+  labels.
+- **Costs and what leaves this computer:** Your place and Wi-Fi labels go to the AI you picked with each message.
+- **Depends on:** Brain, and its phone places or Wi-Fi sensor.
 
 ## Messages and where they reach you
 
@@ -5310,6 +5348,19 @@ It adds to Calm's Why? on Telegram, and puts a Why this? button on the phone app
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off to keep Calm's Why? as it was.
 
+### `mind.why.to_ai`
+
+A message that asks why also gives your AI the plain reasons for Kurooto's own last few messages.
+
+For a message with the word why: the last three messages Kurooto started by itself in the last day, each with its time,
+the plain reason, the setting, whether Brain's gate made it quieter, and what it expected and what came of it. Never a
+sense, the read, a mood or a tone, and not the door's own words. "Why did you greet me?" then gets the real reason.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you don't want those reasons in requests to your AI.
+- **Costs and what leaves this computer:** A few lines more in requests that ask why.
+- **Depends on:** Brain and mind.why.on.
+
 ### `mind.attention.on`
 
 A model of its own attention: "what are you thinking about?" is answered from it.
@@ -6688,6 +6739,18 @@ numbers for where a face points are used, never who it is, and they go with the 
 - **When to change it:** Turn it off to have only your own look open it (as 0.8.17).
 - **Depends on:** `voice.listen.look_to_talk`, Face presence on and enrolled.
 
+### `voice.listen.phone_away`
+
+Stop listening while your phone is out (it left a place you saved).
+
+Uses Brain's phone places sensor. Listening stops when the phone leaves a saved place and starts again when it arrives
+at one, or when someone is back at the desk (a face Face presence knows, or the keyboard). Only that the phone left goes
+into it, never the place.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you'd rather the microphone rested while you're away from home.
+- **Depends on:** Brain on and its phone places sensor (mind.senses.phone.places).
+
 ### `voice.listen.look_in_company`
 
 With others here, looking at it and saying its name (even misheard) counts as calling it.
@@ -7835,6 +7898,29 @@ For every setting in this group, unless its entry says otherwise:
   camera's light on while it looks.
 - **Depends on:** The Face presence feature, a camera, and Voice speaking for the greeting.
 
+### `face.addons.known_guests`
+
+An add-on may say that everyone else in view is someone it knows: they get the short greeting instead of none.
+
+A yes or no only: Face presence never learns who, and keeps nothing of it. With face.greet.with_others at skip, a
+remembered friend at the desk then gets "Welcome back." with no details and no conversation.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep skipping the greeting whenever anyone else is in view.
+- **Depends on:** An add-on that remembers people (with its own switch).
+
+### `face.light_sense`
+
+Read the room's light from the camera's frames, as one smoothed number, for Brain and add-ons.
+
+Only while the camera looks anyway: each frame's average brightness, smoothed, kept in memory as one number (dark to
+lit) and never a frame. A webcam adjusts its exposure, so it's a rough signal, not a light meter. Brain's sense of its
+body uses it when no other device reports its light; an add-on may use it to set a screen's brightness.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you have no phone or other device reporting the room's light.
+- **Depends on:** Face presence watching.
+
 ### `face.away.on`
 
 Notice when you leave the desk and come back.
@@ -7848,6 +7934,45 @@ No sign of you (your face or the keyboard) this long means you've left, in minut
 
 - **Values:** A whole number. **Default:** `5`.
 - **When to change it:** Lengthen it if it decides you've left while you're reading.
+
+### `face.away.use_places`
+
+Your phone leaving a place you saved marks you away from the desk at once.
+
+Uses Brain's phone places sensor (the places you saved in the phone app). Leaving one makes Face presence decide you've
+left now instead of after a few minutes with no sign of you, so held calls and pop-ups start waiting sooner. Arriving
+somewhere doesn't mark you back: your face or your keyboard does. Only that the phone left and when are used, in memory;
+the place's name stays in the senses' store.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you walk away from the desk with your phone and want Kurooto to know straight
+  away.
+- **Depends on:** Noticing when you leave (face.away.on), Brain on and its phone places sensor
+  (mind.senses.phone.places).
+
+### `face.away.places_close_camera`
+
+While your phone is out, keep the camera closed.
+
+With use_places: from the phone leaving a saved place until it arrives at one, or someone types at the computer, Face
+presence pauses ("your phone is out"). Nothing watches an empty room then, so no arrival is seen by the camera and
+nobody else at the desk is noted.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you'd rather the camera rested while you're out.
+- **Depends on:** face.away.use_places.
+
+### `face.away.report_others`
+
+While you're away, note the times someone else's face was in view at your desk, and tell you once when you're back.
+
+Times and how many faces only, in memory, forgotten once told: never a picture, never who, never sent to your AI. Faces
+it isn't sure about (maybe you) don't count, and it only knows about the times the camera was looking.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you want to know whether someone used your computer while you were out.
+- **Costs and what leaves this computer:** One message on your return when someone was seen.
+- **Depends on:** Noticing when you leave (face.away.on).
 
 ### `face.away.hold_calls`
 
@@ -7928,6 +8053,44 @@ What the greeting tells you: what's next today, what's waiting, deadlines in 24 
 
 - **Values:** A list, typed as JSON. **Default:** `["next", "waiting", "deadline"]`.
 - **When to change it:** Trim it to what you want to hear first when you sit down.
+
+### `face.greet.tell_ai`
+
+When you answer the desk greeting, your AI is told what it had just said, so "yes" carries on from it.
+
+Only with the first thing you say in the conversation the greeting opened, as a line of that turn's context. The
+greeting is rule-made: counts, and the title of your next class or a deadline (which your AI can read anyway); never
+anything the camera saw.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you'd rather the greeting's words never leave the computer; a bare "yes" may
+  then need more words.
+- **Costs and what leaves this computer:** A few dozen more words in that one request to the AI you picked.
+
+### `face.greet.records`
+
+With Brain on, each greeting is one of its decision records, closed by whether you answered it.
+
+It records which parts the greeting said (never its words or anything the camera saw) and, when the conversation opened,
+whether you said anything in it. The nightly look back reads how greetings went and may suggest a different gap between
+them (face.greet.gap_min); nothing changes without your tap.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you don't want greetings in Brain's records or the look back's suggestions.
+- **Depends on:** Brain, for the records; the nightly look back, for the suggestions.
+
+### `face.greet.addons`
+
+An add-on may add one short line of its own to the desk greeting.
+
+Said after everything else, only with nobody else in view, and at most 120 characters. At the greeting's length limit
+it's the first to go, so it never pushes out what's next or what waits. If the greeting didn't say it, the add-on says
+it its own way, as before.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on to hear an add-on's news (something it noticed while you were away) in the one
+  welcome rather than separately.
+- **Depends on:** An add-on that uses it.
 
 ### `face.greet.talk`
 
@@ -8010,6 +8173,19 @@ Slowly refine your face template from times it was very sure it was you (never u
 - **Values:** On or off. **Default:** off.
 - **When to change it:** Turn it on if your look changes (glasses, a beard, the light at your desk) and you'd rather it
   keeps up.
+
+### `face.learn.from_voice`
+
+A turn Voice ID is sure is your voice, with only your face in view, may teach the face model too.
+
+Learning otherwise needs you to type within a minute of being recognised on arrival. With Voice ID on, a turn it is sure
+is your voice by the voice alone (not one your face helped decide), while exactly one face is in view, yours, and nobody
+else is about, is the same kind of confirmation: the clear, confident frame of you from the last 3 seconds may be
+learned from, with the same spacing, cap and Undo.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you mostly talk to Kurooto at the desk rather than type after sitting down.
+- **Depends on:** Learning (face.learn.on) and Voice ID.
 
 ### `face.learn.every_h`
 
@@ -8122,3 +8298,16 @@ Face presence's own line (looking for you, an add-on's hold by name, resting): w
 - **When to change it:** Turn it off if you don't want that on your phone.
 - **Costs and what leaves this computer:** Sealed for each phone, with the rest of Today.
 - **Depends on:** Face presence and `calls.today`.
+
+### `face.camera.yaw_offset_deg`
+
+How far beside the camera's lens the spot you look at sits, in degrees (+: to your right); look to talk centres there.
+
+A camera whose lens isn't where you look (a drawn eye on a screen beside a phone's punch-hole camera, a webcam off to
+one side of a picture you look at) makes a look at that spot read as a turned head. This moves the centre of look to
+talk, by the head's turn and by the eyes alike, onto the spot. An add-on with such a camera may set it while its camera
+is in use and clear it after.
+
+- **Values:** -30 to 30 degrees; 0 (the default) is the lens itself. **Default:** `0.0`.
+- **When to change it:** Set it if looking at the place you're meant to look rarely opens a conversation and looking at
+  the lens does: about 7 degrees for 7 cm at 60 cm.

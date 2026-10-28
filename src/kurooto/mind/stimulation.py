@@ -32,7 +32,9 @@ only, and felt at the next tick like the rest; older than 10 minutes, it's left 
     handled      picked_up (0/1, or pick-ups since the last report)       skin     phasic   touch: being picked up
     temperature  battery_temp_c                                           skin     tonic    heat (over 45 C hurts)
     satiety      battery_pct, +10 while charging                          gut      tonic    hunger (under 5 % hurts)
-(face = that device.) Unknown keys, non-numbers and readings out of range are ignored. None of these move the mood:
+(face = that device.) (0.9.0, face.light_sense) With no device's light fed in, Face presence's camera stands in for
+brightness: its smoothed frame brightness (0..1) x WEBCAM_SCALE, a rough dark-to-lit signal.
+Unknown keys, non-numbers and readings out of range are ignored. None of these move the mood:
 an add-on can make it feel, never make it glad or sad (as the channels about him, I-14). A phasic channel is felt at
 its strongest since the last tick; a tonic one at its latest.
 
@@ -95,6 +97,7 @@ register_defaults(
 )
 
 FILE = "mind-stimulation.json"
+WEBCAM_SCALE = 2.5  # (0.9.0, face.light_sense) the camera's 0..1 level onto brightness's log-lux scale (rough)
 TAU_S = 6 * 3600.0  # the baseline's window
 PHASIC_TAU_S = 120.0  # a touch or a movement fades with this
 PAIN = {"hot_c": 90.0, "disk_pct": 5.0, "battery_pct": 5.0, "crash_s": 3600.0}
@@ -255,6 +258,7 @@ def readings(app: App, t: float, prev: dict | None = None) -> tuple[dict[str, fl
         broken["pain"] = pains > 0
     _phone(app, t, x, prev)
     _devices(app, t, x, broken)
+    _webcam(app, x)
     return x, broken
 
 
@@ -456,6 +460,21 @@ def _devices(app: App, t: float, x: dict, broken: dict) -> None:
             r["peak"] = r["x"]
             if name in ADDON_PAIN:
                 broken[name] = ADDON_PAIN[name](x[name])
+
+
+def _webcam(app: App, x: dict) -> None:
+    """(0.9.0, face.light_sense) With no device's light fed in (an add-on's lux, which wins), the camera's smoothed
+    level (Face.light_level, 0..1) stands in for brightness as WEBCAM_SCALE x level: a rough 0 dark .. 2 "a room",
+    since a webcam adjusts its exposure. A number only, from memory."""
+    if "brightness" in x:
+        return
+    face = app.modules.get("face") if hasattr(app, "modules") else None
+    try:
+        level = face.light_level() if face is not None else None
+    except Exception:
+        level = None
+    if level is not None:
+        x["brightness"] = WEBCAM_SCALE * float(level)
 
 
 # ------------------------------------------------------------------------------------------------- the tick

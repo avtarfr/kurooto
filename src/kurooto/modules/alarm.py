@@ -554,11 +554,14 @@ class Alarm(Module):
         )
         self.app.modules["calls"].place(reason, key=AWAKE_KEY, force=True)
         self.app.events.emit("alarm_up_now", page=self.open_morning_page())
-        out = "Good morning. Calling you now to plan the rest of today."
+        from kurooto.core import persona  # (0.9.0, persona.templates) your card's name and avoid line
+
+        name = persona.address(self.app)
+        out = f"Good morning{', ' + name if name else ''}. Calling you now to plan the rest of today."
         at = self.next()
         if at and at - now() < dt.timedelta(hours=AWAKE_BEFORE_H):
             out += f' Your alarm at {at:%a %H:%M} is still set ("cancel my alarm" turns it off).'
-        return out
+        return persona.template(self.app, out)
 
     def call_transcript(self, key: str, lines: list[dict]) -> None:
         """After the wake-up call: with Chat on, the AI settles today's plan in the daily note from what you said;

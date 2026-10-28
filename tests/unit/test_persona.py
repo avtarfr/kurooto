@@ -124,4 +124,4 @@ def test_a_turn_said_at_the_desk_tells_the_ai_who_kurooto_knows_said_it(env):
     assert "never see the camera's pictures" in p
     typed = Incoming("do you recognise my face?", via="telegram", respond=lambda t, buttons=None: None)
     chat.ask(typed)
-    assert "[How it came]" not in app.jobs.get(typed.job).prompt
+    assert "said this aloud" not in app.jobs.get(typed.job).prompt  # (0.9.0: a typed turn has its own line)

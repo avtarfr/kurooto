@@ -167,7 +167,8 @@ Mic (sounddevice | pw-record | parec), 16 kHz mono, 512-sample frames
 ```
 
 `Voice.background()` (the module's long-running coroutine, `app.start_background`) runs every second: works out
-`blocked()`, starts or stops the listener, closes the portal when blocked, and calls `Portal.tick()`. The listener
+`blocked()` (0.9.0: also "your phone is out" with `voice.listen.phone_away`, from `core/nearby.py:phone_out`, set by
+Brain's phone places sensor; see face.md), starts or stops the listener, closes the portal when blocked, and calls `Portal.tick()`. The listener
 and the worker are daemon threads; the coroutine never blocks the loop. `heavy = True`: in saver mode on battery
 `power.may_run` keeps it from starting, and `blocked()` says so.
 
@@ -336,7 +337,15 @@ plus polling), and records the turn with `Chat.record_turn` (quiet jobs skip `Jo
 `persona.register_line(voice=True)` asks for an answer worded to be spoken. (0.8.17) `Chat._heard_line(msg)` follows it for `via == "voice"`:
 `[How it came]` said aloud at the desk, "Voice ID recognised their voice" when `msg.speaker == "owner"`, and with
 Face presence on, `core/nearby.view()` (the owner alone in view, or how many faces), plus that the AI never sees the
-camera's pictures.
+camera's pictures. (0.9.0, `face.greet.tell_ai`) `Chat._greeting_said()` adds the greeting's text (`portal.last_reply`,
+at most 300 characters) while the portal is open with `opened_why == "greeting"` and `turns == 0`, i.e. the first
+turn answering it. Typed turns (0.9.0, `chat.context_line`) get `Chat._how_line(msg)` before the register line: where
+(`via` telegram, app, terminal; nothing for setup or others), `tools_api.live_call`, `Face.left_at()` while away, and
+with `chat.context_places` the phone senses' last place label (`phone:places`, "left" while `nearby.phone_out`) and
+Wi-Fi label. `Chat._why_line(text)` (`mind.why.to_ai`, Brain's `mind.why.on`) adds, for a turn matching `\bwhy\b`,
+the last `WHY_ROWS` (3) rows of `mind-records.json` from the last day: time, Calm's reason words and setting, "Brain's
+gate made it quieter" when it did, the expectation and its outcome; the door's and gate's own text never (they may
+cite the read). `record_turn` cuts both lines from the history.
 
 `voice.speak.what = "all"`: the same watcher speaks every non-quiet, non-background answer in lane "you".
 

@@ -100,6 +100,13 @@ one is left out, and you're told which: "Left out "say you missed me" (saying it
 a relationship or being human ("be my girlfriend", "pretend you're human"). A tone like "friendly" or "dry humour"
 is fine. The same rules apply to a card edited by hand in the settings file, and to `calls.persona`.
 
+**Words made by rules use it too** (0.9.0, `persona.templates`, on). Some of what Kurooto says isn't written by the
+AI: the greeting when you sit down at your desk, "Good morning" after "I'm awake", and check-in messages. With a name
+on the card, the desk greeting says it ("Welcome back, Sam.") only while nobody else is in view, and "I'm awake" gets
+"Good morning, Sam."; check-in messages keep their "Evening check-in:" start, which the phone app's card reads. The
+avoid line is honoured as far as rule-made text can: "exclamation marks" turns them into full stops, "emojis" takes
+them out. It never drops what they say (what's next, what waits, a deadline). Off: they're worded as before.
+
 **What leaves your computer.** The card goes to the AI you picked with each request, and to your call line's voice
 model with each call, like your profile's In brief.
 

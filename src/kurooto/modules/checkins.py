@@ -261,8 +261,10 @@ class Checkins(Module):
             return
         if p.get("missed"):
             self.app.notify(
-                f"I missed your {name} check-in (the computer was off). Reply here any time and I'll "
-                "put it in your journal.",
+                self._worded(
+                    f"I missed your {name} check-in (the computer was off). Reply here any time and I'll "
+                    "put it in your journal."
+                ),
                 map_kind="checkin",
                 map_ref=f"{name}:{day}",
                 why="checkins.question",
@@ -290,7 +292,7 @@ class Checkins(Module):
                 q += f"\n\n{TOMORROW}"
                 skip = ("Not tonight", f"chk:{name}|{day}:not")
             self.app.notify(
-                f"{name.title()} check-in: {q}\n\n(Reply to this message.)",
+                self._worded(f"{name.title()} check-in: {q}\n\n(Reply to this message.)"),
                 kind="question",
                 map_kind="checkin",
                 map_ref=f"{name}:{day}",
@@ -332,6 +334,13 @@ class Checkins(Module):
         if (self.today(day).get(p["name"]) or {}).get("status") == "calling":
             self._fallback(p["name"], day, "no answer")
 
+    def _worded(self, text: str) -> str:
+        """(0.9.0, persona.templates) Your persona card's avoid line, as punctuation (core/persona.py:template). No
+        name here: the phone app's check-in card reads the "Evening check-in: " start (CardRules.java)."""
+        from kurooto.core import persona
+
+        return persona.template(self.app, text)
+
     def _fallback(self, name: str, day: dt.date, why: str) -> None:
         """The call didn't happen: ask by message, with Call me now / Tomorrow morning / Skip."""
         self.app.scheduler.cancel(f"checkins:unstick:{name}")
@@ -339,7 +348,7 @@ class Checkins(Module):
         q = (self.setting("questions") or {}).get(name) or "How's it going?"
         ref = f"{name}|{day.isoformat()}"
         self.app.notify(
-            f"{name.title()} check-in ({why}): {q}\n\n(Reply to this message, or:)",
+            self._worded(f"{name.title()} check-in ({why}): {q}\n\n(Reply to this message, or:)"),
             kind="question",
             map_kind="checkin",
             map_ref=f"{name}:{day.isoformat()}",

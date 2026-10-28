@@ -163,7 +163,15 @@ Once you've enrolled, Kurooto looks for you **only while you're not using the co
   The camera's own light is the honest signal: look for it.
 
 **Add-ons** may ask Face presence to keep looking while you type, or to tell them who's in view (where each face
-is and whether it's you; never a picture). Then the card and `/face` say "camera on: an add-on is looking" and why.
+is and whether it's you; never a picture). Since 0.9.0 an add-on may also add one short line to the desk greeting
+(`face.greet.addons`, off: said last, only with nobody else in view, so it never pushes out what's next or what
+waits), and say that everyone else in view is someone *it* knows (`face.addons.known_guests`): a yes or no only, so
+with `face.greet.with_others` at `skip` a remembered friend gets the short "Welcome back." instead of no greeting.
+Face presence itself still never works out who anyone else is; that comes from the add-on.
+
+**The room's light** (0.9.0, `face.light_sense`, off): while the camera looks anyway, the frames' average brightness
+becomes one smoothed number (dark to lit; a webcam adjusts its exposure, so it's rough), for Brain's sense of its body
+and for add-ons that set a screen's brightness. Never a frame, never kept, never sent. Then the card and `/face` say "camera on: an add-on is looking" and why.
 A hold lasts at most 10 minutes unless the add-on asks again, and everything in the pause list below still stops it.
 `face.addons.hold` and `face.addons.watch` turn those off.
 
@@ -183,6 +191,11 @@ are. On its
 own it goes by which way your head points; with the eye model and your eyes calibrated (below) it goes by your eyes,
 at once. The camera is held while Voice listens for this too, and looks up to 5 times a second then
 (`face.watch.look_fps`).
+
+**When the spot to look at isn't the lens** (0.9.0, `face.camera.yaw_offset_deg`, 0): if you're meant to look at
+something beside the camera (a drawn eye next to a phone's camera, say), set how many degrees to your right (or left,
+negative) of the lens it sits, and a look there counts instead of a look into the lens. About 7 degrees for 7 cm at
+60 cm. An add-on whose camera needs it may set it while that camera is in use.
 
 **Calibrating your eyes** (the Face page, under Look to talk, once you've enrolled): **Get the eye model** (2.6 MB, once),
 then **Calibrate my eyes**: the camera opens and you look at its lens, head turned to it, for about three seconds. It
@@ -204,7 +217,7 @@ nothing. A photo propped up in front of the camera doesn't move, so it waits for
 up; you paused it (`/face pause 1h`); Kurooto is paused, or on battery in pause mode; the screen is locked
 (`face.watch.when_locked` to look anyway); you're on a call; focus; the night hours (`face.watch.night` to look
 anyway); Kurooto is asleep (0.8.18, `mind.sleep.senses_off`: `/wake`, a message, a tap or a call wakes it, and the
-camera with it); you're enrolling; another program uses the camera (checked again every minute); there's no camera; the system
+camera with it); your phone is out (0.9.0, only with `face.away.places_close_camera` on); you're enrolling; another program uses the camera (checked again every minute); there's no camera; the system
 blocks it; it's covered (10 dark frames; checked again every 5 minutes); or its key can't be read.
 
 **A sharper camera** (say a phone's 1080x1440 instead of 480x640) works the same way: faces are found on a small copy
@@ -221,7 +234,10 @@ When you arrive, Kurooto says, in about three sentences, through your speakers:
 ("Morning." the first time a day before noon.) What it mentions is `face.greet.say`: what's next today, how many
 questions and approvals wait (never what they say), one deadline due within 24 hours, and how many messages wait for
 the evening (`held`, off by default). It's made by rules on your computer: no AI request, and it's never sent to
-Telegram, your phone or your AI.
+Telegram or your phone. With "what to call you" on your [persona card](teaching-kurooto.md#your-persona-card)
+(0.9.0, `persona.templates`), it starts "Welcome back, Sam." while you're alone in view; the name never pushes a part
+out of the greeting. When you answer it, your AI is told what it had just said (0.9.0, `face.greet.tell_ai`, on), so
+"yes" goes on from it; that's the only time the greeting's words leave the computer.
 
 Then the conversation opens for 12 seconds (`face.greet.listen_s`), like after you'd said "Kurooto": "what's next?"
 or "yes" goes to your AI without saying its name. Chatter nearby closes it at once and isn't sent. That needs Voice
@@ -232,6 +248,11 @@ you attend or a calendar event; while Kurooto is asleep or drowsy (with Brain, [
 after three a day (`face.greet.per_day`); during exam season's quiet days or a quiet week; or when you turned them
 off (`face.greet.on`, "Greet me when I sit down" on the card). Greetings aren't counted against the six messages a
 day, and each one, said or skipped, is recorded with its reason (never its words).
+
+**What came of it** (0.9.0, `face.greet.records`, on): with [Brain](mind.md) on, each greeting said is one of its
+decision records (which parts it said, never the words), closed by whether you answered it in the conversation. The
+nightly look back can then suggest a different gap between greetings (`face.greet.gap_min`) from how they went; like
+everything it suggests, nothing changes without your tap. Off, or with Brain off, nothing is recorded.
 
 **Someone else at the desk:** no greeting at all by default (`face.greet.with_others` = `skip`). `short` says only
 "Welcome back." with no details and no conversation; `full` greets as usual. Class and deadline names are never spoken
@@ -247,6 +268,17 @@ you're back when it recognises you or someone types. Two more switches use it:
   empty room (they're on the dashboard).
 - `face.away.hold_calls`: while you're away, calls wait as they do during a class (a no-call time), until you're back
   or at most an hour (`face.away.hold_max_min`).
+- `face.away.use_places` (0.9.0, off): with Brain's phone places sensor on (`mind.senses.phone.places`, and the
+  places you saved in the phone app), your phone leaving a saved place marks you away at once, instead of after 5
+  minutes with no sign of you, so the two switches above start holding sooner. Arriving somewhere doesn't mark you
+  back: your face or your keyboard does. The place's name never leaves the senses' store on this computer.
+- `face.away.places_close_camera` (0.9.0, off, with `use_places`): while your phone is out, the camera stays closed
+  ("paused: your phone is out"); it opens again when the phone arrives at a saved place or someone types. Off, the
+  camera keeps looking as before (an arrival can be seen, and `report_others` has something to report).
+- `face.away.report_others` (0.9.0, off): while you're away, it notes the minutes when someone else's face was in view
+  (and how many faces), and once you're back sends one message: "While you were away, Face presence saw someone else
+  at your desk at 14:10 and 14:25 (2 faces)." Times and counts only, in memory, then forgotten: never a picture, never
+  who, never to your AI. Unsure faces (maybe you) don't count. It only knows about times the camera was looking.
 
 ## Learning over time
 
@@ -255,6 +287,12 @@ your template only when it's very sure (well above the threshold), you're alone 
 part of an arrival and you typed within a minute after, it's been 6 hours since the last one, and it adds something
 new. Never from an unsure frame, someone else in view, or a test. At most 30 learned samples (the oldest goes first);
 your enrolled samples are never replaced, and the threshold is still measured only on your enrolled samples.
+
+**From your voice too** (0.9.0, `face.learn.from_voice`, off, under `face.learn.on`): with [Voice ID](voice.md#voice-id-only-your-voice-can-make-it-act)
+on, a turn Voice ID is sure is your voice (by the voice alone, not helped by your face) while exactly one face is in
+view, yours, and nobody else is about, confirms you the way typing after an arrival does: the clear, confident frame of
+you from the last few seconds may be learned from. The same rules otherwise: very sure, 6 hours apart, at most 30,
+with Undo.
 
 The Face page lists what it learned ("Learned 1 sample on 3 Nov"), with **Undo the last** and **Forget what it
 learned**.
@@ -285,7 +323,8 @@ elsewhere.
   backup, Profile sync or a diagnostics bundle.
 - **What it never keeps:** the camera's frames (looked at in memory and dropped), the preview (made in memory for the
   Face page), and anything of other people: a stranger's face is dropped with the frame, and only a count since start
-  is kept ("faces: you 120, unsure 4, not you 9").
+  is kept ("faces: you 120, unsure 4, not you 9"). With `face.away.report_others` on (0.9.0, off by default), also the
+  minutes someone else was in view while you were away, in memory until it tells you on your return.
 - **What leaves your computer:** nothing. The one-time downloads fetch the models from `media.githubusercontent.com`
   (OpenCV's model zoo), the package from PyPI and, only if you tap Get the eye model, MediaPipe's iris model from
   `storage.googleapis.com`; nothing of yours is sent.
@@ -328,6 +367,7 @@ From a terminal: `kurooto face`, `kurooto face pause 1h`, `kurooto face forget [
 | Setting | Default | What it does |
 |---|---|---|
 | `face.camera.device` | (the first) | which camera: a number or part of its name |
+| `face.camera.yaw_offset_deg` | 0 | degrees beside the lens the spot to look at sits (+: your right); look to talk centres there |
 | `face.watch.fps`, `fps_battery` | 1, 0.33 | frames a second while it looks |
 | `face.watch.look_fps` | 5 | frames a second while Voice listens for a look (at most 5; 0: as usual) |
 | `face.watch.idle_s` | 60 | seconds without input before it looks |
@@ -340,10 +380,18 @@ From a terminal: `kurooto face`, `kurooto face pause 1h`, `kurooto face forget [
 | `face.greet.after_absent_min`, `gap_min`, `per_day` | 20, 60, 3 | when it greets |
 | `face.greet.say` | next, waiting, deadline | what it mentions (`held` too) |
 | `face.greet.with_others` | `skip` | `skip`, `short` or `full` |
+| `face.greet.tell_ai` | on | when you answer the greeting, your AI is told what it had just said |
+| `face.greet.records` | on | (with Brain) each greeting is a decision record closed by your answer; the look back may suggest a new `gap_min` |
 | `face.away.on`, `hold_desktop`, `hold_calls` | off | noticing you left, and what waits |
+| `face.away.use_places`, `places_close_camera` | off, off | your phone leaving a saved place marks you away at once; and closes the camera while it's out |
+| `face.away.report_others` | off | the times someone else was at your desk while you were away, told on your return |
 | `face.learn.on`, `every_h`, `max`, `margin` | off, 6, 30, 0.08 | learning over time |
+| `face.learn.from_voice` | off | a turn Voice ID is sure is your voice, with only your face in view, may teach it too |
 | `face.track.on`, `fps` | on, 10 | the being's eye follows every face in view, and how often it looks then |
 | `face.addons.watch`, `hold` | on, on | let add-ons see who's in view, and keep the camera looking while you type |
+| `face.addons.known_guests` | on | an add-on may say everyone else in view is known (yes or no), for the short greeting |
+| `face.greet.addons` | off | an add-on may add one short line to the greeting |
+| `face.light_sense` | off | the room's light from the camera's frames, a number only, for Brain and add-ons |
 | `voice.listen.need_face`, `face_near`, `face_yaw_deg` | on, 0.5, 35 | Voice answers only a face close and facing the camera ([Voice](voice.md#it-only-answers-someone-in-front-of-it)) |
 
 All of them: [the settings guide](../../SETTINGS_GUIDE.md).

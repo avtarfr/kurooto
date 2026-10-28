@@ -418,7 +418,12 @@ places, headphones, Do Not Disturb, your next alarm, which Wi-Fi (a code the pho
 and total screen time a day (never per app). The microphone is not a sense. The phone takes a reading every 15 minutes (Android batches it, so it's
 cheap), seals it with the phone's key and sends it through your call line, which can't read it; if your computer is off, one sealed batch waits there and
 the rest wait on the phone till your computer has taken it (0.8.13; before, nothing more came for 12 hours).
-They feed timing (quieter) and forecasts, never nagging.
+They feed timing (quieter) and forecasts, never nagging. Your AI is told your phone's last saved place and Wi-Fi name
+only with `chat.context_places` on (0.9.0, off). Since 0.9.0 the places sensor can also tell your desk you've
+gone out, each part behind its own switch, all off: Face presence marks you away at once (`face.away.use_places`) and
+may keep the camera closed while you're out (`face.away.places_close_camera`), and Voice may stop listening
+(`voice.listen.phone_away`). Only "the phone left a saved place" and its time are used for that, in memory; the
+place's name stays in the senses' store.
 
 `/senses` shows what each sense saw today. `/senses off <name>` switches one off and deletes what it kept; `/senses forget [name]` clears today's.
 

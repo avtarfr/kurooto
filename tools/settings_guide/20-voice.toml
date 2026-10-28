@@ -475,6 +475,12 @@ your data). Only numbers for where a face points are used, never who it is, and 
 when = "Turn it off to have only your own look open it (as 0.8.17)."
 needs = "`voice.listen.look_to_talk`, Face presence on and enrolled."
 
+[s."voice.listen.phone_away"]
+tip = "Stop listening while your phone is out (it left a place you saved)."
+what = "Uses Brain's phone places sensor. Listening stops when the phone leaves a saved place and starts again when it arrives at one, or when someone is back at the desk (a face Face presence knows, or the keyboard). Only that the phone left goes into it, never the place."
+when = "Turn it on if you'd rather the microphone rested while you're away from home."
+needs = "Brain on and its phone places sensor (mind.senses.phone.places)."
+
 [s."voice.listen.look_in_company"]
 tip = "With others here, looking at it and saying its name (even misheard) counts as calling it."
 what = """With two or more faces in view or other voices about, its name has to be said first and heard exactly.

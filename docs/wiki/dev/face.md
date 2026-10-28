@@ -123,6 +123,9 @@ the room in view holds it. All on `Face` (`app.modules["face"]`):
 | `watch_people(cb) -> unsubscribe()` | `cb(faces)` for every frame the watcher looks at, while `face.addons.watch` is on: a list (empty when nobody's in view) of `{h_px, h, w, x, y, yaw, det, who, score, e}`. `h_px` the box's height in pixels at the capture size, `h`/`w` shares of the frame, `x`/`y` the box's centre in -1..1 (the camera's own picture, not mirrored), `yaw` from `vision.pose` (mirrored: negative = turned to their left), `det` the detector's score. `who` (`owner`, `unsure`, `stranger`), `score` (the template's cosine) and `e` (SFace's 128 floats, a copy) only for faces big and clear enough to judge (score ≥ 0.8, ≥ `recognise.min_face_px`, sharp, lit), else None. Called on the `face-watch` thread between frames: keep it quick; an exception is a `face_failed {part: "an add-on watching"}` event and the next subscriber still runs. Each subscriber gets its own copies |
 | `hold_watch(reason, seconds=600, core=False) -> bool` | keeps the camera wanted (`Watcher.held`) for at most `HOLD_MAX_S` = 600 s, renewed by calling again, until `release_watch(reason)`; holds are keyed by `reason` (60 chars). Every pause reason comes first, so a hold never overrides a switch, /face pause, Kurooto paused, battery, a lock, a call, focus, the night, an enrolment or a camera problem. False (nothing held) when `face.addons.hold` is off, unless `core=True` (Kurooto's own hold: Voice's `voice.listen.need_face`; kept in `_core_holds`, listed by `holds()` whatever the add-on switch). `holds()` lists the live ones; `line()` then says "camera on: an add-on is looking (reason)" for add-ons' and the reason itself for core ones ("camera on: voice: who's talking"), and `status()["holds"]` has them |
 | `watch_faces(cb) -> unsubscribe()` | `cb(faces)` with the tracker's list (below: `{id, x, y, h, owner, m}`, no identity beyond the owner flag, no numbers) for every frame tracked, and `[]` once when the last face goes or the camera closes; while `face.track.on` and `face.addons.watch` are on. A subscriber alone asks for faces at the recognition rate (`TRACK_SLOW`); a hold whose reason contains "track" (`hold_watch("eye tracking")`) asks for `face.track.fps` (`TRACK_FAST`) and opens the camera as any hold does. Same thread, copies and failure rule (`face_failed {part: "an add-on following faces"}`) as `watch_people` |
+| `greet_part(name, line) -> unsubscribe()` | (0.9.0, `face.greet.addons`, off) `line()` returns one short sentence (or None) for the next greeting; called on the greeting's thread only with nobody else in view (`others` and `nearby.others` false); cut to `ADDON_LINE_MAX` (120) characters, a full stop added, passed to `compose(extra=[("addon:<name>", text)])` after every built-in part so the length limit drops it first. `greet_carried(name, since)` says whether a greeting said it at or after `since` (`time.time()`), so the add-on can say it its own way otherwise. The part's name (`addon:<name>`) is in `face_greeted`'s `parts`, never its words. A raising `line` is `face_failed {part: "an add-on's greeting line"}` and the greeting goes on |
+| `known_guests(check) -> unsubscribe()` | (0.9.0, `face.addons.known_guests`, on; nothing without an add-on) `check()` returns True when everyone in view besides the owner is someone the add-on knows: a boolean only, so core still never works out who anyone else is. `known_guest()` is any check's True; `may_greet` then lets `with_others` `skip` through and `greet()` greets as `short` ("Welcome back.", no conversation). A raising check counts as False |
+| `light_level() -> float or None` | (0.9.0, `face.light_sense`, off) the frames' mean brightness, 0..1, smoothed (`LIGHT_ALPHA` 0.2 a frame), None when off or older than `LIGHT_STALE_S` (120 s). Only while the camera looks anyway: the watcher emits `light {mean}` when cfg `light` is on, `Face._light_seen` keeps one number in memory. A webcam adjusts its exposure: a rough dark-to-lit signal, not lux. Brain's body uses it for `brightness` when no device's lux is fed (`stimulation._webcam`, x `WEBCAM_SCALE` 2.5) |
 | `owner_desk_height() -> {px, h, n, from} or None` | your face's usual height at the desk: the median of your sightings (the `seen` emit, at most one per 5 s, last 240, in memory; trusted from 10, `from: "seen"`), else the enrolment's front-step median (`baseline.height` over `face.camera.height`, `from: "enrolment"`), else None. Cleared by forget |
 
 Off (no subscriber, no hold) nothing is built: `people()` is false, so `_look` makes no list. The watcher emits
@@ -158,6 +161,13 @@ no blink hold, and `_gaze_last` (the /voice gaze line) stays the owner's. Number
 with the frame. Pause list (0.8.18): "Kurooto is asleep" after "night hours" (`mind.sleep.senses_off`,
 `mind/sleep.senses_off()`), 17 reasons; `desk_seen_at()` (the watcher's `present_at` as `time.time()`, None when
 away or not watching) feeds `mind.sleep.desk_holds`.
+
+0.9.0 (`face.camera.yaw_offset_deg`, 0): `Face.yaw_offset()` (clamped to +-30, 0 for a bad value) moves the centre of
+the look. The head path compares `|atan(yaw / YAW_K) - offset|` (signed: pose's mirrored yaw, + to the user's right)
+with `look_yaw_deg`, which is `yaw_degrees` at 0; the eyes path subtracts it from `angles()`' sideways degrees before
+`look_gaze_yaw_deg`. `close_facing` and the `face_yaw_deg` head limit are unchanged (they ask "facing the camera at
+all"). Generic on purpose: an add-on whose camera's lens sits beside the spot to look at (the Body add-on's drawn eye)
+sets the setting while `face.camera.device` names its camera and clears it on unplug.
 
 ### By the eyes (0.8.17, `voice.listen.look_gaze`, `gaze.py`)
 
@@ -351,6 +361,33 @@ going wrong: True. Greeting counts (day, n, last) live in `face.json`'s `greets`
 now`, `last_reply = text`, and a per-invite `close_s` put back when it closes. Rules 7 (open portal, a question or
 request) and 8 (a yes or no after a question) then apply; anything not addressed closes it.
 
+Name (0.9.0, `persona.templates`): `Face.greet` passes `name=persona.address(app)` unless the arrival saw others or
+`nearby.others(app)`; `compose` makes "Welcome back, Sam." and measures `MAX_CHARS` without the name, then
+`persona.template` applies the avoid line as punctuation.
+
+## Your phone's places (0.9.0, `face.away.use_places`, `places_close_camera`, off)
+
+`mind/senses/phone.py:ingest` hands a places bin's `event` (arrive / leave) no older than `PLACE_FRESH_S` (30 min) to
+`_place`: `core/nearby.py:set_phone_out(app, event == "leave", at)` (a time only, never the label; `phone_out()` drops
+it after `PHONE_OUT_MAX_S`, 18 h) and, Face on, `Face.phone_place(event)`. A leave with `away.on` and `use_places`
+calls `Watcher.mark_away()` (away now, `left_at`, "left" -> `face_left`), so `_away_block` and `hold_desktop` apply
+at once; an arrive does nothing to the watcher. "back" and an arrival clear `phone_out`. `places_close_camera` (with
+`use_places`) is the pause reason "your phone is out" (after "Kurooto is asleep"; PAUSES has 18). Voice's
+`voice.listen.phone_away` is a `blocked()` reason of its own reading the same `phone_out`. Needs Brain on and
+`mind.senses.phone.places` (the phone's saved places); without them nothing ever sets it.
+
+## Someone else while you're away (0.9.0, `face.away.report_others`, off)
+
+`Watcher._look` counts the faces classified `stranger` in a frame (unsure ones don't count) and, while `away`, emits
+`strangers {n}`. `Face._stranger_seen(n)` (switch on) keeps `{epoch minute: most faces}` in memory, at most
+`OTHERS_MAX` (120) minutes, the oldest dropped. On "back" and on an arrival, `report_others()` sends one message
+(`why="face.away.others"`, a Calm reason with Stop = the switch off) naming up to `OTHERS_SAID` (6) minutes, emits
+`face_away_others {count}` and clears it; switched off meanwhile, it clears without telling. Forget clears it. Not in
+`status()`, the card, the reserve or any AI tool (R7: other people's presence is theirs).
+
+Records (0.9.0, `face.greet.records`, on; Brain only): see [mind.md](mind.md#decision-records-mindrecordspy). The
+portal's `turns` (answered turns since it opened, reset on open) says whether the greeting was answered.
+
 ## Learning
 
 `Watcher` keeps a candidate from an arrival's frames when the frame is enrolment-grade (blur ≥ 60, 50 ≤ mean ≤ 210,
@@ -361,6 +398,13 @@ appends to the FIFO pool (`learn.max`), retrains (thresholds still from enrolled
 
 A change of the SFace file (another sha256 than `face.json`'s `model_sha`) means "re-enrol needed": embeddings from two
 models are never mixed.
+
+From a Voice ID turn (0.9.0, `face.learn.from_voice`, off, under `learn.on`): `Seen` gained `good` (the frame's
+quality, as the arrival candidate uses). `Voice` calls `_face_learn()` for an addressed turn whose verdict is `owner`
+and not `assisted` (a face-assisted verdict would have the face confirm itself); `Face.learn_from_voice()` needs
+`nearby.view() == (1, True)`, no `nearby.others`, and `Watcher.voice_candidate()`: the newest owner frame within
+`VOICE_LEARN_S` (3 s), alone, good and `learnable`; then `learn(e)` with its spacing, cap, retrain and Undo. The
+mirror of `voiceid.learn_face`.
 
 ## Privacy
 

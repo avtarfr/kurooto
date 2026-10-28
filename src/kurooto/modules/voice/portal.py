@@ -78,6 +78,7 @@ class Portal:
         self.answered = False  # its last words answered a turn in this conversation
         self._chatter_at: float | None = None  # speech that wasn't to it, last heard (a time only)
         self.looked = False  # (0.8.17) opened by the owner looking at it, nothing said to it since
+        self.turns = 0  # (0.9.0) turns answered since it opened (a greeting's outcome: answered or not)
 
     # ---------------------------------------------------------------------------------------------- state
     def context(self) -> Context:
@@ -108,6 +109,7 @@ class Portal:
             self.opener = self.last_who = ""
             self.answered = False
             self.looked = False
+            self.turns = 0  # kept after it closes, so on_change can read how the conversation went
         self.open = is_open
         if not is_open:
             self.awaiting = False
@@ -237,6 +239,7 @@ class Portal:
             self.last_reply = reply
             self.spoke_at = self.last = self.clock()
             self.answered = self.open
+            self.turns += 1
             if who is not None and who.decision == "owner" and self.last_owner_session == self.session:
                 self.last_owner_at = self.spoke_at  # carry counts from the end of the answer, not the question
             if self.open:

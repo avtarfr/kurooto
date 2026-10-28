@@ -5,16 +5,34 @@ The conversation's context: Telegram and the phone app's chat with Kurooto itsel
 (chat/history.json) of which the last 6 turns from the last 2 hours go with each request. Each other chat in the phone
 app (a session, 0.8.10: calls/sessions.py) has its own history (chat/sessions/<id>.json) that carries over for as long
 as the chat lives, like an AI web app: its latest turns, up to SESSION_CHARS, go with each request. A reply in the app
-brings the quoted message along (Incoming.quote), and a file sent in a session is named in that session's context."""
+brings the quoted message along (Incoming.quote), and a file sent in a session is named in that session's context.
+
+How it came (0.9.0, chat.context_line): every turn ends with one "[How it came]" line in coarse words, as spoken ones
+did since 0.8.17: typed on Telegram, in the phone app or on this computer; on a phone call now; and, from Face
+presence, that they stepped away from the desk and since when. Never a place: Brain's phone places and Wi-Fi labels go
+in only with chat.context_places (off). Spoken turns keep their line, plus (face.greet.tell_ai) the greeting Kurooto
+had just said when they answer it. With Brain's "Why this?" on (mind.why.to_ai), a turn that asks why also gets the
+plain reasons for its last few messages that came by themselves (mind/records.py), never a sense, a mood or a tone."""
 
 from __future__ import annotations
 
+import datetime as dt
 import re
 import time
 
 from kurooto import providers
+from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Module
+
+register_defaults(
+    "chat",
+    {
+        "context_line": True,  # (0.9.0) each turn tells your AI how it came, in plain words (typed where, a call, away)
+        # (0.9.0) and your phone's last saved place and Wi-Fi name (Brain's phone senses), off until you say so
+        "context_places": False,
+    },
+)
 
 SHARED_S = 2 * 3600  # files shared from the phone this recently are mentioned to the AI when you talk of a file
 SESSION_KEEP = 40  # turns kept per phone app chat (session)
@@ -22,6 +40,10 @@ SESSION_CHARS = 16000  # of them, the latest that fit in this many characters go
 JOBS_KEEP = 200  # which session each recent request was asked in (its answer becomes that session's turn)
 MAIN = "main"
 SHARED_NOTE = "\n\n[Shared from their phone lately"
+HOW = "[How it came] "  # (0.9.0) the context line chat.ask puts last; chat history leaves it out
+WHY_ASKED = re.compile(r"\bwhy\b", re.I)  # (mind.why.to_ai) a turn that asks why gets the records' reasons
+WHY_ROWS = 3  # ...the last this many messages it started by itself
+WHY_S = 24 * 3600  # ...from the last day
 REFERS = re.compile(r"\b(files?|pdfs?|photos?|pictures?|images?|docs?|documents?|screenshots?|attachments?|sent|shared|"
                     r"uploaded)\b", re.I)  # fmt: skip
 
@@ -127,6 +149,13 @@ class Chat(Module):
             prompt = "\n".join(conv)
         else:
             prompt = text
+        if msg.via != "voice" and self.app.settings.get("chat.context_line", True):  # (0.9.0) typed: where, a call,
+            line = self._how_line(msg)  # away from the desk; before the register line, which stays last
+            if line:
+                prompt = f"{prompt}\n\n{line}"
+        why = self._why_line(msg.text)  # (0.9.0, mind.why.to_ai) "why did you...": its own reasons
+        if why:
+            prompt = f"{prompt}\n\n{why}"
         from kurooto.core import persona  # (register) a short message, a short answer; a voice note, spoken style
 
         style = persona.register_line(self.app, msg.text.strip(), voice=msg.voice, files=bool(msg.files))
@@ -176,7 +205,119 @@ class Chat(Module):
                 "You never see the camera's pictures: Face presence recognises faces on this computer and tells you "
                 "only this."
             )
-        return "[How it came] " + " ".join(bits)
+        greeting = self._greeting_said()
+        if greeting:  # (0.9.0, face.greet.tell_ai) they're answering the greeting it just said
+            bits.append(f'Just before, you had greeted them aloud, unasked, with: "{greeting}"')
+        return HOW + " ".join(bits)
+
+    def _greeting_said(self) -> str:
+        """(0.9.0, face.greet.tell_ai) The desk greeting Voice just said, while its conversation is open and this is
+        the first turn in it; else "". Rule-made words (counts, a class's or a deadline's title), never the camera."""
+        if not self.app.settings.get("face.greet.tell_ai", True):
+            return ""
+        v = self.app.modules.get("voice")
+        p = getattr(v, "portal", None)
+        if p is None or not p.open or p.opened_why != "greeting" or getattr(p, "turns", 0):
+            return ""
+        return str(p.last_reply or "")[:300]
+
+    def _how_line(self, msg: Incoming) -> str:
+        """(0.9.0, chat.context_line) How a typed turn came, in coarse words: where it was typed, a call going on,
+        Face presence's "stepped away from the desk" with its time, and (chat.context_places) the phone's last saved
+        place and Wi-Fi name. "" when there's nothing to say (a check-up run, the setup page)."""
+        where = {
+            "telegram": "They typed this on Telegram.",
+            "app": "They typed this in the phone app.",
+            "terminal": "They typed this on this computer (the dashboard or a terminal).",
+        }.get(msg.via, "")
+        if not where:
+            return ""
+        bits = [where]
+        try:
+            from kurooto.web.tools_api import live_call
+
+            if live_call(self.app):
+                bits.append("They're on a phone call right now.")
+        except Exception:
+            pass
+        face = self.app.modules.get("face")
+        if face is not None and self.app.is_on("face"):
+            try:
+                left = face.left_at()
+            except Exception:
+                left = None
+            if left is not None:
+                bits.append(f"Face presence noticed they stepped away from their desk at {left:%H:%M}.")
+        if self.app.settings.get("chat.context_places", False):
+            bits += self._places()
+        return HOW + " ".join(bits)
+
+    def _places(self) -> list[str]:
+        """(chat.context_places, off) Brain's phone senses (mind/senses/phone.py): the last saved place the phone
+        reported in the last day, whether it left one, and the Wi-Fi's name you gave it. Labels only, never a
+        position; nothing when Brain or those senses are off."""
+        import time as _t
+
+        from kurooto.core import nearby
+
+        out = []
+        try:
+            from kurooto.mind.senses import phone, store
+
+            since = _t.time() - 86400
+            out_at = nearby.phone_out(self.app)
+            p = store.events(self.app, "phone:places", since) if phone.enabled(self.app, "places") else []
+            if p and p[-1].get("target"):
+                at = dt.datetime.fromtimestamp(float(p[-1]["t"]))
+                did = "left" if out_at is not None else "was last at or near"
+                out.append(f'Their phone {did} the place they saved as "{p[-1]["target"]}" ({at:%H:%M}).')
+            w = store.events(self.app, "phone:wifi", since) if phone.enabled(self.app, "wifi") else []
+            name = phone.wifi_label(self.app, str(w[-1].get("target") or "")) if w else ""
+            if name:
+                out.append(f'Their phone is on the Wi-Fi they call "{name}".')
+        except Exception:
+            return []
+        return out
+
+    def _why_line(self, text: str) -> str:
+        """(0.9.0, mind.why.to_ai, under Brain's mind.why.on) A turn that asks why gets the reasons for the last few
+        messages Kurooto started by itself: when, the plain reason, the setting, whether Brain's gate made it quieter,
+        what it expected and what came of it. Never a sense, the read, a mood or a tone (the door's and gate's own
+        words aren't passed on)."""
+        if not WHY_ASKED.search(text or "") or not self.app.settings.get("mind.why.to_ai", True):
+            return ""
+        try:
+            from kurooto.mind import records
+
+            if not records.why_on(self.app):
+                return ""
+            import time as _t
+
+            rows = [r for r in records._load(self.app)["rows"] if _t.time() - float(r.get("at") or 0) <= WHY_S]
+            calm = getattr(self.app, "calm", None)
+            said = []
+            for r in rows[-WHY_ROWS:]:
+                reason = calm.reason(r.get("why")) if calm is not None else None
+                what = reason.what if reason is not None else "no reason recorded"
+                bit = f"{dt.datetime.fromtimestamp(float(r['at'])):%H:%M}: {what}"
+                if reason is not None and reason.setting:
+                    bit += f" (setting {reason.setting})"
+                if str(r.get("gate") or "").startswith("Brain's gate made it quieter"):
+                    bit += "; Brain's gate made it quieter"
+                oc = (r.get("outcome") or {}).get("result")
+                if r.get("expect"):
+                    want = "a reply" if r["expect"]["what"] == "reply" else "that they'd act on it"
+                    bit += f"; it expected {want}: {records.SAID.get(oc or '', 'still open')}"
+                said.append(bit)
+        except Exception:
+            return ""
+        if not said:
+            return ""
+        return (
+            "[Why it did things lately] What it started by itself, newest last (its own records): "
+            + "; ".join(said)
+            + "."
+        )
 
     def _main(self):
         from kurooto import providers
@@ -213,7 +354,8 @@ class Chat(Module):
         user_text = prompt = strip_register(prompt)
         if "Current request:\n" in prompt:
             user_text = prompt.split("Current request:\n", 1)[1].strip()
-        user_text = user_text.split(SHARED_NOTE, 1)[0]
+        user_text = user_text.split(SHARED_NOTE, 1)[0].split("\n\n" + HOW, 1)[0]
+        user_text = user_text.split("\n\n[Why it did things lately]", 1)[0]
         if sid:
             if not self._session_lives(sid):  # deleted while the AI was answering
                 return

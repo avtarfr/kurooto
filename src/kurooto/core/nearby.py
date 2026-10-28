@@ -28,6 +28,11 @@ between people unless it's named. An event "nearby_others {on, source}" says whe
     look(app) -> (since, last)    since: None when the last frame looked at didn't have him looking (or the camera
                                   closed); last: when he was last seen looking (monotonic), None never
 
+    set_phone_out(app, out)       (0.9.0) Brain's phone senses (mind/senses/phone.py, the places sensor): your phone
+                                  just left a place you saved (out) or arrived at one (back in). Only the time it left,
+                                  in memory, never the place's label (that stays in the senses' store).
+    phone_out(app) -> float | None   when it left (time.time()), None when it's in or it's been PHONE_OUT_MAX_S
+
 Nothing here authorises anything by itself. The one narrow use of the view (Voice ID's face assist, 0.8.13,
 voice.speaker_id.face_assist): a voice already scored inside its "not sure" margin counts as the owner while his face
 is the only one in view. A face alone never makes Kurooto act.
@@ -46,6 +51,7 @@ if TYPE_CHECKING:
 STALE_S = 120  # a signal not refreshed for this long no longer counts (a camera that closed without saying so)
 VIEW_S = 5.0  # the view counts this long after the frame (Face presence looks about once a second, 3 s on battery)
 FACING_KEEP_S = 60.0  # frames older than this are forgotten (a turn's window is a few seconds)
+PHONE_OUT_MAX_S = 18 * 3600  # (0.9.0) a phone "out" never heard back from counts this long at most
 _lock = threading.Lock()
 
 
@@ -148,3 +154,15 @@ def facing(app: App, since: float, until: float | None = None) -> tuple[int, int
 def last_facing(app: App) -> float | None:
     with _lock:
         return getattr(app, "_nearby_facing_at", None)
+
+
+def set_phone_out(app: App, out: bool, at: float | None = None) -> None:
+    """(0.9.0) Your phone left a saved place (out) or arrived at one, or you're back at the desk (not out)."""
+    with _lock:
+        app._nearby_phone = (time.time() if at is None else float(at)) if out else None  # type: ignore[attr-defined]
+
+
+def phone_out(app: App) -> float | None:
+    with _lock:
+        at = getattr(app, "_nearby_phone", None)
+    return at if at is not None and time.time() - at <= PHONE_OUT_MAX_S else None

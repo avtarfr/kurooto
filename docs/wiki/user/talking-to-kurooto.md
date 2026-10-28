@@ -137,6 +137,16 @@ long one (80 words or more) may get a full one; a voice note gets an answer word
 sentences, no lists). It goes only by your message's length, never by the time of day, and it doesn't change partway
 through a conversation. A length on your [persona card](teaching-kurooto.md#your-persona-card) wins over it.
 
+**How it came** (0.9.0, `chat.context_line`, on). Each message carries one line for your AI on how it came, in plain
+words: typed on Telegram, in the phone app or on this computer; whether you're on a call; and, with Face presence
+noticing when you leave, that you stepped away from the desk and when. So "what now?" from your phone can be answered
+knowing you're out. Said aloud at the desk, the line says so and what Voice ID and Face presence recognised (0.8.17);
+answering the desk greeting, it also says what Kurooto had just said (`face.greet.tell_ai`, on), so "yes" carries on
+from it. With Brain on, a message that asks why gets the plain reasons for Kurooto's own last few messages
+(`mind.why.to_ai`, on): "why did you greet me?" gets the real reason, not a guess. Your phone's last saved place and
+Wi-Fi name (Brain's phone senses) go along only if you turn on `chat.context_places` (off). The dashboard's open page
+or pinned note aren't sent yet.
+
 **Memory of the conversation.** Chat remembers your last few exchanges (up to 6, each cut to 1,200 characters) as long
 as the last one was within 2 hours; after 2 hours of quiet a new message starts fresh. Requests from a terminal start
 fresh every time. Background requests (digests, the look back) never become part of the chat.

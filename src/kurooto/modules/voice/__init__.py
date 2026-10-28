@@ -167,6 +167,8 @@ register_defaults(
             # (0.8.18) with others here (careful calls, conversation mode), a look plus its name heard any way counts
             # as the call, so a misheard name isn't dropped; off: a look counts there only before a question or request
             "look_in_company": True,
+            # (0.9.0) with Brain's phone places sensor: stop listening while your phone is out (left a saved place)
+            "phone_away": False,
             "timing": True,  # time each turn from your last word to its first sound (numbers only; medians in /voice)
             "fast_brain": "same",  # plain chat by voice: same (your AI), local (this computer's model) or fastest
             "warm_up": True,  # when listening starts, warm the transcriber and the voice so the first turn is quick
@@ -685,6 +687,10 @@ class Voice(Module):
         if not is_open:
             self.voiceid.portal_closed()  # (voice id) a guest's turns of this conversation are dropped
             self.live.close()  # (voice.listen.live) its Live session ends with the conversation
+            if self.portal.opened_why == "greeting":  # (0.9.0, face.greet.records) how the greeting went
+                face = self.app.modules.get("face")
+                if face is not None and hasattr(face, "greet_closed"):
+                    face.greet_closed(self.portal.turns > 0)
 
     def _level(self, frame: bytes) -> None:
         if not self.setting("listen.levels"):
@@ -845,6 +851,8 @@ class Voice(Module):
             self.app
         ):  # (0.8.18, mind.sleep.senses_off) asleep: nothing listens until /wake, a message, a call
             return "Kurooto is asleep"
+        if self.setting("listen.phone_away") and nearby.phone_out(self.app) is not None:  # (0.9.0) you're out
+            return "your phone is out"
         if not self.app.power.may_run(self):
             return "on battery (saver mode)"
         if not self.setting("listen.calls") and self._on_call():
@@ -1006,6 +1014,8 @@ class Voice(Module):
         if who is not None:
             self.publish("voice_state", state="addressed", portal=True, listening=True, why=d.why, who=who.word)
         self._went_well(who)
+        if who is not None and who.decision == "owner" and not who.assisted:  # (0.9.0) sure by the voice alone
+            self._face_learn()
         row = {**d.feats}
         if who is not None:  # checked after the decision: the row gets the verdict all the same
             row["speaker"], row["score"] = who.decision, who.score
@@ -1203,6 +1213,17 @@ class Voice(Module):
         self._look_used = since
         if p.look():
             self.look_count += 1
+
+    def _face_learn(self) -> None:
+        """(0.9.0, face.learn.from_voice) Voice ID was sure this turn was the owner's voice (not face-assisted, so the
+        face isn't confirming itself): Face presence may learn from the frame of him it just saw."""
+        face = self.app.modules.get("face")
+        if face is None or not self.app.is_on("face"):
+            return
+        try:
+            face.learn_from_voice()
+        except Exception as e:
+            self.app.events.emit("voice_failed", part="face learning", error=f"{type(e).__name__}"[:100])
 
     def _went_well(self, who) -> None:
         """An addressed turn in the same conversation, from the same voice: the turn before it went well (a row
