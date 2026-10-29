@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.2 (unreleased)
+## 0.9.2 (2026-10-29)
 
 - **Gemini Live for every turn at the desk** (`voice.listen.live_everyone`, off; with `voice.listen.live`): every
   turn said to Kurooto goes to Live, face seen or not. Yours (Voice ID) get your session with its tools; anyone else's,
