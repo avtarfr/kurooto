@@ -234,8 +234,8 @@ public class BedsideActivity extends ComponentActivity {
      *  sealed for this phone (Today.java), and whether your assistant is asleep. Locked with a secure lock: counts
      *  only, as for the calls. */
     private void showToday(boolean hide) {
-        if (!Prefs.bedsideToday(this) || demo) { st.setToday(new ArrayList<>()); st.setAsleep(""); return; }
-        JSONObject list = Today.load(this).optJSONObject("list");
+        if (!Prefs.bedsideToday(this)) { st.setToday(new ArrayList<>()); st.setAsleep(""); return; }
+        JSONObject list = (demo ? Demo.INSTANCE.today() : Today.load(this)).optJSONObject("list"); // demo: made-up rows
         List<String> rows = new ArrayList<>();
         int n = 0;
         JSONArray rem = list == null ? null : list.optJSONArray("reminders");

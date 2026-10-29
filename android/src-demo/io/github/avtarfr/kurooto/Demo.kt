@@ -31,7 +31,8 @@ object Demo {
             .put("due", JSONArray()
                 .put(JSONObject().put("id", "d1").put("title", "Problem set 4 (Linear algebra)").put("when", "tomorrow")
                     .put("acts", JSONArray().put("done").put("+1")).put("parts", 7).put("done", 4))
-                .put(JSONObject().put("id", "d2").put("title", "Lab report").put("when", "Fri").put("acts", JSONArray().put("done")))
+                .put(JSONObject().put("id", "d2").put("title", "Lab report").put("when", "Fri").put("acts", JSONArray().put("done"))
+                    .put("due", iso.format(Date(now.time + 5 * 3600_000))))
                 .put(JSONObject().put("id", "d3").put("title", "Midterm (Topology)").put("when", "Mon 03 Nov").put("exam", true)))
             .put("reminders", JSONArray().put(JSONObject().put("when", "Sat 18:00").put("what", "Return the library books")))
             .put("alarm", JSONObject().put("next", "Tomorrow 07:00").put("daily", "07:00").put("reason", "First class at 08:30")
@@ -39,6 +40,14 @@ object Demo {
             .put("threads", JSONArray().put(JSONObject().put("text", "Ask about the project deadline"))
                 .put(JSONObject().put("text", "Find a room for the study group")))
             .put("questions", 2)
+            // (0.9.0) the day's plan and what to start, what waits on the computer, hours studied, the laptop's camera,
+            // whether the assistant is asleep (Today's Plan and On your computer, bedside's line)
+            .put("plan", JSONArray().put("Problem set 4 before lunch").put("Revise compactness for the midterm"))
+            .put("start", JSONArray().put(JSONObject().put("title", "Lab report").put("when", "start by 15:00")))
+            .put("waiting", JSONObject().put("held", 2).put("proposals", 1).put("brain", "planning the evening"))
+            .put("study_h", "2.5")
+            .put("camera", JSONObject().put("on", false).put("why", "eyes closed"))
+            .put("asleep", true)
         return JSONObject().put("list", list).put("at", iso.format(Date(now.time - 12 * 60_000))).put("computer", "online")
     }
 
