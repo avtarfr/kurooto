@@ -470,7 +470,9 @@ More on each: [updates-and-backups.md](updates-and-backups.md). Before you share
 - **Voice** never keeps sound (only a rolling buffer of under a second, in memory) and never keeps the words of noise
   or of people talking to each other: they're dropped as soon as the gate decides. Only counts are kept, in memory.
 - **Voice ID** keeps only your own voice print: numbers, condition names, dates, thresholds, quality numbers and the
-  microphone's name, encrypted with AES-256-GCM in `state/voiceid/template.bin` under a key in your keychain (or the
+  microphone's name (0.9.2, `voice.speaker_id.per_device`: also other microphones' names, the numbers of turns proven
+  yours there and those microphones' own prints; `voice.speaker_id.claim`: a "not sure" turn's sound waits in memory
+  for 10 seconds so a tap can say it was you, then is zeroed), encrypted with AES-256-GCM in `state/voiceid/template.bin` under a key in your keychain (or the
   owner-only secrets file where there's none). Never your recordings (each sample's sound is dropped as soon as its
   numbers are made), never anyone else's voice (scored in memory, then gone), and never a score in a log. It's never
   backed up, carried by Profile sync, put in a diagnostics zip, logged or shown. Where the key sits in the secrets

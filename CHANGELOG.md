@@ -2,6 +2,13 @@
 
 ## 0.9.2 (unreleased)
 
+- **Voice ID learns each microphone you use** (`voice.speaker_id.per_device`, on). Through a microphone you didn't enrol
+  on (the Body phone's, a headset), turns proven yours (only your face in view, one voice, 2 s) build that microphone's
+  own print, calibrated against strangers heard through a simulated phone channel, and it asks once before using it.
+  Vectors only, sealed with your voice print; `/voice id mics`. A fix with it: "improve over time" no longer learns
+  through a microphone without its own print (it drifted your print until it stopped for good).
+- **"That was me"** (`voice.speaker_id.claim`, on). Tap the Body face within 10 s of a "not sure" turn, with only your
+  face in view: it's heard again as yours. At most 5 a day; the turn's sound waits in memory for those 10 s only.
 - **Face presence doesn't flicker** (a fix). A face far smaller than the biggest in view no longer counts as someone
   here, someone else needs two of their last three frames, and your face stays yours for about two seconds through a
   blurred, unsure or misjudged frame, so "only you in view" (Voice ID's face assist, look to talk) holds steady.

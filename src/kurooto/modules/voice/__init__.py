@@ -103,7 +103,7 @@ from kurooto.modules.voice.learn import NIGHT_AT, Learner
 from kurooto.modules.voice.live import Live
 from kurooto.modules.voice.parts import KOKORO_VOICES, STT_MODELS, Parts
 from kurooto.modules.voice.portal import Portal
-from kurooto.modules.voice.voiceid import NO_VOICE, VoiceID
+from kurooto.modules.voice.voiceid import CLAIM_WHY, NO_VOICE, VoiceID
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -228,6 +228,16 @@ register_defaults(
             "spoken_enrol": True,  # during enrolment Kurooto says each step aloud (off: the page shows it only)
             "face_assist": True,  # a "not sure" voice counts as you while Face presence sees only your face
             "carry_talk": True,  # a "not sure" voice stays you in a conversation you opened (with carry)
+            # (0.9.2) through a microphone it wasn't enrolled on, turns proven yours (only your face in view, one voice,
+            # 2 s of speech; or "that was me") build that microphone's own print, used after your one-time yes;
+            # vectors only, sealed with your voice print
+            "per_device": True,
+            "per_device_per_day": 10,  # at most this many such turns a day per microphone
+            # (0.9.2) a tap on an add-on's device (the Body face) within claim_s of a "not sure" turn, with only your
+            # face in view: it was you, and the turn is heard again as yours (its sound held in memory that long only)
+            "claim": True,
+            "claim_s": 10,  # how long after a "not sure" turn a tap can claim it
+            "claim_per_day": 5,  # at most this many claims a day
         },
         "audio": {
             "backend": "auto",  # how sound is played and recorded: auto, pipewire (pw-play/pw-record) or portaudio
@@ -1366,6 +1376,9 @@ class Voice(Module):
         """(0.9.0, voice.listen.tap_to_talk) For an add-on: a tap on its device (the Body face, while it isn't
         speaking: a tap while it speaks stays "stop") opens the conversation, silently (Portal.tapped). (True, "")
         or (False, why not): the switch off, Voice off, not listening, blocked (muted, a call, paused), asleep."""
+        claimed = self._claim_tap()  # (0.9.2, voice.speaker_id.claim) "that was me", before opening a talk
+        if claimed is not None:
+            return claimed
         if not self.setting("listen.tap_to_talk"):
             return False, "off"
         if not self.app.is_on(self.id):
@@ -1380,6 +1393,26 @@ class Voice(Module):
         if self.listener is None or not self.listener.running():
             return False, "not listening"
         return (True, "") if self.portal.tapped() else (False, "a conversation is open already")
+
+    def _claim_tap(self) -> tuple[bool, str] | None:
+        """(0.9.2) A tap within voice.speaker_id.claim_s of a "not sure" turn, with only the owner's face in view: that
+        turn is heard again as his (VoiceID.claim), on the hearing thread, in a talk the tap opens. None: no claim here
+        (the tap does what it did before)."""
+        vid = self.voiceid
+        if not vid.on() or not vid.s("claim", True) or not self.app.is_on(self.id) or self.blocked():
+            return None
+        if self.listener is None or not self.listener.running():
+            return None
+        ok, why, pcm, speech_s = vid.claim()
+        if not ok or pcm is None:
+            if why not in ("off", "nothing to claim"):
+                self.app.events.emit("voiceid_claim_refused", why=why)
+            return None
+        self.portal.tapped()  # open (silently) if it isn't: the turn counts without the name
+        flags = bytes([1]) * max(1, int(speech_s * 16000 / 512))
+        self.publish("voice_state", state="claimed", portal=True, listening=True, why=CLAIM_WHY, who="you")
+        self._heard_audio(pcm, False, len(pcm) / 32000, flags)
+        return True, ""
 
     def _went_well(self, who) -> None:
         """An addressed turn in the same conversation, from the same voice: the turn before it went well (a row
@@ -2459,7 +2492,7 @@ class Voice(Module):
                 "voice",
                 "Voice: what it's doing; mute, unmute, stop (stop speaking), say <text>; id (Voice ID), enrol",
                 self._cmd,
-                usage="/voice [mute|unmute|stop|say <text>|id [test|retrain|undo today|undo all|forget]|"
+                usage="/voice [mute|unmute|stop|say <text>|id [test|retrain|undo today|undo all|mics|forget]|"
                 "enrol [again|stop]]",
             )
         ]
@@ -2530,7 +2563,10 @@ class Voice(Module):
             w = st["who"]
             lines.append(f"Since start: {w['owner']} you, {w['guest']} someone else, {w['unsure']} unsure; "
                          f"{st['guest_turns']} guest turns answered.")  # fmt: skip
-            lines.append("/voice enrol, /voice id test, retrain, undo today|all, forget; the page: /voice-id")
+            devs = st.get("devices") or []
+            if devs:
+                lines.append(f"Other microphones: {len(devs)} (/voice id mics)")
+            lines.append("/voice enrol, /voice id test, retrain, undo today|all, mics, forget; the page: /voice-id")
             return "\n".join(lines)
         if word == "test":
             r = vid.test("me")
@@ -2545,13 +2581,37 @@ class Voice(Module):
             if which not in ("today", "all"):
                 return "/voice id undo today, or /voice id undo all"
             return vid.undo_adapt(which)["message"]
+        if word in ("mics", "mic"):  # (0.9.2) per microphone: list, or use / no / forget one
+            return self._cmd_mics(rest)
         if word == "forget":
             text = "Forget your voice? The voice print and its key are deleted; you'd enrol again to use Voice ID."
             if msg is not None:
                 msg.reply(text, buttons=[[("Forget my voice", "vid:0:forget"), ("Keep it", "vid:0:keep")]])
                 return None
             return text
-        return "/voice id [test|retrain|undo today|undo all|forget]"
+        return "/voice id [test|retrain|undo today|undo all|mics|forget]"
+
+    def _cmd_mics(self, rest: str) -> str:
+        """(0.9.2) /voice id mics: the microphones Voice ID is learning or knows you through; /voice id mic <n>
+        use|no|forget."""
+        a = rest.strip().split()
+        vid = self.voiceid
+        if len(a) >= 2:
+            return vid.device_answer(a[0], a[1].lower())["message"]
+        devs = vid.devices_view()
+        if not devs:
+            on = "on" if vid.per_device() else "off (voice.speaker_id.per_device)"
+            return f"No other microphone yet. Learning on others: {on}."
+        words = {"learning": "learning", "weak": "learning (weak so far)", "ready": "ready: say use or no",
+                 "on": "in use", "declined": "not used"}  # fmt: skip
+        out = []
+        for i, d in enumerate(devs, 1):
+            grade = f", {d['grade']}" if d.get("grade") else ""
+            now = " (listening now)" if d.get("now") else ""
+            out.append(f"{i}. {d['name']}{now}: {words.get(d['state'], d['state'])}, {d['samples']} of "
+                       f"{d['need']} turns{grade}")  # fmt: skip
+        out.append("/voice id mic <number> use|no|forget")
+        return "\n".join(out)
 
     def _cmd_enrol(self, arg: str) -> str:
         a = (arg or "").strip().lower()

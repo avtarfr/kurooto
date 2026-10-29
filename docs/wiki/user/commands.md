@@ -76,7 +76,7 @@ More: [AI models](ai-brains.md), [Talking to Kurooto](talking-to-kurooto.md#chat
 | `/voice mute`, `/voice unmute` | stop and start listening and speaking (it stays muted across restarts) |
 | `/voice stop` | stop speaking now |
 | `/voice say <text>` | say this aloud now |
-| `/voice id` | Voice ID: whether it knows your voice, its grade, thresholds and last test; `/voice id test` (one try at the computer), `/voice id retrain`, `/voice id undo today` or `undo all` (what it learned over time), `/voice id forget` (deletes your voice print, with buttons). Typed only, never by voice |
+| `/voice id` | Voice ID: whether it knows your voice, its grade, thresholds and last test; `/voice id test` (one try at the computer), `/voice id retrain`, `/voice id undo today` or `undo all` (what it learned over time), `/voice id mics` (0.9.2: other microphones' own prints; `/voice id mic <n> use\|no\|forget`), `/voice id forget` (deletes your voice print, with buttons). Typed only, never by voice |
 | `/voice enrol` | start or continue enrolling your voice at the computer (spoken prompts, and the Your voice page `/voice-id`); `/voice enrol again` (start over from nothing; the voice print you have works until the new one is built), `/voice enrol stop`, `/voice enrol keep` (keep what's done for later). Typed only |
 
 More: [Voice](voice.md).

@@ -100,6 +100,13 @@ function improve() {
   $("#amsg").textContent = `Learned from ${a.count} turn${a.count === 1 ? "" : "s"} (cap ${a.cap})${a.last ? `, last ${a.last}` : ""}${a.today ? `, ${a.today} today` : ""}.${a.drift_stopped ? " Improving stopped: your voice print would drift too far from your enrolment; retrain or undo." : ""}`;
 }
 
+const MIC_STATE = { learning: "learning", weak: "learning (weak so far)", ready: "ready", on: "in use", declined: "not used" };
+function mics() { // (0.9.2) per microphone: counts, states and grades only
+  const d = S.devices || [];
+  $("#mics").innerHTML = !S.per_device ? `<p class="note">Off (voice.speaker_id.per_device).</p>` : !d.length ? `<p class="note">None yet.</p>` : `<table>${d.map((m) => `<tr><th>${esc(m.name)}${m.now ? " (now)" : ""}</th><td>${esc(MIC_STATE[m.state] || m.state)} · ${m.samples} of ${m.need} turns${m.grade ? ` · <span class="grade ${esc(m.grade)}">${esc(m.grade)}</span>` : ""}</td><td>${m.state === "ready" || m.state === "weak" ? `<button data-mic="${esc(m.ref)}" data-act="use">Use it</button><button data-mic="${esc(m.ref)}" data-act="no">No</button>` : ""}<button data-mic="${esc(m.ref)}" data-act="forget">Forget</button></td></tr>`).join("")}</table>`;
+  document.querySelectorAll("[data-mic]").forEach((b) => b.onclick = async () => { const r = await api("voice/id/device", { device: b.dataset.mic, action: b.dataset.act }); $("#mmsg").textContent = r.message || r.error || ""; load(); });
+}
+
 function manage() {
   const t = S.last_test;
   const by = Object.entries(S.samples.by_cond).map(([c, n]) => `${esc(CW[c] || c)}: ${n}`).join(", ");
@@ -138,7 +145,8 @@ async function load() {
   try { S = await api("voice/id"); } catch { $("#line").textContent = "Kurooto isn't answering right now."; return; }
   if (was && step === "capture" && (!S.session || S.session.state === "done") && (S.pending || S.report)) show("train"); // the capture ended and was built: its report
   $("#line").textContent = S.line || (S.on ? "" : "Voice ID is off.");
-  topBox(); capture(); report(); improve(); manage(); dial(S.test);
+  topBox(); capture(); report(); improve();
+  mics(); manage(); dial(S.test);
 }
 
 // ------------------------------------------------------------------------------------------------- actions
