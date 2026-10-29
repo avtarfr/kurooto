@@ -111,6 +111,8 @@ def ingest(app: App, payload: dict) -> tuple[int, dict]:
         kept += 1
         if sensor == "places" and b.get("event") in ("arrive", "leave") and time.time() - t / 1000 <= PLACE_FRESH_S:
             _place(app, str(b["event"]), t / 1000)
+        if sensor == "places":
+            place_hooks(app, str(b.get("event") or ""), c[1], t / 1000)
     app.events.emit("senses_phone", kept=kept, dropped=dropped)
     if any(_picked_up(b) for b in bins[:BINS_MAX] if isinstance(b, dict) and enabled(app, "screen")):
         from kurooto.mind import stimulation
@@ -131,6 +133,28 @@ def _place(app: App, event: str, at: float) -> None:
             face.phone_place(event)
     except Exception as e:
         app.events.emit("senses_failed", error=type(e).__name__)
+
+
+PLACE_HOOKS = ("study", "subjects", "exam_season")  # features that may offer something on an arrival (each off)
+
+
+def place_hooks(app: App, event: str, label: str, ts: float) -> None:
+    """(0.9.0) A fresh arrival at or leaving of a place you saved, to the features that use it, each behind its own
+    switch (study.places, subjects.attend_by_place, exam_season.debrief_at_desk): an offer you tap, never a
+    record of where you were. The label stays on this computer and never goes into an AI's context."""
+    if event not in ("arrive", "leave") or not label or abs(time.time() - ts) > PLACE_FRESH_S:
+        return
+    import datetime as dt
+
+    t = dt.datetime.fromtimestamp(ts)
+    for mid in PLACE_HOOKS:
+        m = app.modules.get(mid)
+        if m is None or not app.is_on(mid) or not hasattr(m, "place_event"):
+            continue
+        try:
+            m.place_event(label, event, t)
+        except Exception as e:
+            app.events.emit("senses_failed", part=f"places:{mid}", error=f"{type(e).__name__}"[:80])
 
 
 def _picked_up(b: dict) -> bool:

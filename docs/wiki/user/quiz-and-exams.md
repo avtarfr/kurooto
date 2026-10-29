@@ -221,7 +221,14 @@ on. For the season's other exams, practice stays a message.
 **From Telegram.** `/examseason` or "exam season?" (also "show my exam season", "how's my exam season") shows the
 season, its exams with what you told Kurooto, and the parts that are on, with their switches.
 
-**On calls.** On the exam day and the day before, every call's brief has the exam and what you said about it.
+**On calls.** On the exam day and the day before, every call's brief has the exam and what you said about it. With
+`exam_season.in_calls` (on, 0.9.0) the wake-up call says the day's exam and when to leave ("Today: Linear Algebra final
+exam at 09:00, leave by 08:15."), and the night check-in says tomorrow's and suggests a wake time an hour before
+leaving; the alarm is set only when you agree to a time.
+
+**The debrief once you're back** (`exam_season.debrief_at_desk`, off, 0.9.0). Turned on, the debrief comes when you're
+back at your desk ([Face presence](face.md) or the computer in use) or the phone arrives at the place you saved as
+"home" (with the places sense on), whichever is first after the exam, and 90 minutes after it ends at the latest.
 
 ### The revision plan
 

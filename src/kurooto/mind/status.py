@@ -377,7 +377,12 @@ def uneasy_target(app: App, uid: str | None) -> dict | None:
         dl = app.modules.get("deadlines")
         it = (dl.items() or {}).get(key) if dl is not None and app.is_on("deadlines") else None
         if it:
-            return {"kind": "deadline", "id": key, "title": str(it.get("title") or "")[:80], "tab": "today"}
+            out = {"kind": "deadline", "id": key, "title": str(it.get("title") or "")[:80], "tab": "today"}
+            from kurooto.mind import study_push
+
+            if it.get("subject") and study_push.start_timer_on(app):  # 0.9.0: Study mode opens on its subject
+                out["subject"] = it["subject"]
+            return out
     if kind == "promise":
         from kurooto.mind import promises
 

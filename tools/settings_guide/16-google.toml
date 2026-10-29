@@ -251,6 +251,16 @@ tip = "Minutes before each planned block for Google's pop-up reminder; 0: none."
 when = "Set 0 if Kurooto's own reminders are enough."
 needs = "The Agent plan calendar."
 
+[s."agent_plan.holds_calls"]
+tip = "A call Kurooto places by itself (a check-in, a nudge) waits for the end of a block of yours that's running."
+when = "Turn it on if a planned block should be quiet time. Calls you asked for and alarms still ring."
+needs = "The Agent plan calendar."
+
+[s."agent_plan.start_focus"]
+tip = "When a block of yours starts and you're at your desk, one message offers a Study mode focus for it."
+when = "Turn it off if you don't want the offer. The focus starts only when you tap Start."
+needs = "The Agent plan calendar and the Study tracker."
+
 [s."drive_upload.big_files"]
 tip = "A file too big for Telegram (over 50 MB) comes as a Drive link instead of failing."
 when = "Turn it off to have big files refused rather than uploaded."

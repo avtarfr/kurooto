@@ -11,6 +11,9 @@ linear algebra", "studied stats for an hour", or tell it on a call. /study shows
 ("how much did I study today?" works too). At 23:45 the day's hours go into your daily note ("## Study hours").
 The dashboard's Study mode (/study mode on|off, core/actions.py) has a timer: a focus session for a subject (focus
 time, so calls and messages wait, and the minutes logged here), then a break; pause and reset.
+With study.face (off, 0.9.0) Face presence helps: seen at the desk without typing, it asks once "on paper?" and
+counts only on Yes; stepping away in a focus offers a pause, and coming back a resume. With study.places (off) an
+arrival at a place you saved in the phone app offers a session there; leaving ends one that offer started.
 Works on Windows, macOS (it asks once for permission to see window titles) and Linux on X11, Hyprland or Sway;
 other Linux desktops can only log by hand. How it tells you're away: core/idle.py (on Wayland desktops without an idle
 API, your idle tool can tell it: `kurooto idle away` / `kurooto idle back`).
@@ -56,6 +59,13 @@ register_defaults(
         # (0.9.0) another feature (an add-on) may add minutes it saw you on a subject's topic, kept apart as "seen"
         # and never while a session runs; nothing is counted until one does
         "seen": True,
+        # (0.9.0) Face presence helps: seen at the desk with no typing, it asks once whether you're on paper (counted
+        # only on Yes); stepping away in a Study mode focus offers a pause, and coming back a resume. Never drops time
+        "face": False,
+        # (0.9.0) arriving at a place you saved in the phone app offers a study session there (one tap); leaving
+        # ends a session that offer started. The place's name stays on this computer
+        "places": False,
+        "places_labels": [],  # ...only at these places (their names in the phone app); empty: any you saved
     },
 )
 # "turn on study mode", "leave study mode", "study mode off": the dashboard's Study mode (core/actions.py)
@@ -129,6 +139,8 @@ class Study(Module):
     def __init__(self, app):
         super().__init__(app)
         self.probe = IdleProbe(app.paths.state)
+        self._last_slug: str | None = None  # (study.face) the subject the window last counted for
+        self._paper_asked = False  # (study.face) asked "on paper?" in this stretch without typing
 
     def health(self):
         ok, why = self.ready()
@@ -238,11 +250,149 @@ class Study(Module):
         title = active_title()
         idle = self.probe.idle_seconds(title)
         if idle is not None and idle > (self.setting("idle_min") or 5) * 60:
+            self._ask_paper()
             return None
+        self._paper_asked = False
         slug = self.subject_of(title) if title else None
         if slug:
             self.add(slug, seconds)
+            self._last_slug = slug
         return slug
+
+    # ------------------------------------------------------------------------------ Face helps (study.face)
+    def _face_sees_you(self) -> bool:
+        """Face presence saw your face in the last two minutes (modules/face: numbers only, no frames kept)."""
+        face = self.app.modules.get("face") if self.app.is_on("face") else None
+        w = getattr(face, "watcher", None) if face is not None else None
+        last = getattr(w, "last_seen_owner", None) if w is not None else None
+        try:
+            return last is not None and w.clock() - float(last) <= 120
+        except Exception:
+            return False
+
+    def _ask_paper(self) -> None:
+        """(study.face) At the desk, no typing for idle_min, Face sees you: "on paper?" once per such stretch, for the
+        subject the window last counted. Nothing is counted unless you say Yes."""
+        if not self.setting("face") or self._paper_asked or not self._last_slug or not self._face_sees_you():
+            return
+        self._paper_asked = True
+        name = self.name_of(self._last_slug)
+        self.app.notify(
+            f"You're at your desk and not typing. Studying {name} on paper? Yes counts it as a session from now.",
+            kind="info",
+            why="study.face",
+            buttons=[[("Yes", f"stf:{self._last_slug}:paper"), ("No", "stf:-:no")]],
+            about=name,
+        )
+        self.app.events.emit("study_face_asked", what="paper")
+
+    def face_event(self, kind: str) -> None:
+        """(study.face) Face presence saw you leave or come back (modules/face): in a focus, an offer to pause; back
+        with a focus that offer paused, an offer to resume. Logged minutes are never touched."""
+        if not self.setting("face"):
+            return
+        t = self.timer()
+        if kind == "left" and t.get("phase") == "focus" and t.get("ends"):
+            self.app.notify(
+                "You've stepped away during a focus. Pause it? Nothing logged is lost either way.",
+                kind="info",
+                why="study.face",
+                buttons=[[("Pause", "stf:-:pause")]],
+            )
+            self.app.events.emit("study_face_asked", what="pause")
+        elif kind == "back" and t.get("phase") == "focus" and not t.get("ends") and t.get("face_paused"):
+            self.app.notify(
+                "You're back. Resume the focus?",
+                kind="info",
+                why="study.face",
+                buttons=[[("Resume", "stf:-:resume")]],
+            )
+            self.app.events.emit("study_face_asked", what="resume")
+
+    def _face_button(self, ref: str, act: str) -> str:
+        if act == "paper":
+            if self.session().get("subject"):
+                return "A session is already running."
+            return self.start_session(ref)
+        if act == "pause":
+            said = self.timer_pause()
+            if said.startswith("Paused"):
+                jsave(self.timer_file, {**self.timer(), "face_paused": True})
+            return said
+        if act == "resume":
+            if not self.timer().get("face_paused"):
+                return "That focus isn't paused any more."
+            return self.timer_start()
+        return "OK."
+
+    # ---------------------------------------------------------------------- phone places (study.places)
+    @property
+    def places_file(self):
+        return self.app.paths.state / "study" / "places.json"
+
+    def place_event(self, label: str, event: str, t: dt.datetime | None = None) -> None:
+        """(study.places) Arriving at a place you saved: one offer a day per place to start a session, for the subjects
+        due soonest. Leaving it ends a session that offer started. The place's name is kept only here."""
+        if not self.setting("places"):
+            return
+        key = str(label).strip().lower()
+        want = [str(x).strip().lower() for x in self.setting("places_labels") or [] if str(x).strip()]
+        s = self.session()
+        if event == "leave":
+            if s.get("subject") and s.get("place") == key and not s.get("timer"):
+                said = self.stop_session()
+                self.app.notify(f"Session ended as you left. {said}", kind="info", why="study.places")
+            return
+        if want and key not in want or s.get("subject") or self.timer().get("ends"):
+            return
+        today = (t or now()).date().isoformat()
+        st = jload(self.places_file, {}) or {}
+        if st.get("day") != today:
+            st = {"day": today, "offered": []}
+        if key in st["offered"]:
+            return
+        subjects = self._soon_subjects()
+        if not subjects:
+            return
+        st["offered"].append(key)
+        st["pending"] = key
+        jsave(self.places_file, st)
+        row = [(self.name_of(x)[:24], f"stp:{x}:go") for x in subjects[:3]]
+        self.app.notify(
+            "You've arrived at a place you saved. Start a study session there? Leaving ends it.",
+            kind="info",
+            why="study.places",
+            buttons=[row, [("Not now", "stp:-:no")]],
+        )
+        self.app.events.emit("study_place_offered", subjects=len(row))
+
+    def _soon_subjects(self) -> list[str]:
+        """The subjects of what's due in the next week, soonest first; else the ones studied most this week."""
+        out: list[str] = []
+        dl = self.app.modules.get("deadlines") if self.app.is_on("deadlines") else None
+        for _, it, _h in dl.upcoming(24 * 7) if dl is not None else []:
+            if it.get("subject") and it["subject"] not in out:
+                out.append(it["subject"])
+        if not out:
+            out = [k for k, _ in sorted(self.totals(7).items(), key=lambda kv: -kv[1]) if k != RESEARCH]
+        return out
+
+    def _place_button(self, ref: str, act: str) -> str:
+        st = jload(self.places_file, {}) or {}
+        place = st.pop("pending", None)
+        jsave(self.places_file, st)
+        if act != "go":
+            return "OK, not now."
+        if place is None:
+            return "That offer is over."
+        said = self.start_session(ref)
+        s = self.session()
+        if s.get("subject"):
+            jsave(self.session_file, {**s, "place": place})
+        return said
+
+    def callbacks(self):
+        return {"stf": self._face_button, "stp": self._place_button}
 
     # ------------------------------------------------------------------------------------- telling you
     def totals(self, days: int = 1, last: dt.date | None = None) -> dict[str, float]:
@@ -286,20 +436,25 @@ class Study(Module):
     def session(self) -> dict:
         return jload(self.session_file, {}) or {}
 
-    def start_session(self, subject: str, minutes: int | None = None) -> str:
-        """A study session away from the computer (paper, library): timed until you stop it, or for `minutes`."""
+    def start_session(self, subject: str, minutes: int | None = None, deadline: str | None = None) -> str:
+        """A study session away from the computer (paper, library): timed until you stop it, or for `minutes`.
+        `deadline`: the deadline it's for (0.9.0), kept with it and on study_session_start."""
         subj = self.app.modules["subjects"]
         slug = subj.resolve(subject) or (subj.find_in(subject) or [None])[0]
         if not slug:
             return f"I don't know the subject {subject!r} (Subjects lists them)."
         prev = self.stop_session() if self.session().get("subject") else ""
-        jsave(self.session_file, {"subject": slug, "start": now().isoformat(), "minutes": minutes})
+        jsave(
+            self.session_file, {"subject": slug, "start": now().isoformat(), "minutes": minutes, "deadline": deadline}
+        )
         self.app.scheduler.cancel(f"{self.id}:session-end")
         if minutes:
             self.app.scheduler.at(
                 now() + dt.timedelta(minutes=minutes), "study.session_end", key=f"{self.id}:session-end", module=self.id
             )
-        self.app.events.emit("study_session_start", subject=slug, planned=minutes)
+        self.app.events.emit(
+            "study_session_start", subject=slug, planned=minutes, **({"deadline": deadline} if deadline else {})
+        )
         name = subj.name_of(slug)
         from kurooto.core import threads  # something you're in the middle of (core/threads.py)
 
@@ -330,7 +485,12 @@ class Study(Module):
         else:
             self.add(s["subject"], secs, manual=True)
         mins = round(secs / 60)
-        self.app.events.emit("study_session_end", subject=s["subject"], minutes=mins)
+        self.app.events.emit(
+            "study_session_end",
+            subject=s["subject"],
+            minutes=mins,
+            **({"deadline": s["deadline"]} if s.get("deadline") else {}),
+        )
         from kurooto.core import threads
 
         threads.finish(self.app, f"study:{s['subject']}")
@@ -380,8 +540,9 @@ class Study(Module):
             "then": t.get("then") or self._then(),
         }
 
-    def timer_start(self, subject: str | None = None) -> str:
-        """Start, or go on after a pause: a focus for `subject` (or the one it had), or what's left of a break."""
+    def timer_start(self, subject: str | None = None, deadline: str | None = None) -> str:
+        """Start, or go on after a pause: a focus for `subject` (or the one it had), or what's left of a break.
+        `deadline`: the deadline the focus is for (0.9.0, Study push's Start button), kept with its session."""
         t = self.timer()
         if t.get("ends"):
             return "The timer is already running."
@@ -390,6 +551,7 @@ class Study(Module):
         if not slug:
             return f"I don't know the subject {subject!r} (Subjects lists them)." if subject else "Pick a subject."
         phase = t.get("phase") or "focus"
+        deadline = deadline if subject else (deadline or t.get("deadline"))
         total = t.get("total") or self._length("focus_min", 25)
         left = t.get("left") or total
         ends = now() + dt.timedelta(seconds=left)
@@ -403,7 +565,8 @@ class Study(Module):
                 "total": total,
                 "round": t.get("round") or 1,
                 "then": t.get("then") or self._then(),
-                "focus_set": self._focus_begin(slug, ends, left) if phase == "focus" else None,
+                "focus_set": self._focus_begin(slug, ends, left, deadline) if phase == "focus" else None,
+                "deadline": deadline,
             },
         )
         self.app.scheduler.at(ends, "study.timer_end", key=f"{self.id}:timer", module=self.id)
@@ -412,14 +575,22 @@ class Study(Module):
             return f"Break until {ends:%H:%M}."
         return f"{self.name_of(slug)}: focus until {ends:%H:%M}. Calls and messages wait till then."
 
-    def _focus_begin(self, slug: str, ends: dt.datetime, seconds: float) -> str | None:
+    def _focus_begin(self, slug: str, ends: dt.datetime, seconds: float, deadline: str | None = None) -> str | None:
         """The focus's session (one of yours that's running ends here, logged) and focus time until it ends, unless
         something holds it longer already. Returns the focus end it set, or None."""
         s = self.session()
         if s.get("subject"):
             self.stop_session(timer=bool(s.get("timer")))
-        jsave(self.session_file, {"subject": slug, "start": now().isoformat(), "minutes": seconds / 60, "timer": True})
-        self.app.events.emit("study_session_start", subject=slug, planned=round(seconds / 60))
+        jsave(
+            self.session_file,
+            {"subject": slug, "start": now().isoformat(), "minutes": seconds / 60, "timer": True, "deadline": deadline},
+        )
+        self.app.events.emit(
+            "study_session_start",
+            subject=slug,
+            planned=round(seconds / 60),
+            **({"deadline": deadline} if deadline else {}),
+        )
         av = self.app.availability
         held = av.focus_until()
         if held is not None and held >= ends:
@@ -431,6 +602,12 @@ class Study(Module):
         """A focus is over, paused or reset: its session is logged, and the focus time it set ends (the messages that
         waited come) unless a /focus or a #focus event of yours holds longer. Returns what was logged."""
         said = self.stop_session(timer=True) if self.session().get("timer") else ""
+        rem = self.app.modules.get("reminders")
+        if rem is not None and self.app.is_on("reminders") and hasattr(rem, "release_waiting"):
+            try:  # 0.9.0 (reminders.wait_for_break): the reminders that waited for this focus come now
+                rem.release_waiting()
+            except Exception as e:
+                self.app.events.emit("study_failed", error=f"reminders: {type(e).__name__}"[:120])
         mine, av = t.get("focus_set"), self.app.availability
         held = av.focus_until()
         if mine and held is not None and held <= dt.datetime.fromisoformat(mine) + dt.timedelta(seconds=1):

@@ -205,6 +205,7 @@ def study_view(app: App, subject: str | None = None) -> dict:
         for k, v in sorted(totals.items(), key=lambda kv: -kv[1])
     ]
     slug = (subj.resolve(subject) if subj and subject else None) or (out["timer"] or {}).get("subject")
+    slug = slug or _uneasy_subject(app, slugs)  # 0.9.0: the subject Brain's morning line was about
     slug = slug or next((r["slug"] for r in out["today"] if r["slug"] in slugs), None) or (slugs[0] if slugs else "")
     out["subject"] = slug
     out["name"] = subj.name_of(slug) if subj and slug else ""
@@ -232,6 +233,17 @@ def study_view(app: App, subject: str | None = None) -> dict:
         }
     out["notes"] = subject_notes(app, slug) if slug else []
     return out
+
+
+def _uneasy_subject(app: App, slugs: list[str]) -> str | None:
+    """(0.9.0, mind.study_push.start_timer) Today's study push subject, for Study mode to open on."""
+    try:
+        from kurooto.mind import study_push
+
+        s = study_push.subject_today(app)
+    except Exception:
+        return None
+    return s if s in slugs else None
 
 
 def study_mode_act(app: App, args: dict) -> dict:

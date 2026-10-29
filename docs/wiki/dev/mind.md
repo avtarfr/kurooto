@@ -1342,6 +1342,9 @@ grader prompt gets `answer` when there is one; the self-grade fallback shows it.
 today's subject; `folded(app, subject, what)` is asked by `Deadlines._chase` ("ping" only), `Startby._morning` (the tell)
 and `Quiz._exam_daily`, each through a guarded import, so with Brain off they behave as 0.8.13. Buttons `msp:<day>:yes|later`:
 Yes is `reminders.add(slot, ...)`, else `Startby.start_today(id)`. Calm reason `mind.study_push`; pest kind "nudge".
+0.9.0 (`mind.study_push.start_timer`, on, needs the Study tracker): the reminder carries `msp:<day>:start` (`_start`:
+`Study.timer_start(subject, deadline=id)`); `subject_today()` feeds `core/actions.py:study_view`'s subject, and
+`status.uneasy_target` adds `subject` for a deadline, which `home.js:openUneasy` keeps as Study mode's subject.
 
 **Surprise check-ins** (`mind/forecast.py`, `mind.checkins.surprise`). `surprise_tick` every 15 min (job `mind:surprise`),
 once a day (`<state>/mind-surprise.json`), never while `_asleep` (B's sleep state, else `availability.night`) or
@@ -1427,6 +1430,10 @@ the switches, the surprise check-in and its exclusions, the late-wake rule).
   first) if it's `>= FREE_P` and beats `p(at)` by `MARGIN` (0.2). `skip=("asleep",)` lets a bedtime check-in ignore
   the sleep blocker (then only the learned hours count for it). `line(app)` for `/mind`. State `mind-presence.json`
   (in `Mind`'s delete list and the backups skip list).
+  0.9.0, `mind.presence_forecast.plan` (off): `StartBy.rank()` gives `p_free` per hour (one `_load`), which
+  `startby.allocate(rank=)` and `study_push.slot` use to fill or pick likelier hours first; no hour is removed, so no
+  start-by date moves later for it. Under the same switch `StartBy.learn_window` falls back to
+  `core/rhythm.py:usual_hours` (wake to bed) when messages are too few. Local arithmetic: nothing of it reaches an AI.
 - **Its reward** (`mind/presence_reward.py`, a reward module: `REWARD = True`, in `whitelist.REWARD_SOURCES`):
   `pay(st, t, p, y, base)`: `r = GAIN (0.01) x ((base - y)^2 - (p - y)^2)`, the day's sum (04:00 days) clipped to
   `+-W` (0.05); numbers outside [0, 1] pay nothing. `Engine.presence` (the scorekeeper's `presence_check` branch,

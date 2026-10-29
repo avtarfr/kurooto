@@ -222,6 +222,7 @@ class Deadlines(Module):
 
     def __init__(self, app):
         super().__init__(app)
+        self._moved_now: list[tuple[str, str]] = []  # (id, source) a sync moved, said once the list is saved
         from kurooto.modules import photodates
 
         # Photo to dates: an answer that arrives after Deadlines is turned off still comes (its buttons say so then)
@@ -377,7 +378,7 @@ class Deadlines(Module):
                 if (items.get(j, {}).get("undo") or {}).get("u") == snap["u"]:
                     items[j]["undo"]["ticked"] = True
                     jsave(self.file, items)
-        self.app.events.emit("deadline_done")
+        self._changed(j, "done")
         said = "Marked done" + (f" (ticked in {it['note']})." if it.get("ticked") else ".")
         return said, f"dl:{j}:undo{snap['u']}"
 
@@ -524,6 +525,12 @@ class Deadlines(Module):
         subject = extra.pop("subject", None) or self.subject_of(title, extra.get("note"))
         i = did(title, due)
         j = self._resolve(items, i) or self._twin(items, title, due, kind, subject)
+        if j is None and extra.get("ref"):  # 0.9.0: the same thing at its source (a Classroom post), a new due date
+            j = next((k for k, it in items.items() if it.get("ref") == extra["ref"] and it["status"] == "open"), None)
+            if j is not None and items[j]["due"] != due:
+                items[j]["due"] = due
+                items[j]["told"] = [x for x in items[j].get("told", []) if x == "exam_mode"]
+                self._moved_now.append((j, source))
         if j is None:
             items[i] = {
                 "title": title,
@@ -556,19 +563,42 @@ class Deadlines(Module):
         return j, False
 
     def add(self, title: str, due: dt.datetime, source: str = "manual", **extra) -> str:
-        """Add a deadline (from you, Classroom, a call...). extra: kind ("exam" | "task"), subject, link."""
+        """Add a deadline (from you, Classroom, a call...). extra: kind ("exam" | "task"), subject, link, ref (the
+        source's own id for it: a later due date there moves this one)."""
         with Lock(self.app.paths.state, "deadlines"):
             items = self.items()
+            self._moved_now = []
             i, new = self._put(items, title, iso(due), source, **extra)
+            if new and source == "mail":  # 0.9.0: a new date in mail for the one mail gave before moves it
+                j = self._same_from(items, i, source)
+                if j is not None:
+                    i, new = self._move_into(items, i, j, source), False
             if not new and source in ("manual", "call") and items[i]["status"] == "ignored":
                 items[i]["status"] = "open"  # you added it yourself after all
             jsave(self.file, items)
+        moved = self._moved_now
         self.app.events.emit("deadline_added" if new else "deadline_merged", source=source)
+        for j, src in moved:
+            self._changed(j, "moved", src)
         it = items[i]
         due_s = f"{dt.datetime.fromisoformat(it['due']):%a %d %b %H:%M}"
         return (
             f"{'Added' if new else 'Already on the list'}: {it['title']}, due {due_s} ({human(hours_left(it['due']))})."
         )
+
+    def _changed(self, j: str, what: str, source: str = "") -> None:
+        """(0.9.0) A deadline was moved or done: deadline_moved / deadline_done with its id (and where the change came
+        from), then what plans around it hears: Revision re-plans today's blocks for it (modules/revision.py), the
+        Agent plan calendar offers to take out its blocks (modules/google_plan.py). A failure there stops nothing."""
+        self.app.events.emit(f"deadline_{what}", id=j, **({"source": source} if source else {}))
+        for mid in ("exam_season", "agent_plan"):
+            m = self.app.modules.get(mid)
+            if m is None or not self.app.is_on(mid) or not hasattr(m, "deadline_changed"):
+                continue
+            try:
+                m.deadline_changed(j, what)
+            except Exception as e:
+                self.app.events.emit("deadlines_failed", error=f"{mid}: {type(e).__name__}: {e}"[:200])
 
     def mark_done(self, title: str, due: dt.datetime) -> bool:
         """Mark the deadline with this title and due time done (e.g. handed in on Classroom). True if it changed."""
@@ -580,7 +610,7 @@ class Deadlines(Module):
             items[j]["status"], items[j]["done_at"] = "done", now().isoformat()
             jsave(self.file, items)
         self._after_status(j, items[j], "done")
-        self.app.events.emit("deadline_done", source="sync")
+        self._changed(j, "done", "sync")
         return True
 
     def ignored(self, text: str) -> str | None:
@@ -681,21 +711,69 @@ class Deadlines(Module):
         return self._sync_source("calendar", rows, iso(end.astimezone().replace(tzinfo=None)))
 
     def _sync_source(self, source: str, rows: list[tuple[str, str, dict]], until: str) -> int:
-        """Put a source's current rows in the list; what came only from it and has vanished since is "gone"."""
-        n, seen = 0, set()
+        """Put a source's current rows in the list; what came only from it and has vanished since is "gone". One that
+        vanished while a new one like it came (the same kind, course and title, another date) moved: it keeps its id,
+        and deadline_moved says so (0.9.0)."""
+        n, seen, fresh = 0, set(), []
         t = iso(now())
         with Lock(self.app.paths.state, "deadlines"):
             items = self.items()
+            self._moved_now = []
             for title, due, extra in rows:
                 j, new = self._put(items, title, due, source, **extra)
                 seen.add(j)
                 n += new
+                if new:
+                    fresh.append(j)
             for j, it in items.items():
                 only_here = it.get("sources", [it["source"]]) == [source]
                 if j not in seen and only_here and it["status"] == "open" and t < it["due"] <= until:
                     it["status"] = "gone"
+            for i in fresh:
+                j = self._same_from(items, i, source, status="gone")
+                if j is not None:
+                    self._move_into(items, i, j, source)
+                    n -= 1
             jsave(self.file, items)
+        for j, src in self._moved_now:
+            self._changed(j, "moved", src)
         return n
+
+    def _same_from(self, items: dict, i: str, source: str, status: str = "open") -> str | None:
+        """(0.9.0) The one other deadline from `source` (in that status) that `i` is a new date of: the same kind and
+        course, a title alike. None when there's no such one, or more than one."""
+        it = items[i]
+        words = self._subject_words(it.get("subject"))
+        got = [
+            j
+            for j, x in items.items()
+            if j != i
+            and x["status"] == status
+            and source in x.get("sources", [x.get("source")])
+            and x["kind"] == it["kind"]
+            and (x.get("subject") or None) == (it.get("subject") or None)
+            and x["due"] != it["due"]
+            and (
+                x["title"].lower() == it["title"].lower()
+                or (status == "gone" and similar(it["title"], x["title"], words))
+            )
+        ]
+        return got[0] if len(got) == 1 else None
+
+    def _move_into(self, items: dict, i: str, j: str, source: str) -> str:
+        """(0.9.0) `i` is `j` at a new date: j takes i's due date (open again, its nudges start over) and i becomes an
+        alias of it. Returns j."""
+        new = items.pop(i)
+        it = items[j]
+        it.update(due=new["due"], status="open", told=[x for x in it.get("told", []) if x == "exam_mode"])
+        it.pop("snooze_until", None)
+        if i not in it.setdefault("aliases", []):
+            it["aliases"].append(i)
+        for k, v in new.items():
+            if k not in it and v:
+                it[k] = v
+        self._moved_now.append((j, source))
+        return j
 
     def scan_term(self) -> int:
         """The term note's key dates (Subjects: /term note): its quizzes and exams, and deadlines that name one of
@@ -1159,7 +1237,7 @@ class Deadlines(Module):
             it.pop("snooze_until", None)
             jsave(self.file, items)
         self.app.scheduler.cancel(f"calls:ring:deadlines:{j}")
-        self.app.events.emit("deadline_moved", id=j)  # the id: a deadline moved twice in a day is a surprise (Brain)
+        self._changed(j, "moved")  # the id: a deadline moved twice in a day is a surprise (Brain)
         return f"Moved: {it['title']}, now due {when_text(it['due'])} ({human(hours_left(it['due']))})."
 
     # --------------------------------------------------------------------- copies of one thing (the look back)
@@ -1293,7 +1371,10 @@ class Deadlines(Module):
         j, it = self._status(j, "done" if act == "done" else "ignored")
         if not j:
             return "That one is gone."
-        self.app.events.emit("deadline_" + ("done" if act == "done" else "ignore"))
+        if act == "done":
+            self._changed(j, "done")
+        else:
+            self.app.events.emit("deadline_ignore")
         if act == "done":
             return "Marked done" + (f" (ticked in {it['note']})." if it.get("ticked") else ".")
         return "Dropped." if act == "drop" else "Removed."

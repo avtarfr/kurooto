@@ -660,7 +660,9 @@ class Google(Module):
                         continue
                     title = f"{cname}: {w.get('title', 'assignment')}"
                     if dl:
-                        dl.add(title, due, source="classroom")
+                        dl.add(
+                            title, due, source="classroom", ref=f"classroom:{cid}/{w['id']}" if w.get("id") else None
+                        )
                         out["deadlines"] += 1
                         subs = acct.api(
                             "classroom", f"/courses/{cid}/courseWork/{w['id']}/studentSubmissions?userId=me"

@@ -640,6 +640,10 @@ counts the deadline as started). That day, the subject's separate nudges are fol
 deadline reminder, Start-by's "Time to start" and exam mode's daily practice check-in. The six-hour reminder,
 "Overdue?" and the evening-before practice offer still come. Switch: `mind.study_push.on`.
 
+With `mind.study_push.start_timer` (on, 0.9.0) the reminder carries **Start 25 min**: Study mode's timer for that
+subject, tied to the deadline, started only by that tap. Study mode opens on that subject that day, and a tap on the
+uneasy glow picks it for Study mode too.
+
 ## Check-ins that come early (0.8.14)
 
 When the day departs strongly from what Brain expected at 21:00 the evening before, your next check-in planned today
@@ -715,6 +719,11 @@ class. The night and Kurooto's sleep window count as not free (`mind.presence_fo
   likelier time when you aren't seen at your desk, and says "Held a call until 11:00 (you're usually free then)".
 - **Where it shows:** `/mind` gives its Brier score (lower is better) next to the baseline's, and the next hour you're
   likely free.
+
+- **Planning with it** (`mind.presence_forecast.plan`, off, 0.9.0): Start-by's deadline hours go first into the hours
+  you're likeliest free, and the study push offers the likeliest stretch today. No hour is taken away, so a start-by
+  date never comes later because of it. With too few messages to learn Start-by's window from, your usual quiet hours
+  can move it, with the same line and Undo, never a window you set.
 
 **Reachable, not only at the desk** (`mind.presence_forecast.reachable`, on, 0.9.0). Brain keeps a second estimate:
 at your desk *or* using your phone (the phone app, or the phone's screen sense if you turned it on). Check-ins and calls

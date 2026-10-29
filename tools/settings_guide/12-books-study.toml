@@ -179,6 +179,22 @@ when = "Turn it off to count only the tracker's own windows, your sessions and w
 cost = "Nothing."
 needs = "The Study tracker, and an add-on that offers seen minutes."
 
+[s."study.face"]
+tip = "Face presence helps the tracker: \"on paper?\" when it sees you without typing, a pause offer when you step away in a focus."
+when = "Turn it on if paper study goes uncounted. Nothing is counted or paused without your tap."
+needs = "The Study tracker and Face presence."
+
+[s."study.places"]
+tip = "Arriving at a place you saved in the phone app offers a study session there; leaving ends one that offer started."
+when = "Turn it on if you study at a library or a lab. The place's name stays on this computer."
+needs = "The Study tracker and the phone's places sense (Brain)."
+
+[s."study.places_labels"]
+tip = "The places (their names in the phone app) where an arrival offers a session; empty: any you saved."
+values = "A list of names, e.g. library, lab."
+when = "Set it so home doesn't offer a session."
+needs = "study.places."
+
 [s."handwritten.folder"]
 tip = "Where scans of handwritten pages land to be read."
 values = "A full folder path; empty: `handwritten-inbox` in your notes (or your files folder)."

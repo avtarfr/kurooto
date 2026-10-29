@@ -59,6 +59,12 @@ sets it (a reminder *message*; ask for a call if you want it to ring, see [calls
 your next day's reminders are part of the brief your call line keeps. With
 [Reminders with the lid shut](calls.md) on, your Android phone gets them at their time even when the computer sleeps.
 
+### Waiting for a focus's break
+
+With `reminders.wait_for_break` on (off by default, 0.9.0), a reminder of yours that comes during a [Study
+mode](books-and-study.md#study-tracker) focus waits for the focus to end, then comes at the break. Pausing or resetting
+the timer brings the ones waiting at once. Alarms, deadline calls and location reminders never wait.
+
 ### At a place (location reminders)
 
 "Remind me when I reach the library to return the book": the Android app reminds you when you get there. Off by
@@ -420,7 +426,10 @@ a Statistics exam?". On a call or to your AI: "the lab report is about a day of 
 week as 25 h.
 
 **Free time.** Each day from 09:00 to 22:00 (`startby.window`), minus your classes (timetable, holidays, exam
-periods, classes you `/skip`) and your calendar's timed events, in gaps of at least 30 minutes. Only 40% of that
+periods, classes you `/skip`), your [commitments](classes-and-timetable.md#commitments-gym-shifts-standups) (0.9.0;
+one you skip for the day frees its time), your calendar's timed events and the blocks already in your
+[Agent plan calendar](google.md) (0.9.0: time you planned isn't free for something else; with Google unreachable,
+none count), in gaps of at least 30 minutes. Only 40% of that
 counts (`startby.share`): the rest is meals, rest and everything else. Calendar events are known two weeks ahead;
 after that only classes count, so far-off weeks look freer than they will be.
 
@@ -461,6 +470,27 @@ today's free time is left. 1 h now, 1 h tomorrow?" with **Do that** and **Not to
 - On a deadline call, the AI has the same plan as the `reshape_plan` and `reshape_answer` tools and is told to offer
   it once, calmly, when you're behind.
 
+**What the study tracker counted** (`startby.count_study`, on, 0.9.0). With the [Study tracker](books-and-study.md#study-tracker)
+on, "Time to start" says what it already counted for that deadline: "You've put about 3 h into it already; about 9 h
+left if that counts.", with **Count it**, which sets its size to what's left. It counts study sessions tied to that
+deadline (a focus started from Brain's study push), else, when it's the only open deadline in its subject, that
+subject's last seven days. The size changes only when you tap Count it.
+
+**Brain's miss risk** (`startby.miss_risk`, on, 0.9.0). With [Brain's plans](mind.md#plans-over-weeks) on, "Time to
+start" adds "At your usual pace there's about a 40% chance of missing it." when the plans put it at 20% or more, and
+the Sunday summary lists the likeliest to slip in the crunch weeks.
+
+**A share from your pace** (`startby.learn_share`, off, 0.9.0). Turned on, once a week (Sunday noon), when your real
+pace (the hours a day you actually get done, from the study tracker) is ten points or more from `startby.share` as a
+share of your free time, one offer: "Your pace says about 8.0 h a day of work, out of about 13.0 h free. Start-by
+dates count 40% of your free time for deadlines; use 60% instead?" with **Yes** and **No**. Yes changes it, with
+**Undo**. Never a share you set yourself; after No or Undo, not for a month.
+
+**The forecast picks the hours** (`mind.presence_forecast.plan`, off, 0.9.0). With [Brain's presence
+forecast](mind.md#when-youll-be-free-0816) and this on, a deadline's hours go first into the hours you're likeliest at
+your desk and free, and the study push offers the likeliest stretch. No hour is taken away. With too few messages to
+learn the window from, it can learn it from your usual quiet hours instead, with the same line and Undo.
+
 **Crunch weeks.** The Sunday [weekly summary](check-ins-and-journal.md#weekly-summary) flags weeks in the next four
 (`startby.crunch_weeks`) where the work due adds up to more than the free time: "Crunch weeks (an estimate): week of
 9 Nov: about 14 h of work, about 9 h free. Start some of it the week before." It also says what to start in the
@@ -496,6 +526,9 @@ On calls the brief has "time to start", and the AI has `start_by`, `set_work_siz
 | `startby.ask_exams` | on | the once-per-subject exam question |
 | `startby.crunch_weeks` | `4` | weeks the Sunday summary looks ahead; `0` turns crunch weeks off |
 | `startby.negotiate` | on | a reminder that would repeat for a slipping deadline: a reshaped plan instead, once a day |
+| `startby.count_study` | on | "Time to start" says the study counted for it, with Count it (0.9.0) |
+| `startby.miss_risk` | on | "Time to start" and the Sunday summary say Brain's chance of missing it (0.9.0) |
+| `startby.learn_share` | off | a weekly offer to change `startby.share` from your pace (0.9.0) |
 
 **What leaves your computer.** Nothing.
 

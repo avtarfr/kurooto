@@ -31,6 +31,11 @@ They show as a hint ("Tue and Thu evenings are usually busy.") on the /mind line
 (`mind.presence_forecast.busy_hint`, on: nothing shows until an add-on gives some), and with
 `mind.presence_forecast.visitors` (off) they cut p_free there by BUSY_CUT, never to a block.
 
+    planning       (`mind.presence_forecast.plan`, off, 0.9.0) Start-by's free time (modules/startby.py) is cut by the
+                   hour and filled likeliest-free first, and the study push's time (mind/study_push.py:slot) is the
+                   stretch you're likeliest free in; no hour is taken away. With too few messages to learn Start-by's
+                   window from, the usual quiet hours (core/rhythm.py) can move it, with the same line and Undo.
+
 Kept in `<state>/mind-presence.json`: hour-of-week counts, the frozen forecasts, today's looks and the last days'
 outcomes (numbers only, this computer only). /mind shows the accuracy and the next free hour.
 """
@@ -67,6 +72,9 @@ register_defaults(
             "busy_hint": True,
             # (0.9.0) and those busy times lower the chance you're free there (a soft cut, never a block); off: hint
             "visitors": False,
+            # (0.9.0) Start-by and the study push put work first into the hours you're likeliest free (never fewer
+            # hours), and Start-by's window may learn from your usual quiet hours (with Undo, never one you set)
+            "plan": False,
         }
     },
 )

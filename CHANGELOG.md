@@ -138,6 +138,28 @@
   app's and the dashboard's Chat (not Telegram), and the next thing you type is told what it said.
 - **Desk talks are kept like calls** (`voice.listen.after_talk`, on): when a talk at the desk ends, its text goes to the
   call transcripts and open threads, and the day's note gets a "Desk talks" line (the time, never the words).
+- **Start-by's free time is one ledger** (fix). Commitments and the blocks already in your Agent plan calendar are
+  busy time for start-by dates, the revision plan, the study push and Brain's plans, as classes and events were.
+- **A reschedule goes around what you have to be at** (fix). "Reschedule my day" moves a block past a class, a
+  commitment or a calendar event instead of laying it on top.
+- **A deadline that moves says so with its id, and the plans follow** (fix). A new due date from Classroom (by its own
+  id), the calendar, the term note or mail moves the deadline already there instead of adding a twin; Revision lays a
+  moved exam's blocks again for the rest of today, and drops a done one's; the Agent plan marks the deadline's blocks
+  "(moved to …)" and asks Remove or Keep, never removing them by itself.
+- **The study push's reminder can start the timer** (`mind.study_push.start_timer`, on). Yes still sets the reminder;
+  it now carries Start 25 min, Study mode's timer tied to that deadline, and Study mode opens on that subject.
+- **"Time to start" knows what you've done** (`startby.count_study`, on; `startby.miss_risk`, on). It says the study the
+  tracker counted for that deadline, with Count it to set the size to what's left, and Brain's chance of missing it.
+  `startby.learn_share` (off) offers a share of free time from your real pace once a week, with Undo.
+- **New, off until you turn them on:** reminders wait for a focus's break (`reminders.wait_for_break`); the forecast
+  picks the likeliest free hours (`mind.presence_forecast.plan`); Kurooto's own calls wait for a planned block
+  (`agent_plan.holds_calls`); Face presence asks "on paper?" and offers pause and resume in a focus (`study.face`);
+  arriving at a saved place offers a study session (`study.places`) or asks "went to it?" during a class
+  (`subjects.attend_by_place`); the exam debrief waits until you're back (`exam_season.debrief_at_desk`).
+- **A focus when a block starts** (`agent_plan.start_focus`, on): at your desk when a planned block starts, one offer of
+  a Study mode focus for it.
+- **The calls name the exam** (`exam_season.in_calls`, on): the wake-up call says today's exam and when to leave; the
+  night check-in says tomorrow's and suggests a wake time.
 
 ## 0.8.18 (2026-10-29)
 

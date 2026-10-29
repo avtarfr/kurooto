@@ -642,6 +642,16 @@ class Face(Module):
         finally:
             self._halt.set()
 
+    def _tell_study(self, kind: str) -> None:
+        """(0.9.0, study.face) The Study tracker offers a pause or a resume in a focus (modules/study.py)."""
+        study = self.app.modules.get("study")
+        if study is None or not self.app.is_on("study") or not hasattr(study, "face_event"):
+            return
+        try:
+            study.face_event(kind)
+        except Exception as e:
+            self._failed("telling the Study tracker", e)
+
     def _failed(self, part: str, e: BaseException) -> None:
         self.app.events.emit("face_failed", **_event_safe(part=part, error=f"{type(e).__name__}"[:80]))
 
@@ -664,11 +674,13 @@ class Face(Module):
             self._arrived(int(f.get("away_min") or 0), bool(f.get("others")))
         elif kind == "left":
             self.app.events.emit("face_left")  # (0.9.0) a "left" break too, with face.breaks (mind/breaks.py)
+            self._tell_study("left")
         elif kind == "back":
             nearby.set_phone_out(self.app, False)  # (0.9.0) somebody's at the desk: the phone's "out" is over
             self.app.events.emit("face_back")
             self.flush_desktop()
             self.report_others()
+            self._tell_study("back")
         elif kind == "strangers":  # (0.9.0) someone else's face while you're away: the time and how many, nothing more
             self._stranger_seen(int(f.get("n") or 0))
         elif kind == "others":

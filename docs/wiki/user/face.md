@@ -289,6 +289,11 @@ switches use it:
 camera for a second, and you standing up (your face well below its usual size at the desk). Only the kind and the time
 are kept, never anything about your face. Off: only the add-ons' senses and "you came back" count.
 
+Other features may use whether you're at your desk, each behind its own switch (0.9.0): the Study tracker's "on
+paper?" and pause/resume offers in a focus (`study.face`, off), the exam debrief that waits until you're back
+(`exam_season.debrief_at_desk`, off), and the focus offered when a planned block starts (`agent_plan.start_focus`).
+They only offer; nothing is recorded about you being away, and no frame is kept.
+
 ## Learning over time
 
 Off by default (`face.learn.on`, "Learn slowly from confident sightings" on the card). When on, a sighting can refine
