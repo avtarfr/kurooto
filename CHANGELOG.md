@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.3 (unreleased)
+## 0.9.3 (2026-10-29)
 
 - **Echo cancelling** (`voice.listen.aec`, auto: on while Kurooto plays on an add-on's output that also hears; `"on"`
   for this computer's speakers too; `"off"`). What it plays (its voice, the heard-you sound, Gemini Live's answers) is
