@@ -43,6 +43,15 @@ UNADDRESSED_S = 60  # how far back "people have been talking nearby" looks
 SORRY = "I couldn't get an answer just now."
 
 
+def said_first(reply: str, line: str) -> bool:
+    """(0.9.2) Does the reply already start with this line (as Live's transcript of it: case and marks aside)?"""
+
+    def words(t: str) -> list[str]:
+        return "".join(c for c in t.lower() if c.isalpha() or c == " ").split()[:6]
+
+    return bool(line) and words(reply) == words(line)
+
+
 class Portal:
     def __init__(
         self,
@@ -246,7 +255,9 @@ class Portal:
                 reply = SORRY
             if not owner and self.tell_guests and who.decision not in self._told:  # once a session per kind
                 self._told.add(who.decision)
-                reply = f"{UNSURE_NOTICE if who.decision == 'unsure' else GUEST_NOTICE} {reply}"
+                notice = UNSURE_NOTICE if who.decision == "unsure" else GUEST_NOTICE
+                if not said_first(reply, notice):  # (0.9.2) Gemini Live's guest session said it already
+                    reply = f"{notice} {reply}"
             self.publish("voice_text", who="kurooto", text=reply)
             self.state("speaking")
             try:

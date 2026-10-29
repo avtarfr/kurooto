@@ -693,7 +693,9 @@ restart too (`core/jobs.py` passes `jid` to `record_turn`). `/new` in a chat sta
 `Sessions.ensure_desk()` (title "Desk", `named: "fixed"`, no rename) and left out of `listing()` with the switch off.
 `PhoneChat.desk_turn(you, reply, how)` adds a `from: "you"` message (`how`: spoken, live, typed) and a `from:
 "kurooto"` one with `quiet: true`, pushes both by `chat-say` (the Worker's `chatSay` keeps a quiet one and tells only
-the phones linked straight to it, no ntfy or Web Push), touches the session and calls `Chat.session_turn(DESK, ...)` so
+the phones linked straight to it, no ntfy or Web Push), (0.9.2: with `quiet: true` on what it hands them; the app's
+`ListenService.chat` skips `ChatNotes.incoming` when `ChatRules.silent(quiet, session)`: quiet, or the Desk session,
+which also covers a call line not yet updated), touches the session and calls `Chat.session_turn(DESK, ...)` so
 its context follows on. Callers: `Voice._desk_chat` after an owner's turn (Live and the usual path; guests return
 earlier, R10) and `web/tools_api.say(board=True)` (the talk box sends `from: "board"`; the kurooto command and the
 terminal tab don't). A talk-box AI request goes to `PhoneChat.board_job(jid, text)`; `on_event(job_done)` ->

@@ -582,7 +582,9 @@ Buttons under an answer work as on Telegram. Answers to what you wrote in the ap
 Telegram.
 
 **The Desk chat** (0.9.1, `calls.chat_desk`, on): what you said at your desk (aloud, a Live talk, the dashboard's talk
-box) and the answers, as one chat named Desk. It comes without a notification. Type in it to follow on from what you
+box) and the answers, as one chat named Desk. It comes without a notification. (0.9.2, a fix: the app notified for
+every desk turn anyway; now a quiet message, and anything in the Desk chat, is added silently: no notification, sound
+or vibration, only its unread count.) Type in it to follow on from what you
 said at the desk. Only your own turns go in, never a guest's.
 
 **Chats (sessions).** Down the left edge is a rail of shapes, one per chat, each its own shape and colour, with a

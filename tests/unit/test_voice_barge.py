@@ -246,12 +246,15 @@ def test_the_echo_words_check():
 def test_the_expected_echo_follows_what_s_played_with_a_lag():
     clock = Clock()
     b = barge_mod.Barge(SimpleNamespace(), clock=clock)
-    b._pieces.append((100.0, barge_mod.FRAME_S, [0.0] * 10 + [0.5] * 10 + [0.0] * 50))
+    b._pieces.append((100.0, barge_mod.FRAME_S, [0.0] * 10 + [0.5] * 10 + [0.0] * 50, barge_mod.ECHO_LAG_S))
     assert b.expected(100.1) == 0.0
     assert b.expected(100.5) == 0.5
     assert b.expected(101.3) == 0.5  # still within the lag after it went quiet
     assert b.expected(102.0) == 0.0
     assert b.expected(200.0) == 0.0
+    b._pieces.clear()  # (0.9.2) played on a phone: its echo comes back later, the window is longer
+    b._pieces.append((100.0, barge_mod.FRAME_S, [0.0] * 10 + [0.5] * 10 + [0.0] * 50, barge_mod.REMOTE_LAG_S))
+    assert b.expected(102.0) == 0.5 and b.expected(103.0) == 0.0
 
 
 # ---------------------------------------------------------------------------------------- the switch, outputs
@@ -410,3 +413,70 @@ def test_checks_run_on_their_own_thread(vrig):
     r.quiet(0.8)
     (item,) = r.queued()
     assert item[4]["how"] == barge_mod.VOICE and r.b._thread is not None and r.b._thread.name == "voice-barge"
+
+
+# ------------------------------------------------------------------------------- 0.9.2: a phone that plays and hears
+def test_a_quiet_echo_lets_words_that_arent_its_own_stop_it(rig):
+    """The phone cancels its own echo: while it plays, the microphone hears almost nothing, so neither the voice
+    (unsure on the phone's mic) nor the loudness (nothing to learn the echo from) can tell. Words that aren't its own
+    stop it; its own words never do."""
+    r = rig
+    r.b.played(bytes(pcm(KUROOTO, 1, seconds=12.0, level=6000, pre_s=0).pcm), 16000, remote=True)
+    r.b.speaking(["The forecast for tomorrow is light rain in the morning, clearing by noon."])
+    r.quiet(3.5)  # what the echo cancelling leaves: nothing
+    assert r.b.echo_quiet()
+    r.stt.said = "the forecast for tomorrow is light rain"  # its own words leaking through: never a stop
+    r.feed(bytes(pcm(1, 7, seconds=1.0, level=2000, pre_s=0).pcm), 0.9)
+    r.quiet(0.8)
+    assert r.stops == [] and r.queued() == []
+    r.quiet(1.0)
+    r.stt.said = "wait what about Saturday"
+    r.feed(bytes(pcm(1, 7, seconds=1.0, level=2000, pre_s=0).pcm), 0.9)
+    assert r.stops  # quiet at once
+    r.quiet(0.8)
+    (item,) = r.queued()
+    assert item[4]["how"] == barge_mod.QUIET
+
+
+def test_an_echo_that_is_heard_is_never_quiet(rig):
+    r = rig
+    r.playing()
+    for _ in range(3):
+        r.echo(1.0)
+        r.quiet(0.5)
+    assert not r.b.echo_quiet()
+
+
+def test_talking_over_an_answer_settles_the_hold_without_the_hearing_thread(vrig, monkeypatch):
+    """The answer is said on the hearing thread, so a barge-in queued there waited for the hold to give up (12 s)
+    and talking over it seemed to do nothing. Now the words are written out at once on a thread of their own, the
+    hold is settled there (a question: it stops; anything else: it carries on), and the stretch is queued with them."""
+    r = vrig
+    v = r.v
+    v.speaker.busy = True
+    r.b.sync = False  # as in use
+    sound = bytes(pcm(1, 7, seconds=1.0, level=3000, pre_s=0).pcm)
+    stopped, released = [], []
+    monkeypatch.setattr(v.speaker, "stop", lambda: stopped.append(1))
+    monkeypatch.setattr(v.speaker, "release", lambda: released.append(1))
+    r.stt.said = "What about the weekend?"
+    v._heard_audio(sound, False, 1.0, b"\x01" * 31, {"how": barge_mod.VOICE})
+    for _ in range(200):
+        if not v._work.empty():
+            break
+        time.sleep(0.01)
+    (item,) = r.queued()
+    assert stopped == [1] and released == [] and item[4]["text"] == "What about the weekend?"
+    calls = len(r.stt.calls)
+    v.speaker.busy = False
+    monkeypatch.setattr(v.speaker, "stop", lambda: None)
+    v._work_one(*item)
+    assert len(r.stt.calls) == calls  # written out once
+    v.speaker.busy = True
+    r.stt.said = "mm hmm"
+    v._heard_audio(sound, False, 1.0, b"\x01" * 31, {"how": barge_mod.VOICE})
+    for _ in range(200):
+        if not v._work.empty():
+            break
+        time.sleep(0.01)
+    assert released == [1] and len(r.queued()) == 1

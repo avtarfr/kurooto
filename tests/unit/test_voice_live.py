@@ -15,6 +15,7 @@ import pytest
 from kurooto.core import nearby
 from kurooto.modules.voice import live as live_mod
 from kurooto.modules.voice.gate import Heard
+from kurooto.modules.voice.portal import UNSURE_NOTICE as UNSURE
 from kurooto.modules.voice.speakerid import Verdict
 from tests.unit.test_voice import Engine, Speakers, voice  # noqa: F401 (pytest fixtures)
 
@@ -31,6 +32,7 @@ class FakeLive:
         self.mode, self.tool = mode, tool
         self.paths, self.keys, self.setups, self.turns, self.tool_responses = [], [], [], [], []
         self.closed = threading.Event()
+        self.starts = 0
         self.tasks = set()
         self.loop = asyncio.new_event_loop()
         self.thread = threading.Thread(target=self.loop.run_forever, daemon=True)
@@ -72,6 +74,13 @@ class FakeLive:
                 if "audio" in ri:
                     assert ri["audio"]["mimeType"] == "audio/pcm;rate=16000"
                     audio += base64.b64decode(ri["audio"]["data"])
+                if "activityStart" in ri:
+                    self.starts += 1
+                    busy = [t for t in self.tasks if not t.done()]
+                    for t in busy:  # as Google does: a new activity interrupts the answer being made
+                        t.cancel()
+                    if busy:
+                        await ws.send(json.dumps({"serverContent": {"interrupted": True}}))
                 if "activityEnd" in ri:
                     self.turns.append(bytes(audio))
                     audio.clear()
@@ -109,6 +118,22 @@ class FakeLive:
             await ws.send(sc(interrupted=True))
             await asyncio.sleep(0.1)
             await ws.send(sound(b"\x09\x00" * 4800))  # after the interruption: never played
+            await ws.send(sc(turnComplete=True))
+            return
+        if self.mode == "slow":  # (0.9.2) still making the answer when it's talked over
+            await ws.send(sound(ANSWER))
+            await asyncio.sleep(2.0)
+            await ws.send(sound(ANSWER))
+            await ws.send(sc(turnComplete=True))
+            return
+        if self.mode == "chunks":  # (0.9.2) as Google streams it: many small chunks (0.1 s each)
+            for _ in range(25):
+                await ws.send(sound(b"\x03\x00" * 2400))
+            await ws.send(sc(turnComplete=True))
+            return
+        if self.mode == "json":  # (0.9.2) it read a tool's result out
+            await ws.send(sc(outputTranscription={"text": '{"now": "Thursday", "due_soon": []}'}))
+            await ws.send(sound(ANSWER))
             await ws.send(sc(turnComplete=True))
             return
         await ws.send(sc(outputTranscription={"text": "It's due "}))
@@ -323,9 +348,9 @@ def test_a_tool_run_then_a_failure_isn_t_done_again_the_usual_way(lv, monkeypatc
     ran = []
     started = "Filling your Zepto cart: bread. I'll ask you to approve."
     monkeypatch.setattr(calls, "run_tool", lambda name, args, since="": ran.append(name) or started)
-    assert say(lv, "Kurooto, order bread from zepto") == started
+    assert say(lv, "Kurooto, order bread from zepto") == live_mod.ACTED  # (0.9.2) a set line, never its result
     assert ran == ["order_groceries"] and lv.text_way == []  # never the usual way: no second order
-    assert lv.engine.said == [started]  # said by the voice made here
+    assert lv.engine.said == [live_mod.ACTED]  # said by the voice made here
     ev = events(lv, "voice_live")[-1]
     assert ev["stage"] == "first sound" and ev["fallback"] is False and ev["tools"] == 1
 
@@ -421,3 +446,256 @@ def test_a_live_turn_is_noticed_like_a_typed_message(lv, monkeypatch):
     n = len(events(lv, "message_in"))
     say(lv)
     assert seen == [] and len(events(lv, "message_in")) == n + 1  # the message_in itself is a fix, never off
+
+
+# ------------------------------------------------------------------------------ everyone (0.9.2, live_everyone)
+@pytest.fixture
+def ev(lv, monkeypatch):
+    """Live with voice.listen.live_everyone on; non-owner turns judged by words first (as Voice ID's gate off does);
+    the guest path's hourly count starts empty."""
+    from kurooto.core import guest
+
+    lv.app.settings.set("voice.listen.live_everyone", True)
+    lv.app.settings.set("voice.speaker_id.gate", False)
+    lv.app.settings.set("you.name", "Mira Okafor")
+    monkeypatch.setattr(guest, "_times", {})
+    return lv
+
+
+MOON = "Kurooto, how far away is the moon?"
+
+
+def _who(v, decision):
+    v.who = Verdict(decision, "not you" if decision != "owner" else "your voice", 0.2, 2.0)
+
+
+def test_everyone_an_owners_turn_without_a_face_goes_to_his_session(ev, monkeypatch):
+    srv = ev.fake()
+    monkeypatch.setattr(ev, "face_gate", lambda: ("off", ""))  # let through without a face seen
+    assert say(ev, MOON, faced=False) == "It's due Friday."
+    (setup,) = srv.setups
+    si = setup["systemInstruction"]["parts"][0]["text"]
+    assert live_mod.DESK_ANY in si and live_mod.DESK not in si  # it doesn't claim a face was seen
+    assert {"search_notes", "hold_calls"} <= {d["name"] for d in setup["tools"][0]["functionDeclarations"]}
+    assert ev.live.sess is not None and ev.live.gsess is None
+
+
+def test_everyone_an_unsure_turn_gets_a_guest_session_with_nothing_of_the_owners(ev, monkeypatch):
+    srv = ev.fake()
+    recorded, after = [], []
+    monkeypatch.setattr(ev.app.modules["chat"], "record_turn", lambda *a, **k: recorded.append(a))
+    monkeypatch.setattr(ev.app, "after_turn", lambda *a, **k: after.append(a))
+    _who(ev, "unsure")
+    reply = say(ev, MOON, faced=False)
+    assert reply.endswith("It's due Friday.")
+    assert ev.text_way == [] and ev.engine.said == []  # Live said it; nothing went the usual way
+    (setup,) = srv.setups
+    assert "tools" not in setup
+    si = setup["systemInstruction"]["parts"][0]["text"]
+    assert "NOT its owner" in si and live_mod.GUEST_DESK in si
+    assert "Mira" not in si and "Okafor" not in si  # nothing of his: not even his name
+    assert UNSURE in si  # the tell_guests line, once
+    assert recorded == [] and after == []  # never his chat history or Brain
+    assert ev.live.gsess is not None and ev.live.sess is None
+    (ans,) = [e for e in events(ev, "voice_live") if e["stage"] == "answered"]
+    assert ans["who"] == "guest" and set(ans) <= {"kind", "ts", "stage", "model", "turns", "who", "at", "id"}
+
+
+def test_everyone_a_guests_tool_call_never_runs(ev, monkeypatch):
+    srv = ev.fake("tool", tool=("call_now", {"reason": "the lab"}))
+    calls = ev.app.modules["calls"]
+    ran = []
+    monkeypatch.setattr(calls, "run_tool", lambda name, args, since="": ran.append(name))
+    monkeypatch.setattr(ev.live, "run_tool", lambda name, args: ran.append(name))
+    _who(ev, "guest")
+    say(ev, MOON)
+    assert ran == [] and ev.app.ask.pending(kind="approval", source="tap") == []
+    (resp,) = srv.tool_responses
+    assert resp["functionResponses"][0]["response"]["result"] == live_mod.NO_TOOLS
+
+
+def test_everyone_the_owners_verified_turn_switches_back_and_never_shares_the_guest_session(ev):
+    srv = ev.fake()
+    _who(ev, "unsure")
+    say(ev, MOON)
+    g = ev.live.gsess
+    _who(ev, "owner")
+    assert say(ev, MOON) == "It's due Friday."
+    assert ev.live.gsess is None and g.closed  # the guest session ended before his turn
+    assert ev.live.sess is not None and ev.live.sess is not g
+    assert len(srv.setups) == 2 and "tools" not in srv.setups[0] and "tools" in srv.setups[1]
+    _who(ev, "guest")
+    say(ev, MOON)  # someone else again: a new guest session, never his
+    assert len(srv.setups) == 3 and "tools" not in srv.setups[2]
+    assert ev.live.gsess is not ev.live.sess
+
+
+def test_everyone_the_guest_rules_come_first(ev, monkeypatch):
+    from kurooto.core import guest
+
+    srv = ev.fake()
+    _who(ev, "guest")
+    monkeypatch.setattr(guest, "kind", lambda app, text: "action" if "alarm" in text else "")
+    say(ev, "Kurooto, set an alarm for seven")
+    assert ev.text_way and srv.setups == []  # the usual way refuses it, as the text guest path does
+    ev.portal.close("test")
+    ev.app.settings.set("voice.speaker_id.guest_per_hour", 1)
+    say(ev, MOON)
+    ev.portal.close("test")
+    n = len(ev.text_way)
+    say(ev, MOON)  # over the hour's cap: the usual way (which says it's busy)
+    assert len(srv.setups) == 1 and len(ev.text_way) == n + 1
+
+
+def test_everyone_a_failed_guest_session_goes_the_usual_way_and_isnt_counted_twice(ev):
+    from kurooto.core import guest
+
+    ev.fake("refuse")
+    _who(ev, "guest")
+    reply = say(ev, MOON)
+    assert "The usual way." in reply and ev.engine.said
+    assert not guest._times.get(id(ev.app))  # given back: the usual way counts it
+    assert events(ev, "voice_live")[-1]["fallback"] is True
+
+
+def test_everyone_without_voice_id_every_turn_is_a_guests(ev, monkeypatch):
+    srv = ev.fake()
+    monkeypatch.setattr(ev.voiceid, "on", lambda: False)
+    assert say(ev, MOON) == "It's due Friday."
+    assert "tools" not in srv.setups[0]
+
+
+def test_everyone_owner_only_at_all_never_connects(ev):
+    srv = ev.fake()
+    ev.app.settings.set("voice.speaker_id.mode", "owner_only_at_all")
+    _who(ev, "guest")
+    say(ev, MOON)
+    assert srv.setups == []
+
+
+def test_everyone_off_keeps_the_old_rules(ev, monkeypatch):
+    srv = ev.fake()
+    ev.app.settings.set("voice.listen.live_everyone", False)
+    _who(ev, "unsure")
+    say(ev, MOON)
+    assert srv.setups == [] and len(ev.text_way) == 1
+    ev.portal.close("test")
+    _who(ev, "owner")
+    monkeypatch.setattr(ev, "face_gate", lambda: ("off", ""))  # let through without a face seen
+    assert say(ev, MOON) == "The usual way."  # and an owner's turn still needs the face
+    assert srv.setups == []
+
+
+# ------------------------------------------------------------------------- 0.9.2: tool results, talking over it
+def test_a_read_then_a_failure_goes_the_usual_way_and_never_says_the_result(lv, monkeypatch):
+    """ "can you hear me?": Live called pending_items, then no sound came, and the tool's JSON was said and shown as
+    the answer. A tool that only reads is safe to do again: the usual way answers; the result is never the answer."""
+    lv.fake("tool_then_silent", tool=("pending_items", {}))
+    monkeypatch.setattr(live_mod, "FIRST_S", 0.5)
+    calls = lv.app.modules["calls"]
+    data = {"now": "Thursday 29 October", "checkins_today": [], "due_soon": [{"title": "Organic Chemistry"}]}
+    monkeypatch.setattr(calls, "run_tool", lambda name, args, since="": data)
+    reply = say(lv, "Kurooto, can you hear me?")
+    assert reply == "The usual way." and lv.engine.said == ["The usual way."]
+    assert "due_soon" not in json.dumps(lv.app.live.sent) and "{" not in "".join(lv.engine.said)
+    ev = events(lv, "voice_live")[-1]
+    assert ev["fallback"] is True and ev["tools"] == 1
+
+
+def test_words_that_read_as_a_tools_json_are_never_the_shown_answer(lv, monkeypatch):
+    lv.fake("json")
+    recorded = []
+    monkeypatch.setattr(lv.app.modules["chat"], "record_turn", lambda *a, **k: recorded.append(a))
+    assert say(lv) == live_mod.ALOUD
+    assert "due_soon" not in json.dumps(lv.app.live.sent) and recorded == []
+
+
+def test_the_setup_says_results_are_data_and_a_greeting_needs_no_tool(lv):
+    srv = lv.fake()
+    say(lv)
+    si = srv.setups[0]["systemInstruction"]["parts"][0]["text"]
+    assert live_mod.TOOL_RULES in si and "can you hear me" in si
+
+
+def test_an_answer_cut_off_is_interrupted_at_googles_end_too(lv):
+    """Barge-in or a stop cut the answer: Live is told an activity started (which interrupts the answer it's still
+    making), and the next turn's sound continues that activity instead of starting another."""
+    srv = lv.fake("slow")
+    lv.out.block_s = 3.0
+    threading.Timer(0.3, lv.speaker.stop).start()  # talked over: it stops
+    say(lv)
+    for _ in range(100):
+        if srv.starts == 2:
+            break
+        time.sleep(0.02)
+    assert srv.starts == 2 and lv.live.sess.active  # the turn's own, then the interruption
+    lv.out.block_s = 0
+    say(lv, "And what about next week?")
+    assert srv.starts == 2 and len(srv.turns) == 2 and not lv.live.sess.active
+
+
+# ------------------------------------------------------------------------ 0.9.2: an add-on's output, gapless
+class Timed:
+    """An add-on's output that plays in real time (sleeps the piece's length), recording each piece's size and when
+    its call began and ended; with ahead_s it takes the next piece before the one playing ends."""
+
+    def __init__(self, ahead_s=0.0):
+        if ahead_s:
+            self.ahead_s = ahead_s
+        self.calls = []
+        self.end = 0.0  # a piece handed early starts when the one before it ends (as Web Audio's start(when))
+        self.lock = threading.Lock()
+
+    def __call__(self, pcm, sr, stop):
+        t0 = time.monotonic()
+        with self.lock:
+            self.end = max(t0, self.end) + len(pcm) / 2 / sr
+            end = self.end
+        stop.wait(max(0.0, end - t0))
+        self.calls.append((len(pcm), t0, time.monotonic(), stop.is_set()))
+        return True
+
+
+def test_lives_small_chunks_go_to_an_add_on_output_in_pieces_of_about_a_second(lv):
+    lv.fake("chunks")
+    out = Timed()
+    lv.add_output(out)  # the newest output first: it takes the sound
+    say(lv)
+    sizes = [n for n, *_ in sorted(out.calls, key=lambda c: c[1])]
+    assert sum(sizes) == 25 * 4800  # all of it, flushed at the end
+    assert sizes[0] >= live_mod.OUT_FIRST_PIECE and all(n >= live_mod.OUT_PIECE for n in sizes[1:-1])
+    assert len(sizes) <= 3  # 2.5 s in three pieces at most, not 25
+
+
+def test_a_gapless_output_gets_the_next_piece_before_the_one_playing_ends(voice):
+    sp = voice.speaker
+    out = Timed(ahead_s=0.3)
+    voice.add_output(out)
+    piece = b"\x01\x00" * 12000  # 0.5 s at 24 kHz
+    t0 = time.monotonic()
+    with sp.lock:
+        sp.busy = True
+        for _ in range(4):
+            assert sp.say_piece(piece, 24000)
+        sp.drain()
+        sp.busy = False
+    took = time.monotonic() - t0
+    calls = sorted(out.calls, key=lambda c: c[1])
+    assert len(calls) == 4
+    for a, b in zip(calls, calls[1:], strict=False):
+        assert b[1] < a[2]  # handed over while the one before was still playing: no gap to fetch it in
+    assert took >= 0.5 and not sp._ahead  # drain waited for the last one to play
+
+
+def test_a_stop_reaches_every_piece_handed_ahead(voice):
+    sp = voice.speaker
+    out = Timed(ahead_s=2.5)
+    voice.add_output(out)
+    with sp.lock:
+        sp.busy = True
+        sp.say_piece(b"\x01\x00" * 24000, 24000)  # 1 s each: both handed over at once
+        sp.say_piece(b"\x01\x00" * 24000, 24000)
+        sp.stop()
+        sp.drain(5)
+        sp.busy = False
+    assert len(out.calls) == 2 and all(c[3] for c in out.calls)  # both told to stop

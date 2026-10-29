@@ -508,10 +508,51 @@ are taken off the turn, a `voice_live` event (stage, model, code, ms; never word
 (0.8.18, a fix) Unless a tool already ran in that turn (`run_tool` records each in `Live._ran`, reset per turn): the
 usual path would run it again (Live's `order_groceries`, then the AI's or the add-on's plain words: "An order is
 already going"), so `_acted()` waits for running tools up to `TOOL_WAIT_S` (15 s), records the turn in Chat and returns
-their results as the answer, said by the voice made here; the AI and the add-ons' intents never see the turn.
+a set line (0.9.2; it returned their results, JSON included, until then) as the answer, said by the voice made here; the AI and the add-ons' intents never see the turn.
 Events: `voice_live` with `stage` `answered` (`turns`), or `connect`/`setup`/`send`/`first sound`/`no key`/`no calls`/
 `error` (`fallback: true` when that turn went the usual way; `fallback: false, tools: n` when its tools' results were
 said instead).
+
+**Everyone (0.9.2, `voice.listen.live_everyone`).** `Live.everyone()`: the switch and `on()`. `keep()` keeps any
+admitted turn's sound then. `ask_brain()`: an owner's verdict as before (`turn()` drops the `faced` need with the
+switch on, and `setup()` ends with `DESK_ANY`, which doesn't claim a face); any other (`who` None, unsure, guest)
+calls `live.turn(text, turn, guest=<decision or "none">)` -> `_guest_turn()`: `owner_only_at_all` and `guest.kind()`
+(a command, an action, his things) return None (the usual guest path refuses); `guest.allowed_now()` counts it
+(`guest.refund()` gives it back on failure); `self.gsess` (`Session(guest=True)`) is opened with `guest_setup()`:
+`providers.context.guest_context()` + `GUEST_DESK`, the voice from `calls.voice`/`live_profiles()`, the
+`tell_guests` line (UNSURE_NOTICE / GUEST_NOTICE, unless `portal._told` has it), no `tools` key, never
+`config_template()` or `call_context()`. Its `_tools()` answers `NO_TOOLS` without running anything; `_answer()` skips
+`promises.said`; nothing goes to `chat.record_turn`, `after_turn`, `_talk_line` or `_desk_chat`; `ask_brain()` keeps
+it with `voiceid.heard_guest()` (memory). An owner's turn calls `close_guest()` first, `close()` ends both.
+`portal.said_first()` keeps the notice from being shown twice. Events: `voice_live` with `who: "guest"`.
+
+**Fixes (0.9.2).** Tool results: `_acted()` now returns `ACTED` / `ACTED_RUNNING` (set lines), only for tools that may
+act; a turn whose tools all only read (`READS`, or `Tool.writes is False`, `_reads()`) falls back the usual way
+(`fallback: true, tools: n`). `spoken()` drops output transcription that reads as JSON (ALOUD instead), and
+`TOOL_RULES` ends the owner's setup. Cut off: `_answer()` sends `realtimeInput.activityStart` (`_activity()`) when the
+answer was cut before its end, and `sess.active` makes the next `_send_turn(start=False)`. Pieces: with an output
+registered `_play()` uses `OUT_FIRST_PIECE`/`OUT_PIECE`/`OUT_MAX_PIECE` (0.5 s, 1 s, 3 s) and calls
+`Speaker.drain()` before it lets go. Gapless outputs: an output fn with `ahead_s` gets each piece through
+`Speaker._play_ahead()` (its call on a `voice-out` thread; the speaking thread goes on `ahead_s` before the estimated
+end, `_ahead_end`); `_cut_piece()` sets every handed piece's stop; `_speak()`, `ack()` and Live drain before `busy`
+goes False. A phone add-on's page needs: its output fn's `ahead_s` (0.3 to 0.5), a `say` message that queues instead of
+`hush()`-ing, and Web Audio `start(when)` at the previous buffer's end (Web Audio scheduling).
+
+Barge-in: `_heard_audio()` with a barge stretch while `speaker.busy` (and not `barge.sync`) runs `_barge_early()` on
+a `voice-barge-turn` thread: written out, told off or `asks()` -> `speaker.stop()`, else `release()`, then queued with
+`how["text"]` (`barge_turn()` doesn't write it out again). `barge.played(pcm, sr, remote)` (remote: an output was
+there) keeps a per-piece lag (`REMOTE_LAG_S` 2 s); `_while_played` counts speech frames while it plays, and a stretch
+that began while `echo_quiet()` (QUIET_MIN frames, under QUIET_SHARE speech) may pass `check(..., quiet=True)` by
+`words_ok()` alone (`QUIET`). Enrolment: `VoiceID._mic_capture()` drops a stretch that began while the speaker was busy
+or within `ECHO_TAIL_S` (0.6 s; `ECHO_TAIL_REMOTE_S` 1.2 s with an output) of `speaker.until` (`_echo()`).
+
+Sources: the voice print's `mics` (names: `mic_id()`, the device or default source, `via <backend>` when not auto;
+`_base(t, session)` adds the session's, a start-over replaces them); `_mic_watch()` in `check()` (long turns only):
+through a microphone not in `mics`, MIC_TURNS turns with more than half unsure -> one `voice.id_mic` message per
+microphone (voice.json `mic_told`), event `voiceid_mic_changed` (counts). Face: `Template.cameras` (names, set in
+`train()` and the look's `_look_done()` from the session camera's `dev.name`); `Face._camera_watch()` after each tick
+compares `watcher.counts` since the camera's first tick: CAM_FRAMES judged, CAM_SHARE not you -> one
+`face.camera_changed` message per camera (`state/face/sources.json`).
 
 Not verified against Google: the raw v1beta setup shape for the configured models, the `x-goog-api-key` header on the
 websocket, manual activity with a pre-cut stretch, and whether `interrupted` is followed by a turnComplete

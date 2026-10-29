@@ -43,7 +43,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 68 settings
 - [Brain](#brain): 159 settings
-- [Voice and voice notes](#voice-and-voice-notes): 92 settings
+- [Voice and voice notes](#voice-and-voice-notes): 93 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 12 settings
@@ -8158,6 +8158,28 @@ you either way.
 - **When to change it:** Turn it off if Live turns shouldn't open threads or set things up.
 - **Costs and what leaves this computer:** Nothing leaves this computer.
 - **Depends on:** `voice.listen.live`.
+
+### `voice.listen.live_everyone`
+
+Every turn said to Kurooto goes to Gemini Live: yours with your tools, anyone else's to a guest session. Their voices go
+to Google.
+
+With `voice.listen.live` on, Live normally takes only your own turns, said while you face the camera close by. This
+sends every turn the gate called addressed to Gemini Live, whoever said it and whether or not a face was seen. A turn
+Voice ID calls yours (face_assist and carry_talk count) gets your usual session with its tools. Any other turn (a voice
+it's unsure of, someone else's, or every turn when Voice ID is off) gets a separate guest session: no tools, nothing of
+yours in its setup (no name, notes, memory, history or lessons: only the assistant's name and the guest rules, with the
+voice.speaker_id.tell_guests line), counted against voice.speaker_id.guest_per_hour, never shared with your session;
+your next recognised turn closes it and goes back to yours. A request the guest path refuses (a command, something that
+acts or reads your things) and owner_only_at_all still go the usual way, which refuses them. **Privacy:** with this on,
+the sound of other people's turns said to Kurooto, and of your own turns Voice ID wasn't sure of, goes to Google (Gemini
+Live, your key), even with voice.speaker_id.guest_brain set to local. Nothing is written to disk; events hold numbers
+only. Failures go the usual way, as Live's do.
+
+- **Values:** `false` (default) or `true`. **Default:** off.
+- **When to change it:** Turn it on when Voice ID or the face check keeps sending your turns the slow way (a new
+  microphone or camera) and you're fine with guests' voices going to Google.
+- **Depends on:** `voice.listen.live` and a Gemini key; Voice ID for your own session.
 
 ## Privacy and what it keeps
 

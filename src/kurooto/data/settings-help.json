@@ -1006,6 +1006,7 @@
 "voice.listen.levels": "Show the microphone's loudness as a waveform on the dashboard (numbers only).",
 "voice.listen.live": "Your own turns answered by Gemini Live, speech to speech, in about a second. Their sound goes to Google.",
 "voice.listen.live_after": "A turn Gemini Live answered is noticed like a typed message: threads, what you stated, Brain's tone and replies.",
+"voice.listen.live_everyone": "Every turn said to Kurooto goes to Gemini Live: yours with your tools, anyone else's to a guest session. Their voices go to Google.",
 "voice.listen.look_anyone": "Anyone's look opens the conversation, not only yours: a guest looking at it can talk to it too.",
 "voice.listen.look_away_s": "Looking away this long, before you've said anything, closes it again.",
 "voice.listen.look_dwell_s": "How long you look at the camera before it starts listening: a glance shorter than this doesn't count.",

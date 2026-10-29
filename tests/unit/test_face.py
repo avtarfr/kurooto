@@ -1848,3 +1848,50 @@ def test_the_faces_message_says_when_the_eye_follows_the_talker(app, monkeypatch
     f._faces_at = 0.0
     f._on_watch("faces", faces=one)
     assert "speaker" not in sent[-1]
+
+
+# ------------------------------------------------------------------------------- another camera (0.9.2, a fix)
+def test_a_new_camera_that_mostly_doesnt_know_you_is_told_once(app, monkeypatch):
+    from types import SimpleNamespace
+
+    from kurooto.core import calm
+    from kurooto.modules import face as face_mod
+    from kurooto.modules.face.watch import Counts
+
+    f = app.modules["face"]
+    told = []
+    monkeypatch.setattr(app, "notify", lambda text, **kw: told.append((text, kw)))
+    tpl = SimpleNamespace(cameras=["Integrated Webcam"])
+    monkeypatch.setattr(f, "_template_or_none", lambda: tpl)
+    counts = Counts()
+    cam = SimpleNamespace(dev=SimpleNamespace(name="Integrated Webcam"), want="")
+    f.watcher = SimpleNamespace(camera=cam, counts=counts)
+    counts.unsure = 100
+    f._camera_watch()  # the camera it was enrolled with: never told
+    assert told == []
+    cam.dev = SimpleNamespace(name="Desk phone camera")  # the phone's camera now (a virtual one)
+    f._camera_watch()
+    counts.you, counts.unsure, counts.not_you = 30, 120, 10  # since: 30 you, 20 unsure, 10 someone else
+    f._camera_watch()
+    assert told == []  # half: not enough
+    counts.unsure += 60
+    f._camera_watch()
+    assert len(told) == 1
+    text, kw = told[0]
+    assert "Integrated Webcam" in text and "Desk phone camera" in text and "Add this look" in text
+    assert kw["why"] == "face.camera_changed" and "face.camera_changed" in calm.REASONS
+    f._cam_seen = {}  # a restart: once per camera (state/face/sources.json)
+    f._camera_watch()
+    counts.unsure += 200
+    f._camera_watch()
+    assert len(told) == 1
+    assert face_mod._with(["a", "b"], "a") == ["b", "a"] and face_mod._with(["a"], "") == ["a"]
+
+
+def test_the_template_keeps_its_cameras():
+    from kurooto.modules.face.model import Template
+
+    t = Template(fp.SFACE_SHA)
+    t.cameras = ["Integrated Webcam", "Desk phone camera"]
+    assert Template.from_payload(t.to_payload()).cameras == ["Integrated Webcam", "Desk phone camera"]
+    assert Template.from_payload({"model_sha256": fp.SFACE_SHA}).cameras == []  # an older one: none known

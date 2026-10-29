@@ -12,6 +12,7 @@ import math
 import os
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -320,7 +321,9 @@ def test_calibration_needs_the_eye_model_and_a_face_model(app, ready, monkeypatc
     assert "Enrol first" in f.gaze_start()[1]["message"]
     f.enrol_start()
     feed_plan(f, f.session)
+    f.cam.dev = SimpleNamespace(name="Test camera")  # (0.9.2) the enrolment's camera is recorded, a name only
     f.train(f.session.id)
+    assert f.template().cameras == ["Test camera"]
     assert "Get the eye model first" in f.gaze_start()[1]["message"]
     assert f.cam.opened == 1  # only the enrolment opened it
 

@@ -2226,6 +2226,18 @@ that. Packages go into Kurooto's own folder, never your system.
   to a quicker AI if you choose (`voice.listen.fast_brain`: `same` by default, `local`, `fastest`); the engines and
   Claude Code's program warmed when listening starts (`voice.listen.warm_up`, `voice.listen.warm_brain`); and each
   turn timed from your last word, with the medians at the end of `/voice` (`voice.listen.timing`, numbers only).
+- **Live for every turn** (0.9.2, `voice.listen.live_everyone`, off; needs `voice.listen.live`): every turn said to
+  Kurooto goes to Gemini Live, face seen or not. Yours (Voice ID) get your usual session with its tools; anyone
+  else's, and yours when Voice ID is unsure, get a separate guest session with no tools and none of your data (only
+  the assistant's name and the guest rules), counted against `voice.speaker_id.guest_per_hour`; your next recognised
+  turn closes it. **With it on, other people's voices and your unsure turns go to Google** (your Gemini key), even
+  with `voice.speaker_id.guest_brain` `local`. *Undo:* turn it off.
+- **Fixes (0.9.2):** Live never says or shows a tool's result as its answer (a read it did before failing goes the
+  usual way; something it did gets a set line); talking over an answer stops it at once even while the answer is still
+  being said (it used to wait out a 12-second hold), cuts Live's answer off at Google's end too, and works when a phone
+  both plays and hears (its echo comes later, or is cancelled by the phone); Live's sound goes to a phone's speaker in
+  pieces of about a second, so it doesn't cut out between small chunks; enrolment never keeps its own spoken steps as
+  your samples.
 - `/voice` says what it's doing and counts what it heard (`/health` has a line too).
 
 *Leaves:* nothing while no conversation is open; then only the turns said to Kurooto, as text, to your AI (and kept
@@ -2240,6 +2252,11 @@ back as in 0.8.15; `voice.listen.on` off stops listening; turning Voice off
 (Features) stops both. To free the space, delete the `voice` folder in Kurooto's app folder (`kurooto paths`, `app`).
 
 ### Voice ID: only your voice can make it act
+
+*Another microphone (0.9.2, a fix):* Voice ID now remembers which microphone its samples came from (a name only). If
+it listens through another one and is unsure of most of your turns, it tells you once, for that microphone, that
+`/voice enrol` records your voice again with it. Face presence does the same for a camera it wasn't enrolled with:
+use Add this look (or enrol again) with the new camera.
 Off until you turn it on (`voice.speaker_id.on`; the Voice card's switch). It learns your voice in a guided enrolment
 on its own dashboard page (**Your voice (Voice ID) →** on the Voice card, `/voice-id`) or with `/voice enrol` typed:
 about five minutes at the computer's own microphone, six conditions (normal, quiet, far, with noise, short requests,

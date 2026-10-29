@@ -21,6 +21,10 @@ public class ChatTest {
         check(!ChatRules.isSession("0123456789ABCDEF") && !ChatRules.isSession("abc") && !ChatRules.isSession(null)
                 && !ChatRules.isSession("../etc/passwd0000"), "anything else isn't");
 
+        // (0.9.2) quiet messages: no notification
+        check(ChatRules.silent(true, "main") && ChatRules.silent(false, ChatRules.DESK), "quiet, or the Desk chat: silent");
+        check(!ChatRules.silent(false, "main") && !ChatRules.silent(false, "0123456789abcdef"), "anything else notifies");
+
         // edit window and size
         long now = 1_800_000_000_000L;
         check(ChatRules.editable(true, now / 1000 - 60, now), "a minute old: editable");

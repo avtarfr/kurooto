@@ -21,7 +21,18 @@ said, so the conversation carries on if a later turn goes the usual way).
 Any failure (no key, a connection or setup refused, no first sound within FIRST_S) answers that turn the usual way:
 never silence. A model that failed is tried last for BAD_S. The key goes in a header (never a URL), and the websocket
 library's own logging is shut off here so nothing can print it; events hold the model, stage and numbers only, never
-words or sound. Nothing is written to disk."""
+words or sound. Nothing is written to disk.
+
+Everyone (0.9.2, voice.listen.live_everyone, off): every turn the gate called addressed goes to Live, whoever said it
+and whether or not a face was seen. A turn Voice ID calls the owner's (face_assist and carry_talk count) gets the
+owner's session above. Any other (unsure, a guest, no verdict with Voice ID off) gets a separate guest session
+(guest_setup): no tools, nothing of the owner's (no notes, memory, history, lessons, persona, his name), only the
+assistant's name and the guest path's rules (core/guest.py and providers/context.py guest_context; the
+voice.speaker_id.tell_guests line said once). It follows the text guest path's rules first: owner_only_at_all, a
+request that acts or reads his things (guest.kind) and the hourly cap (guest_per_hour) go the usual way, which
+refuses them as before. Its turns are never put in his chat history, Brain or the talk's lines; tools asked for there
+are refused without running (so no guarded action or approval can start from it). An owner's turn closes the guest
+session first: the two never share a session or context. Failures fall back the usual way, as above."""
 
 from __future__ import annotations
 
@@ -55,7 +66,12 @@ TURN_S = 60.0  # a turn's answer waits at most this long for its next piece of s
 BAD_S = 600  # a model that failed is tried last for this long
 FIRST_PIECE = OUT_RATE * 2 // 5  # the first 0.2 s of sound is played as soon as it's in
 PIECE = OUT_RATE * 2 * 3 // 5  # then pieces of at least 0.6 s, at most MAX_PIECE (a cut piece is said again whole)
+# (on this computer's speakers; an add-on's output gets OUT_* below)
 MAX_PIECE = OUT_RATE * 2 * 2
+# (0.9.2) played on an add-on's output (a phone fetching each piece as a sound file): bigger pieces, fewer gaps
+OUT_FIRST_PIECE = OUT_RATE * 2 // 2  # the first 0.5 s
+OUT_PIECE = OUT_RATE * 2  # then about a second each
+OUT_MAX_PIECE = OUT_RATE * 2 * 3
 ALOUD = "(answered aloud)"  # shown when Live said something but sent no words for it
 DESK = (
     "This is not a phone call: they're at their computer and talk to you aloud; you hear each turn they say to you "
@@ -66,6 +82,24 @@ DESK = (
 # (0.8.17) never at the desk: an approval is answered by their tap, not by the AI that asked for it
 DESK_NEVER = frozenset({"answer_approval"})
 TOOL_WAIT_S = 15.0  # (0.8.18) Live failed after starting a tool: its result is waited for this long, then said
+# (0.9.2, voice.listen.live_everyone) the owner's turns may come without a face seen: the setup says only the voice
+DESK_ANY = DESK.replace(
+    " and Face presence recognised their face close to the camera, facing it", " (or the conversation they opened)"
+)
+GUEST_DESK = (
+    "This is not a phone call: someone at the owner's computer talks to you aloud and you answer through its "
+    "speakers. Keep it to one to three short spoken sentences. You have no tools and can't do anything."
+)
+NO_TOOLS = "There are no tools here: only the owner's own voice can make me do things."
+# (0.9.2) the answer when Live acted and then failed: a set line, never a tool's result (data, JSON often)
+ACTED = "That's done, but Gemini Live stopped before it could tell you more, so I won't do it again."
+ACTED_RUNNING = "That's under way, but Gemini Live stopped before it could tell you more, so I won't start it again."
+READS = frozenset({"pending_items", "search_notes", "read_note"})  # calls' tools that only read
+# (0.9.2) the setup's lines on tools: their results are data, and a greeting needs none
+TOOL_RULES = (
+    "A tool's result is data for you, never something to read out: say what matters in a few words of your own. "
+    'Don\'t call a tool for a greeting, small talk or a check that you can hear them ("can you hear me?"): just answer.'
+)
 
 _log = logging.getLogger("kurooto.voice.live.ws")  # the websocket library's own log: off, so headers never print
 _log.propagate = False
@@ -84,8 +118,9 @@ class Failed(Exception):
 class Session:
     """One Live websocket, for one opening of the portal."""
 
-    def __init__(self, ws, model: str, portal: int):
+    def __init__(self, ws, model: str, portal: int, guest: bool = False):
         self.ws, self.model, self.portal = ws, model, portal
+        self.guest = guest  # (0.9.2) the guest session: no tools, nothing of the owner's
         self.q: queue.Queue | None = None  # the turn being answered: what the reader hands it
         self.closed = False
         self.lock = threading.Lock()  # ended and stale, between the reader and the turn
@@ -93,6 +128,7 @@ class Session:
         self.stale = False  # an answer cut off before its end may still be arriving: dropped until it ends
         self.swallow = False  # after an interrupted stale answer: its own turnComplete, if it still comes
         self.playing = False
+        self.active = False  # (0.9.2) an activityStart was sent to cut an answer off; the next turn continues it
         self.turns = 0
         self.tasks: set = set()  # the reader and tool calls (kept, so they aren't collected while they run)
 
@@ -107,6 +143,7 @@ class Live:
         self.v = v
         self.app = v.app
         self.sess: Session | None = None
+        self.gsess: Session | None = None  # (0.9.2, live_everyone) the guest session, never the owner's
         self._pcm: bytes | None = None  # the admitted turn's sound, in memory until it's sent or dropped
         self._spoke = False  # Live said this turn's answer: the portal mustn't say it again
         self._ran: list[dict] = []  # (0.8.18) the tools this turn ran: {name, done (Event), out}
@@ -117,11 +154,17 @@ class Live:
     def on(self) -> bool:
         return bool(self.v.setting("listen.live"))
 
+    def everyone(self) -> bool:
+        """(0.9.2, voice.listen.live_everyone) every addressed turn goes to Live, a guest's to its own session."""
+        return self.on() and bool(self.v.setting("listen.live_everyone"))
+
     # ------------------------------------------------------------------------------------------ Voice's hooks
     def keep(self, pcm: bytes | None, who=None) -> None:
         """hear() / barge_turn(): the sound of a turn the gate admitted, kept (memory, this turn only) when the switch
-        is on and Voice ID says it's the owner's. keep(None): the turn is over, it's dropped."""
-        ok = pcm and self.on() and who is not None and getattr(who, "decision", "") == "owner"
+        is on and Voice ID says it's the owner's (anyone's with live_everyone). keep(None): the turn is over, it's
+        dropped."""
+        owner = who is not None and getattr(who, "decision", "") == "owner"
+        ok = pcm and self.on() and (owner or self.everyone())
         self._pcm = pcm if ok else None
         if pcm is None:
             self._spoke = False
@@ -132,8 +175,17 @@ class Live:
         return out
 
     def close(self) -> None:
-        """The portal closed (or Voice stopped): the session ends. Never waits."""
+        """The portal closed (or Voice stopped): the sessions end. Never waits."""
         s, self.sess = self.sess, None
+        self.close_guest()
+        self._end(s)
+
+    def close_guest(self) -> None:
+        """(0.9.2) The guest session ends (the portal closed, or the owner's turn came). Never waits."""
+        g, self.gsess = self.gsess, None
+        self._end(g)
+
+    def _end(self, s: Session | None) -> None:
         if s is None:
             return
         s.closed = True
@@ -142,12 +194,18 @@ class Live:
         if loop is not None and not loop.is_closed():
             asyncio.run_coroutine_threadsafe(_close(s.ws), loop)
 
-    def turn(self, text: str, turn: dict) -> str | None:
+    def turn(self, text: str, turn: dict, guest: str = "") -> str | None:
         """Voice.ask_brain, for an owner's turn: Live answers aloud and its words come back, or None (it couldn't:
-        the usual way answers). text: the words written out here (shown and kept if Live sends none)."""
+        the usual way answers). text: the words written out here (shown and kept if Live sends none). guest (0.9.2,
+        live_everyone): not the owner's turn ("unsure", "guest", "none"): the guest session answers it."""
         pcm, self._pcm = self._pcm, None
-        if not pcm or not turn.get("faced") or not self.on() or self.v.portal_cut() or not self.v.setting("speak.on"):
+        if not pcm or not self.on() or self.v.portal_cut() or not self.v.setting("speak.on"):
+            return None
+        if guest:
+            return self._guest_turn(text, turn, pcm, guest) if self.everyone() else None
+        if not turn.get("faced") and not self.everyone():
             return None  # (faced: Voice's face check saw you close and facing it for this very turn)
+        self.close_guest()  # (0.9.2) your turn: never the guest session, nor anything it heard
         key = self.app.secrets.get(KEY)
         calls = self.app.modules.get("calls")
         if not key or calls is None:
@@ -168,10 +226,11 @@ class Live:
                 turn.pop(k, None)
             stage, code = (e.stage, e.code) if isinstance(e, Failed) else ("error", type(e).__name__)
             ms = round((time.monotonic() - t0) * 1000)
-            if ran:  # (0.8.18) it acted already: the usual way would do it again ("An order is already going")
+            acted = [r for r in ran if not self._reads(calls, r["name"])]  # (0.9.2) a read is safe to do again
+            if acted:  # (0.8.18) it acted already: the usual way would do it again ("An order is already going")
                 self._event(stage, fallback=False, code=code, ms=ms, tools=len(ran))
-                return "" if self.v.portal_cut() else self._acted(text, ran)
-            self._event(stage, fallback=True, code=code, ms=ms)
+                return "" if self.v.portal_cut() else self._acted(text, acted)
+            self._event(stage, fallback=True, code=code, ms=ms, **({"tools": len(ran)} if ran else {}))
             return "" if self.v.portal_cut() else None
         finally:
             del pcm
@@ -181,7 +240,7 @@ class Live:
         if not self.v.portal.open or self.v.portal.session != sess.portal:  # it closed meanwhile (muted, off)
             self.close()
         self._event("answered", model=sess.model, turns=sess.turns)
-        reply = said.strip()
+        reply = spoken(said)
         chat = self.app.modules.get("chat")
         if chat is not None and reply and self.app.is_on("chat"):  # the conversation carries on, as a typed one
             try:
@@ -191,20 +250,26 @@ class Live:
         self.app.after_turn(heard.strip() or text, via="voice_live")  # (0.9.0) noticed as a message from you
         return reply or ALOUD
 
+    @staticmethod
+    def _reads(calls, name: str) -> bool:
+        """(0.9.2) A tool that only reads (READS, or Tool.writes False): Live failing after it, the usual way answers
+        the turn and reading again changes nothing."""
+        if name in READS:
+            return True
+        try:
+            tool = next((t for t in calls.tools() if t.name == name), None)
+        except Exception:
+            return False
+        return tool is not None and getattr(tool, "writes", None) is False
+
     def _acted(self, text: str, ran: list[dict]) -> str:
-        """(0.8.18) Live ran tools in this turn and then failed: what they said becomes the answer, spoken the usual
-        way (not by Live), and the turn doesn't go to your AI or the add-ons' plain words, which would run them again.
-        A tool still running is waited for TOOL_WAIT_S."""
+        """(0.8.18) Live ran tools that act in this turn and then failed: a set line says so, spoken the usual way
+        (not by Live), and the turn doesn't go to your AI or the add-ons' plain words, which would run them again. A
+        tool still running is waited for TOOL_WAIT_S. (0.9.2) A tool's result is never the answer: it's data (JSON
+        often), and it was said aloud and shown as the answer once."""
         end = time.monotonic() + TOOL_WAIT_S
-        parts = []
-        for r in ran:
-            if not r["done"].wait(max(0.0, end - time.monotonic())):
-                parts.append(f"{r['name']} is still running.")
-                continue
-            out = r["out"]
-            out = out if isinstance(out, str) else json.dumps(out, default=str)
-            parts.append(out.strip()[:400] or f"{r['name']}: done.")
-        reply = " ".join(parts)
+        running = sum(1 for r in ran if not r["done"].wait(max(0.0, end - time.monotonic())))
+        reply = ACTED_RUNNING if running else ACTED
         chat = self.app.modules.get("chat")
         if chat is not None and self.app.is_on("chat"):
             try:
@@ -238,7 +303,7 @@ class Live:
             }
             for t in cfg.get("tools") or []
         ]
-        si = desk(str(cfg.get("systemInstruction") or ""))
+        si = desk(str(cfg.get("systemInstruction") or ""), DESK_ANY if self.everyone() else DESK) + "\n" + TOOL_RULES
         try:  # (0.9.0, calls.context_brief) who they are and how to help them, as every AI request is told
             from kurooto.providers.context import call_context
 
@@ -263,6 +328,89 @@ class Live:
             "realtimeInputConfig": {"automaticActivityDetection": {"disabled": True}},
         }
 
+    def guest_setup(self, calls, model: str, kind: str) -> dict:
+        """(0.9.2, live_everyone) The guest session's setup, built from scratch: the assistant's name and the guest
+        path's rules (providers/context.py guest_context), the voice, and the tell_guests line once. No tools, and
+        nothing of the owner's: never Calls.config_template (his name, lessons, persona) or call_context."""
+        from kurooto.core import guest
+        from kurooto.modules.voice.portal import GUEST_NOTICE, UNSURE_NOTICE
+        from kurooto.providers.context import guest_context
+
+        gen: dict = {"responseModalities": ["AUDIO"]}
+        voice = str(calls.setting("voice") or "")
+        try:
+            prof = calls.live_profiles().get(model) or {}
+        except Exception:
+            prof = {}
+        if isinstance(prof.get("voice"), str):
+            voice = prof["voice"]
+        if voice:
+            gen["speechConfig"] = {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}}
+        si = guest_context(self.app) + "\n" + GUEST_DESK
+        told = getattr(self.v.portal, "_told", set())
+        if kind in ("guest", "unsure") and guest.setting(self.app, "tell_guests", True) and kind not in told:
+            line = UNSURE_NOTICE if kind == "unsure" else GUEST_NOTICE
+            si += f'\nStart your first answer with this sentence, word for word: "{line}"'
+        return {
+            "model": f"models/{model}",
+            "generationConfig": gen,
+            "systemInstruction": {"parts": [{"text": si}]},
+            "inputAudioTranscription": {},
+            "outputAudioTranscription": {},
+            "contextWindowCompression": {"slidingWindow": {}},
+            "realtimeInputConfig": {"automaticActivityDetection": {"disabled": True}},
+        }
+
+    def _guest_turn(self, text: str, turn: dict, pcm: bytes, kind: str) -> str | None:
+        """(0.9.2, live_everyone) A turn that isn't the owner's, in the guest session; None: the usual way (the text
+        guest path) answers. Its rules first, as core/guest.py's: owner_only_at_all, a request that acts or reads
+        his things, and the hourly cap go the usual way, which refuses them with the same lines."""
+        from kurooto.core import guest
+
+        if guest.setting(self.app, "mode", "owner_only_acts") == "owner_only_at_all":
+            return None
+        try:
+            asks = guest.kind(self.app, text)
+        except Exception:
+            asks = "action"  # can't tell: the usual way decides
+        if asks:
+            self._event("refused", who="guest", fallback=True)
+            return None
+        key = self.app.secrets.get(KEY)
+        calls = self.app.modules.get("calls")
+        if not key or calls is None:
+            self._event("no key" if not key else "no calls", fallback=True, who="guest")
+            return None
+        if not guest.allowed_now(self.app):
+            self._event("rate", fallback=True, who="guest")
+            return None
+        t0 = time.monotonic()
+        before = set(turn)
+        self._ran = []
+        try:
+            g = self.gsess
+            if g is None or g.closed or g.portal != self.v.portal.session:
+                self.close_guest()
+                g = self.gsess = self._open(key, calls, guest=kind)
+            _heard, said = self._answer(g, pcm, turn)
+        except Exception as e:
+            self.close_guest()
+            for k in set(turn) - before:
+                turn.pop(k, None)
+            guest.refund(self.app)  # the usual way counts it instead
+            stage, code = (e.stage, e.code) if isinstance(e, Failed) else ("error", type(e).__name__)
+            self._event(stage, fallback=True, code=code, ms=round((time.monotonic() - t0) * 1000), who="guest")
+            return "" if self.v.portal_cut() else None
+        finally:
+            del pcm
+        turn["live"] = 1
+        self._spoke = True
+        g.turns += 1
+        if not self.v.portal.open or self.v.portal.session != g.portal:
+            self.close_guest()
+        self._event("answered", model=g.model, turns=g.turns, who="guest")
+        return spoken(said) or ALOUD
+
     def models(self, calls) -> list[str]:
         """calls.live_models in order, those Google said don't exist left out, those that failed lately last."""
         names = list(calls.live_models())
@@ -274,18 +422,19 @@ class Live:
         t = time.monotonic()
         return sorted(names, key=lambda m: self.bad.get(m, 0) > t)
 
-    def _open(self, key: str, calls) -> Session:
+    def _open(self, key: str, calls, guest: str = "") -> Session:
         last: Failed | None = None
         for model in self.models(calls):
+            setup = self.guest_setup(calls, model, guest) if guest else self.setup(calls, model)
             try:
-                ws = self._call(self._connect(key, self.setup(calls, model)), CONNECT_S * 2 + 1)
+                ws = self._call(self._connect(key, setup), CONNECT_S * 2 + 1)
             except Failed as e:
                 self.bad[model] = time.monotonic() + BAD_S
-                self._event(e.stage, model=model, code=e.code)
+                self._event(e.stage, model=model, code=e.code, who="guest" if guest else None)
                 last = e
                 continue
             self.bad.pop(model, None)
-            sess = Session(ws, model, self.v.portal.session)
+            sess = Session(ws, model, self.v.portal.session, guest=bool(guest))
             self._call(_start(sess, self._read(sess)), CONNECT_S)
             return sess
         raise last or Failed("connect")
@@ -324,9 +473,10 @@ class Live:
         with sess.lock:
             sess.ended = False
         try:
-            self._call(_send_turn(sess.ws, pcm), CONNECT_S)
+            self._call(_send_turn(sess.ws, pcm, start=not sess.active), CONNECT_S)
         except Exception:
             raise Failed("send") from None
+        sess.active = False
         fast.stamp(turn, "sent")
         heard: list[str] = []
         said: list[str] = []
@@ -337,14 +487,22 @@ class Live:
         if not done:
             with sess.lock:  # cut off: the rest of that answer is dropped as it arrives
                 sess.stale = not sess.ended
+                cut = sess.stale and not sess.closed
+            if cut:  # (0.9.2) and Google stops making it: a new activity interrupts the answer there too
+                try:
+                    self._call(_activity(sess.ws), CONNECT_S)
+                    sess.active = True  # the next turn's sound belongs to it: no second activityStart
+                except Exception:
+                    pass
         fast.stamp(turn, "answer")
         sess.q = None
-        try:  # (0.9.0, mind.promises.answers) a promise it made at the desk is written down like its messages'
-            from kurooto.mind import promises
+        if not sess.guest:  # (0.9.0, mind.promises.answers) a promise said at the desk is written down; never a guest's
+            try:
+                from kurooto.mind import promises
 
-            promises.said(self.v.app, "".join(said), "desk")
-        except Exception:
-            pass
+                promises.said(self.v.app, "".join(said), "desk")
+            except Exception:
+                pass
         return "".join(heard), "".join(said)
 
     def _first(self, q: queue.Queue, heard: list, said: list, turn: dict) -> bytes | None:
@@ -398,6 +556,8 @@ class Live:
             elif kind in ("closed", "interrupted"):
                 ended = cut = True
 
+        out = bool(getattr(sp, "_outputs", None))  # (0.9.2) an add-on's output takes it: about a second a piece
+        first, each, most = (OUT_FIRST_PIECE, OUT_PIECE, OUT_MAX_PIECE) if out else (FIRST_PIECE, PIECE, MAX_PIECE)
         try:
             sp.busy = True
             sp._cancel.clear()
@@ -405,7 +565,7 @@ class Live:
             sp._turn = turn
             sess.playing = True
             self.v.portal.state("speaking")
-            want = FIRST_PIECE
+            want = first
             while True:
                 while not ended and len(buf) < want:  # enough for a piece, or the end
                     try:
@@ -420,14 +580,18 @@ class Live:
                 if cut:
                     return False
                 if buf:
-                    piece = bytes(buf[:MAX_PIECE])
-                    del buf[:MAX_PIECE]
+                    piece = bytes(buf[:most])
+                    del buf[:most]
                     if not sp.say_piece(piece, OUT_RATE):
                         return False
-                want = PIECE
+                want = each
                 if ended and not buf:
                     return True
         finally:
+            try:
+                sp.drain()  # (0.9.2) pieces handed ahead to a gapless output play out (or were stopped) first
+            except Exception:
+                pass
             sess.playing = False
             sp._turn = None
             sp.busy = False
@@ -487,6 +651,9 @@ class Live:
         loop = asyncio.get_running_loop()
         for fc in call.get("functionCalls") or []:
             name, args = str(fc.get("name") or ""), fc.get("args")
+            if sess.guest:  # (0.9.2) the guest session declares none; one asked for anyway never runs
+                out.append({"id": fc.get("id"), "name": name, "response": {"result": NO_TOOLS}})
+                continue
             res = await loop.run_in_executor(None, self.run_tool, name, args if isinstance(args, dict) else {})
             out.append({"id": fc.get("id"), "name": name, "response": {"result": res}})
         if out and not sess.closed:
@@ -547,13 +714,22 @@ class Live:
         self.app.events.emit("voice_live", stage=stage, **{k: v for k, v in fields.items() if v not in (None, "")})
 
 
-def desk(si: str) -> str:
+def desk(si: str, end: str = DESK) -> str:
     """The call's instructions, for the desk: the time filled in, "on a call" lines changed or left out."""
     si = si.replace("%%NOW%%", now().strftime("%A %d %B %Y, %H:%M"))
     si = si.replace("on a live voice call.", "talking with them aloud at their computer.")
     si = si.replace("Talk like a friend on a call", "Talk like a friend sitting with them")
     lines = [ln for ln in si.split("\n") if "every call" not in ln]  # (pending_items' "at the start of every call")
-    return "\n".join([*lines, DESK])
+    return "\n".join([*lines, end])
+
+
+def spoken(said: str) -> str:
+    """(0.9.2) The answer shown and kept: Live's own words (its output transcription), never data. Words that read as
+    a tool's JSON (it read a result out) are left out: "(answered aloud)" stands for them."""
+    t = (said or "").strip()
+    if t[:1] in "{[" and ('":' in t or t[-1:] in "}]"):
+        return ""
+    return t
 
 
 def _blocking(d: dict) -> dict:
@@ -566,8 +742,15 @@ async def _start(sess: Session, coro) -> None:
     task.add_done_callback(sess.tasks.discard)
 
 
-async def _send_turn(ws, pcm: bytes) -> None:
+async def _activity(ws) -> None:
+    """(0.9.2) You talked over the answer (barge-in, a stop): Live is told your activity started, which interrupts
+    the answer it's still making."""
     await ws.send(json.dumps({"realtimeInput": {"activityStart": {}}}))
+
+
+async def _send_turn(ws, pcm: bytes, start: bool = True) -> None:
+    if start:
+        await ws.send(json.dumps({"realtimeInput": {"activityStart": {}}}))
     for i in range(0, len(pcm), CHUNK):
         data = base64.b64encode(pcm[i : i + CHUNK]).decode("ascii")
         await ws.send(json.dumps({"realtimeInput": {"audio": {"data": data, "mimeType": f"audio/pcm;rate={IN_RATE}"}}}))

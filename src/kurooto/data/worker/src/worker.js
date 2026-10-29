@@ -1198,7 +1198,7 @@ export class Line {
     if (!had) await this.chatTouch(sid, m);
     if (had) { await this.toLinked(chatMessage(m, true)); return { ok: true, seq: m.seq }; }
     if (m.from !== 'kurooto') return { ok: true, seq: m.seq };
-    if (msg.quiet) { await this.toLinked(chatMessage(m)); return { ok: true, seq: m.seq }; } // (0.9.1) the Desk chat: kept, no notification
+    if (msg.quiet) { await this.toLinked({ ...chatMessage(m), quiet: true }); return { ok: true, seq: m.seq }; } // (0.9.1) the Desk chat: kept, no notification (0.9.2: the app is told)
     const devices = (await this.store.get('devices')) || {};
     let android = false;
     if (Object.values(devices).some((d) => d.kind === 'android')) android = await this.toPhones(chatMessage(m), assistant).catch(() => false);

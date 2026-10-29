@@ -366,6 +366,21 @@ REASONS: dict[str, Reason] = {
         R("mood.off", "you turned Brain's read off: whether to delete what it kept", exempt="own", stop=None),
         R("face.off", "you turned Face presence off: whether to delete your face model", exempt="own", stop=None),
         R("face.look", "how Add this look went, which you started with /face add-look", exempt="own", stop=None),
+        R(  # (0.9.2) a fix, said once per microphone
+            "voice.id_mic",
+            "Voice ID was unsure of most of your turns since it began listening through a microphone it wasn't "
+            "enrolled on (said once for each microphone)",
+            setting="voice.speaker_id.on",
+            stop=None,
+            feature="voice",
+        ),
+        R(  # (0.9.2) a fix, said once per camera
+            "face.camera_changed",
+            "Face presence stopped knowing you on most frames since it began looking through a camera it wasn't "
+            "enrolled with (said once for each camera)",
+            stop=None,
+            feature="face",
+        ),
         R(
             "mind.skill_learned",
             "a new skill it learned from a task that worked out (it asks before it runs)",

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.2 (unreleased)
+
+- **Gemini Live for every turn at the desk** (`voice.listen.live_everyone`, off; with `voice.listen.live`): every
+  turn said to Kurooto goes to Live, face seen or not. Yours (Voice ID) get your session with its tools; anyone else's,
+  and yours Voice ID is unsure of, get a separate guest session with no tools and none of your data, counted against
+  the guest hourly cap. Other people's voices go to Google with it on.
+- **A new microphone or camera is noticed** (a fix): Voice ID and Face presence remember which microphone and camera
+  they were enrolled with, and say once when most of your turns or frames aren't recognised through another one
+  (`/voice enrol`, Add this look).
+- **Desk Live fixes:** a tool's result is never said or shown as the answer (a read it did before failing goes the
+  usual way); talking over an answer stops it at once (it waited out a 12-second hold) and stops Live's answer at
+  Google's end; cutting in works when a phone both plays and hears; Live's sound reaches a phone's speaker in pieces
+  of about a second (no cut-outs), with an optional gapless hook for outputs (`ahead_s`); enrolment never keeps its
+  own spoken steps as your samples.
+- **Desk chat turns no longer notify** on the phone (a fix): quiet messages and the Desk chat are added silently.
+
 ## 0.9.1 (2026-10-29)
 
 - **"The lib" finds "Library"** (`reminders.place_names`, off). The phone app can share the names of the places you

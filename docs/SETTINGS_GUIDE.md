@@ -1439,6 +1439,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.levels` | `true` | Show the microphone's loudness as a waveform on the dashboard (numbers only). ([guide](wiki/user/settings-guide.md#voicelistenlevels)) |
 | `voice.listen.live` | `false` | Your own turns answered by Gemini Live, speech to speech, in about a second. Their sound goes to Google. ([guide](wiki/user/settings-guide.md#voicelistenlive)) |
 | `voice.listen.live_after` | `true` | A turn Gemini Live answered is noticed like a typed message: threads, what you stated, Brain's tone and replies. ([guide](wiki/user/settings-guide.md#voicelistenliveafter)) |
+| `voice.listen.live_everyone` | `false` | Every turn said to Kurooto goes to Gemini Live: yours with your tools, anyone else's to a guest session. Their voices go to Google. ([guide](wiki/user/settings-guide.md#voicelistenliveeveryone)) |
 | `voice.listen.look_anyone` | `true` | Anyone's look opens the conversation, not only yours: a guest looking at it can talk to it too. ([guide](wiki/user/settings-guide.md#voicelistenlookanyone)) |
 | `voice.listen.look_away_s` | `3.0` | Looking away this long, before you've said anything, closes it again. ([guide](wiki/user/settings-guide.md#voicelistenlookaways)) |
 | `voice.listen.look_dwell_s` | `1.0` | How long you look at the camera before it starts listening: a glance shorter than this doesn't count. ([guide](wiki/user/settings-guide.md#voicelistenlookdwells)) |

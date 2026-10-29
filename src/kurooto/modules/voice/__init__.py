@@ -207,6 +207,10 @@ register_defaults(
             # (0.9.0) a turn Live answered is noticed like a typed message (App.after_turn): Brain's tone and reply
             # tracking, what it sets up ("I have a quiz every Thursday") and the threads it opens or closes
             "live_after": True,
+            # (0.9.2, with live) every turn said to it goes to Gemini Live, face seen or not: yours (Voice ID) to your
+            # session, anyone else's and your unsure ones to a separate guest session with no tools and none of your
+            # data. Their sound goes to Google too
+            "live_everyone": False,
         },
         "speaker_id": {
             "on": False,  # Voice ID: only your voice can make Kurooto act; others can only chat (enrol first)
@@ -293,6 +297,8 @@ class Speaker:
         self._held = threading.Event()  # (barge-in) hold(): quiet for now; release() says the cut piece again
         self._go = threading.Event()  # release() or stop() while held
         self._piece: threading.Event | None = None  # the piece playing now: the stop an output is handed
+        self._ahead: list[tuple[threading.Event, threading.Event, dict]] = []  # (0.9.2) (stop, played, result)
+        self._ahead_end = 0.0  # (0.9.2) when the last of them will have played (monotonic, estimated)
         self._outputs: list[list] = []  # [fn, failed already], newest first (add_output)
         self._out_lock = threading.Lock()  # registration only; never held while sound plays
         self.turn: dict | None = None  # (timing) the turn the next say() answers (Voice._portal_speak)
@@ -369,6 +375,7 @@ class Speaker:
                 pool.shutdown(wait=False, cancel_futures=True)
                 if rate and base is not None:
                     tts.rate = base
+                self.drain()  # (0.9.2) pieces handed ahead to a gapless output play out first
                 self._turn = None
                 self.busy = False
                 self.until = time.monotonic() + 0.4
@@ -385,6 +392,7 @@ class Speaker:
             self._play(pcm, sr)
             return True
         finally:
+            self.drain()
             self.busy = False
             self.until = time.monotonic() + 0.4
             self.lock.release()
@@ -423,14 +431,20 @@ class Speaker:
         self._piece = piece
         with self._out_lock:
             outs = list(self._outputs)
-        try:  # barge-in: what's played and when, for the echo's expected level (numbers only)
-            self.v.barge.played(pcm, sr)
+        try:  # barge-in: what's played and when, for the echo's expected level (numbers only); an add-on's later
+            self.v.barge.played(pcm, sr, remote=bool(outs))
         except Exception:
             pass
         fast.stamp(self._turn, "play")  # (timing) handed to an output, or to this computer's player, now
         for entry in outs:
             if piece.is_set():
                 return
+            ahead = float(getattr(entry[0], "ahead_s", 0) or 0)
+            if ahead > 0:  # (0.9.2) gapless: handed over before the piece playing ends
+                got = self._play_ahead(entry, pcm, sr, piece, ahead)
+                if got is not False:
+                    return
+                continue
             try:
                 if entry[0](pcm, sr, piece):
                     return
@@ -446,6 +460,44 @@ class Speaker:
 
             self.player = Player(want)
         self.player.play(pcm, sr)
+
+    def _play_ahead(self, entry: list, pcm: bytes, sr: int, piece: threading.Event, ahead: float) -> bool | None:
+        """(0.9.2) One piece to a gapless output (add_output's ahead_s): its call runs on a thread of its own, and this
+        returns `ahead` seconds before the piece ends, so the next one is handed over while it plays. False: it
+        couldn't (refused or raised before that time): the next output plays it."""
+        done, res = threading.Event(), {}
+
+        def run() -> None:
+            try:
+                res["ok"] = bool(entry[0](pcm, sr, piece))
+            except Exception as e:
+                res["ok"] = False
+                if not entry[1]:
+                    entry[1] = True
+                    self.v.app.events.emit("voice_failed", part="output", error=f"{type(e).__name__}: {e}"[:300])
+            finally:
+                done.set()
+
+        self._ahead.append((piece, done, res))
+        threading.Thread(target=run, name="voice-out", daemon=True).start()
+        now = time.monotonic()
+        was = self._ahead_end
+        self._ahead_end = max(now, was) + len(pcm) / 2 / max(1, sr)  # it starts when those before it end
+        done.wait(max(0.0, self._ahead_end - ahead - now))
+        if done.is_set() and not res.get("ok"):
+            self._ahead = [a for a in self._ahead if a[1] is not done]
+            self._ahead_end = was
+            return False
+        return True
+
+    def drain(self, max_s: float = 30.0) -> None:
+        """(0.9.2) Wait for every piece handed ahead to a gapless output to have played (or been stopped): until then
+        it is still speaking."""
+        end = time.monotonic() + max_s
+        for _stop, done, _res in list(self._ahead):
+            done.wait(max(0.0, end - time.monotonic()))
+        self._ahead.clear()
+        self._ahead_end = 0.0
 
     def stop(self) -> None:
         self._cancel.set()
@@ -473,6 +525,8 @@ class Speaker:
         piece = self._piece
         if piece is not None:
             piece.set()
+        for stop, _done, _res in list(self._ahead):  # (0.9.2) pieces handed ahead to a gapless output
+            stop.set()
         if self.player is not None:
             self.player.stop()
 
@@ -1090,7 +1144,7 @@ class Voice(Module):
         if on and who is None and said and audio is not None:  # (voice id) the gate first is off: addressed only
             who = vid.check(audio, h.speech_s, h.voices)
             self._here(who)
-        self.live.keep(audio, who)  # (voice.listen.live) an owner's admitted turn: its sound, for this turn only
+        self.live.keep(audio, who)  # (voice.listen.live) an owner's admitted turn (anyone's: live_everyone), this turn
         del audio
         if on and who is None and said:  # nothing to check it with: unsure (fail closed)
             from kurooto.modules.voice.speakerid import UNSURE, Verdict
@@ -1456,7 +1510,7 @@ class Voice(Module):
         speech_s = sum(1 for f in flags if f) * 512 / 16000 if flags else seconds
         h = Heard(speech=True, seconds=seconds, speech_s=speech_s, ended_at=ended_at)
         turn = {"end": ended_at if ended_at is not None else time.monotonic()}
-        h.text = self._write_out(pcm)
+        h.text = str(how["text"]) if "text" in how else self._write_out(pcm)  # (0.9.2) written out already
         fast.stamp(turn, "text")
         g = self.gate()
         self._pending = None  # the interrupted turn: how it went isn't known, nothing learned from it
@@ -1533,6 +1587,12 @@ class Voice(Module):
                 self._talk_line("you", text)  # (after_talk) a Live turn is a turn of this talk too
                 self._talk_line(self.app.name, said)
                 self._desk_chat(text, said, "live")
+                return said
+        elif self.live.everyone():  # (0.9.2, voice.listen.live_everyone) anyone else's turn: Live's guest session
+            said = self.live.turn(text, turn, guest=who.decision if who is not None else "none")
+            if said is not None:  # never his history, Brain or the talk's lines; kept as a guest's turn (memory)
+                if said and who is not None and self.voiceid.on():
+                    self.voiceid.heard_guest(text, said)
                 return said
         replies: list[str] = []
         msg = Incoming(
@@ -1890,7 +1950,14 @@ class Voice(Module):
         this computer's speakers; it blocks until the sound has played (or `stop` is set: /voice stop, mute, Voice
         off) and returns True, or False when it can't now (the next output,
         finally the speakers, play it). Raising counts as False (voice_failed part="output", once). It runs on the
-        speaking thread while holding() is true, so the microphone doesn't hear Kurooto. Returns remove()."""
+        speaking thread while holding() is true, so the microphone doesn't hear Kurooto. Returns remove().
+
+        (0.9.2) Gapless, optional: an output whose fn has an attribute `ahead_s` (seconds, > 0) is handed the next
+        piece that long before the piece playing ends, so it can start it at that one's end time (Web Audio: start()
+        at the previous buffer's end) instead of fetching it after it. Each call still blocks until its own piece has
+        played (on a thread of Voice's), must not stop the piece playing when a new one comes, and gets its own
+        `stop`; a stop or barge-in sets every one handed over. Speech isn't over (the microphone is held) until all
+        have played. Without the attribute, nothing changes: one piece at a time."""
         return self.speaker.add_output(fn)
 
     def _unasked_rate(self) -> float | None:
@@ -2310,6 +2377,11 @@ class Voice(Module):
         """From the listener's thread: queued for writing out (the oldest dropped when it can't keep up). barge: the
         stretch talked over Kurooto (barge.py), with how it was noticed."""
         ended = time.monotonic()  # (need_face) when the stretch ended: the face must be seen around then
+        if barge is not None and "text" not in barge and not self.barge.sync and self.speaker.busy:
+            threading.Thread(  # (0.9.2) the hearing thread is the one speaking: settle the hold elsewhere first
+                target=self._barge_early, args=(pcm, woke, seconds, flags, barge), name="voice-barge-turn", daemon=True
+            ).start()
+            return
         try:
             self._work.put_nowait((pcm, woke, seconds, flags, barge, ended))
         except queue.Full:
@@ -2318,6 +2390,26 @@ class Voice(Module):
                 self._work.put_nowait((pcm, woke, seconds, flags, barge, ended))
             except (queue.Empty, queue.Full):
                 pass
+
+    def _barge_early(self, pcm: bytes, woke: bool, seconds: float, flags: bytes, barge: dict) -> None:
+        """(0.9.2, a fix) A stretch that talked over an answer, while the answer is still being said on the hearing
+        thread (the usual way's or Gemini Live's): that thread is waiting in the hold, so barge_turn queued behind it
+        only ran when the hold gave up (HOLD_MAX_S) and talking over it seemed to do nothing. Here the words are
+        written out at once and the hold is settled: told off or a question or a request -> it stops (the answer's
+        thread ends; Live's is cut off at Google's end too), anything else -> it carries on. Then barge_turn takes it
+        on the hearing thread as before, with these words."""
+        text = ""
+        try:
+            text = self._write_out(pcm)
+            said = self.gate().matcher.uncall(text).strip()
+            if (self.setting("listen.told_off") and told_off(text, self.gate().matcher)) or (said and asks(said)):
+                self.speaker.stop()
+            else:
+                self.speaker.release()
+        except Exception as e:
+            self.speaker.release()
+            self.app.events.emit("voice_failed", part="barge-in", error=f"{type(e).__name__}"[:100])
+        self._heard_audio(pcm, woke, seconds, flags, {**barge, "text": text})
 
     def _work_loop(self) -> None:
         while True:

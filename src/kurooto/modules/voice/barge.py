@@ -19,6 +19,13 @@ Voice.barge_turn(): told off -> stop (the told-off path), a question or a reques
 conversation, anything else ("mm", a cough, no face) -> Speaker.release(): it says the cut piece again from its start
 and goes on (0.8.17; the conversation stays open for voice.listen.follow_s).
 
+Played elsewhere (0.9.2, a fix): when the answer plays on an add-on's output (a phone that also hears for Kurooto),
+its echo comes back later (the sound goes over the network, then the microphone's sound back), so the expected echo
+looks back REMOTE_LAG_S instead of ECHO_LAG_S. And when the echo is hardly heard at all (the phone's or the system's
+own echo cancelling: under QUIET_SHARE of the frames while it plays held speech, over QUIET_MIN of them), the
+loudness check has nothing to learn from, so a third check takes it: at least MIN_SPEECH_S of speech whose written-out
+words aren't mostly what Kurooto is saying ("quiet echo").
+
 Sound stays in memory, as everywhere in Voice: the stretch being cut and the pre-roll; levels of what's played are
 numbers only. Nothing here is logged but how it was noticed and what it led to (never words)."""
 
@@ -50,6 +57,9 @@ RECHECK_S = 0.5  # a stretch still going is checked again after this much more s
 SELF_MARGIN = 0.10  # closer to the owner's voice print than to Kurooto's own by at least this
 ECHO_LAG_S = 0.8  # the echo may come this late (a phone playing it, the room): the window of expected level
 ECHO_AHEAD_S = 0.05
+REMOTE_LAG_S = 2.0  # (0.9.2) played on an add-on's output (a phone): its echo may come back this late
+QUIET_MIN = 90  # (0.9.2) frames heard while it plays (~3 s) before "the echo is quiet" can be said
+QUIET_SHARE = 0.25  # and under this share of them held speech: echo cancelling at work
 EXPECT_MIN = 0.01  # playback quieter than this (RMS, 0..1) doesn't teach the echo's share
 GAIN_FRAMES = 125  # the echo's share: the median over this many speech frames heard while it plays (~4 s)
 GAIN_MIN = 15  # and needs this many before the loudness check can say anything (~0.5 s)
@@ -60,7 +70,7 @@ LOUD_SHARE = 0.5  # and at least this share of the stretch's speech
 ECHO_WORDS = 0.6  # written-out words this much made of what Kurooto is saying are its own echo
 OWN_PHRASE = "This is how I sound when I talk, so I can tell my own voice from yours when we both speak."
 
-VOICE, LOUD = "voice", "loud"
+VOICE, LOUD, QUIET = "voice", "loud", "quiet echo"
 OWN_WHY = "your voice, over its own"
 
 
@@ -89,7 +99,9 @@ class Barge:
         self.lock = threading.Lock()
         self.sync = False  # tests: checks run on the caller's thread
         self.count = 0  # barge-ins since start (a count only)
-        self._pieces: collections.deque[tuple[float, float, list[float]]] = collections.deque(maxlen=64)
+        self._pieces: collections.deque[tuple[float, float, list[float], float]] = collections.deque(maxlen=64)
+        self._while_played: collections.deque[bool] = collections.deque(maxlen=300)  # (0.9.2) speech heard or not
+        self._quiet_sid = -1  # (0.9.2) the stretch that began while the echo was quiet
         self._ratios: collections.deque[float] = collections.deque(maxlen=GAIN_FRAMES)
         self._said: collections.deque[str] = collections.deque(maxlen=12)  # what it's saying, for the echo words
         self._own: dict[tuple, list[float]] = {}  # Kurooto's own voice print, per engine/voice/model; memory only
@@ -113,6 +125,7 @@ class Barge:
         with self.lock:
             self._reset_stretch()
             self._ratios.clear()
+            self._while_played.clear()
             self._confirmed = None
 
     def _reset_stretch(self) -> None:
@@ -134,19 +147,20 @@ class Barge:
         if self._voice_ready(own=False) is not None and self._own_key() not in self._own:
             self._submit(("own",))
 
-    def played(self, pcm: bytes, sr: int) -> None:
-        """Speaker: this piece starts playing now (here or on another device)."""
+    def played(self, pcm: bytes, sr: int, remote: bool = False) -> None:
+        """Speaker: this piece starts playing now (here, or on another device: remote, its echo comes later)."""
         if not pcm or not sr or not self.listening():
             return
         lv = levels(pcm, sr)
         with self.lock:
-            self._pieces.append((self.clock(), FRAME_S, lv))
+            self._pieces.append((self.clock(), FRAME_S, lv, REMOTE_LAG_S if remote else ECHO_LAG_S))
 
     def expected(self, now: float) -> float:
         """The loudest the echo of what's played could be now: the playback's level over the last ECHO_LAG_S."""
         best = 0.0
-        lo, hi = now - ECHO_LAG_S, now + ECHO_AHEAD_S
-        for start, step, lv in list(self._pieces):
+        hi = now + ECHO_AHEAD_S
+        for start, step, lv, lag in list(self._pieces):
+            lo = now - lag
             end = start + step * len(lv)
             if end < lo or start > hi:
                 continue
@@ -155,6 +169,11 @@ class Barge:
             if i1 > i0:
                 best = max(best, max(lv[i0:i1]))
         return best
+
+    def echo_quiet(self) -> bool:
+        """(0.9.2) While it plays, the microphone has hardly heard speech (echo cancelling at work)."""
+        n = len(self._while_played)
+        return n >= QUIET_MIN and sum(self._while_played) < QUIET_SHARE * n
 
     def gain(self) -> float | None:
         """The echo's share of the playback's level, as heard here (the median: robust to you talking over it)."""
@@ -191,6 +210,10 @@ class Barge:
             confirmed = self._is_confirmed()
             if expect >= EXPECT_MIN and p >= START and not confirmed:  # speech heard while it plays: mostly its echo
                 self._ratios.append(level / expect)
+            if expect >= EXPECT_MIN:  # (0.9.2) how much speech the microphone hears while it plays (its echo, mostly)
+                if p >= START and self._buf is None:  # this frame starts a stretch: was the echo quiet before it?
+                    self._quiet_sid = self._sid + 1 if self.echo_quiet() else -1
+                self._while_played.append(p >= START)
             g = self.gain()
             loud = g is not None and level > max(FLOOR, LOUD_X * g * expect)
             if self._buf is None:
@@ -275,7 +298,9 @@ class Barge:
                 got = dict(self._confirmed) if self._confirmed and self._confirmed["sid"] == sid_ else None
             stop = False
             if got is None:
-                how, score = self.check(pcm, speech_s, loud)
+                with self.lock:
+                    quiet = self._quiet_sid == sid_
+                how, score = self.check(pcm, speech_s, loud, quiet=quiet)
                 if how:
                     got, stop = {"sid": sid_, "how": how, "score": score}, True
             with self.lock:
@@ -292,9 +317,9 @@ class Barge:
         finally:
             self._settled(job)
 
-    def check(self, pcm: bytes, speech_s: float, loud: int) -> tuple[str, float | None]:
-        """("voice", score) / ("loud", None) when this is someone talking over Kurooto, ("", None) when it may be its
-        own voice coming back."""
+    def check(self, pcm: bytes, speech_s: float, loud: int, quiet: bool = False) -> tuple[str, float | None]:
+        """("voice", score) / ("loud", None) / ("quiet echo", None) when this is someone talking over Kurooto, ("",
+        None) when it may be its own voice coming back. quiet: the stretch began while its echo was hardly heard."""
         ready = self._voice_ready()
         if ready is not None and speech_s >= MIN_SPEECH_S:
             centroid, th, own = ready
@@ -305,6 +330,8 @@ class Barge:
         if loud * FRAME_S >= LOUD_MIN_S and loud >= LOUD_SHARE * max(1.0, speech_s / FRAME_S):
             if self.words_ok(self.v._write_out(pcm)):
                 return LOUD, None
+        elif quiet and speech_s >= MIN_SPEECH_S and self.words_ok(self.v._write_out(pcm)):
+            return QUIET, None
         return "", None
 
     def words_ok(self, text: str) -> bool:

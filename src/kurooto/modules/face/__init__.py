@@ -73,7 +73,7 @@ from typing import TYPE_CHECKING
 from kurooto.core import here, nearby, persona
 from kurooto.core.biometric import Locked, TemplateStore, load_impostors
 from kurooto.core.config import register_defaults
-from kurooto.core.state import jsave
+from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Answer, Command, Incoming, Intent, Module
 from kurooto.modules.face import gaze as gaze_mod
 from kurooto.modules.face import parts as face_parts
@@ -223,6 +223,8 @@ register_defaults(
 
 TICK_S = 0.25  # the watcher's thread looks this often (frames are taken at the watcher's own rate)
 FACES_EVERY_S = 0.09  # "faces" to the pages at most about 10 a second
+CAM_FRAMES = 40  # (0.9.2) faces judged through a camera it wasn't enrolled with before it may tell you
+CAM_SHARE = 0.6  # ...and the share of them not known as you (unsure or someone else) that tells
 HOLD_MAX_S = 600.0  # an add-on's hold lasts at most this long unless renewed: a crashed add-on can't keep the camera
 DESK_EVERY_S = 5.0  # your face's size at the desk is noted at most this often (a running median, in memory)
 DESK_MIN = 10  # sightings before the running median is trusted over the enrolment's front step
@@ -283,6 +285,11 @@ def _sleeping(app) -> bool:
         return sleep.senses_off(app)
     except Exception:
         return False
+
+
+def _with(names: list, name: str) -> list:
+    """(0.9.2) The cameras list with this one last (names only, at most six)."""
+    return [*(n for n in names if n != name), name][-6:] if name else list(names)
 
 
 def _event_safe(**fields) -> dict:
@@ -662,6 +669,58 @@ class Face(Module):
             self.watcher.camera, self.watcher.problem = self.make_camera(), None
         self.watcher.tick()
         self.why = self.watcher.why
+        try:
+            self._camera_watch()
+        except Exception as e:  # a notice never stops the camera
+            self._failed("checking the camera's source", e)
+
+    def _camera_name(self, cam=None) -> str:
+        """(0.9.2) A camera as a name: the one it opened, else face.camera.device; "" when it can't tell."""
+        dev = getattr(cam, "dev", None)
+        name = str(getattr(dev, "name", "") or "")
+        if not name and cam is not None and hasattr(cam, "want"):
+            name = str(getattr(cam, "want", "") or "")
+        return name.strip()[:80]
+
+    def _camera_watch(self) -> None:
+        """(0.9.2, a fix) Looking through a camera your face model wasn't enrolled with, and not knowing you on most
+        of the faces it judged (CAM_FRAMES at least, more than CAM_SHARE "not you" or unsure): tells you once per
+        camera (state/face/sources.json) that Add this look or enrolling again fixes it. Counts and a name only."""
+        w = self.watcher
+        cam = getattr(w, "camera", None)
+        now = self._camera_name(cam) if getattr(cam, "dev", None) is not None else ""
+        t = self._template_or_none() if now else None
+        known = list(getattr(t, "cameras", []) or []) if t is not None else []
+        c = getattr(w, "counts", None)
+        if not known or not now or now in known or c is None:
+            self._cam_seen = {}
+            return
+        seen = getattr(self, "_cam_seen", {}) or {}
+        if seen.get("camera") != now:
+            seen = self._cam_seen = {"camera": now, "base": (c.you, c.unsure, c.not_you), "told": False}
+        you, unsure, other = (a - b for a, b in zip((c.you, c.unsure, c.not_you), seen["base"], strict=True))
+        judged = you + unsure + other
+        if seen["told"] or judged < CAM_FRAMES or (unsure + other) < CAM_SHARE * judged:
+            return
+        seen["told"] = True
+        path = self.app.paths.state / "face" / "sources.json"
+        data = jload(path, {}) or {}
+        told = list(data.get("camera_told") or [])
+        if now in told:
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        data["camera_told"] = (told + [now])[-10:]
+        jsave(path, data)
+        share = round(100 * (unsure + other) / judged)
+        self.app.notify(
+            f"Face presence was enrolled with another camera ({known[-1]}) and now looks through {now}: it didn't "
+            f"know you on {share}% of the faces it judged since. Use Add this look on the Face page (or type /face "
+            "add-look) with this camera, or enrol again there.",
+            kind="info",
+            why="face.camera_changed",
+            about="Face presence's camera",
+        )
+        self.app.events.emit("face_camera_changed", **_event_safe(count=judged))
 
     def _camera_changed(self) -> bool:
         cam = getattr(self.watcher, "camera", None)
@@ -1818,6 +1877,7 @@ class Face(Module):
                         msg, result = f'"{label}" wasn\'t added: {reason}.', "refused"
                     else:
                         self._previous = t.to_payload()  # Undo the last training puts it back (this run only)
+                        t.cameras = _with(t.cameras, self._camera_name(getattr(self.session, "camera", None)))
                         t.add_look(label, got, time.time())
                         rep = self._retrain(t)
                         ok, result = True, "added"
@@ -1911,6 +1971,7 @@ class Face(Module):
                 return False, {"message": "The face model's key can't be read just now."}
             t = Template(face_parts.SFACE_SHA)
         self._previous = before.to_payload() if before is not None else None  # Undo (in memory, this run only)
+        t.cameras = _with(t.cameras, self._camera_name(s.camera))  # (0.9.2) which camera, a name only
         t.samples += new
         if plan.baseline:
             t.baseline = {**t.baseline, **plan.baseline}

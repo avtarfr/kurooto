@@ -958,3 +958,97 @@ def test_a_start_over_kept_for_later_goes_on_with_the_whole_plan(vid):
     assert r["ok"] and len(vid.session.plan) == 6 and len(vid.session.existing) == 6
     vid.session.command("stop")
     vid._thread.join(5)
+
+
+# ------------------------------------------------------------------------------- another microphone (0.9.2, a fix)
+def test_a_new_microphone_that_leaves_most_turns_unsure_is_told_once(vid, monkeypatch):
+    from kurooto.modules.voice.speakerid import Verdict
+
+    told = []
+    monkeypatch.setattr(vid.app, "notify", lambda text, **kw: told.append((text, kw)))
+    enrol_owner(vid)
+    assert vid.template()["mics"] == ["Test mic"] and vid.template()["mic"] == "Test mic"
+    unsure, owner = Verdict("unsure", "not sure", 0.5, 3.0), Verdict("owner", "your voice", 0.9, 3.0)
+    for _ in range(20):  # the microphone it was enrolled on: never told, however unsure
+        vid._mic_watch(vid.template(), unsure)
+    assert told == []
+    monkeypatch.setattr(vid.v, "microphone", lambda: (True, "Desk phone mic"))
+    for v in [owner] * 6 + [unsure] * 4:  # mostly you: nothing
+        vid._mic_watch(vid.template(), v)
+    assert told == []
+    for _ in range(8):
+        vid._mic_watch(vid.template(), unsure)
+    assert len(told) == 1
+    text, kw = told[0]
+    assert "Test mic" in text and "Desk phone mic" in text and "/voice enrol" in text
+    assert kw["why"] == "voice.id_mic"
+    from kurooto.core import calm
+
+    assert "voice.id_mic" in calm.REASONS
+    vid._mic_seen = {}  # a restart: said once per microphone, kept in voice.json
+    for _ in range(20):
+        vid._mic_watch(vid.template(), unsure)
+    assert len(told) == 1
+    assert "Desk phone mic" in vid.line() and "/voice enrol" in vid.line()
+
+
+def test_enrolling_again_records_the_microphone_and_its_backend(vid, monkeypatch):
+    enrol_owner(vid)
+    monkeypatch.setattr(vid.v, "microphone", lambda: (True, "Desk phone mic"))
+    vid.app.settings.set("voice.audio.backend", "pipewire")
+    vid.train(session=SimpleNamespace(existing=[], samples=owner_samples(vid.emb), fresh=False))
+    assert vid.template()["mics"] == ["Test mic", "Desk phone mic via pipewire"]
+    vid.train(session=SimpleNamespace(existing=[], samples=owner_samples(vid.emb), fresh=True))
+    assert vid.template()["mics"] == ["Desk phone mic via pipewire"]  # a start-over replaces them
+    vid.train()  # a retrain without new samples changes nothing
+    assert vid.template()["mics"] == ["Desk phone mic via pipewire"]
+
+
+def test_enrolment_never_keeps_its_own_spoken_step_as_your_sample(vid, monkeypatch):
+    """(0.9.2) A phone that plays and hears: the steps' spoken words came back into its mic and were kept as the
+    owner's samples. A stretch that began while it spoke, or in the tail after, is dropped."""
+    import threading
+    import time as t
+
+    from kurooto.modules.voice import audio
+    from kurooto.modules.voice import voiceid as vid_mod
+
+    got = {}
+
+    class FakeListener:
+        MAX_S = 15
+        error = ""
+
+        def __init__(self, mic, vad, wake, on_speech, on_start=None, **kw):
+            got.update(on_speech=on_speech, on_start=on_start)
+
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+    monkeypatch.setattr(audio, "Listener", FakeListener)
+    monkeypatch.setattr(audio, "Mic", lambda *a, **k: None)
+    monkeypatch.setattr(vid.v.parts, "importable", lambda: None)
+    monkeypatch.setattr(vid.v.parts, "has_model", lambda name: False)
+    vid.capture_with = None
+    capture, close = vid._mic_capture(10)
+    sp = vid.v.speaker
+    sound = b"\x01\x00" * 16000
+    sp.busy = True  # speaking its step: what's heard is its own voice
+    got["on_start"]()
+    got["on_speech"](sound, False, 1.0, b"\x01" * 31)
+    sp.busy, sp.until = False, t.monotonic() + 0.4  # it just finished: the tail is still its echo
+    got["on_start"]()
+    got["on_speech"](sound, False, 1.0, b"\x01" * 31)
+    assert capture(0.3, threading.Event()) is None
+    sp.until = t.monotonic() - vid_mod.ECHO_TAIL_S - 0.1  # well after it spoke: you
+    got["on_start"]()
+    got["on_speech"](sound, False, 1.0, b"\x01" * 31)
+    cut = capture(0.3, threading.Event())
+    assert cut is not None and bytes(cut.pcm) == sound
+    vid.v.add_output(lambda pcm, sr, stop: True)  # through a phone: a longer tail
+    sp.until = t.monotonic() - vid_mod.ECHO_TAIL_S - 0.1
+    assert vid._echo(t.monotonic())
+    close()

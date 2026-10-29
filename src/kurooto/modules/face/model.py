@@ -259,6 +259,7 @@ class Template:
         self.baseline: dict = {}  # the front step's pitch, face height and light (for Add samples)
         self.gaze: dict = {}  # (0.8.17) Calibrate my eyes: h, v, yaw, pitch, n, at (gaze.py); never a picture
         self.looks: list[dict] = []  # (0.9.0) Add this look: {id, label, at, n}; the samples are in self.samples
+        self.cameras: list[str] = []  # (0.9.2) the cameras its samples came from: names only (Face._camera_watch)
         self.use_looks = True  # (face.looks.on) off: the looks' centroids don't count (never stored)
         self.created = time.time()
         self.updated = self.created
@@ -282,6 +283,7 @@ class Template:
             "baseline": self.baseline,
             "gaze": self.gaze,
             "looks": self.looks,
+            "cameras": self.cameras,
         }
 
     @classmethod
@@ -301,6 +303,7 @@ class Template:
         t.baseline = dict(d.get("baseline") or {})
         t.gaze = dict(d.get("gaze") or {})
         t.looks = [dict(x) for x in d.get("looks") or [] if isinstance(x, dict) and x.get("id")]
+        t.cameras = [str(x) for x in d.get("cameras") or [] if x][-6:]
         t.created = float(d.get("created") or time.time())
         t.updated = float(d.get("updated") or t.created)
         return t

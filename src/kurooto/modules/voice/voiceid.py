@@ -18,7 +18,13 @@ owner's (core/nearby.py's view, set by Face presence each frame), a "not sure" s
 owner. A score below the margin stays someone else, two voices stay unsure, and strict turns it off. With "improve
 over time" on (adapt), such a turn that went well (the owner carried on talking, nothing told off) may be added to the
 voice print like a very sure turn, its embedding only, under the same caps, drift guard and undo (learn_face()).
-The talk carry (voice.speaker_id.carry_talk) keeps a "not sure" voice the owner's in a conversation he opened."""
+The talk carry (voice.speaker_id.carry_talk) keeps a "not sure" voice the owner's in a conversation he opened.
+
+Another microphone (0.9.2, a fix): the voice print records the names of the microphones its samples came from
+("mics": voice.listen.device or the system's default source, with voice.audio.backend when it isn't auto; names
+only). When Voice ID listens through one it wasn't enrolled on and has been unsure of most turns (MIC_TURNS long
+enough to judge, more than half unsure), it tells the owner once per microphone (voice.json "mic_told") that the
+print was enrolled on another microphone and `/voice enrol` records it again."""
 
 from __future__ import annotations
 
@@ -32,6 +38,7 @@ from typing import TYPE_CHECKING, Any
 
 from kurooto.core import biometric, nearby
 from kurooto.core.biometric import BioStore, Locked
+from kurooto.core.state import jload, jsave
 from kurooto.modules.voice import enrol
 from kurooto.modules.voice import speakerid as sid
 from kurooto.modules.voice.parts import KOKORO_VOICES, VOICEID_MODELS
@@ -45,6 +52,9 @@ OTHERS_RECENT_S = 120  # non-owner voices this recent count towards "people keep
 TEST_S = 15
 NO_VOICE = "That can't be done by voice: type it or use the dashboard."
 SYNTH_PHRASES = enrol.PHRASES[:3]
+ECHO_TAIL_S = 0.6  # (0.9.2) enrolment: speech that began this soon after its own spoken step ended is its echo
+ECHO_TAIL_REMOTE_S = 1.2  # ...when it spoke through an add-on's output (a phone: its sound comes back later)
+MIC_TURNS = 10  # (0.9.2) turns long enough to judge, through a microphone it wasn't enrolled on, before it may tell
 
 
 def today() -> str:
@@ -78,6 +88,7 @@ class VoiceID:
         self.stt_fn: Callable[[bytes], str] | None = None  # tests: a fake transcriber
         self.pending: dict | None = None  # a built template waiting for "Use it anyway" (weak)
         self.previous: dict | None = None  # the template before the last build (Undo, within the session)
+        self._mic_seen: dict = {}  # (0.9.2) {mic, n, unsure} since listening through a microphone it wasn't enrolled on
         self.last_result: dict = {}  # the last build's report (numbers only)
         self.last_test: dict | None = None
         self._face_last: tuple | None = None  # (vector, verdict, voices) of the last face-assisted turn, memory only
@@ -244,7 +255,57 @@ class VoiceID:
             self._adapt(t, ver.last, v, voices)
         self._face_last = (list(ver.last), v, voices) if v.assisted and ver.last is not None else None
         ver.last = None
+        if not missing and not v.short:
+            try:
+                self._mic_watch(t, v)
+            except Exception as e:  # a notice never stops a turn
+                self.app.events.emit("voice_failed", part="voice id mic", error=f"{type(e).__name__}"[:100])
         return v
+
+    # ------------------------------------------------------------------------------- another microphone (0.9.2)
+    def mic_id(self) -> str:
+        """The microphone as a name: voice.listen.device or the default source's, with the backend when it's set."""
+        name = self.mic_now()
+        be = str(self.v.setting("audio.backend") or "auto")
+        return f"{name} via {be}" if name and be != "auto" else name
+
+    def mics(self, t: dict | None) -> list[str]:
+        """The microphones the voice print's samples came from (an older one: the first only, its bare name)."""
+        t = t or {}
+        return [str(x) for x in t.get("mics") or ([t["mic"]] if t.get("mic") else []) if x]
+
+    def _mic_watch(self, t: dict | None, v: sid.Verdict) -> None:
+        known = self.mics(t)
+        if not known:
+            return
+        now = self.mic_id() if (t or {}).get("mics") else self.mic_now()
+        if not now or now in known:
+            self._mic_seen = {}
+            return
+        w = self._mic_seen
+        if w.get("mic") != now:
+            w = self._mic_seen = {"mic": now, "n": 0, "unsure": 0, "told": False}
+        w["n"] += 1
+        w["unsure"] += v.decision == sid.UNSURE
+        if w["told"] or w["n"] < MIC_TURNS or w["unsure"] * 2 <= w["n"]:
+            return
+        w["told"] = True
+        data = jload(self.v.file, {}) or {}
+        told = list(data.get("mic_told") or [])
+        if now in told:
+            return
+        data["mic_told"] = (told + [now])[-10:]
+        jsave(self.v.file, data)
+        self.app.notify(
+            f"Voice ID was enrolled on another microphone ({known[-1]}) and now listens through {now}: it was unsure "
+            f"of {w['unsure']} of your last {w['n']} turns, so they could only chat. Type /voice enrol to record it "
+            "again with this microphone.",
+            kind="info",
+            why="voice.id_mic",
+            setting="voice.speaker_id.on",
+            about="Voice ID's microphone",
+        )
+        self.app.events.emit("voiceid_mic_changed", turns=w["n"], unsure=w["unsure"])
 
     def take_face(self) -> tuple | None:
         """The last turn's face-assisted vector (and its verdict), once: Voice holds it until the turn went well."""
@@ -340,10 +401,10 @@ class VoiceID:
             out += " · conversation: staying out"
         if self.last_word:
             out += f" · last: {self.last_word}"
-        mic = t.get("mic") or ""
-        now = self.mic_now() if self.v.setting("listen.on") else ""
-        if mic and now and mic != now:
-            out += f" · enrolled with {mic}, listening with {now}: add a few samples with this microphone"
+        known = self.mics(t)
+        now = (self.mic_id() if t.get("mics") else self.mic_now()) if self.v.setting("listen.on") else ""
+        if known and now and now not in known:
+            out += f" · enrolled with {known[-1]}, listening with {now}: /voice enrol records it again with this one"
         return out
 
     def health(self) -> tuple[bool, str] | None:
@@ -431,9 +492,13 @@ class VoiceID:
             began[0] = time.monotonic()
 
         def on_speech(pcm: bytes, _woke: bool, _seconds: float, flags: bytes = b"") -> None:
-            began[0] = 0.0
+            start, began[0] = began[0] or time.monotonic() - _seconds, 0.0
+            cut = enrol.Cut(bytearray(pcm), bytes(flags))
+            if self._echo(start):  # (0.9.2) its own spoken step coming back (a phone's speaker into its mic)
+                cut.release()
+                return
             try:
-                q.put_nowait(enrol.Cut(bytearray(pcm), bytes(flags)))
+                q.put_nowait(cut)
             except queue.Full:
                 pass
 
@@ -476,6 +541,15 @@ class VoiceID:
                     break
 
         return capture, close
+
+    def _echo(self, start: float) -> bool:
+        """(0.9.2, a fix) A stretch that began while enrolment's own voice spoke, or within the tail after it: its
+        echo, never a sample of yours (a phone that plays and hears let the steps' words be kept as the owner's)."""
+        sp = self.v.speaker
+        if sp.busy:
+            return True
+        tail = ECHO_TAIL_REMOTE_S if getattr(sp, "_outputs", None) else ECHO_TAIL_S
+        return start < sp.until + tail
 
     def _say(self, text: str) -> None:
         if self.s("spoken_enrol", True) and not self.v.muted():
@@ -587,7 +661,7 @@ class VoiceID:
         again = bool(getattr(s, "fresh", False))  # a start-over kept for later: its samples replace the old ones
         if again and t.get("report") and not t.get("reenrol"):
             self.previous = t  # Undo (this run) brings the old samples back too
-        self._save({**self._base(t), **built, "samples": samples, "report": built.get("report"),
+        self._save({**self._base(t, s), **built, "samples": samples, "report": built.get("report"),
                     **({"reenrol": True} if again else {})})  # fmt: skip
 
     def session_cmd(self, action: str, own_words: bool = False) -> dict:
@@ -612,11 +686,18 @@ class VoiceID:
         return {"ok": True, "session": s.view()}
 
     # -------------------------------------------------------------------------------------------- train
-    def _base(self, t: dict) -> dict:
+    def _base(self, t: dict, s: enrol.Session | None = None) -> dict:
+        """What a voice print carries besides its numbers. s: the enrolment its new samples came from (0.9.2): its
+        microphone joins "mics" (a start-over's replaces them)."""
+        mics = self.mics(t)
+        if s is not None and getattr(s, "samples", None):
+            here = self.mic_id()
+            mics = [here] if getattr(s, "fresh", False) else [*(m for m in mics if m != here), here]
         return {
             "model": self.model(),
             "model_sha256": self.model_sha(),
-            "mic": t.get("mic") or self.mic_now(),
+            "mic": (mics[0] if mics else "") or t.get("mic") or self.mic_now(),
+            "mics": [m for m in mics if m][-6:],
             "created": t.get("created") or today(),
             "samples": t.get("samples") or [],
             "adapted": [],
@@ -688,7 +769,7 @@ class VoiceID:
             except ValueError as e:
                 return {"ok": False, "message": str(e)}
             built = {
-                **self._base(t or {}),
+                **self._base(t or {}, s),
                 "samples": [_pack(x) for x in raw],
                 "centroid": sid.to_b64(res["centroid"]),
                 "centroid_enrolled": sid.to_b64(res["centroid"]),

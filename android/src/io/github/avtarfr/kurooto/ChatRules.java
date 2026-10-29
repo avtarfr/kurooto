@@ -20,6 +20,14 @@ final class ChatRules {
     private ChatRules() { }
 
     static final String MAIN = "main";
+    /** (0.9.1) The Desk chat: what you and Kurooto said aloud at your desk (calls.chat_desk; sessions.py DESK). */
+    static final String DESK = "de5c000000000000";
+
+    /** (0.9.2) A message added to the chat without a notification, sound or vibration (its unread count still shows):
+     *  one the call line marked quiet, and anything in the Desk chat (an older call line doesn't mark it). */
+    static boolean silent(boolean quiet, String session) {
+        return quiet || DESK.equals(session);
+    }
     /** Files the chat carries, at most (the call line's limit). */
     static final long FILE_MAX = 10L * 1024 * 1024;
     /** Your own message can be edited for this long after it was sent. */

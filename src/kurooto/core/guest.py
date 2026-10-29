@@ -73,6 +73,14 @@ def allowed_now(app: App) -> bool:
     return True
 
 
+def refund(app: App) -> None:
+    """(0.9.2) The last answer allowed_now counted wasn't given (Gemini Live's guest session failed and the usual way
+    answers instead, counting it again)."""
+    q = _times.get(id(app))
+    if q:
+        q.pop()
+
+
 def kind(app: App, text: str) -> str:
     """What the words ask for, matched and never run: "command", "action", "personal" or ""."""
     t = (text or "").strip()

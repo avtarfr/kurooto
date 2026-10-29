@@ -48,6 +48,7 @@ import java.net.URL;
  *                   (Seal; the line can't read it): a normal notification. It also carries "stop", so an older
  *                   app ignores it.
  *   tags "chat"   -> a chat message from Kurooto (Chat): kept, and a notification unless the chat is open ("stop" too)
+ *                    or it's quiet (0.9.2: "quiet": true, or the Desk chat: ChatRules.silent)
  *   tags "outbox" -> things this phone sent while your computer was off went through to it (Chat; "stop" too)
  *   tags "today"  -> your computer's Today list changed: fetch this phone's sealed copy (Today; "stop" too)
  *   anything else -> a normal notification
@@ -599,7 +600,8 @@ public class ListenService extends Service {
         try {
             JSONObject msg = Chat.incoming(this, m);
             if (ChatStore.getVisible() != null && msg != null) { new Thread(() -> Chat.sync(this)).start(); }
-            if (msg != null) ChatNotes.incoming(this, msg);
+            // 0.9.2: a quiet one (the Desk chat's turns) is kept and counted unread, never a notification
+            if (msg != null && !ChatRules.silent(m.optBoolean("quiet"), Chat.sessionOf(msg))) ChatNotes.incoming(this, msg);
         } catch (Exception ignored) { }
     }
 

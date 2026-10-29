@@ -360,8 +360,8 @@ calls) and, while a turn runs, what its tools find for it (a note it reads, say)
 sound and its words. Nothing is written to disk; events hold the model, the stage and numbers only.
 
 If Live fails partway through a turn (no answer in time, the connection gone), the usual way answers instead; but if
-Live already did something in that turn (started an order, set a reminder), Kurooto says what that did in its own
-voice and doesn't ask your AI again, so nothing is done twice (0.8.18).
+Live already did something in that turn (started an order, set a reminder), Kurooto says so in its own voice (a set
+line, never the tool's raw result) and doesn't ask your AI again, so nothing is done twice (0.8.18; 0.9.2).
 
 **How to turn it on:** it needs a Gemini key (Settings → AI model), Voice ID on and enrolled (only your voice goes,
 so without Voice ID it never does) and Face presence on and enrolled (only while you face it). Then turn on `voice.listen.live` in Settings. It uses the call
@@ -380,6 +380,37 @@ turns too ("sent" is when your sound went, "first sound made" when Live's answer
 typed one: "I'll send the draft tonight" opens a thread, "I have a quiz every Thursday" is set up as a typed message
 would be (with `infer.on`), and Brain's reply tracking and tone (on this computer) see it. Off: only the fact that you
 said something is counted, as a typed message's is.
+
+**Live for every turn (0.9.2, `voice.listen.live_everyone`, off).** With `voice.listen.live` on, this sends every turn
+the gate called said to Kurooto to Gemini Live, whoever said it and whether or not a face was seen: useful when a new
+microphone or camera (a phone at the desk, say) keeps Voice ID unsure or the face check blind, so your turns kept
+going the slow way. A turn Voice ID calls yours (its face help and the conversation carry count) gets your usual
+session with its tools. Any other turn, a voice it's unsure of, someone else's, or every turn while Voice ID is off,
+gets a **separate guest session**: no tools, nothing of yours in it (not your name, notes, memory, history or the
+calls' lessons: only the assistant's name and the same guest rules typed guests get, with the "only my owner's voice
+can make me do things" line once), counted against `voice.speaker_id.guest_per_hour`. It never shares anything with
+your session: your next recognised turn closes it and goes back to yours. A request guests are refused (a command,
+something that acts or reads your things) and `owner_only_at_all` still go the usual way, which refuses them; nothing
+can be approved from the guest session. **Privacy: with it on, other people's voices and your own unsure turns go to
+Google**, even with `voice.speaker_id.guest_brain` `local`. Nothing is written to disk. Failures go the usual way.
+
+**Fixes (0.9.2).** Live never says or shows a tool's result as its answer: if it looked something up and then failed,
+the usual way answers; if it did something and then failed, you hear a set line and it isn't done twice. The setup
+also tells it not to use a tool for a greeting or "can you hear me?". Its sound goes to a phone's speaker (an add-on's
+output) in pieces of about a second, so it no longer cuts out between Google's small chunks.
+
+### Cutting in on a phone that plays and hears (0.9.2, fixes)
+
+- Talking over an answer now stops it at once. The answer is said on the same thread that hears you, so before, what
+  you said waited until the hold gave up (about 12 seconds) and cutting in seemed to do nothing.
+- A Live answer you cut off is also stopped at Google's end, so the rest of it never arrives.
+- When the answer plays on a phone that also listens, its echo comes back later (Kurooto now allows for that), or the
+  phone cancels it so well there's nothing to compare against: then words that aren't what Kurooto is saying stop it.
+- Voice enrolment never keeps its own spoken steps as your samples: what starts while it speaks, or just after, is
+  dropped (a little longer when it speaks through a phone).
+- A new microphone or camera: Voice ID and Face presence remember which one they were enrolled with (a name only). If
+  most of your turns come back unsure through another microphone, it tells you once that `/voice enrol` records you
+  again with it; Face presence tells you once to use Add this look (or enrol again) with the new camera.
 
 ## When it doesn't listen
 
