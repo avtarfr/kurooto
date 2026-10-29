@@ -48,6 +48,7 @@ object Demo {
             .put("study_h", "2.5")
             .put("camera", JSONObject().put("on", false).put("why", "eyes closed"))
             .put("asleep", true)
+            .put("room", JSONObject().put("mode", "night").put("until", "07:00")) // (0.9.2) the Room card
         return JSONObject().put("list", list).put("at", iso.format(Date(now.time - 12 * 60_000))).put("computer", "online")
     }
 
