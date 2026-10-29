@@ -600,7 +600,8 @@ print in use (below): before, those turns pulled your voice print toward that mi
 Your voice sounds different through a phone's microphone (the Body add-on's) or a headset, so through one you didn't
 enrol on most turns come out "not sure". With `voice.speaker_id.per_device` (on), Voice ID learns that microphone's own
 print from turns that are **proven** yours: only your face in view at that moment (Face presence), one voice, at least
-2 seconds of speech, nothing of Kurooto's own voice around it; or a "that was me" tap (below). At most 10 a day per
+2 seconds of speech, nothing of Kurooto's own voice around it, and a voice that doesn't score as clearly someone
+else's (so a voice off camera while you sit there isn't taken); or a "that was me" tap (below). At most 10 a day per
 microphone (`voice.speaker_id.per_device_per_day`). Only their numbers are kept (a vector each, never sound), sealed
 inside your voice print. With 12 it builds that microphone's print the way enrolment does, calibrated against the
 strangers' voices heard through a simulated phone channel (never synthetic voices), and **asks you once**: Use it, or
@@ -610,7 +611,7 @@ buttons. Off: only your enrolled print, everywhere, and nothing more is kept.
 
 ### "That was me" (0.9.2)
 
-Turned away as "not sure"? Tap the Body face within 10 seconds (`voice.speaker_id.claim_s`) while only your face is in
+Turned away as "not sure" (never a voice that scored as clearly someone else's)? Tap the Body face within 10 seconds (`voice.speaker_id.claim_s`) while only your face is in
 view: that turn is heard again as yours, in a conversation the tap opens. Its numbers may be kept: as a sample for that
 microphone's own print, or, with "improve over time" on, as a learned turn under its caps and undo. At most 5 a day
 (`voice.speaker_id.claim_per_day`). To make this work, the sound of a "not sure" turn waits in memory for those 10

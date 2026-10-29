@@ -272,10 +272,13 @@ class VoiceID:
                 self._adapt_device(t, on_dev, ver.last, v, voices)
             elif devices.enrolled_on(t, dev):  # (0.9.2, a fix) another microphone without its own print: frozen
                 self._adapt(t, ver.last, v, voices)
-        if t is not None and ver.last is not None and adapt and not on_dev:
+        # (0.9.2) the floor for a proven or claimed turn: not in the "clearly not you" band of the print it was
+        # scored against (at or above that band's unsure cut-off, the guest line)
+        above = v.score is not None and ver.t is not None and v.score >= ver.t.pick(speech_s).unsure
+        if t is not None and ver.last is not None and adapt and not on_dev and above:
             self._bootstrap(t, dev, ver.last, v, voices, speech_s)
         self._face_last = (list(ver.last), v, voices) if v.assisted and ver.last is not None else None
-        if ver.last is not None and adapt and v.decision == sid.UNSURE and v.score is not None:
+        if ver.last is not None and adapt and v.decision == sid.UNSURE and above:
             self._hold_claim(pcm, ver.last, v, dev, voices)
         ver.last = None
         return v

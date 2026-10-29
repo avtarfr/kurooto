@@ -756,7 +756,8 @@ Adapter on `tpl["devices"][dev]["print"]` against the impostors it was built wit
 back, so the right print is used and learned. `_print_for(t, dev)`: the device's print when `per_device` is on, the
 device isn't the enrolment's and its entry is `on`; else the template. `_bootstrap()` (after each check with
 `adapt=True`, not on a device print): `per_device`, not the enrolment's device, the entry still learning, speech >= 2 s,
-`voices` not >= 2, `face_owner()` now, and not `_speaker_near()` (busy, holding, or within 1 s of `speaker.until`);
+`voices` not >= 2, `face_owner()` now, not `_speaker_near()`, and `above` (the score against the print in use at or
+above its band's `unsure`: not "clearly not you"; the same floor gates holding a claim) (busy, holding, or within 1 s of `speaker.until`);
 then `_add_device_sample(dev, e, "face", per_device_per_day)`. At `MIN_SAMPLES` (and every `REBUILD_EVERY` more while
 weak) `_build_device()` runs on its own thread: `devices.build()` = `sid.calibrate(samples, bank, ())` (no synthetic
 impostors) with `device_bank()`: `impostors-<model>-phone.bin` when its model sha matches, else the plain bank. Ready

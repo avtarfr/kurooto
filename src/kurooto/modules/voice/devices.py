@@ -9,7 +9,9 @@ its drift guard stopped it for good. So:
                             its state, its own print once built, and whether the owner said yes
     add()                   a proven turn's vector: his face recognised alone at that moment, one voice, at least
                             BOOT_SPEECH_S of speech (how "face"), or a "that was me" tap with his face in view (how
-                            "claim"); capped per day, KEEP_MAX kept (the oldest goes)
+                            "claim"); either only when its score against the print in use isn't in the "clearly not
+                            you" band (voiceid.check: at or above the band's unsure cut-off); capped per day,
+                            KEEP_MAX kept (the oldest goes)
     due() / build()         with MIN_SAMPLES (12) of them the print is built like an enrolment's (speakerid.calibrate:
                             outliers out, the template, held-out scores) against the impostor set heard through a
                             simulated phone channel when it ships (impostors-<model>-phone.bin), else the plain one;

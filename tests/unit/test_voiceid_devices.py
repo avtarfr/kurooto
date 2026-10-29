@@ -131,6 +131,19 @@ def test_only_proven_turns_are_samples(on_phone, monkeypatch):
     assert n() == 1  # off: nothing more kept
 
 
+def test_a_voice_clearly_not_his_is_never_collected_or_claimable_while_his_face_is_alone(on_phone):
+    """An off-camera voice while only his face is in view: its score is in the "clearly not you" band, so it's neither
+    a sample nor held for a tap."""
+    x = on_phone
+    for i in range(5):
+        v = x.check(bytes(pcm(77, 400 + i, seconds=3.0).pcm), 3.0)
+        assert v.decision == "guest"
+    assert devices.entry(x.template(), "Body mic") is None and x._claim is None
+    assert x.claim()[1] == "nothing to claim"
+    x.check(turn(410), 3.0)  # his own voice through it is above the floor: collected
+    assert len(devices.entry(x.template(), "Body mic")["samples"]) == 1
+
+
 def test_no_drops_them_and_forget_starts_again(on_phone):
     x = on_phone
     for i in range(12):

@@ -2268,7 +2268,7 @@ today / Undo all. Manage: add samples, retrain, change model, install the parts 
 guest's chat turns go to your AI without your data. *Kept:* only your voice print, encrypted (`state/voiceid/`), never
 backed up, synced or put in a diagnostics zip; never your recordings.
 - **Other microphones** (0.9.2, `voice.speaker_id.per_device`, on): through a microphone you didn't enrol on, turns
-  proven yours (only your face in view, one voice, 2 s; or "that was me") build its own print (12 turns, at most 10 a
+  proven yours (only your face in view, one voice, 2 s, not scored as clearly someone else; or "that was me") build its own print (12 turns, at most 10 a
   day), calibrated against strangers heard through a simulated phone channel; it asks once (Use it / No) before using
   it. `/voice id mics`, `/voice id mic <n> use|no|forget`. Until then "improve over time" doesn't learn there (a fix).
   *Undo:* off; `/voice id mic <n> forget`.

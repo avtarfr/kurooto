@@ -7967,11 +7967,12 @@ Through a microphone you didn't enrol on, Voice ID learns that microphone's own 
 
 A phone's microphone (through an add-on) or a headset makes your voice score lower than at enrolment, so most turns come
 out "not sure". With this on, turns there that are proven yours (only your face in view at that moment, one voice, at
-least 2 seconds of speech; or a "that was me" tap) keep their numbers (a vector, never sound) in your sealed voice
-print. With 12 of them it builds that microphone's own print, calibrated against the impostor voices heard through a
-simulated phone channel (never synthetic voices), and asks you once: Use it, or No (No drops them and it stops learning
-there). /voice id mics lists them; /voice id mic <n> use|no|forget. Until a microphone's print is in use, "improve over
-time" doesn't learn there (it used to drift your print toward that microphone until its guard stopped it for good).
+least 2 seconds of speech, and a score not in the "clearly not you" band; or a "that was me" tap) keep their numbers (a
+vector, never sound) in your sealed voice print. With 12 of them it builds that microphone's own print, calibrated
+against the impostor voices heard through a simulated phone channel (never synthetic voices), and asks you once: Use it,
+or No (No drops them and it stops learning there). /voice id mics lists them; /voice id mic <n> use|no|forget. Until a
+microphone's print is in use, "improve over time" doesn't learn there (it used to drift your print toward that
+microphone until its guard stopped it for good).
 
 - **Values:** `true` (default), `false`. **Default:** on.
 - **When to change it:** Turn it off to use only your enrolled print everywhere and keep nothing more of your voice.
