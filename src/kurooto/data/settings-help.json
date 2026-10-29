@@ -682,6 +682,7 @@
 "mind.tone.calls": "With tone on, what you say on a call is tagged too, by the model on this computer.",
 "mind.tone.on": "Tag each message you write with one word (calm, tired…), using the model on this computer only.",
 "mind.tools": "Brain's read-only tools for your AI and calls: its plan, when you're likely free (in words), your precedents.",
+"mind.tools.feelings": "Your AI, calls and desk Live can ask how Kurooto feels and why: its own feeling, what it's about, its plan and its top concerns.",
 "mind.tools.on": "Your AI and calls can read Brain's plan, when you're likely free (in words) and your precedents; \"call me when I'm free\" works.",
 "mind.trust": "What, besides what it did on its own, may change its trust in a kind of action.",
 "mind.trust.from_asked_undo": "An Undo of a change you asked for also lowers its trust in that kind of action.",

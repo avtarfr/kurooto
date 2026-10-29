@@ -12,6 +12,11 @@ A label, with the program it runs (inward effort only):
     ask once
     relieved    a large positive reward on the object     close the loop: mark it done, journal it
     satisfied   valence above 0.2 for 24 hours            lower vigilance: recheck daily
+(0.9.3) view() is the same state in words for the read-only tool brain_feelings (mind.tools.feelings): its feeling,
+what it's about and why (the promise and whether it's since been kept, the concerns behind it), what it does about
+it and its top concerns; never the read, a mood or tone of yours, the forecast of you, health or money (I-11, I-14).
+recheck() (a fix): a reminder or deadline added or changed closes a promise to remind that's now in hand and works the
+feeling out again then, not only on the next timer (modules/mind.py:_mirror, ITEM_EVENTS).
 Two channels: distress buys inward effort (rechecks, drafts, tidying) and never outward volume, which can only go down,
 through the gate (stage 03). Arousal sets how often it rechecks, never how often it speaks.
 
@@ -185,7 +190,7 @@ def tick(app: App, payload: dict | None = None) -> dict | None:
         "label": label, "object": top, "item": item, "valence": round(val, 4), "arousal": ar, "at": t,
         "sat_since": sat_since, "recheck_at": prev.get("recheck_at"), "program": PROGRAMS.get(label or "", ""),
         "said_at": prev.get("said_at"), "vocal_at": prev.get("vocal_at"), "vocal_said": prev.get("vocal_said") or [],
-        "vocal_item": prev.get("vocal_item"),
+        "vocal_item": prev.get("vocal_item"), "rechecked": prev.get("rechecked"),
         "concerns": concerns(app) if empathy_on(app) else [],
     }  # fmt: skip
     if label:
@@ -256,7 +261,8 @@ def prompt(app: App, read_hint: bool = True) -> str:
     lines = [RULE]
     st = state(app)
     if st.get("label") and st.get("item"):
-        lines.append(f"Right now, computed: {st['label']} about {st['item']}.")
+        why = " (brain_feelings says why, and what you'll do about it)" if tool_on(app) else ""
+        lines.append(f"Right now, computed: {st['label']} about {st['item']}{why}.")
     band = mood_band(app)
     if band == "low":
         lines.append(
@@ -569,3 +575,164 @@ def vocal(app: App, payload: dict | None = None) -> bool:
     sent = app.notify(text, kind="info", why=f"mind.{f['label']}")
     app.events.emit("mind_vocal", label=f["label"], sent=sent is not None, confidence=round(f["confidence"], 2))
     return sent is not None
+
+
+# ------------------------------------------------------------------------------------------------- in words (0.9.3)
+# brain_feelings (modules/mind.py, mind.tools.feelings): its own feeling, what it's about and why, what it does about it
+# and its top concerns, in words. Only its own state and the items it's about: never the read, your mood or tone, its
+# forecast of you, health or money (I-11, I-14); no hint() here, no valence or arousal numbers.
+ITEM_EVENTS = {  # a reminder or deadline added or changed: a promise to remind may be in hand now (recheck)
+    "reminder_set": "when a reminder was set",
+    "reminder_changed": "when a reminder changed",
+    "deadline_added": "when a deadline was added",
+    "deadline_merged": "when a deadline changed",
+}
+OBJECT_WORDS = {
+    "promise_slack": "something I said I'd do",
+    "health": "keeping things working",
+    "forecast_skill": "how well I foresee your days",
+    "deadline_margin": "a deadline",
+}
+SOURCE_WORDS = {"said.call": "on a call", "said.desk": "at the desk", "said.answer": "in an answer to you"}
+PLAN_WORDS = {
+    "uneasy": "I recheck it every {h} and get ready quietly; it never makes me message you more",
+    "frustrated": "I'm trying a different kind of action for it, or I'll ask you once",
+    "relieved": "I'm closing the loop: marking it done and noting it in my journal",
+    "satisfied": "I'm watching it less closely, once a day",
+}
+TOP_CONCERNS = 5
+
+
+def tool_on(app: App) -> bool:
+    """brain_feelings is offered: Brain's tools, their feelings switch and the feelings themselves on."""
+    return (
+        mind.part_on(app, "tools") and bool(app.settings.get("mind.tools.feelings")) and mind.part_on(app, "feelings")
+    )
+
+
+def _at(ts: float) -> str:
+    """A time in words: "15:30" today, "tomorrow 09:00", else "Thu 09:00"."""
+    import datetime as dt
+
+    t, today = dt.datetime.fromtimestamp(float(ts)), now().date()
+    if t.date() == today:
+        return f"{t:%H:%M}"
+    if t.date() == today + dt.timedelta(days=1):
+        return f"tomorrow {t:%H:%M}"
+    if t.date() == today - dt.timedelta(days=1):
+        return f"yesterday {t:%H:%M}"
+    return f"{t:%a %H:%M}"
+
+
+def _hours(h: float) -> str:
+    h = max(1, round(h))
+    return "hour" if h == 1 else f"{h} hours"
+
+
+def _promise_lines(app: App, item: str) -> list[str]:
+    """The promise behind an uneasy feeling: what it said, where and when, and whether it's since been kept."""
+    rows = [r for r in promises._state(app)["rows"] if r.get("act") == item]  # noqa: SLF001
+    if not rows:
+        return []
+    r = max(rows, key=lambda x: x.get("made_at") or 0)
+    where = SOURCE_WORDS.get(str(r.get("source") or ""), "in a message I sent")
+    due = "it's due" if float(r["due"]) > now().timestamp() else "it was due"
+    out = [f'I said "{r["text"]}" {where}, {_at(r["made_at"])}; {due} {_at(r["due"])}.']
+    got = promises.item_for(app, r)
+    thing = ""
+    if got:
+        thing = f'a {got["kind"]} "{got["text"]}" exists' + (f", repeating {got['repeat']}" if got["repeat"] else "")
+    state_ = r.get("state")
+    if state_ == "kept":
+        out.append(f"Since then it's been kept: {thing}." if thing else "Since then it's been kept.")
+        out.append("The feeling follows the last few hours, so it eases over the next ones.")
+    elif state_ == "open" and thing:
+        out.append(f"It's in hand now: {thing}, so the next check closes it.")
+    elif state_ == "open":
+        verb = (promises.VERB.match(r["act"]) or [None, ""])[1].lower()
+        out.append("It isn't done yet: no reminder for it is set." if verb == "remind" else "It isn't done yet.")
+    elif state_ == "broken":
+        out.append("I didn't keep it, and I said so.")
+    elif state_ == "renegotiated":
+        out.append("I replaced it with a newer promise.")
+    return out
+
+
+def _concern_words(c: dict) -> str:
+    return f"{c['item']} ({c['why']})"
+
+
+def view(app: App) -> str:
+    """brain_feelings: its own current feeling in words, what it's about and why, what it does about it, its top
+    concerns. Read-only; words only."""
+    if not mind.part_on(app, "feelings"):
+        return "Brain's feelings are off (mind.feelings.on)."
+    st = state(app)
+    if not st:
+        return "No feeling worked out yet: Brain does that every hour."
+    lines = []
+    band = mood_band(app)
+    if band != "even":
+        why = mood_why(app)
+        lines.append(f"My own running mood is {band}" + (f": {why}." if why else "."))
+    label, item, obj = st.get("label"), str(st.get("item") or ""), str(st.get("object") or "")
+    cs = [c for c in (st.get("concerns") or []) if float(c.get("risk") or 0) > 0] if empathy_on(app) else []
+    if label:
+        about = item or OBJECT_WORDS.get(obj) or "nothing I can name yet"
+        if obj == "promise_slack" and not item:  # none open now: the one it was about has just been closed
+            rows = sorted(promises._state(app)["rows"], key=lambda r: r.get("made_at") or 0)  # noqa: SLF001
+            item = str(rows[-1]["act"]) if rows else ""
+        if obj == "promise_slack" and item:
+            about = f"something I said I'd do: {item}"
+        at = _at(st.get("at") or now().timestamp())
+        lines.append(f"Right now I feel {label} about {about} (worked out at {at}).")
+        if obj == "promise_slack" and item:
+            lines += _promise_lines(app, item)
+        kinds = {"health": ("body", "notes", "news"), "deadline_margin": ("deadline", "person")}.get(obj)
+        behind = [c for c in cs if kinds and c.get("kind") in kinds][:3]
+        if behind:
+            lines.append("Behind it: " + "; ".join(_concern_words(c) for c in behind) + ".")
+        rec = st.get("recheck_at")
+        h = (float(rec) - float(st.get("at") or 0)) / 3600.0 if rec and st.get("at") else RECHECK_H.get(label, 6)
+        plan = PLAN_WORDS.get(label, "").format(h=_hours(h))
+        if plan:
+            nxt = f"; next around {_at(rec)}" if rec and float(rec) > now().timestamp() else ""
+            lines.append(f"What I'm doing about it: {plan}{nxt}.")
+    else:
+        lines.append("Right now I don't feel anything about one thing in particular.")
+    re_ = st.get("rechecked") or {}
+    if re_.get("at") and now().timestamp() - float(re_["at"]) < 86400:
+        lines.append(f"I last rechecked it at {_at(re_['at'])}, {ITEM_EVENTS.get(re_.get('why'), 'on a change')}.")
+    if cs:
+        lines.append("My top concerns: " + "; ".join(_concern_words(c) for c in cs[:TOP_CONCERNS]) + ".")
+    return "\n".join(lines)
+
+
+def recheck(app: App, why: str = "") -> dict | None:
+    """(0.9.3, a fix) A reminder or deadline was added or changed: a promise to remind that's now in hand closes as
+    kept, and when the feeling is about a promise (or one just closed) it's worked out again now, not on the next
+    timer. None when nothing was rechecked."""
+    if not mind.part_on(app, "feelings"):
+        return None
+    kept = 0
+    try:
+        kept = int((promises.review(app) or {}).get("kept") or 0)
+    except Exception:
+        pass
+    if not kept and state(app).get("object") != "promise_slack":
+        return None
+    try:  # the budget's promise_slack measured again, so the drive behind the feeling is current
+        from kurooto.mind import measure
+
+        measure.run(app)
+    except Exception:
+        pass
+    new = tick(app)
+    if new is None:
+        return None
+    with Lock(app.paths.state, "mind-feelings"):
+        st = state(app)
+        st["rechecked"] = {"at": now().timestamp(), "why": why}
+        jsave(app.paths.state / FILE, st)
+    app.events.emit("mind_feeling_recheck", why=why or "change", kept=kept, label=new.get("label") or "none")
+    return st

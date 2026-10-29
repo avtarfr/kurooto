@@ -80,7 +80,7 @@ from kurooto.mind.tom import knowledge as tom_knowledge
 from kurooto.mind.tom import model as tom_model
 from kurooto.mind.tom import prefs as tom_prefs
 from kurooto.mind.tom import results as tom_results
-from kurooto.modules.base import Command, Incoming, Intent, Module
+from kurooto.modules.base import Command, Incoming, Intent, Module, on_daemon_thread
 
 register_defaults(
     "mind",
@@ -92,10 +92,14 @@ register_defaults(
 # (0.9.0) Brain's read-only tools for every AI and calls: this week's plan, when you're likely free next (words, never
 # numbers), your precedents. Never the read, a mood, tone, the forecast of you or a sense reading
 register_defaults("mind", {"tools": {"on": True}})
+# (0.9.3) brain_feelings: its own current feeling in words, what it's about and why, what it does about it and its top
+# concerns (mind/feelings.py:view). Only its own state, never its read of you
+register_defaults("mind", {"tools": {"feelings": True}})
 
 BACKOFF_MAX_S = 60  # a scorekeeper that keeps dying is started again at most this often
 STEADY_S = 300  # one that ran this long starts the wait from 1 s again
 END_S = 5  # it's asked to stop, and killed if it hasn't after this long
+RECHECK_S = 20  # a reminder or deadline change rechecks the feeling this soon after (one recheck for a burst)
 CONFIRM_S = 7 * 86400  # Delete Brain's data works this long after it was offered
 
 
@@ -156,6 +160,7 @@ class Mind(Module):
         self.every("budget", "every 5m", lambda p: measure.run(self.app) if mind.on(self.app) else False)
         self.every("promises", "every 5m", lambda p: promises.review(self.app) if mind.on(self.app) else {})
         self.every("feelings", "hourly", lambda p: feelings.tick(self.app) if mind.on(self.app) else None)
+        self.action("feelings_recheck", self._feelings_recheck)  # (0.9.3) soon after a reminder or deadline changes
         self.every("feeling_say", "daily 17:30", lambda p: feelings.say(self.app) if mind.on(self.app) else False)
         # 0.8.8: speaking up about a finding or a risk (off by default), concern for what it looks after, a body
         self.every("feeling_vocal", "hourly", lambda p: feelings.vocal(self.app) if mind.on(self.app) else False)
@@ -229,6 +234,11 @@ class Mind(Module):
         if gates is not None and self._job_gate not in gates:
             gates.append(self._job_gate)
 
+    async def _feelings_recheck(self, payload: dict | None = None):
+        """(0.9.3) A reminder or deadline was added or changed a moment ago: recheck the feeling (mind/feelings.py)."""
+        why = str((payload or {}).get("why") or "")
+        return await on_daemon_thread(lambda: feelings.recheck(self.app, why) and None)
+
     def _heavy(self, name: str, cost: str, fn, nightly: bool = False) -> None:
         """The Brain's own heavy work: it starts when the body allows (mind/senses/intero.py: gated), else later."""
         senses_intero.gated(self.app, name, cost, lambda: fn(self.app), nightly=nightly)
@@ -293,6 +303,9 @@ class Mind(Module):
     def _mirror(self, rec: dict) -> None:
         """An event, as it happens (core/events.py): the mirrored kinds go to the scorekeeper. Never blocks."""
         kind = str(rec.get("kind") or "")
+        if kind in feelings.ITEM_EVENTS and mind.on(self.app):  # (0.9.3) a promise to remind may be in hand now
+            self.app.scheduler.at(time.time() + RECHECK_S, "mind.feelings_recheck", {"why": kind},
+                                  key="mind:feelings_recheck", module=self.id)  # fmt: skip
         if kind in ("alarm_rang", "call_rang") and workspace.on(self.app):  # a high-priority event: an immediate cycle
             workspace.poke(self.app, f"event:{kind}", "event", kind.replace("_", " "))
         if mlog.mirrored(kind) and mind.on(self.app):
@@ -402,7 +415,7 @@ class Mind(Module):
             return []
         from kurooto.modules.calls.tools import Tool
 
-        return [
+        out = [
             Tool(
                 "brain_plan",
                 "Brain's suggestion for this week: hours a day per deadline or milestone, and which may be missed at "
@@ -426,6 +439,21 @@ class Mind(Module):
                 writes=False,
             ),
         ]
+        if feelings.tool_on(self.app):  # (0.9.3, mind.tools.feelings) its own feeling and why, in words
+            out.append(
+                Tool(
+                    "brain_feelings",
+                    "Kurooto's own current feeling in words: what it's about and why (the promise or item behind it, "
+                    "and whether it's since been kept), what it's doing about it, and its top concerns. Only its own "
+                    "state, never how they are.",
+                    lambda a: feelings.view(self.app),
+                    writes=False,
+                    hint="For 'how are you?', 'what are you thinking?' or 'why do you feel low?', call brain_feelings "
+                    "and answer from it in your own words: your feeling, what it's about and why, and what you'll do "
+                    "about it. Never guess a reason it doesn't give.",
+                )
+            )
+        return out
 
     def commands(self) -> list[Command]:
         return [

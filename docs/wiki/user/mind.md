@@ -196,7 +196,10 @@ screen on or off (eyes open or shut). Only the numbers, kept in memory and the b
 none of it leaves your computer. They make it feel more, never glad or sad. Turn the switch off to ignore them.
 
 `/budget` shows the variables, the drive, the last reward, its mood and why, and the current feeling and what it's about.
-Switches: `mind.budget.on`, `mind.values.on`, `mind.feelings.on`, `mind.feelings.express`.
+Ask it "how are you?" or "why do you feel low?" in chat, on a call or at the desk and it answers from the same state, with
+the why (`brain_feelings`, 0.9.3, below). When it's uneasy about a promise to remind you and that reminder (or a deadline
+for it) is then set, it counts the promise kept and works the feeling out again within a minute, not on its next timer.
+Switches: `mind.budget.on`, `mind.values.on`, `mind.feelings.on`, `mind.feelings.express`, `mind.tools.feelings`.
 
 ## What it may do without asking
 
@@ -754,6 +757,13 @@ class. The night and Kurooto's sleep window count as not free (`mind.presence_fo
   call for that hour (`schedule_call` with when "when I'm free"; it still asks for your Approve outside a call). Two more
   read-only tools: `brain_plan` (this week's suggested hours and the milestones at risk, as `/plan` shows) and
   `brain_precedents` (your rulings, as `/precedents` shows). Off: none of the three, and "when I'm free" asks for a time.
+- **"How are you? Why do you feel low?" (0.9.3, `mind.tools.feelings`, on with Brain's feelings):** the read-only tool
+  `brain_feelings`, which calls and desk Live are told to use for these questions, answers from its own state in words:
+  its feeling and what it's about ("uneasy about something I said I'd do: remind you to book the lab slot"), why (the
+  promise, where and when it said it, and whether it's since been kept), what it's doing about it ("I recheck it every 6
+  hours; next around 15:30") and its top concerns ("Organic Chemistry: Quiz (due in 22 hours)"). Only its own state: never
+  its read of you, your mood or tone, its forecast of you, health or money, and no scores. Off: the AI only has the
+  one-line headline ("uneasy about ...") and can't say why.
 
 - **Planning with it** (`mind.presence_forecast.plan`, off, 0.9.0): Start-by's deadline hours go first into the hours
   you're likeliest free, and the study push offers the likeliest stretch today. No hour is taken away, so a start-by
@@ -826,7 +836,8 @@ decision, what the AI said about it, in at most 300 characters.
 Nothing of Brain's data leaves this computer, and it isn't in backups or Profile sync: an older copy put back would
 look like a log that was cut short. Since 0.9.0 your AI may ask Brain for a few lines in words, and only these
 (`mind.tools.on`; `face.tools` for the plan line in `kurooto_now`): when you're likely free ("Likely free from 16:00"),
-this week's plan and the milestone most at risk, and your precedents. These go to the AI you picked, like any tool's
+this week's plan and the milestone most at risk, your precedents, and (0.9.3, `mind.tools.feelings`) its own current
+feeling, what it's about and its top concerns. These go to the AI you picked, like any tool's
 answer; never the read, a mood, tone, its forecast of you as numbers or a sense reading. Deleting it: turn Brain off and tap **Delete Brain's data**.
 
 ## Hardened mode (optional)

@@ -42,7 +42,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 54 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 68 settings
-- [Brain](#brain): 159 settings
+- [Brain](#brain): 160 settings
 - [Voice and voice notes](#voice-and-voice-notes): 116 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
@@ -6252,6 +6252,23 @@ for your Approve outside a call.
 - **When to change it:** Turn it off to keep Brain's plan and forecast away from your AI.
 - **Costs and what leaves this computer:** Those lines go to the AI you picked when it asks.
 - **Depends on:** Brain; the free-time part needs `mind.presence_forecast.on`.
+
+### `mind.tools.feelings`
+
+Your AI, calls and desk Live can ask how Kurooto feels and why: its own feeling, what it's about, its plan and its top
+concerns.
+
+The read-only tool brain_feelings (0.9.3): its own feeling in words ("uneasy about something I said I'd do: remind you
+to book the lab slot"), the promise behind it and whether it's since been kept, when it rechecks, and its top concerns
+("Organic Chemistry: Quiz (due in 22 hours)"). Never its read of you, your mood or tone, its forecast of you, health or
+money, and no scores.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep Brain's feelings out of your AI's answers; it then only gets the one-line
+  headline it always had.
+- **Costs and what leaves this computer:** Those lines go to the AI you picked when it asks (on a call or Live, to
+  Google).
+- **Depends on:** Brain, `mind.tools.on` and `mind.feelings.on`.
 
 ### `mind.precedents.on`
 

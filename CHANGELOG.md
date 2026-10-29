@@ -21,6 +21,15 @@
 - **Your own "not sure" voice isn't a second voice** (a fix): through a microphone Voice ID knows less well, a turn
   scored above the guest line with only your face (or none) in view doesn't make the careful calls or conversation
   mode treat it as someone else.
+- **"How are you? Why do you feel low?" gets a real answer** (`mind.tools.feelings`, on with Brain's feelings). A
+  read-only tool, `brain_feelings`, for your AI, calls and desk Live: Kurooto's own feeling and what it's about ("uneasy
+  about something I said I'd do: remind you to book the lab slot"), why (the promise, where and when it said it, and
+  whether it's since been kept), what it's doing about it (when it rechecks) and its top concerns ("Organic Chemistry:
+  Quiz (due in 22 hours)"). Calls and Live are told to use it for these questions. Only its own state: never its read of
+  you, your mood or tone, its forecast of you, health or money, and no scores.
+- **A promise to remind is kept once the reminder exists** (a fix). When Kurooto said it would remind you of something
+  and that reminder (or a deadline for it) is then set, the promise counts as kept, and its feeling is worked out again
+  within a minute of the reminder or deadline being added or changed, not only on its next timer.
 
 ## 0.9.2 (2026-10-29)
 

@@ -413,6 +413,13 @@ when = "Turn it off to keep Brain's plan and forecast away from your AI."
 cost = "Those lines go to the AI you picked when it asks."
 needs = "Brain; the free-time part needs `mind.presence_forecast.on`."
 
+[s."mind.tools.feelings"]
+tip = "Your AI, calls and desk Live can ask how Kurooto feels and why: its own feeling, what it's about, its plan and its top concerns."
+what = "The read-only tool brain_feelings (0.9.3): its own feeling in words (\"uneasy about something I said I'd do: remind you to book the lab slot\"), the promise behind it and whether it's since been kept, when it rechecks, and its top concerns (\"Organic Chemistry: Quiz (due in 22 hours)\"). Never its read of you, your mood or tone, its forecast of you, health or money, and no scores."
+when = "Turn it off to keep Brain's feelings out of your AI's answers; it then only gets the one-line headline it always had."
+cost = "Those lines go to the AI you picked when it asks (on a call or Live, to Google)."
+needs = "Brain, `mind.tools.on` and `mind.feelings.on`."
+
 [s."mind.precedents.on"]
 tip = "Judgement calls between your values are asked once, then followed (off until you turn it on)."
 when = "Turn it on if you'd like fewer repeat questions. It can never unlock anything on the always-ask list."

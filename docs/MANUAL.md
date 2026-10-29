@@ -1701,9 +1701,13 @@ its own message and time of day, whether you welcome it, and sends one only when
 looks after (deadlines, projects, notes, its machine, your phone, people by role, the papers you follow): it notices them
 sooner and speaks more gently. It feels its senses as a body (heat, load, touch, pain, motion), shown on the dashboard and in
 `/senses body`. With `mind.feelings.vocal` on (off by default) it may say it's excited or worried, unasked, when it has strong
-evidence, one a day at most. `/mind learning` shows the mood, the day's talk and each kind's welcome. *Undo:*
+evidence, one a day at most. Asked "how are you?" or "why do you feel low?" (chat, a call, desk Live) it answers from the
+read-only tool `brain_feelings` (0.9.3, `mind.tools.feelings`): its own feeling, what it's about and why (the promise and
+whether it's since been kept), what it's doing about it and its top concerns, never its read of you. A promise to remind
+counts as kept once that reminder or deadline exists, and the feeling is worked out again within a minute of the change. `/mind learning` shows the mood, the day's talk and each kind's welcome. *Undo:*
 `mind.talk.on` off (talk pays nothing), `mind.pest.on` off (no welcome check), `mind.feelings.mood` off (its mood stops
-shaping what it does), `mind.feelings.empathy` off, `mind.feelings.vocal` off, `mind.stimulation.on` off (no body map;
+shaping what it does), `mind.feelings.empathy` off, `mind.feelings.vocal` off, `mind.tools.feelings` off (no
+`brain_feelings`), `mind.stimulation.on` off (no body map;
 `/api/body` returns zeros); Delete Brain's data removes `mind-pest.json` and `mind-stimulation.json` with the rest.
 
 **It reads how you're doing, and says what it expects of tomorrow, but only watches (shadow mode).** From numbers about your

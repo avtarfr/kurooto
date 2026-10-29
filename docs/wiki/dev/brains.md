@@ -301,7 +301,20 @@ answered. `fell` comes from `handed()` (step 8 above).
 - Brain's read-only tools (0.9.0, L125, `modules/mind.py:Mind.call_tools`, `mind.tools.on`): `brain_plan`
   (`mind/plans.view`), `brain_free_time` (`free_words`: "Likely free from 16:00" from `presence_forecast.next_free`,
   never its chance), `brain_precedents` (`precedents.listing`). Nothing reads the read, mood, tone or the forecast of
-  him (I-11, I-14).
+  him (I-11, I-14). 0.9.3: `brain_feelings` (`mind.tools.feelings`, offered when `feelings.tool_on`) answers
+  `feelings.view`: the label, the item (`object` promise_slack: the promise row by `act`, its source as words, and
+  `promises.item_for` for whether it's since in hand), `PLAN_WORDS` with the recheck time, the concerns behind it and the
+  top 5 (`risk > 0`), the own mood band with `mood_why`; never `hint()` (the read's tone hint), valence, arousal or risk
+  numbers. Its `hint` reaches calls and desk Live through `Calls.config_template`; `feelings.prompt` adds "(brain_feelings
+  says why...)" to the headline while it's on.
+- Promise kept by its item (0.9.3, a fix, no switch): `promises.review` closes an open "remind" promise as kept
+  (`kept_by: "item"`, `promise_kept` with `by_item`) when `item_for` finds a reminder (`scheduler.jobs("reminders:")`
+  payload `what`) or an open deadline whose words `matches` it (filler and time words dropped, plurals folded; at least
+  two shared words, 60% of the promise's). `Mind._mirror` schedules `mind.feelings_recheck` (key
+  `mind:feelings_recheck`, `RECHECK_S` = 20 s, one per burst) on `feelings.ITEM_EVENTS` (`reminder_set`,
+  `reminder_changed`, `deadline_added`, `deadline_merged`); `feelings.recheck` runs `review`, then (when something
+  closed or the feeling is about a promise) `measure.run` and `tick` on a daemon thread, and keeps `rechecked: {at,
+  why}` in `mind-feelings.json` (emits `mind_feeling_recheck`).
 - `latex_tools()` (0.9.0, `tools.latex`): `compile_latex(path)` answers through `core/latexcheck.py:compile_checked`
   (N2b): the source must be inside `places.read_roots`; a self-check for the usual mistakes runs first (its findings
   come back with the result); the source's folder is copied into a temp dir and `modules/skills.py:compile_tex`

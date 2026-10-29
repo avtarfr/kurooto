@@ -7,7 +7,9 @@ core/clock.py's parser reads). The deadline is frozen when the promise is made.
 
     {id, text (cut), due, made_at, source (the message's reason), state: open | kept | broken | renegotiated}
 
-Kept: the promised action's event happens before it's due. Silent. Broken: it's due and nothing happened. Kurooto says
+Kept: the promised action's event happens before it's due, or (0.9.3) for a promise to remind, the reminder or
+deadline it promised now exists (item_for: their words match). Silent.
+Broken: it's due and nothing happened. Kurooto says
 so first, in one line, before you notice, with the fix and nothing grovelling ("I said I'd check back at 6 and didn't:
 the laptop was off. Checking now."). Renegotiating writes `broken` first, then a new promise. The log gets
 `promise_made`,
@@ -194,6 +196,11 @@ def review(app: App, payload: dict | None = None) -> dict:
                 r["state"] = "kept"
                 kept += 1
                 _log(app, "promise_kept", r)
+            elif verb == "remind" and item_for(app, r):  # (0.9.3) the reminder it promised now exists: in hand
+                r["state"] = "kept"
+                r["kept_by"] = "item"
+                kept += 1
+                _log(app, "promise_kept", r, by_item=True)
             elif t > r["due"]:
                 r["state"] = "broken"
                 broken += 1
@@ -207,6 +214,60 @@ def review(app: App, payload: dict | None = None) -> dict:
             kind="info", why="mind.promise_broken",
         )  # fmt: skip
     return {"kept": kept, "broken": broken}
+
+
+# (0.9.3) A promise to remind is kept once the thing it promised exists: a reminder (or a deadline, which reminds by
+# itself) whose words match what it said it would remind about. Words that say when, or who, don't count.
+_FILLER = set(
+    "i'll will remind you your yours to the a an about of for that this my me and it its at by on in before every "
+    "day days daily week weekly weekdays weekends weekend tomorrow tonight today morning afternoon evening night again "
+    "monday tuesday wednesday thursday friday saturday sunday mon tue wed thu fri sat sun am pm".split()
+)
+
+
+def words(text: str) -> set[str]:
+    """The words that say what something is about: lower case, plurals folded, filler and times left out."""
+    out = set()
+    for w in re.findall(r"[a-z][a-z']+", str(text or "").lower()):
+        if w in _FILLER or len(w) < 3:
+            continue
+        out.add(w[:-1] if len(w) > 3 and w.endswith("s") and not w.endswith("ss") else w)
+    return out
+
+
+def matches(promised: str, thing: str) -> bool:
+    """Does the reminder or deadline `thing` cover what was `promised`? Most of the promise's words, and two of them
+    when it has two or more."""
+    want, have = words(promised), words(thing)
+    if not want:
+        return False
+    shared = len(want & have)
+    return shared >= min(2, len(want)) and shared / len(want) >= 0.6
+
+
+def item_for(app: App, row: dict) -> dict | None:
+    """The reminder or open deadline that now does what a promise to remind said it would: {kind, text, repeat} (repeat:
+    "every day" and the like, "" for once), or None. Read-only."""
+    promised = str(row.get("text") or row.get("act") or "")
+    try:
+        from kurooto.modules.reminders import repeat_label
+
+        for j in app.scheduler.jobs("reminders:"):
+            what = str((j.payload or {}).get("what") or "")
+            if what and matches(promised, what):
+                rep = (j.payload or {}).get("repeat")
+                return {"kind": "reminder", "text": what[:80], "repeat": repeat_label(rep) if rep else ""}
+    except Exception:
+        pass
+    try:
+        dl = app.modules.get("deadlines")
+        if dl is not None and app.is_on("deadlines"):
+            for it in dl.items().values():
+                if it.get("status") == "open" and matches(promised, str(it.get("title") or "")):
+                    return {"kind": "deadline", "text": str(it["title"])[:80], "repeat": ""}
+    except Exception:
+        pass
+    return None
 
 
 def _why_not(app: App, r: dict) -> str:
