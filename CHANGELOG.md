@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.1 (unreleased)
+## 0.9.1 (2026-10-29)
 
 - **"The lib" finds "Library"** (`reminders.place_names`, off). The phone app can share the names of the places you
   saved (names only, sealed, never where they are), so a location reminder goes to the phone under the place's own
