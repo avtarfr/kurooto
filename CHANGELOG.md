@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.4 (unreleased)
+## 0.9.4 (2026-10-29)
 
 - **When it's your voice that cut in, it stops** (`voice.listen.barge_owner_stops`, on). A cut-in Voice ID knows is
   you (the barge-in voice check, or its verdict on a loud cut-in) never makes Kurooto carry on: "stop" and a question
