@@ -720,8 +720,13 @@ class Listener:
         barge=None,
         gain: Gain | None = None,
         early=None,
+        aec=None,
     ):
         self.gain = gain  # voice.listen.auto_gain: the room's noise floor and one level (Gain)
+        # (0.9.3, voice.listen.aec) every frame through aec.process() first: its own voice taken out before the VAD,
+        # barge-in, Voice ID and the levels hear it; one that fails is dropped (the sound goes on as heard)
+        self.aec = aec
+        self.aec_error = ""
         # (voice.listen.early, 0.8.17) at a first short pause the stretch so far goes to early.pause(pcm, flags), and
         # early.end_ms(nbytes) may end the stretch sooner than END_MS when what was said there is finished
         self.early = early
@@ -766,6 +771,11 @@ class Listener:
             for frame in frames:
                 if self._stop.is_set():
                     break
+                if self.aec is not None:
+                    try:
+                        frame = self.aec.process(frame)
+                    except Exception as e:
+                        self.aec, self.aec_error = None, f"{type(e).__name__}"[:100]
                 if self.on_level is not None:
                     self.on_level(frame)
                 if self.barge is not None and self.barge.wants():  # Kurooto speaking: barge.py hears for it

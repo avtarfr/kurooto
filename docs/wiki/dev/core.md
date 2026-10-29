@@ -756,7 +756,11 @@ internet is down.
 
 - **The model**: talked to through `LocalModels.api("/api/generate")` (`_generate`, temperature 0, a few tokens,
   `keep_alive` 30 min). `ready()`: `local_helper.on`, a passed speed test for this tag in `local-helper.json`, and the
-  tag in `LocalModels.have()` (believed for `HAVE_S`). `word(prompt, choices)` is the one decision call, capped at
+  tag in `LocalModels.have()` (believed for `HAVE_S`). (0.9.3, a fix) `tick()` calls `maybe_retest()`: on, but the test
+  on file is for another tag (`local_helper.model` changed, or the table's model replaced the tested one) and the tag in
+  use is here: `speed_test()` again on a thread of its own (`retest` in the state file: at most once per `RETEST_S`
+  per tag), event `helper_retest {ok, seconds}`; it never changes `local_helper.on`. Voice's `judge_state()` says in
+  /voice and doctor when the helper is on but can't be used. `word(prompt, choices)` is the one decision call, capped at
   `local_helper.timeout_s` (4 s); anything not among the choices is None (the rules decide). Event `helper_decided`.
 - **Decisions**: `classifier()` for `providers/effort.py` (`Jobs._classifier` uses it where the rules would decide
   alone: `brain.classify = rules`, the chosen classifier's limit kept with no local brain, or the internet down);

@@ -26,6 +26,13 @@ own echo cancelling: under QUIET_SHARE of the frames while it plays held speech,
 loudness check has nothing to learn from, so a third check takes it: at least MIN_SPEECH_S of speech whose written-out
 words aren't mostly what Kurooto is saying ("quiet echo").
 
+Echo cancelled (0.9.3, voice.listen.aec): while the listener's echo canceller is bringing the echo down (aec.py's
+cancelling()), what's heard here is the cleaned sound, so the loudness check expects the residual, not the raw echo:
+the residual's share of the playback's level is learned from every frame heard while it plays outside a stretch (not
+only speech frames: the residual is mostly too quiet for the VAD), its RES_PCT percentile (the residual comes in
+bursts where the filter lags), and a stretch is loud at RES_X times that (about 6 dB). The raw-echo share is kept
+apart and used again when cancelling isn't working (a new piece's first moments, the library missing, the switch off).
+
 Sound stays in memory, as everywhere in Voice: the stretch being cut and the pre-roll; levels of what's played are
 numbers only. Nothing here is logged but how it was noticed and what it led to (never words)."""
 
@@ -67,6 +74,8 @@ LOUD_X = 2.5  # "clearly louder": this many times the expected echo (about 8 dB)
 FLOOR = 0.01  # and above this level in any case
 LOUD_MIN_S = 0.3  # at least this much loud speech
 LOUD_SHARE = 0.5  # and at least this share of the stretch's speech
+RES_PCT = 0.9  # (0.9.3, cancelled) the residual's expected share: this percentile of the frames heard while it plays
+RES_X = 2.0  # and a stretch is loud at this many times it
 ECHO_WORDS = 0.6  # written-out words this much made of what Kurooto is saying are its own echo
 OWN_PHRASE = "This is how I sound when I talk, so I can tell my own voice from yours when we both speak."
 
@@ -103,6 +112,7 @@ class Barge:
         self._while_played: collections.deque[bool] = collections.deque(maxlen=300)  # (0.9.2) speech heard or not
         self._quiet_sid = -1  # (0.9.2) the stretch that began while the echo was quiet
         self._ratios: collections.deque[float] = collections.deque(maxlen=GAIN_FRAMES)
+        self._res: collections.deque[float] = collections.deque(maxlen=GAIN_FRAMES)  # (0.9.3) the residual's share
         self._said: collections.deque[str] = collections.deque(maxlen=12)  # what it's saying, for the echo words
         self._own: dict[tuple, list[float]] = {}  # Kurooto's own voice print, per engine/voice/model; memory only
         self._jobs: queue.Queue = queue.Queue(maxsize=4)
@@ -125,6 +135,7 @@ class Barge:
         with self.lock:
             self._reset_stretch()
             self._ratios.clear()
+            self._res.clear()
             self._while_played.clear()
             self._confirmed = None
 
@@ -175,12 +186,26 @@ class Barge:
         n = len(self._while_played)
         return n >= QUIET_MIN and sum(self._while_played) < QUIET_SHARE * n
 
-    def gain(self) -> float | None:
-        """The echo's share of the playback's level, as heard here (the median: robust to you talking over it)."""
+    def gain(self, cancelled: bool = False) -> float | None:
+        """The echo's share of the playback's level, as heard here (the median: robust to you talking over it);
+        cancelled (0.9.3): the residual's, its RES_PCT percentile."""
+        if cancelled:
+            if len(self._res) < GAIN_MIN:
+                return None
+            xs = sorted(self._res)
+            return xs[min(len(xs) - 1, int(RES_PCT * len(xs)))]
         if len(self._ratios) < GAIN_MIN:
             return None
         xs = sorted(self._ratios)
         return xs[len(xs) // 2]
+
+    def cancelled(self) -> bool:
+        """(0.9.3) The listener's echo canceller is bringing the echo down now: what's heard here is cleaned."""
+        a = getattr(self.v, "aec", None)
+        try:
+            return a is not None and bool(a.cancelling())
+        except Exception:
+            return False
 
     # ------------------------------------------------------------------------------------------ the listener
     def wants(self) -> bool:
@@ -205,17 +230,21 @@ class Barge:
         level = rms(frame)
         action = None
         ended = False
+        cancelled = self.cancelled()
         with self.lock:
             expect = self.expected(now)
             confirmed = self._is_confirmed()
-            if expect >= EXPECT_MIN and p >= START and not confirmed:  # speech heard while it plays: mostly its echo
+            if cancelled:  # (0.9.3) the residual's share: every frame while it plays, outside a stretch
+                if expect >= EXPECT_MIN and self._buf is None and not confirmed:
+                    self._res.append(level / expect)
+            elif expect >= EXPECT_MIN and p >= START and not confirmed:  # speech heard while it plays: its echo
                 self._ratios.append(level / expect)
             if expect >= EXPECT_MIN:  # (0.9.2) how much speech the microphone hears while it plays (its echo, mostly)
                 if p >= START and self._buf is None:  # this frame starts a stretch: was the echo quiet before it?
                     self._quiet_sid = self._sid + 1 if self.echo_quiet() else -1
                 self._while_played.append(p >= START)
-            g = self.gain()
-            loud = g is not None and level > max(FLOOR, LOUD_X * g * expect)
+            g = self.gain(cancelled)
+            loud = g is not None and level > max(FLOOR, (RES_X if cancelled else LOUD_X) * g * expect)
             if self._buf is None:
                 if p >= START:
                     self._sid += 1

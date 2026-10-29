@@ -267,6 +267,12 @@ Limits:
 Nothing extra is kept: the sound stays in memory as for anything it hears, and the event log only says how it noticed
 you and what came of it, never your words.
 
+Fixes in 0.9.3: when the model on this computer that judges unclear speech is set up but can't run (the offline
+helper's speed test was for a model you changed since), `/voice` and `kurooto doctor` say so, and the offline helper
+times the new model by itself; before, unclear statements after a look were dropped quietly. And your own voice
+through a microphone Voice ID knows less well ("not sure", but well above the line for someone else), with only your
+face in view, no longer counts as a second voice for careful calls and conversation mode.
+
 ### Learning at night
 
 Every night at 04:10 it learns from how its voice turns went: ones you carried on talking to it (good) and ones you
@@ -421,6 +427,23 @@ answering late, and listens on. `voice.listen.wait_unfinished` waits a little lo
 the usual way answers; if it did something and then failed, you hear a set line and it isn't done twice. The setup
 also tells it not to use a tool for a greeting or "can you hear me?". Its sound goes to a phone's speaker (an add-on's
 output) in pieces of about a second, so it no longer cuts out between Google's small chunks.
+
+### Echo cancelling: cutting in over its own voice (0.9.3)
+
+When the speaker and the microphone are one phone (an add-on's output that also hears), the phone's speaker sits a few
+centimetres from its microphone: Kurooto's own voice comes back a few tenths of a second later, as loud as it was
+played or louder, and your voice is buried under it. With `voice.listen.aec` (auto: on while it plays on such an
+output) what Kurooto plays is taken out of what the microphone hears before anything listens: barge-in, Voice ID and
+the rest then hear you, with only a little of its voice left. Barge-in expects that leftover, not the full echo, so
+cutting in works there by your voice (Voice ID) or by being clearly louder than what's left.
+
+- The delay is measured while it speaks and followed from sentence to sentence. A sentence played on its own (not
+  streamed gaplessly into the last) passes as heard for its first fifth of a second while its delay is measured.
+- `"on"` uses it with this computer's speakers too; `"off"` turns it off.
+- It needs the speexdsp library on this computer (Linux usually has it; Kurooto never installs it). Without it,
+  `/voice` and `kurooto doctor` say "echo cancelling unavailable" and listening works as before.
+- `/voice` shows the measured delay and how far down the echo was brought ("echo 290 ms, 24 dB down").
+- Nothing is kept: what's played and the microphone's last few seconds are in memory only.
 
 ### Cutting in on a phone that plays and hears (0.9.2, fixes)
 

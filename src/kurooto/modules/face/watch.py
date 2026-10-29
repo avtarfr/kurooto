@@ -227,6 +227,7 @@ class Watcher:
         self.problem: tuple[str, float] | None = None  # (pause reason, until): busy, no camera, blocked, covered
         self._dark = 0
         self.others = False
+        self._two: deque[bool] = deque(maxlen=OTHER_M)  # (0.9.3) a second face in each of the last frames
         self.arrived_at: float | None = None
         self.candidate: tuple[list[float], float] | None = None  # a frame to learn from, if input follows
         self.tracks: dict[int, Track] = {}  # positions only, in memory, dropped when the camera closes
@@ -398,6 +399,7 @@ class Watcher:
                 self.camera.close()
             finally:
                 self.emit("watch", on=False, why=why)
+                self._two.clear()
                 if self.others:
                     self.others = False
                     self.emit("others", on=False)
@@ -510,9 +512,12 @@ class Watcher:
         self._scale = px_scale(*full)  # (0.8.17) min_face_px and the still check are pixels of a 480-high frame
         min_px = float(c.get("min_face_px") or 60) * self._scale
         faces = drop_nested(self.detector.detect(frame, SCORE_OTHER))
-        # (0.9.2) only faces at least HALF the biggest's height count; each counted face is followed by its box
-        tall = max((f.height for f in faces if f.score >= SCORE_OTHER), default=0.0)
-        counted = [f.score >= SCORE_OTHER and f.height >= HALF * tall for f in faces]
+        # (0.9.2) only faces at least HALF the biggest's height count; each counted face is followed by its box.
+        # (0.9.3, a fix) and only faces sure enough to judge: SCORE_WATCH and min_face_px (a faint detection, under
+        # the Test preview's threshold, flickered "others nearby" on and off hundreds of times in minutes)
+        sure = [f.score >= SCORE_WATCH and f.height >= min_px for f in faces]
+        tall = max((f.height for i, f in enumerate(faces) if sure[i]), default=0.0)
+        counted = [sure[i] and f.height >= HALF * tall for i, f in enumerate(faces)]
         ids = self._follow(now, [(i, f) for i, f in enumerate(faces) if counted[i]])
         keep_s = max(ID_KEEP_S, 1.5 * (now - self._looked_at)) if self._looked_at is not None else ID_KEEP_S
         self._looked_at = now
@@ -614,7 +619,13 @@ class Watcher:
             "view", faces=n_faces, owner_alone=his is not None and n_other == 0, sizes=sizes, owner=mine, eyes=eyes,
             frame=full, looks=looks, mouth=_mouth(his) if his is not None else None,
         )  # fmt: skip
-        others = n_faces >= 2
+        # (0.9.3, a fix) "others nearby" needs a second face in OTHER_N of the last OTHER_M frames to come on, and
+        # ID_MISS frames in a row without one to go off: one frame of a second face never sets it
+        self._two.append(n_faces >= 2)
+        if self.others:
+            others = any(list(self._two)[-ID_MISS:])
+        else:
+            others = sum(self._two) >= OTHER_N
         if others != self.others or others:  # while it lasts, every frame refreshes it (core/nearby.py's STALE_S)
             self.others = others
             self.emit("others", on=others)

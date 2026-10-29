@@ -176,6 +176,11 @@ register_defaults(
             "told_off": True,  # "stop", "not you", "never mind" right after it opened or spoke: it stops and closes
             "learn_nightly": True,  # learn at night from turns that went well or were told off (numbers only)
             "barge_in": True,  # talk over Kurooto to stop it: your voice (Voice ID) or louder than its own echo
+            # (0.9.3) echo cancelling: its own voice taken out of the microphone's sound (before barge-in, the VAD and
+            # Voice ID hear it), with what it plays as the reference; needs the speexdsp library on this computer.
+            # auto: on while it plays on an add-on's output (a phone that also hears); on: this computer's speakers
+            # too; off
+            "aec": "auto",
             "need_face": True,  # with Face presence on: answer only someone close to the camera and facing it
             "face_near": 0.5,  # close: a face at least this share of your usual desk face height (0.5: twice as far)
             "face_yaw_deg": 35,  # facing: turned at most this many degrees away from the camera
@@ -511,6 +516,10 @@ class Speaker:
             self.v.barge.played(pcm, sr, remote=bool(outs))
         except Exception:
             pass
+        try:  # (0.9.3) echo cancelling: exactly what's played, as its reference (memory only)
+            self.v.aec_reference(pcm, sr, outs)
+        except Exception:
+            pass
         fast.stamp(self._turn, "play")  # (timing) handed to an output, or to this computer's player, now
         for entry in outs:
             if piece.is_set():
@@ -605,9 +614,20 @@ class Speaker:
             stop.set()
         if self.player is not None:
             self.player.stop()
+        self.v.aec_cut()  # (0.9.3) what wasn't played isn't the echo's reference
 
     def holding(self) -> bool:
         return self.busy or time.monotonic() < self.until
+
+
+def _seed(out) -> float | None:
+    """(0.9.3) An output's measured echo delay (ms): its echo_delay_ms, a number or a function giving one."""
+    got = getattr(out, "echo_delay_ms", None)
+    try:
+        got = got() if callable(got) else got
+        return float(got) if got is not None and float(got) > 0 else None
+    except Exception:
+        return None
 
 
 def _gated(app, fn):
@@ -681,6 +701,8 @@ class Voice(Module):
         self._retry_at = 0.0
         self.voiceid = VoiceID(self)  # (voice id) the owner's voice: voiceid.py
         self.barge = Barge(self)  # talking over it while it speaks: barge.py
+        self.aec = None  # (0.9.3, voice.listen.aec) the listener's echo canceller (aec.py), while listening
+        self.aec_why = ""  # why it isn't running ("" when it is, or it's off)
         self.early = fast.Early(self)  # (voice.listen.early, 0.8.17) the words written out at a first pause
         self._once: dict | None = None  # listen_once's hold: the next stretch goes to it, not to hear()
         self._once_lock = threading.Lock()  # one holder at a time
@@ -885,7 +907,8 @@ class Voice(Module):
         learned = self.learned_line()
         if learned:
             tail += f"; {learned}"
-        for extra in (self.room.line(), self.degrade_line()):  # (0.9.2) the room mode, the rung it's on
+        judge_ok, judge_why = self.judge_state()  # (0.9.3) a local judge that silently can't run is said
+        for extra in (self.room.line(), self.degrade_line(), self.aec_line(), judge_why if judge_ok is False else ""):
             if extra:
                 tail += f"; {extra}"
         if not self.setting("listen.on"):
@@ -1117,6 +1140,11 @@ class Voice(Module):
             },
             "learned": {**self.learner.status(), "on": bool(s("listen.learn_nightly")), "misfires_now": self.misfires},
             "barge_in": {"on": bool(s("listen.barge_in")), "since_start": self.barge.count},
+            "aec": {
+                "mode": self.aec_mode(),
+                "why": self.aec_why,  # (0.9.3) numbers only
+                **(self.aec.status() if self.aec is not None else {}),
+            },  # fmt: skip
             "auto_gain": {"on": bool(s("listen.auto_gain")), **(g.status() if (g := self._gain()) else {})},
             "turns": self.turn_log if s("listen.trace") else [],  # (0.9.2) the last turns' rows, numbers only
             "live": self.live.status(),  # (0.9.2) prewarm, the breaker ("Live resting"), resume
@@ -1283,6 +1311,32 @@ class Voice(Module):
         if helper is not None and helper.ready():
             return helper._generate(prompt, 40, 8)  # Ollama on this computer (core/helper.py)
         return None
+
+    def judge_state(self) -> tuple[bool | None, str]:
+        """(0.9.3, a fix) Whether judge() can answer: (True, "") yes; (False, why) a local model is set up but can't
+        be used (the offline helper's speed test is for another model, or Ollama lacks it), so unclear speech, a
+        look's statements among it, is dropped as chatter; (None, why) no model on this computer at all (the rules
+        decide alone, as always without one); (None, "") listening or the model judge off."""
+        if not self.setting("listen.on") or not self.setting("listen.model_judge"):
+            return None, ""
+        try:
+            from kurooto import providers
+
+            brain = providers.local(self.app)
+        except Exception:
+            brain = None
+        host = urllib.parse.urlparse(str(getattr(brain, "base_url", "") or "")).hostname if brain else None
+        if brain is not None and host in LOOPBACK:
+            return True, ""
+        helper = getattr(self.app, "helper", None)
+        if helper is not None and helper.ready():
+            return True, ""
+        if helper is not None and helper.s("on"):
+            tag = helper.model()["tag"]
+            if not helper.tested():
+                return False, f"the local judge can't run: the offline helper's {tag} hasn't passed its speed test here"
+            return False, f"the local judge can't run: Ollama doesn't have {tag} or isn't running"
+        return None, "no local judge (no model on this computer): unclear speech is left to the rules"
 
     def _judge_kept(self, prompt: str) -> str | None:
         """(0.9.2, voice.listen.fast_live) judge(), its answer kept JUDGED_S: the words judged at the first pause
@@ -1631,9 +1685,27 @@ class Voice(Module):
         ctx.faces = got[0] if got is not None else None
         if who is not None:
             ctx.speaker, ctx.speaker_score = who.decision, who.score
+            ctx.likely_owner = self._likely_owner(who, got)
+            word = "owner" if ctx.likely_owner else who.decision  # (0.9.3) his unsure turn is still his
             p = self.portal
             if p.open and p.last_who:  # the voice it answered last, and that opened the talk
-                ctx.same_speaker = who.decision == p.last_who and who.decision == p.opener
+                ctx.same_speaker = word == p.last_who and word == p.opener
+
+    def _likely_owner(self, who, view) -> bool:
+        """(0.9.3, a fix) An "unsure" verdict whose score is at or above the guest line, with only his face or no face
+        in view (Face presence looking, core/nearby.py; without a view it stays unsure) and nobody else noticed
+        lately: his own voice through a microphone Voice ID knows less well (the phone's). It still can't act as his;
+        it just isn't taken for a second voice."""
+        if who is None or who.decision != "unsure" or not getattr(self.voiceid, "last_above", False):
+            return False
+        if view is None or not (view[0] == 0 or (view[0] == 1 and view[1])):  # Face presence must have looked
+            return False
+        try:
+            from kurooto.core import biometric
+
+            return not biometric.others_present(self.app)
+        except Exception:
+            return False
 
     # ------------------------------------------------------------------- need_face: only someone in front of it
     def _face(self):
@@ -2781,6 +2853,7 @@ class Voice(Module):
         if self._worker is None or not self._worker.is_alive():
             self._worker = threading.Thread(target=self._work_loop, name="voice-hear", daemon=True)
             self._worker.start()
+        self.aec = self._new_aec()
         self.listener = audio.Listener(
             self._ears_mic(),
             vad,
@@ -2793,10 +2866,96 @@ class Voice(Module):
             barge=self.barge,
             gain=self._new_gain(),
             early=self.early if self.setting("listen.early") else None,
+            aec=self.aec,
         )
         self.listener.start()
         self.portal.state("addressed" if self.portal.open else "listening")
         self._warm()
+
+    # ------------------------------------------------------------------------------------- echo cancelling
+    def aec_mode(self) -> str:
+        """(0.9.3) voice.listen.aec as "auto", "on" or "off" (True/False read as on/off)."""
+        m = self.setting("listen.aec")
+        if m is True or m is False:
+            return "on" if m else "off"
+        m = str(m or "auto").strip().lower()
+        return m if m in ("auto", "on", "off") else "auto"
+
+    def _new_aec(self):
+        """The listener's echo canceller (aec.py), or None: the switch off, or the speexdsp library missing (aec_why
+        says so in /voice and doctor). Its numbers go out as the voice_aec event after each spell of playing."""
+        self.aec_why = ""
+        if self.aec_mode() == "off":
+            return None
+        from kurooto.modules.voice import aec as aec_mod
+
+        ok, why = aec_mod.available()
+        if not ok:
+            self.aec_why = why
+            return None
+        try:
+            return aec_mod.Aec(on_report=lambda r: self.app.events.emit("voice_aec", **r))
+        except Exception as e:
+            self.aec_why = f"couldn't start ({type(e).__name__})"
+            return None
+
+    def aec_reference(self, pcm: bytes, sr: int, outs: list) -> None:
+        """(0.9.3) Speaker._play: this piece is handed to an output (outs: the add-on outputs registered) or this
+        computer's player now. In auto, only while an add-on's output is there. The first output's echo_delay_ms
+        (a number or a function giving one: an add-on that measured its echo) seeds the delay."""
+        a = self.aec
+        if a is None:
+            return
+        mode = self.aec_mode()
+        if mode == "off" or (mode == "auto" and not outs):
+            return
+        seed = None
+        for entry in outs:
+            seed = _seed(entry[0])
+            if seed is not None:
+                break
+        a.reference(pcm, sr, remote=bool(outs), seed_ms=seed)
+
+    def aec_cut(self) -> None:
+        a = self.aec
+        if a is not None:
+            try:
+                a.cut()
+            except Exception:
+                pass
+
+    def aec_line(self) -> str:
+        """(0.9.3) For /voice: "" when it's off; else running or why not, with its last numbers."""
+        mode = self.aec_mode()
+        if mode == "off" or not self.setting("listen.on"):
+            return ""
+        if self.aec_why:
+            return f"echo cancelling unavailable: {self.aec_why}"
+        a = self.aec
+        if a is None:
+            return ""
+        st = a.status()
+        bits = [f"echo {st['delay_ms']} ms"] if st["delay_ms"] is not None else []
+        if st["erle_db"] is not None:
+            bits.append(f"{st['erle_db']:.0f} dB down")
+        when = "on add-on outputs" if mode == "auto" else "on"
+        return f"echo cancelling {when}" + (f" ({', '.join(bits)})" if bits else "")
+
+    def doctor_checks(self) -> list[tuple]:
+        """(0.9.3) `kurooto doctor`: echo cancelling's library (None when the switch is off: not a problem), and the
+        gate's local judge when it's set up but can't run (False)."""
+        rows: list[tuple] = []
+        ok_j, why_j = self.judge_state()
+        if ok_j is not None or why_j:
+            rows.append(("Voice local judge", ok_j, why_j or "a model on this computer answers"))
+        if self.aec_mode() == "off":
+            return [*rows, ("Voice echo cancelling", None, "off (voice.listen.aec)")]
+        from kurooto.modules.voice import aec as aec_mod
+
+        ok, why = aec_mod.available()
+        if ok:
+            return [*rows, ("Voice echo cancelling", True, "speexdsp found")]
+        return [*rows, ("Voice echo cancelling", None, f"unavailable: {why}; listening works without it")]
 
     def _ears_mic(self):
         """The microphone the listener reads: voice.listen.device; with voice.degrade.ears and a named one, through
@@ -2834,6 +2993,9 @@ class Voice(Module):
             self.listener = None
             self._level_buf = bytearray()
             self.barge.reset()
+        if self.aec is not None:
+            self.aec.close()
+            self.aec = None
             self.publish("voice_state", state="off", portal=self.portal.open, listening=False, why=why)
         while not self._work.empty():  # sound not yet written out is dropped
             try:

@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.9.3 (unreleased)
+
+- **Echo cancelling** (`voice.listen.aec`, auto: on while Kurooto plays on an add-on's output that also hears; `"on"`
+  for this computer's speakers too; `"off"`). What it plays (its voice, the heard-you sound, Gemini Live's answers) is
+  taken out of the microphone's sound before barge-in, the VAD and Voice ID hear it, with the system's speexdsp library
+  (echo canceller and residual echo suppressor, through ctypes; nothing installed). The delay is measured while it
+  plays and followed sentence by sentence (an add-on's measured delay seeds it); barge-in then expects only what's left
+  of the echo, so you can cut in over a phone whose speaker is louder in its own microphone than you are. Without the
+  library: "unavailable" in /voice and `kurooto doctor`, listening as before. Numbers only (`voice_aec`: delay, ERLE).
+- **A tool call on a Live turn no longer falls back to the voice made here** (a fix): the wait for Live's first sound
+  stops while the tool runs and starts again in full once its result is sent; the turnComplete Live sends with the call
+  isn't taken as the end, and the heard-you sound plays again meanwhile.
+- **"Others nearby" doesn't flicker on a faint detection** (a fix): only a face Face presence would judge (its score
+  and minimum size) counts toward others, being alone and the face sizes, and "others nearby" needs a second face in 2
+  of the last 3 frames (off after 2 frames without one).
+- **The local judge says when it can't run** (a fix): the offline helper times a changed model by itself (its speed
+  test was for an old one, so unclear statements after a look were dropped quietly for days), and /voice and doctor say
+  when the judge is set up but unusable.
+- **Your own "not sure" voice isn't a second voice** (a fix): through a microphone Voice ID knows less well, a turn
+  scored above the guest line with only your face (or none) in view doesn't make the careful calls or conversation
+  mode treat it as someone else.
+
 ## 0.9.2 (2026-10-29)
 
 - **Gemini Live for every turn at the desk** (`voice.listen.live_everyone`, off; with `voice.listen.live`): every

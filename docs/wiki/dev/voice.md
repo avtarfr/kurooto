@@ -30,7 +30,53 @@ with listening a second switch. User page: [../user/voice.md](../user/voice.md).
 | `modules/voice/ears.py` | (0.9.2) `Ears`: a `Mic`-like over the named microphone that switches to the default one when it's lost (no frames, all zeros, or `present()` says it's unlisted) and back; `present()` reads `pactl list sources` |
 | `tests/fakes/ears.py` | (0.9.2) the desk tape: `Scene` (made-up voiced sound, room noise, `say()` with Kokoro when `KUROOTO_TEST_KOKORO` names its models; an unplug: stall, zeros, end), `FakeMic`, `Tape` (several microphones and which are listed) |
 | `tests/unit/test_voice_room.py`, `test_voice_ears.py` | (0.9.2) the table, endings, every way in, silent and night through the stage, the limiter; failover through `Ears` and the real `Listener`, Voice ID's microphone, the Piper rung |
+| `modules/voice/aec.py` | (0.9.3) echo cancelling (`voice.listen.aec`): `load()`/`available()` (libspeexdsp through ctypes, typed, once per process), `resample()` (speex's resampler, q5), `Canceller` (speex MDF + its residual echo suppressor, `SUB` blocks; `latency` one block with the suppressor), `Aec` (`reference()`, `cut()`, `process()`, the clock map, delay tracking, `status()`, `cancelling()`), `estimate()` (coarse, envelopes) and `fine()` (waveform, two passes) |
+| `tests/fakes/echo.py` | (0.9.3) `speechlike()` (a made-up voice), `phone_path()`, `Desk` (pieces played through a delay with jitter, gain, a thin speaker and reflections, the near end, late bursty frames on a fake clock), `erle()` |
+| `tests/unit/test_voice_aec.py` | (0.9.3) ERLE on a gapless reply and on sentences each with their own jitter, CPU per frame, pass-through, cut; barge-in fires on the owner over a cancelled echo (Voice ID faked by his share of the stretch) and never on the echo alone; the switch, the missing library, the reference and seed through `Speaker._play`, the listener order; and the 0.9.3 judge and unsure-voice fixes |
 | `tests/unit/test_voice_barge.py` | (0.8.13) barge-in with synthetic voices, a fake clock, VAD and transcriber: own echo never stops it, the owner's voice does, told off, listen, loudness, the switch, an output's stop |
+
+## Echo cancelling (`aec.py`, 0.9.3)
+
+`voice.listen.aec`: `"auto"` (default), `"on"`, `"off"` (`Voice.aec_mode()`; True/False read as on/off). Built for a
+desk whose speaker and microphone are one phone: the echo arrives 190-390 ms after a piece is handed over, at or above
+the level played, so barge-in (which compares levels or needs Voice ID to hear the owner over it) never fired.
+
+- **Where.** `Voice._start_listening()` makes `self.aec = _new_aec()` (None when off or `aec.available()` says the
+  library is missing: `aec_why`), passed as `Listener(aec=...)`; the listener runs `aec.process(frame)` on each frame
+  first, before `on_level`, barge-in, the VAD and wake word (an exception drops it: `Listener.aec_error`).
+  `_stop_listening()` closes it. `Speaker._play()` hands the piece after the output stage to
+  `Voice.aec_reference(pcm, sr, outs)` beside `barge.played` (Kokoro/Piper pieces, acks, Live pieces all reach `_play`):
+  in auto only when an add-on output is registered; the first output's `echo_delay_ms` (a number or a function, the
+  add-on's measured delay) seeds it. `Speaker._cut_piece()` calls `aec_cut()`: the far end past now is dropped.
+- **The timeline.** References are placed in microphone samples: `base + t * RATE`, where `_map()` keeps the least late
+  frame's `n - now * RATE` (frames arrive late and in bursts, never early), sliding back at most `MAP_LEAK` (500 ppm)
+  and set anew after `MAP_JUMP_S` of lost sound. A piece handed while the last still plays (a gapless output, `ahead_s`)
+  goes on at that piece's end sample, not by the clock (the map moving between pieces would shift the echo path).
+- **The delay.** `estimate()`: loudness envelopes (`SUB` blocks) of the microphone (before cancelling) and the far end,
+  normalised correlation over 0..`MAX_LAG_S`, `EST_WIN_S`, at least `EST_MIN`. `fine()`: the waveform, first at 1/`DEC`
+  of the rate over +-`FINE_S` (150 ms: the phone path's jitter), then sample by sample within +-`REFINE` on first
+  differences (pre-whitened, so a voiced pitch period doesn't give a false peak) over `REFINE_WIN_S`. The far end is fed
+  `MARGIN_S` (40 ms) before the delay into a `TAIL_S` (250 ms) filter. Measured, speex converges in seconds with the
+  echo 150 ms deep in a 400 ms filter but within about a second near its start, so the jitter is covered by tracking,
+  not by the filter's length: a piece that doesn't continue the last is **held** (`_hold`): its frames pass untouched
+  and unseen by the filter until `FIRST_S` (0.2 s) of its echo is in, `_first()` measures its delay on that and
+  realigns (moves of `FINE_MOVE` samples or more), then the held stretch is gone over again through the filter
+  (outputs dropped, at most `REPLAY_S`), so speex sees one continuous stream and learns at the right place. While it
+  plays, every `EST_EVERY_S`: the coarse delay (a move past `FINE_S` seen twice realigns, refined by `fine()`), and a
+  narrow drift look (`DRIFT_S`, two agreeing past `DRIFT_MOVE` realign).
+- **The filter.** `Canceller`: `speex_echo_state_init(SUB, tail)`, sampling rate set, then `speex_preprocess` with the
+  echo state for residual echo suppression (`SUPPRESS_DB` -40, `SUPPRESS_ACTIVE_DB` -15). Speex applies its echo
+  suppression inside the denoiser's gain, so denoise is on with `NOISE_DB` -1 (next to nothing) and AGC, VAD and
+  dereverb off. The suppressor delays the output by one block (`latency`, 16 ms). Only run while a far end may be in
+  the echo (`_active`, plus `IDLE_S`); after a pause its far-end history is flushed with zeros (the learned path kept).
+- **Numbers.** `status()`: running, `delay_ms`, `aligned_ms`, `erle_db` (the median block's in/out over blocks with the
+  far end sounding), `cpu_ms`, `estimates`; in `GET /api/voice` as `aec` with `mode` and `why`; `aec_line()` in
+  `/voice`; `doctor_checks()` rows. Event `voice_aec {delay_ms, erle_db, frames, cpu_ms}` when a spell of playing ends.
+- **Measured with the fakes** (`test_voice_aec.py`, echo 3 dB over played, 280 ms +- jitter, frames late up to 40 ms):
+  a gapless reply about 27 dB steady-state ERLE (after the first 1.5 s); sentences each with +-30 ms of their own about
+  31 dB past each one's first 0.6 s; about 0.9 ms of CPU per 32 ms frame while playing (speex ~0.1 ms of it; the rest
+  plain-Python tracking, with a ~40 ms spike once per held piece), nothing while idle. Nonlinear speaker distortion
+  isn't modelled; a real phone at full volume will leave more residual.
 
 ## Room modes, the output stage and degrading (0.9.2)
 
@@ -206,6 +252,11 @@ thinking: the old drop. Nothing else in the listener changes.
   carries, as any turn); anything else -> `Portal.listen_on("barged in", who)` (open, `answered`, `last` and
   `spoke_at` now, so the follow window and `tick()` hold it for `follow_s`). Event `voice_barge {how, outcome}`
   (`voice`/`loud`; `told off`/`turn`/`listen`), never words. `status()["barge_in"] = {on, since_start}`.
+- **Cancelled (0.9.3).** `Barge.cancelled()` reads `Voice.aec.cancelling()` (running, not holding a new piece back,
+  its median-block ERLE at least `aec.CONVERGED_DB`). Then `feed()` learns the residual's share from every frame while it
+  plays outside a stretch (`_res`, not only VAD speech: the residual is mostly under the VAD), `gain(True)` is its
+  `RES_PCT` (90th) percentile, and loud is `RES_X` (2x) that times `expected()`. The raw `_ratios` are kept apart for
+  when cancelling isn't working.
 - **Its own voice print**: `own_print()` synthesizes `OWN_PHRASE` with `Voice.tts()`, `voiceid.resample()` to 16 kHz,
   `VoiceID.embed()`; cached in memory per `(Voice._tts_key, VoiceID.model())`, never played or saved. No engine or
   no model: `[]`, and the voice check doesn't run (fail closed: only loudness).
@@ -273,7 +324,11 @@ from the switches, `Speaker.holding()`, `core/nearby.py:view()` and Voice ID's v
 - **careful calls**, rule 4: when `ctx.careful` and `ctx.unconfirmed()` (speaker unsure/guest, chatter within
   `chatter_s`, or faces >= 2), its name counts only as `call.where == "first"`, `call.kind != NEAR`, and a greeting
   (`GREETINGS`, not "so"), nothing, or `asks(rest)` after it. Otherwise it falls through (`mention`), and rule 9's
-  prompt gets a line saying a mention isn't a call. Not careful: rule 4 as before.
+  prompt gets a line saying a mention isn't a call. Not careful: rule 4 as before. (0.9.3, a fix) `ctx.likely_owner`
+  (`Voice._likely_owner`): an unsure verdict whose score is at or above the guest line (`VoiceID.last_above`, the band's
+  `unsure` cut-off of the print it was scored against), with Face presence's view showing only his face or none and
+  `biometric.others_present()` false: his own voice through a microphone it knows less well. `unconfirmed()` doesn't
+  count it, and `same_speaker` reads it as "owner"; it still can't act as his (the verdict stays unsure).
 - **the conversation goes on**, after 6: `answered` (the portal's last words answered a turn; not after an `invite()`),
   `same_speaker is not False`, `since_spoke_s <= follow_window_s` (`voice.listen.follow_s`, 20; 0 off) -> addressed,
   0.8, statements too. In conversation mode only with `same_speaker` True (the voice that opened the talk and that it
@@ -524,8 +579,11 @@ silenced one (`_log`). `egress.allow(LIVE_URL, "Voice")` counts it (generativela
 
 A turn: `activityStart`, the PCM in 250 ms `realtimeInput.audio` messages (`audio/pcm;rate=16000`), `activityEnd`;
 `sent` stamped. `_read()` (a task per session) hands the turn's queue `audio` (24 kHz PCM), `in`/`out`
-(transcriptions), `tool`, `interrupted`, `done` (turnComplete) and `closed`. `_first()` waits `FIRST_S` (5 s; a tool
-call restarts it) for the first sound, else `Failed("first sound")`. `_play()` holds the Speaker's lock like
+(transcriptions), `tool`, `tool_sent` (0.9.3: the tool's result went back), `interrupted`, `done` (turnComplete) and
+`closed`. `_first()` waits `FIRST_S` (5 s) for the first sound, else `Failed("first sound")`; (0.9.3, a fix) a tool call
+stops that clock while the tool runs (`TOOL_RUN_S` at most), the full `FIRST_S` starts again at `tool_sent` with the cue
+played again, and one turnComplete per tool call (the turn the call closed) isn't the answer's end. Before, a tool
+taking a couple of seconds, or that turnComplete, fell back to the voice made here 2 s in. `_play()` holds the Speaker's lock like
 `fast.Stream._run` (`busy`, `_turn = turn` so `_play` stamps `play`), and plays pieces with `Speaker.say_piece(pcm,
 24000)` (0.2 s first, then 0.6 to 2 s): outputs, `voice_speak` samples, hold/release and stop work as for Kokoro's
 pieces; the output transcription goes to `barge.speaking()`. Live's `interrupted` calls `speaker.stop()` from the

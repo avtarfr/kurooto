@@ -986,6 +986,7 @@
 "voice.degrade.ears": "The microphone you named goes away: listening carries on from this computer's own microphone within about two seconds.",
 "voice.degrade.piper": "Kokoro fails to load or to speak: Piper speaks instead, only when it's already set up.",
 "voice.listen": "Listening through the microphone, all on this computer.",
+"voice.listen.aec": "Echo cancelling: Kurooto's own voice taken out of what the microphone hears, so you can cut in over it.",
 "voice.listen.after_speak_s": "Seconds after it spoke during which a question counts as an answer to it.",
 "voice.listen.after_talk": "When a talk at the desk ends, its text goes where a call's does: transcripts, open threads, a line in the day's note.",
 "voice.listen.auto_gain": "Hearing follows the room: speech must stand above its noise, and a quiet voice is evened up.",

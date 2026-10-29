@@ -27,7 +27,7 @@ strictness never do; see [voice.md](voice.md).
 | `modules/face/watch.py` | `Watcher` (pure: injected clock, idle, locked, camera, models, classify, pause reasons, emit), `PAUSES` |
 | `modules/face/greet.py` | `compose()` (rules, ≤ 220 characters), `may_greet()` |
 | `core/biometric.py` | `BioStore(app, feature)` (key, seal, unseal, save, load, forget, `Locked`), `calibrate()`, `load_impostors()`, `npz_read`/`npz_write` (numpy's format without numpy), `BIOMETRIC_SECRETS`. Shared with Voice ID |
-| `core/nearby.py` | "others nearby": `set_others(app, source, on)`, `others(app)`; Face sets it, Voice (ID) can read it. The watcher sends `others on` with every frame while a second face is in view (nearby drops a signal older than `STALE_S`, 120 s), and the event only when it changes |
+| `core/nearby.py` | "others nearby": `set_others(app, source, on)`, `others(app)`; Face sets it, Voice (ID) can read it. The watcher sends `others on` with every frame while a second face is in view (0.9.3: a second counted face in `OTHER_N` of the last `OTHER_M` frames turns it on, `ID_MISS` frames without one turn it off: `Watcher._two`) (nearby drops a signal older than `STALE_S`, 120 s), and the event only when it changes |
 | `web/static/face.js` | the Face page (`FACE.mount`, `FACE.live`), loaded on demand by `home.js:renderFace` |
 | `tools/face_impostors.py` | the maintainer's impostor-set builder (never at install) |
 | `tests/unit/test_face.py`, `tests/unit/test_biometric.py` | everything with fakes |
@@ -151,7 +151,8 @@ reason on the card are there for that.
 ## Close and facing, for Voice (0.8.13)
 
 `voice.listen.need_face` (Voice's switch; [voice.md](voice.md)). The watcher's `view` emit gained `sizes`: for each
-face at `SCORE_OTHER` or more, `(height_px, yaw)` (`watch._yaw`: `vision.pose`'s yaw, None when the landmarks can't
+face counted (0.9.3, a fix: at `SCORE_WATCH` and `face.recognise.min_face_px`, and at least `HALF` the biggest such
+face; before, any detection at `SCORE_OTHER`, so a faint false box flickered "others nearby" hundreds of times), `(height_px, yaw)` (`watch._yaw`: `vision.pose`'s yaw, None when the landmarks can't
 give one). `Face._on_watch("view")` calls `nearby.set_facing(app, faces, close_facing(sizes))` and drops the list.
 `close_facing` counts faces with `height_px >= voice.listen.face_near * owner_desk_height()["px"]` (no desk height:
 `face.recognise.min_face_px`) and `vision.yaw_degrees(yaw) <= voice.listen.face_yaw_deg`; `yaw_degrees` is

@@ -93,6 +93,7 @@ ME = box()
 ME_ = box(x=262.0)  # the same face a little later (it moved a couple of pixels)
 SIDE = box(x=20.0, h=130.0)  # a second person beside him, as close
 SMALL = box(x=40.0, h=50.0, y=40.0)  # a face far behind (a poster, someone across the room): under half his height
+FAINT = Face(SIDE.box, SIDE.landmarks, 0.62)  # (0.9.3) as close as him, but a weak detection (under SCORE_WATCH)
 
 
 def O(f=ME):  # noqa: N802,E743 (the scene's alphabet)
@@ -136,12 +137,51 @@ SCENES = {
         [(2, False, True, True, 0), (2, False, True, True, 0), (2, False, True, True, 0)],
         [(1, True, False, True, 0), (1, True, False, True, 0), (1, True, False, True, 0)],
     ),
-    # someone sits beside him: two faces at once both times; "someone else" only from their second frame
+    # someone sits beside him: two faces at once both times; "someone else" only from their second frame, and (0.9.3)
+    # "others nearby" from their second frame too (2 of the last 3)
     "someone sits beside him": (
         [[O()], [O(), S(SIDE)], [O(), S(SIDE)], [O(), S(SIDE)]],
         [(1, True, False, True, 0), (2, False, True, True, 1), (2, False, True, True, 2), (2, False, True, True, 3)],
-        [(1, True, False, True, 0), (2, False, True, True, 0), (2, False, True, True, 1), (2, False, True, True, 2)],
+        [(1, True, False, True, 0), (2, False, False, True, 0), (2, False, True, True, 1), (2, False, True, True, 2)],
     ),
+    # (0.9.3) a faint detection beside him (under the watcher's score), flickering frame to frame: never counted,
+    # never "others nearby", he stays alone (it toggled "others" ~500 times in a few minutes)
+    "a faint box flickering beside him": (
+        [[O(), S(FAINT)], [O(ME_)], [O(), S(FAINT)], [O(ME_), U(FAINT)], [O()], [O(), S(FAINT)]],
+        [
+            (2, False, True, True, 0),
+            (1, True, False, True, 0),
+            (2, False, True, True, 0),
+            (2, False, True, True, 0),
+            (1, True, False, True, 0),
+            (2, False, True, True, 0),
+        ],
+        [(1, True, False, True, 0)] * 6,
+    ),  # fmt: skip
+    # (0.9.3) a real second face for a single frame: two faces then, but "others nearby" stays off
+    "a second face for one frame": (
+        [[O()], [O(), S(SIDE)], [O()], [O(ME_)]],
+        [(1, True, False, True, 0), (2, False, True, True, 1), (1, True, False, True, 1), (1, True, False, True, 1)],
+        [(1, True, False, True, 0), (2, False, False, True, 0), (1, True, False, True, 0), (1, True, False, True, 0)],
+    ),
+    # (0.9.3) someone beside him leaves: "others nearby" goes off after two frames without them
+    "someone beside him leaves": (
+        [[O(), S(SIDE)], [O(), S(SIDE)], [O()], [O(ME_)], [O()]],
+        [
+            (2, False, True, True, 1),
+            (2, False, True, True, 2),
+            (1, True, False, True, 2),
+            (1, True, False, True, 2),
+            (1, True, False, True, 2),
+        ],
+        [
+            (2, False, False, True, 0),
+            (2, False, True, True, 1),
+            (1, True, True, True, 1),
+            (1, True, False, True, 1),
+            (1, True, False, True, 1),
+        ],
+    ),  # fmt: skip
     # a stranger alone at the desk
     "a stranger alone": (
         [[S()], [S(ME_)], [S()]],

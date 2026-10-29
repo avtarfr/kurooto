@@ -456,3 +456,53 @@ def test_a_request_that_waited_tries_again_unless_the_internet_is_down_for_certa
     app.jobs._db.execute("update jobs set held_until=0 where id=?", (jid,))
     app.jobs.run_next()  # its own request is the check: the AI answers, so it runs
     assert app.jobs.get(jid).status == "ok" and ai.requests
+
+
+# ------------------------------------------------------------------------------- 0.9.3: a changed model
+def test_a_changed_model_is_speed_tested_again_by_itself(env, monkeypatch):
+    """(0.9.3, a fix) The speed test on file was for an old model, so the helper stayed unusable without a word and
+    Voice's local judge quietly dropped every unclear statement for days. Now a changed (or gone) model is tested
+    again by itself, once an hour at most, and only when the model in use is here."""
+    app, h = env.app, env.app.helper
+    model = make_ready(app, monkeypatch)
+    model.rule = lambda p: "yes"
+    h._update(test={"ok": True, "model": "llama3.2:1b", "at": time.time(), "seconds": 0.6})  # an old model's test
+    assert not h.tested() and not h.ready() and h.retest_due()
+    ticks = iter([0.0, 0.5, 1.0, 1.5, 2.0, 2.5])
+    monkeypatch.setattr(h, "timer", lambda: next(ticks))
+    assert h.maybe_retest(wait=True)
+    assert h.tested() and h.ready() and not h.retest_due()
+    ev = [e for e in app.events.tail(20) if e.get("kind") == "helper_retest"]
+    assert ev and ev[-1]["ok"] is True
+
+
+def test_a_failed_retest_stays_on_file_and_is_said(env, monkeypatch):
+    """A model that fails its test here has a test on file for itself: not retried by itself (/helper test does)."""
+    app, h = env.app, env.app.helper
+    model = make_ready(app, monkeypatch)
+    model.rule = lambda p: None  # no answer
+    h._update(test={"ok": True, "model": "llama3.2:1b", "at": time.time(), "seconds": 0.6})
+    assert h.maybe_retest(wait=True) and not h.tested()
+    monkeypatch.setattr(h, "clock", lambda: time.time() + helper_mod.RETEST_S + 5)
+    assert not h.retest_due()
+    assert "hasn't passed its speed test" in h.status()
+    app.settings.set("local_helper.on", False)  # off: never
+    assert not h.retest_due()
+
+
+def test_a_retest_that_couldn_t_finish_is_tried_again_after_the_hour(env, monkeypatch):
+    app, h = env.app, env.app.helper
+    make_ready(app, monkeypatch)
+    h._update(test={"ok": True, "model": "llama3.2:1b", "at": time.time(), "seconds": 0.6})
+    h._update(retest={"model": TAG, "at": time.time()})  # started, never got as far as writing its result
+    assert not h.retest_due()
+    monkeypatch.setattr(h, "clock", lambda: time.time() + helper_mod.RETEST_S + 5)
+    assert h.retest_due()
+
+
+def test_no_retest_while_the_model_in_use_isn_t_here(env, monkeypatch):
+    app, h = env.app, env.app.helper
+    make_ready(app, monkeypatch)
+    monkeypatch.setattr(app.modules["local_models"], "have", lambda: {"llama3.2:1b"})
+    h._update(test={"ok": True, "model": "llama3.2:1b", "at": time.time(), "seconds": 0.6})
+    assert not h.retest_due()

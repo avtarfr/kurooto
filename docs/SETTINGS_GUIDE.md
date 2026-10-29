@@ -1418,6 +1418,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.audio.backend` | `"auto"` | How Kurooto plays and records sound: PipeWire's own tools, or the PortAudio library inside Kurooto. ([guide](wiki/user/settings-guide.md#voiceaudiobackend)) |
 | `voice.degrade.ears` | `false` | The microphone you named goes away: listening carries on from this computer's own microphone within about two seconds. ([guide](wiki/user/settings-guide.md#voicedegradeears)) |
 | `voice.degrade.piper` | `true` | Kokoro fails to load or to speak: Piper speaks instead, only when it's already set up. ([guide](wiki/user/settings-guide.md#voicedegradepiper)) |
+| `voice.listen.aec` | `"auto"` | Echo cancelling: Kurooto's own voice taken out of what the microphone hears, so you can cut in over it. ([guide](wiki/user/settings-guide.md#voicelistenaec)) |
 | `voice.listen.after_speak_s` | `6` | Seconds after it spoke during which a question counts as an answer to it. ([guide](wiki/user/settings-guide.md#voicelistenafterspeaks)) |
 | `voice.listen.after_talk` | `true` | When a talk at the desk ends, its text goes where a call's does: transcripts, open threads, a line in the day's note. ([guide](wiki/user/settings-guide.md#voicelistenaftertalk)) |
 | `voice.listen.auto_gain` | `true` | Hearing follows the room: speech must stand above its noise, and a quiet voice is evened up. ([guide](wiki/user/settings-guide.md#voicelistenautogain)) |

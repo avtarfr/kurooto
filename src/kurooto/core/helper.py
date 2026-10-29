@@ -67,6 +67,7 @@ WARM_S = 180  # the speed test's warm-up (loading the model into memory) may tak
 TESTS = 3  # timed one-word answers after the warm-up; the middle one counts
 SPEED_Q = "Is ice cold? Answer with one word: yes or no."
 HAVE_S = 600  # "the model is there" is believed this long
+RETEST_S = 3600  # (0.9.3) a speed test for a changed model is tried again at most this often
 RETRY_S = 120  # a request waiting for the connection looks again this often
 QUICK_CHARS = 240  # offline, a question this short (and judged low effort) is answered here
 NEAR = 0.6  # a reading this close (core/repair.py) is put to the helper
@@ -303,7 +304,50 @@ class Helper:
             lm = self.lm()
             if lm is not None and not lm.running():
                 lm.serve()
+        if not down:
+            self.maybe_retest()
         return said
+
+    def retest_due(self) -> bool:
+        """(0.9.3, a fix) On, but the speed test on file is for another model (local_helper.model changed, or the one
+        tested is gone and the table's is here): the model in use is here, and it wasn't tried within RETEST_S."""
+        if not self.s("on") or self.tested():
+            return False
+        tag = self.model()["tag"]
+        lm = self.lm()
+        if not tag or lm is None or (self.state().get("test") or {}).get("model") == tag:
+            return False
+        last = self.state().get("retest") or {}
+        if last.get("model") == tag and self.clock() - float(last.get("at") or 0) < RETEST_S:
+            return False
+        try:
+            return tag in lm.have()
+        except Exception:
+            return False
+
+    def maybe_retest(self, wait: bool = False) -> bool:
+        """(0.9.3) The speed test run again by itself for the model in use (retest_due), in the background (wait: on
+        this thread, tests). Before, a test for an old model left the helper unusable without a word, and everything
+        that leans on it (Voice's local judge) quietly fell back. True when one started."""
+        if not self.retest_due() or not self._busy.acquire(blocking=False):
+            return False
+        self._update(retest={"model": self.model()["tag"], "at": self.clock()})
+
+        def run() -> None:
+            try:
+                ok, secs = self.speed_test()
+                self._have = (0.0, "", False)
+                self.app.events.emit("helper_retest", ok=ok, seconds=None if secs >= 1e6 else round(secs, 2))
+            except Exception as e:
+                self.app.events.emit("helper_retest", ok=False, error=type(e).__name__)
+            finally:
+                self._busy.release()
+
+        if wait:
+            run()
+        else:
+            threading.Thread(target=run, name="local-helper-retest", daemon=True).start()
+        return True
 
     def _presence_down(self) -> bool:
         pres = getattr(self.app, "presence", None)

@@ -90,6 +90,7 @@ class VoiceID:
         self._synthetic: dict[str, list] = {}
         self.who = {sid.OWNER: 0, sid.GUEST: 0, sid.UNSURE: 0}  # since start; never voices
         self.last_word = ""  # the last turn's decision word, for the ear
+        self.last_above = False  # (0.9.3) the last stretch scored at or above the guest line
         self.guest_turns: deque[tuple[str, str]] = deque(maxlen=4)  # this portal session's guest turns, memory only
         self.guest_count = 0  # guest turns answered since start (a count only)
         self._others: deque[float] = deque(maxlen=50)  # times only
@@ -246,6 +247,7 @@ class VoiceID:
     def check(self, pcm: bytes, speech_s: float, voices: int | None = None, adapt: bool = True) -> sid.Verdict:
         """One stretch of speech: owner, unsure or guest. The sound isn't kept; the score never leaves here. adapt
         False: never learned from (a stretch spoken over Kurooto's own voice, barge.py)."""
+        self.last_above = False
         f = self._forced
         if f is not None and f[0] is pcm:  # (0.9.2) a claimed turn: his, said by a tap with his face in view
             self._forced = None
@@ -288,6 +290,7 @@ class VoiceID:
         # (0.9.2) the floor for a proven or claimed turn: not in the "clearly not you" band of the print it was
         # scored against (at or above that band's unsure cut-off, the guest line)
         above = v.score is not None and ver.t is not None and v.score >= ver.t.pick(speech_s).unsure
+        self.last_above = bool(above)  # (0.9.3) this stretch's score at or above the guest line (Voice._moment)
         if t is not None and ver.last is not None and adapt and not on_dev and above:
             self._bootstrap(t, dev, ver.last, v, voices, speech_s)
         self._face_last = (list(ver.last), v, voices) if v.assisted and ver.last is not None else None

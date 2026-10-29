@@ -165,10 +165,13 @@ class Context:
     look_anyone: bool = False  # (0.8.18) voice.listen.look_anyone: a guest's look stands in for the call too
     look_company: bool = False  # (0.8.18) voice.listen.look_in_company: with others here, look + its name any way
     tapped: bool = False  # (0.9.0) a tap opened the portal (Portal.tapped); nothing said to it since
+    # (0.9.3, a fix) an "unsure" voice above the guest line with only his face (or none) in view: his own voice through
+    # a microphone it knows less well (the phone's), never a second voice for the careful calls or conversation mode
+    likely_owner: bool = False
 
     def unconfirmed(self) -> bool:
         """The speaker may not be the owner talking to it: the careful calls apply."""
-        if self.speaker in ("unsure", "guest"):
+        if self.speaker == "guest" or (self.speaker == "unsure" and not self.likely_owner):
             return True
         if self.since_chatter_s is not None and self.since_chatter_s <= self.chatter_s:
             return True

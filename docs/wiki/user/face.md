@@ -219,6 +219,11 @@ frames said so; and your face stays yours for about two seconds through a blurre
 "only you in view" (which Voice ID and look to talk use) doesn't blink off. Arrivals and learning still need frames
 that really recognised you.
 
+**A faint detection isn't a second person** (0.9.3, a fix): only a face clear enough to judge (the same score and
+minimum size the Test preview's boxes use) counts toward "others nearby", "only you in view" and the face sizes Voice
+uses; and "others nearby" comes on only when a second face is in two of the last three frames, and goes off after two
+frames without one.
+
 **You've arrived** when it recognises you in 3 of 4 frames within 6 seconds, after at least 20 minutes with no sign of
 you (`face.greet.after_absent_min`; a locked screen isn't a sign of you). Unsure frames and other people count for
 nothing. A photo propped up in front of the camera doesn't move, so it waits for movement.

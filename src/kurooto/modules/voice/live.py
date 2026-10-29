@@ -83,6 +83,7 @@ CHUNK = IN_RATE * 2 // 4  # the stretch goes in 250 ms messages
 CONNECT_S = 5.0  # connecting and Google's answer to the setup
 FIRST_S = 5.0  # the turn's first sound (a tool call starts the wait again); else it goes the usual way
 TURN_S = 60.0  # a turn's answer waits at most this long for its next piece of sound
+TOOL_RUN_S = 60.0  # (0.9.3) a tool Live called may run this long before its first-sound wait gives up
 BAD_S = 600  # a model that failed is tried last for this long
 FIRST_PIECE = OUT_RATE * 2 // 5  # the first 0.2 s of sound is played as soon as it's in
 PIECE = OUT_RATE * 2 * 3 // 5  # then pieces of at least 0.6 s, at most MAX_PIECE (a cut piece is said again whole)
@@ -744,9 +745,13 @@ class Live:
         return False
 
     def _first(self, q: queue.Queue, heard: list, said: list, turn: dict, cue: Cue | None = None) -> bytes | None:
-        """Waits for the first sound (FIRST_S, again after each tool call); None: none came. (0.9.2) cue: the heard-you
-        sound, after ACK_AFTER_S and on a tool call."""
+        """Waits for the first sound (FIRST_S); None: none came. (0.9.2) cue: the heard-you sound, after ACK_AFTER_S
+        and on a tool call. (0.9.3, a fix) A tool call stops the clock while the tool runs (TOOL_RUN_S at most: Live
+        can't speak before its result), and the full FIRST_S starts again once the result is sent, the cue played
+        again then; the turnComplete Live may send with its tool call isn't the answer's end (one per call)."""
         end = time.monotonic() + FIRST_S
+        running = 0  # tool calls whose result isn't sent yet
+        skip_done = 0  # turnCompletes that may close the turn a tool call ended
         if cue is not None:
             cue.start()
         while True:
@@ -759,9 +764,19 @@ class Live:
                 fast.stamp(turn, "audio")
                 return item[1]
             if kind == "tool":
-                end = time.monotonic() + FIRST_S
+                running += 1
+                skip_done += 1
+                end = time.monotonic() + TOOL_RUN_S
                 if cue is not None:
                     cue.play(again=True)
+            elif kind == "tool_sent":
+                running = max(0, running - 1)
+                if not running:
+                    end = time.monotonic() + FIRST_S  # the full wait for Live's answer to the result
+                    if cue is not None:
+                        cue.play(again=True)
+            elif kind == "done" and skip_done:
+                skip_done -= 1
             elif kind == "in":
                 heard.append(item[1])
             elif kind == "out":
@@ -926,6 +941,7 @@ class Live:
                 await sess.ws.send(json.dumps({"toolResponse": {"functionResponses": out}}))
             except Exception:
                 pass
+        sess.put(("tool_sent",))  # (0.9.3) the first-sound wait starts again in full (_first)
 
     def run_tool(self, name: str, args: dict):
         """A tool Live asked for: through calls' run_tool, except a guarded one (core/tap.py): at the desk you're not

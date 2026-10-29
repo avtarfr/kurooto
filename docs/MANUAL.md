@@ -2211,6 +2211,11 @@ too. **Set up** (Features → Voice: talk and listen) downloads what your switch
 0.6 GB to speak, about 0.6 GB more to listen (sounddevice, Kokoro, faster-whisper base, Silero VAD); nothing before
 that. Packages go into Kurooto's own folder, never your system.
 
+- **Echo cancelling (0.9.3, `voice.listen.aec`, auto):** what Kurooto plays is taken out of the microphone's sound
+  (speexdsp's echo canceller through ctypes, when the library is on this computer) while it plays on an add-on's output
+  that also hears (`"on"`: this computer's speakers too), so barge-in hears you over its own echo. The delay is measured
+  as it plays; numbers only (`voice_aec`). Without the library: "unavailable" in /voice and doctor. **Undo:**
+  `voice.listen.aec` `"off"`.
 - **Listening:** voice activity finds speech; each stretch is written out here; the gate decides noise, chatter
   (people talking to each other) or talking to Kurooto: its name first or last in a sentence, the default wake
   ("Kurooto, what's due?"; Whisper is hinted with the name, and known mishearings such as "Kuroto", "kuro to" and

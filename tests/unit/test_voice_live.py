@@ -106,12 +106,16 @@ class FakeLive:
         if self.mode == "silent":
             return
         await ws.send(sc(inputTranscription={"text": "what's due this week"}))
-        if self.mode in ("tool", "tool_then_silent"):
+        if self.mode in ("tool", "tool_then_silent", "tool_slow"):
             name, args = self.tool
             await ws.send(json.dumps({"toolCall": {"functionCalls": [{"id": "fc1", "name": name, "args": args}]}}))
-            await asyncio.wait_for(got.wait(), 5)
+            if self.mode == "tool_slow":  # (0.9.3) the turn the tool call closed, then its answer 3 s after the result
+                await ws.send(sc(turnComplete=True))
+            await asyncio.wait_for(got.wait(), 10)
             if self.mode == "tool_then_silent":  # (0.8.18) it acted, then never spoke
                 return
+            if self.mode == "tool_slow":
+                await asyncio.sleep(3.0)
         if self.mode == "interrupt":
             await ws.send(sound(b"\x05\x00" * 48000))  # two seconds: still playing when it's interrupted
             await asyncio.sleep(0.3)
@@ -353,6 +357,21 @@ def test_a_tool_run_then_a_failure_isn_t_done_again_the_usual_way(lv, monkeypatc
     assert " ".join(lv.engine.said) == live_mod.ACTED  # said by the voice made here (0.9.2: its first clause first)
     ev = events(lv, "voice_live")[-1]
     assert ev["stage"] == "first sound" and ev["fallback"] is False and ev["tools"] == 1
+
+
+def test_a_slow_tool_then_a_slow_answer_is_waited_for(lv, monkeypatch):
+    """(0.9.3, a fix) Live called a tool and the turn fell back to the voice made here 2.1 s later, before Live had
+    the result and spoke. Now the wait stops while the tool runs (2.5 s here) and starts again in full (FIRST_S) when
+    the result is sent; the turnComplete sent with the tool call isn't the answer's end. Live answers 3 s after."""
+    srv = lv.fake("tool_slow")
+    monkeypatch.setattr(live_mod, "FIRST_S", 5.0)
+    calls = lv.app.modules["calls"]
+    monkeypatch.setattr(calls, "run_tool", lambda name, args, since="": time.sleep(2.5) or "No calls until 18:00.")
+    assert say(lv) == "It's due Friday."
+    assert lv.text_way == [] and lv.engine.said == []  # never the usual way, never the voice made here
+    assert len(srv.tool_responses) == 1
+    ev = events(lv, "voice_live")[-1]
+    assert ev["stage"] == "answered"
 
 
 def test_a_guarded_tool_asks_instead_of_running(lv, monkeypatch):

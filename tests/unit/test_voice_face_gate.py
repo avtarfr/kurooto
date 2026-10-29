@@ -119,7 +119,7 @@ def test_each_frame_s_faces_reach_nearby_as_counts(fv):
 
 
 def test_the_watcher_hands_each_face_s_height_and_yaw_with_the_view():
-    t = W([frame([face(yaw=0.3), face(x=500, h=70, yaw=0.0, score=0.7)], [you(), you()])] * 3)
+    t = W([frame([face(yaw=0.3), face(x=500, h=70, yaw=0.0, score=0.9)], [you(), you()])] * 3)
     t.run(2)
     views = [f for k, f in t.got if k == "view"]
     assert views
@@ -127,6 +127,14 @@ def test_the_watcher_hands_each_face_s_height_and_yaw_with_the_view():
     assert len(sizes) == 2 and sizes[0][0] == 140.0 and sizes[0][1] == pytest.approx(0.3, abs=0.01)
     assert sizes[1] == (70.0, pytest.approx(0.0, abs=0.01))
     assert all(len(s) == 2 for s in sizes)  # height and yaw: never numbers that say who
+
+
+def test_a_faint_second_face_isn_t_handed_on():
+    """(0.9.3, a fix) A detection under the watcher's score (0.7 < SCORE_WATCH) is no face for sizes or counts."""
+    t = W([frame([face(yaw=0.3), face(x=500, h=70, yaw=0.0, score=0.7)], [you(), you()])] * 3)
+    t.run(2)
+    views = [f for k, f in t.got if k == "view"]
+    assert views and len(views[0]["sizes"]) == 1 and views[0]["faces"] == 1 and views[0]["owner_alone"]
 
 
 # -------------------------------------------------------------------------------------------- the voice gate

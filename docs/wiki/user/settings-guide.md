@@ -43,7 +43,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 68 settings
 - [Brain](#brain): 159 settings
-- [Voice and voice notes](#voice-and-voice-notes): 115 settings
+- [Voice and voice notes](#voice-and-voice-notes): 116 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 12 settings
@@ -7737,6 +7737,27 @@ sound stays in memory as for any stretch, and the event says only how it was not
 - **Values:** `true` (default), `false` (the microphone is dropped while it speaks, as before; /voice stop still stops
   it). **Default:** on.
 - **When to change it:** Turn it off if Kurooto stops for the TV or other people talking loudly near it while it speaks.
+
+### `voice.listen.aec`
+
+Echo cancelling: Kurooto's own voice taken out of what the microphone hears, so you can cut in over it.
+
+(0.9.3) While Kurooto speaks, what it plays (its voice, the heard-you sound, Gemini Live's answers) is taken out of the
+microphone's sound before the listener, barge-in and Voice ID hear it, by an adaptive echo canceller (speexdsp's, with
+its residual echo suppressor). The delay between playing and hearing the echo is measured as it plays and followed from
+piece to piece (a phone that plays and hears adds a delay of its own that changes a little each time); an add-on that
+measured its echo hands its delay in as a start. Barge-in then expects only what's left of the echo, so your voice can
+cut in even where the echo is as loud as what's played (a phone's speaker beside its own microphone). Needs the speexdsp
+library on this computer (libspeexdsp; Linux usually has it): without it this says "unavailable" in /voice and `kurooto
+doctor`, and listening works as before. Nothing is kept: what's played and the microphone's last seconds are in memory
+only, and the event voice_aec has numbers only (the delay, how far down the echo was brought, the CPU it took). The
+first fifth of a second of a sentence played on its own (not handed over gaplessly) passes as heard while its delay is
+measured.
+
+- **Values:** `"auto"` (default: on while sound plays on an add-on's output, a phone that also hears), `"on"` (this
+  computer's speakers too), `"off"`. **Default:** `auto`.
+- **When to change it:** Turn it on for this computer's speakers if Kurooto cuts itself off on its own voice or never
+  lets you in; turn it off if your voice sounds cut up to Voice ID while Kurooto speaks.
 
 ### `voice.listen.need_face`
 
