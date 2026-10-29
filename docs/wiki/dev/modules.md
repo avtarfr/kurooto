@@ -378,6 +378,7 @@ user's folder over Kurooto:
   |---|---|---|
   | Face presence | `watch_people(cb)`, `hold_watch(reason)`, `release_watch(reason)`, `owner_desk_height()`; 0.9.0: `greet_part(name, line)`, `greet_carried(name, since)`, `known_guests(check)`, `light_level()` | see every face in view each frame (place, size, yaw, owner/unsure/stranger, its numbers in memory), keep the camera looking while the owner types, know how big the owner's face is at the desk (`face.addons.watch`, `face.addons.hold`); add one line to the desk greeting (`face.greet.addons`, off), say everyone else in view is known so they get the short greeting (`face.addons.known_guests`, a yes or no only), read the room's light from the camera (`face.light_sense`, off) ([face.md](face.md#hooks-for-add-ons-0812)) |
   | Voice | `say(text, wait=True)`, `listen_once(timeout_s)`, `guest_reply(text, name, history)` | speak a line, take the next stretch of speech (text, voice numbers, seconds; never sent anywhere), chat with someone the sealed guest way (`voice.addons.listen`, `voice.addons.chat`; [voice.md](voice.md#hooks-for-add-ons-0812)) |
+  | Voice (0.9.0) | the add-on's own `guest_name() -> str` | name the guest in front of it for the ordinary guest path: a greeting by name made by Voice, the name to the guest's AI only when that's the local model (`voice.addons.guest_name`; [voice.md](voice.md#hooks-for-add-ons-0812)) |
   | Brain | `kurooto.mind.pest.met(app, quality)` | a small, capped reward for a conversation that went well (`mind.talk.met`; [mind.md](mind.md#the-talk-reward-i-3-talkpy)) |
   | Brain | `kurooto.mind.stimulation.feed(app, source, readings)` | report another device's sensors (light, proximity, accelerometer, gyroscope, compass, battery, its temperature, the room's loudness, being picked up, its screen) as raw numbers; each is felt on the body map as its physical analogue and drawn by the being's senses, in memory only (`mind.stimulation.addons`; [mind.md](mind.md#another-devices-senses-0812-stimulationfeed-mindstimulationaddons)) |
 
@@ -562,7 +563,11 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   fires at once with `while_off`, "late: Reminders was off"). Asks lidsafe whether the phone already said it. The
   plain-English intent reads the time with `modules/text.py:when_from`, which takes a weekday only where
   `text.WHEN_DAY` says it's the when ("friday at 5pm", "on friday"; "next friday" returns None, to the AI);
-  `/remind` and `/due` use `core/clock.py:parse_when`, where a bare number is minutes.
+  `/remind` and `/due` use `core/clock.py:parse_when`, where a bare number is minutes. (0.9.0) `_addon_buttons(what)`:
+  each enabled feature's `reminder_buttons(what) -> [(label, data)]` (an add-on's hook; `reminders.addon_buttons`)
+  goes in a second row under the snooze row: at most `ADDON_BUTTONS` (2), a label cut at 30, data with a `prefix:`
+  that fits Telegram's 64 bytes, answered by that feature's own `callbacks()`. A failing one emits
+  `reminder_buttons_failed` (its id and the error's type) and is skipped.
 - **checkins** (`modules/checkins.py`): evening/midday/night prompts by message or call, answers into the daily note;
   `checkins:plan` books the day's `checkins:<name>` jobs; call hooks `call_schedule`, `call_outcome`,
   `call_reschedule`, `call_transcript`. A check-in day starts at `checkins.day_starts` (05:00). `learn()`
@@ -777,6 +782,9 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `_timer_end`; focus time through `core/availability.py`; see
   [web.md](web.md#the-today-page-and-actions-coreactionspy)).
   `/study mode on|off` and the `study_mode` intent call `core/actions.py:study_mode`.
+  (0.9.0) `add_seen(slug, seconds)` for an add-on (`study.seen`): a known subject (or Research) and a number only,
+  at most 600 s a call, refused while `session()` has a subject (sessions and the timer's focus); kept under
+  `"<slug>|seen"`, so `totals()` counts it and `seen_seconds(days)` gives the line `report()` adds.
 - **skills** (`modules/skills.py`): runs `SKILL.md` files (shipped `data/skills`, add-ons, prompts with `skill: true`,
   the user's own) as AI jobs; routines (`/every`), drafts (`/newskill`), LaTeX revision packs (Tectonic `--untrusted`,
   else `latexmk` or `pdflatex` with `-no-shell-escape`: the AI wrote the LaTeX), study packs, `send_file(s)` (over

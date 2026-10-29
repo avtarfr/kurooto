@@ -285,6 +285,16 @@ and every other pause still stop it, and it never takes a conversation that's op
 when = "Turn it off to keep add-ons from hearing anything."
 needs = "`voice.listen.on`, and an add-on that uses it."
 
+[s."voice.addons.guest_name"]
+tip = "Let an add-on that recognises a guest name them: a greeting by name, the name to a local guest AI only."
+what = """For a turn Voice ID called a guest, a feature that knows who is in front of it (an add-on's guest_name()) may
+give their name. Voice puts \"Hi <name>.\" before the first answer of the conversation, a set phrase it makes itself.
+The name goes into the guest's prompt only when guests are answered on this computer (voice.speaker_id.guest_brain:
+local, or a main AI that can't be held to text); never to your main AI, and it isn't kept, logged or put in an event."""
+when = "Turn it off to keep add-ons from naming guests."
+cost = "Nothing: the add-on answers on this computer."
+needs = "Voice ID (voice.speaker_id.on) and an add-on that recognises people."
+
 [s."voice.addons.chat"]
 tip = "Let an add-on have Kurooto chat with someone who isn't you, the guest way: no tools, none of your data."
 what = """The add-on's chat goes through the same sealed path as another voice's (Voice ID's guests): text only, no

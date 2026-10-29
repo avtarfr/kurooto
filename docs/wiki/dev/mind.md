@@ -752,11 +752,16 @@ the `workspace` held reason, `why_text` adds `records.why_lines`), `mind/gate.py
   messages, and letting them take the door's places would starve every check-in. The link between them is `ON_MIND`.
 - `release(app)` (every minute from `tick`, and at once from `breaks.signal` / `breaks.on_event`): drops what's no longer
   relevant (an `ask` that isn't open, a due time that passed), noted; ranks; each of the top `capacity` goes if `_may_go`
-  allows (urgent; no wait needed; a break open now; waited `max_hold_min`), never while `asleep()` (B's
+  allows (urgent; no wait needed; a break open now; waited `max_hold_min`; 0.9.0: while `breaks.deep_now()`, a
+  non-urgent winner waits even at a break until it has waited `max_hold_min`), never while `asleep()` (B's
   `mind.sleep.state`, imported defensively); losers get `lost += 1`, and past `fold_h` go to `calm.hold(held="workspace")`
   (with Calm off, sent). More than `PENDING_MAX` (100) waiting: the oldest fold. With the arbiter off, `release` is
   `flush`: everything waiting goes.
 - `held_count(app)`: pending messages plus add-on bids waiting (D's status reads it).
+- (0.9.0, `mind.workspace.deep_hold`) `breaks.deep(app, until)`: an add-on's "deep in one thing until" (a time only,
+  capped `DEEP_MAX_S` 600 s ahead so a stopped add-on's mark runs out; 0 ends it), kept as `deep_until` in
+  `mind-breaks.json`; `breaks.deep_now(app)` reads it. The add-on signals the break kind `surfaced` when it ends.
+  Exempt messages never reach `_may_go`, so they're never held.
 
 ### Breaks (`mind/breaks.py`)
 
@@ -1292,6 +1297,12 @@ best grade among the concept notes `knowledge.mentions` finds in the text. Grade
 (`masteries`): `FRONTIER` 1.0 (p < `SOLID_FROM` and every prerequisite solid; with no prerequisites only once a row exists),
 `NEAR` 0.5 (links to or from a frontier concept), `STARTED` 0.4, `SOLID` 0.1, `UNKNOWN` 0.0. The notes and grades are cached
 per app for `CACHE_S` (600 s), so an add-on may call it every few seconds. 0 with `mind.tom.on` off; never raises.
+(0.9.0) `mark_learning(app, slugs, days)`: another feature's "learning now" marks (known concept slugs only, at most
+`LEARNING_MAX_DAYS` 14 days, the latest `LEARNING_MAX` 20) in `<state>/mind-learning.json` (slug -> until);
+`learning_now(app)` lists the running ones, latest first. Read by Quiz (`quiz.learning_now`: `_continue` asks one extra
+card after a session's last, `_learning_extra` / `_ask_item`, never one answered today; the session's own picks and order
+unchanged) and the revision plan (`exam_season.learning_now`: `Revision.learning` names matching topics in a line above
+`/revise <course>`'s ranked list, which is unchanged). Off with `mind.tom.on`.
 
 **Dreaming** (`mind/dream.py`, `PART = "dream"`: `mind.dream.on`, then `cards`, `lessons`, `voice`; `frontier.py` is
 part of `tom`). `nightly(app)` runs at `WHEN` (`daily 00:15,...,06:15`, `modules/mind.py` job `mind:dream`,
@@ -1384,6 +1395,10 @@ the switches, the surprise check-in and its exclusions, the late-wake rule).
   Each build's time goes into `TIMES` (`p95_ms()`); `tests/unit/test_mind_being.py` holds it under 50 ms with 600 rows.
   Known exception, older than this: `feelings.prompt()`'s tone hint ("Keep it short and calm; they have a lot on") still
   comes from his read at 70%+ confidence; it's the 0.8.0 rule and not part of mind.context.
+- (0.9.0, `mind.context.addons`) `addon_context(app)`: each enabled feature's `context_lines() -> [str]` (an add-on's
+  hook; whitespace folded, `ADDON_LINES` 4 lines of `ADDON_LINE_MAX` 300 in all, a failing one skipped), placed after
+  the workspace's block in `headless_context`, independent of Brain being on; `guest_context` never calls it. The
+  add-on's own switch is the privacy gate (what may reach an AI); this one turns all of them off.
 - **Measurements** (`console.audit`, `console.latency`, `/mind measures`, the console's `measurements`, `GET
   /api/brain/console?view=measurements`): per brainview part, the outward records in 30 days (`OUTWARD_KINDS`:
   decisions, `mind_act`, the gate's receipts, lints, mutes and calls, `promise_made`; a decision is attributed by

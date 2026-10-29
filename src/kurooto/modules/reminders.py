@@ -6,7 +6,11 @@ Location reminders (0.6.0, reminders.places, off by default): "remind me when I 
 book", "remind me whenever I'm at the gym to stretch". The place's name and the text go to the Android app (a "place"
 message through your call line), which keeps them and reminds you when you arrive at a place you saved there under
 that name (android/.../Places.java: Android's proximity alerts, no Google services). Where your places are never
-leaves the phone; this computer only knows their names."""
+leaves the phone; this computer only knows their names.
+
+An add-on's buttons (0.9.0, reminders.addon_buttons): a feature's reminder_buttons(what) -> [(label, callback data)]
+adds a row of its own under +10 min / +1 h when a reminder fires (at most 2 buttons, each answered by that feature's
+own callbacks); the snooze row is always there and first. A tap is the user's; nothing starts by itself."""
 
 from __future__ import annotations
 
@@ -34,6 +38,9 @@ register_defaults(
     {
         # sent to the Android app, which reminds you on arrival at a place saved there (turn on Places in the app too)
         "places": False,  # location reminders: "remind me when I reach the library to …" (needs the Android app)
+        # (0.9.0) a feature (an add-on) may add its own buttons to a reminder as it fires, in a row under +10 min and
+        # +1 h (for example "Order on Zepto" under "buy milk"); a tap starts it, nothing starts by itself
+        "addon_buttons": True,
     },
 )
 PLACE = re.compile(
@@ -42,6 +49,7 @@ PLACE = re.compile(
     r"|get(?=\s+home\b))\s+(?P<place>.+?)\s*(?:[,:;]+|\s+-\s+|\s+(?:to|that|about)\s+)\s*(?P<what>\S.*)$",
     re.I,
 )
+ADDON_BUTTONS = 2  # (reminders.addon_buttons) at most this many buttons features add to a reminder
 JOIN = re.compile(r"^(?:\s*(?:[:;,.\-–—]+|(?:to|that|about)\b))+\s*", re.I)
 
 
@@ -135,14 +143,41 @@ class Reminders(Module):
         )
         ref = uuid.uuid4().hex[:8]
         self._snoozable(ref, what)
+        rows = [[("+10 min", f"rem:{ref}:10"), ("+1 h", f"rem:{ref}:60")]]
+        extra = self._addon_buttons(what)
+        if extra:
+            rows.append(extra)
         self.app.notify(
             f"Reminder{late}: {what}",
             kind="reminder",
-            buttons=[[("+10 min", f"rem:{ref}:10"), ("+1 h", f"rem:{ref}:60")]],
+            buttons=rows,
             why="reminders.own",
             about=what,
         )
         self.app.events.emit("reminder_fired", late=bool(late))
+
+    def _addon_buttons(self, what: str) -> list[tuple[str, str]]:
+        """(reminders.addon_buttons) The buttons features add to this reminder (reminder_buttons(what)): at most
+        ADDON_BUTTONS, each a short label and callback data Telegram takes (64 bytes); a feature that fails is
+        skipped."""
+        if self.setting("addon_buttons") is False:
+            return []
+        out: list[tuple[str, str]] = []
+        for m in self.app.enabled():
+            fn = getattr(m, "reminder_buttons", None)
+            if m is self or not callable(fn):
+                continue
+            try:
+                got = list(fn(what) or [])
+            except Exception as e:
+                self.app.events.emit("reminder_buttons_failed", module=m.id, error=type(e).__name__)
+                continue
+            for b in got:
+                if isinstance(b, (tuple, list)) and len(b) == 2 and all(isinstance(x, str) and x for x in b):
+                    label, data = b[0][:30], b[1]
+                    if len(data.encode("utf-8")) <= 64 and ":" in data:
+                        out.append((label, data))
+        return out[:ADDON_BUTTONS]
 
     def _snoozable(self, ref: str, what: str) -> None:
         from kurooto.core.state import jload, jsave

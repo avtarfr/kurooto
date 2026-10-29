@@ -24,7 +24,10 @@ enrol are typed only, never by voice.
 Hooks for add-ons (0.8.12): listen_once(timeout_s) takes the next stretch of speech, any voice, through this listener,
 written out here and handed to the add-on only (never the gate, the portal or the AI); guest_reply(text, name) is one
 chat turn through the guest path (core/guest.py: no tools, none of the owner's data). Switches voice.addons.listen and
-voice.addons.chat.
+voice.addons.chat. (0.9.0) An add-on that recognises the guest in front of it may name them (a feature's
+guest_name(), core/guest.py addon_name): the first answer of the conversation starts "Hi <name>." (a set phrase made
+here, never by the AI), and the name reaches the guest's AI only when guests are answered on this computer. Switch
+voice.addons.guest_name.
 
 Listening better (0.8.13): careful calls when someone else may be talking (voice.listen.careful_name, chatter_s), the
 conversation going on without its name (voice.listen.follow_s), being told off (voice.listen.told_off: it stops,
@@ -202,6 +205,9 @@ register_defaults(
         "addons": {
             "listen": True,  # an add-on may take one stretch of speech at a time (written out here, never sent)
             "chat": True,  # an add-on may have Kurooto chat with someone through the guest path (no tools, no data)
+            # (0.9.0) an add-on that recognises a guest may name them: the first answer starts "Hi <name>." (a set
+            # phrase, never the AI's), and the name goes to the guest's AI only when that's this computer's model
+            "guest_name": True,
         },
     },
 )
@@ -480,6 +486,7 @@ class Voice(Module):
         self.misfires = 0  # told off since start (a count)
         self.heard = {NOISE: 0, CHATTER: 0, ADDRESSED: 0}  # counts since Kurooto started; never what was said
         self.last_state: dict = {"state": "off", "portal": False, "listening": False, "why": ""}
+        self._guest_hi = False  # (voice.addons.guest_name) this conversation's guest was greeted by name
         self.blocked_why = "off"
         self._tts = None
         self._tts_key: tuple = ()
@@ -686,6 +693,7 @@ class Voice(Module):
         self.app.events.emit("voice_portal", open=is_open, why=why)  # when and why only, never words
         if not is_open:
             self.voiceid.portal_closed()  # (voice id) a guest's turns of this conversation are dropped
+            self._guest_hi = False
             self.live.close()  # (voice.listen.live) its Live session ends with the conversation
             if self.portal.opened_why == "greeting":  # (0.9.0, face.greet.records) how the greeting went
                 face = self.app.modules.get("face")
@@ -1371,7 +1379,8 @@ class Voice(Module):
             fast.stamp(turn, "first_text")
             fast.stamp(turn, "answer")
             if answer:
-                self.voiceid.heard_guest(text, answer)
+                self.voiceid.heard_guest(text, answer)  # without the greeting: the next turn's AI never sees the name
+                answer = f"{self._greet_guest()}{answer}"
             return answer
         stream, opts = self._turn_opts(text, turn)
         options = getattr(self.app.jobs, "turn_options", None)
@@ -1943,6 +1952,19 @@ class Voice(Module):
         finally:
             slot["taken"] = slot["got"] is not None
             del pcm
+
+    def _greet_guest(self) -> str:
+        """(voice.addons.guest_name) "Hi <name>. " once a conversation when an add-on recognises the guest, else "".
+        Made here from a set phrase, never by the AI; the name isn't kept, logged or sent anywhere."""
+        if self._guest_hi or not self.setting("addons.guest_name"):
+            return ""
+        from kurooto.core import guest
+
+        name = guest.addon_name(self.app)
+        if not name:
+            return ""
+        self._guest_hi = True
+        return guest.GREET.format(name=name) + " "
 
     def guest_reply(self, text: str, name: str | None = None, history: list | None = None) -> str | None:
         """One chat turn with someone who isn't the owner, for an add-on: core/guest.py's sealed path (no tools, no

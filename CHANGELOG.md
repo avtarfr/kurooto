@@ -82,6 +82,21 @@
 - **Photos sent to your AI reach it as pictures.** A photo from Telegram, the phone app or the dashboard now goes with
   the request itself to an AI service that reads pictures (a Gemini key, an Ollama model with vision), instead of
   only its path, which such a service couldn't open.
+- **What you're learning now, in quizzes and /revise** (`quiz.learning_now`, `exam_season.learning_now`, on). When
+  another feature marks concepts you keep coming back to, a quiz session ends with one extra card on one of them, and
+  `/revise <course>` names them in a line above its list; the usual cards and the ranking are unchanged.
+- **An add-on can add a line to your AI requests** (`mind.context.addons`, on). At most four short lines, only when the
+  add-on's own switch allows it; never in a guest's request.
+- **Fewer interruptions while you're deep in one thing** (`mind.workspace.deep_hold`, on). When an add-on says you're
+  deep in one thing, what Kurooto starts by itself waits even at a break, never past `max_hold_min`, and goes when you
+  come up; alarms, reminders, calls, approvals and close deadlines are never held.
+- **Seen minutes in the Study tracker** (`study.seen`, on). An add-on may add minutes it saw you on a subject's topic
+  where the window doesn't name the subject; they count apart, never during a session, and /study says how much.
+- **An add-on can put a button on a reminder** (`reminders.addon_buttons`, on). A row of its own under +10 min and
+  +1 h as the reminder fires, for example "Order on Zepto" under "buy milk"; nothing starts until you tap it.
+- **A guest an add-on recognises is greeted by name** (`voice.addons.guest_name`, on). When an add-on knows who the
+  guest in front of it is, the first answer starts "Hi Sam." Kurooto makes that greeting itself; the name reaches the
+  guest's AI only when guests are answered on this computer.
 
 ## 0.8.18 (2026-10-29)
 

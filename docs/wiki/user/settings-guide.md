@@ -30,20 +30,20 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [When it may interrupt you](#when-it-may-interrupt-you): 13 settings
 - [Phone calls and the call line](#phone-calls-and-the-call-line): 45 settings
 - [Morning alarm](#morning-alarm): 11 settings
-- [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 40 settings
+- [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 41 settings
 - [Check-ins, journal and the week](#check-ins-journal-and-the-week): 18 settings
 - [Classes and timetable](#classes-and-timetable): 15 settings
 - [Calendar](#calendar): 11 settings
-- [Quiz and exams](#quiz-and-exams): 33 settings
-- [Books, study time and handwritten notes](#books-study-time-and-handwritten-notes): 41 settings
+- [Quiz and exams](#quiz-and-exams): 35 settings
+- [Books, study time and handwritten notes](#books-study-time-and-handwritten-notes): 42 settings
 - [Notes, files and sync](#notes-files-and-sync): 28 settings
 - [Notes brain (GBrain)](#notes-brain-gbrain): 18 settings
 - [Concept graph](#concept-graph): 26 settings
 - [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 49 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
-- [Brain](#brain): 131 settings
-- [Voice and voice notes](#voice-and-voice-notes): 81 settings
+- [Brain](#brain): 133 settings
+- [Voice and voice notes](#voice-and-voice-notes): 82 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 11 settings
@@ -1804,6 +1804,18 @@ Location reminders: "remind me when I reach the library to …".
   see their names.
 - **Depends on:** Reminders and the Android app, with places saved in it.
 
+### `reminders.addon_buttons`
+
+Let an add-on put its own buttons under a reminder as it fires (for example Order on Zepto under "buy milk").
+
+A row under +10 min and +1 h, at most two buttons, each answered by the add-on that added it. A button does nothing
+until you tap it; what it starts (an order, say) asks you again before it pays or sends anything.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep reminders to their snooze buttons only.
+- **Costs and what leaves this computer:** Nothing.
+- **Depends on:** Reminders, and an add-on that offers buttons.
+
 ### `date_offers.remind_min`
 
 An event you tap Add on (from a photo, mail or a shared calendar) is reminded this long before.
@@ -2272,6 +2284,18 @@ Questions in one quiz.
 - **Values:** A whole number. **Default:** `3`.
 - **When to change it:** Raise it for longer sessions; lower it for a quick daily habit.
 
+### `quiz.learning_now`
+
+A quiz session ends with one extra card on a concept you're learning now (marked by another feature).
+
+Another feature (an add-on) may mark concepts you keep coming back to this week on Brain's frontier. Then a session asks
+its usual cards first, in the same order, and one more that names a marked concept, headed "learning now". A card you
+already answered today isn't picked.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep sessions to the cards that are due.
+- **Depends on:** Quiz, Brain's model of what you know (`mind.tom.on`), and a feature that marks concepts.
+
 ### `quiz.exam_per_session`
 
 Questions in one quiz while exam mode is on.
@@ -2484,6 +2508,16 @@ Minutes in one revision block (one topic each).
 - **Values:** A whole number. **Default:** `60`.
 - **When to change it:** Shorten it if you focus better in short bursts.
 - **Depends on:** `exam_season.revision`.
+
+### `exam_season.learning_now`
+
+/revise <course> starts with a line of its topics you're learning now (concepts another feature marked).
+
+A line above the ranked topics; the ranking and the plan's blocks are the same as without it.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to see only the ranked list.
+- **Depends on:** `exam_season.revision`, Brain's model of what you know, and a feature that marks concepts.
 
 ### `exam_season.revision_ask`
 
@@ -2804,6 +2838,19 @@ When a focus ends, Study mode ends too, instead of starting a break.
 - **Values:** On or off. **Default:** off.
 - **When to change it:** Turn it on if you use one focus session at a time.
 - **Depends on:** The Study tracker; Study mode on the dashboard.
+
+### `study.seen`
+
+Let an add-on add minutes it saw you on a subject's topic, kept apart as "seen".
+
+For a window that doesn't name the subject itself (a paper titled after one of the subject's concept notes, say), an
+add-on may hand over the subject and a number of seconds, never a title. They count in your totals, and /study says how
+much of the day was seen that way. Never while a study session or Study mode's focus runs.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to count only the tracker's own windows, your sessions and what you log.
+- **Costs and what leaves this computer:** Nothing.
+- **Depends on:** The Study tracker, and an add-on that offers seen minutes.
 
 ### `handwritten.folder`
 
@@ -5311,6 +5358,19 @@ The longest a winner waits for a break, in minutes (unless Kurooto is asleep).
 - **When to change it:** Lower it if things come too late; raise it for longer stretches undisturbed.
 - **Depends on:** `mind.workspace.breaks`.
 
+### `mind.workspace.deep_hold`
+
+While an add-on says you're deep in one thing, a winner waits even at a break (never past max_hold_min).
+
+An add-on may tell Brain you're deep in one thing, as a time only (mind/breaks.py deep). Until it ends, a message that
+came by itself and won at the door waits even at a natural break, still at most max_hold_min; when you surface, that's a
+break. Alarms, your reminders, calls, approvals, close deadlines, urgent things and answers are never held.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to let winners go at the next break whatever an add-on says.
+- **Costs and what leaves this computer:** Nothing.
+- **Depends on:** `mind.workspace.arbiter` and `mind.workspace.breaks`, and an add-on that says it.
+
 ### `mind.workspace.break_after_min`
 
 Minutes in one window before switching to another counts as a natural break.
@@ -5944,6 +6004,19 @@ scaled within 8% either way. Never for replies to you or calls you asked for.
 - **When to change it:** Turn it off to keep every unprompted message, opener and pace as in 0.8.13.
 - **Depends on:** Brain on.
 
+### `mind.context.addons`
+
+Let an add-on add a few short lines of its own to your AI requests, when its own switch allows it.
+
+At most four lines of 300 characters, from all add-ons together, after Brain's hints. Each add-on decides by its own
+switch whether its lines may reach an AI at all (one that keeps what it saw on this computer starts with that off).
+Never in a guest's request.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep every add-on's lines out of your requests.
+- **Costs and what leaves this computer:** What the add-on's lines say goes with each request to the AI you picked.
+- **Depends on:** An add-on that offers lines, with its own switch on.
+
 ### `mind.context.on`
 
 Every AI request gets Brain's hints: concepts you're shaky on, and what's on its mind.
@@ -6471,6 +6544,20 @@ pause still stop it, and it never takes a conversation that's open with you.
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off to keep add-ons from hearing anything.
 - **Depends on:** `voice.listen.on`, and an add-on that uses it.
+
+### `voice.addons.guest_name`
+
+Let an add-on that recognises a guest name them: a greeting by name, the name to a local guest AI only.
+
+For a turn Voice ID called a guest, a feature that knows who is in front of it (an add-on's guest_name()) may give their
+name. Voice puts "Hi <name>." before the first answer of the conversation, a set phrase it makes itself. The name goes
+into the guest's prompt only when guests are answered on this computer (voice.speaker_id.guest_brain: local, or a main
+AI that can't be held to text); never to your main AI, and it isn't kept, logged or put in an event.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep add-ons from naming guests.
+- **Costs and what leaves this computer:** Nothing: the add-on answers on this computer.
+- **Depends on:** Voice ID (voice.speaker_id.on) and an add-on that recognises people.
 
 ### `voice.addons.chat`
 

@@ -8,8 +8,15 @@ A message that won at the workspace's door (mind/workspace.py) and isn't urgent 
     pickup          the phone was unlocked (the phone's screen sense, opt-in)
     back            you came back to the desk after being away (Face presence)
     stood, left, looked     an add-on's senses, through signal()
+    surfaced        (0.9.0) you came up from a long stretch on one thing: an add-on that marked you deep (deep()) says
+                    so when it ends
 It also goes after at most `mind.workspace.max_hold_min` (90) minutes of waiting, unless Kurooto is asleep
 (mind/sleep.py, when that part is there).
+
+Deep in one thing (0.9.0, `mind.workspace.deep_hold`): an add-on may say you're deep in one thing (`deep(app, until)`,
+numbers only, renewed while it lasts, at most DEEP_MAX_S ahead). Until then a winner that isn't urgent waits even at a
+break, up to `max_hold_min` as ever; what goes straight past the door (answers, calls, approvals, alarms, your
+reminders, close deadlines) is never held.
 
 When nothing here can see a break coming (no activity or phone screen sense, no Face presence, no add-on that
 signalled in the last day, no study session running), waiting would only delay things, so winners go at once.
@@ -32,7 +39,8 @@ if TYPE_CHECKING:
 
 PART = "workspace"  # its switch: mind.workspace.on, with mind.workspace.breaks
 FILE = "mind-breaks.json"
-KINDS = ("pickup", "stood", "left", "window_switch", "session_end", "looked", "back")
+KINDS = ("pickup", "stood", "left", "window_switch", "session_end", "looked", "back", "surfaced")
+DEEP_MAX_S = 600  # (deep) an add-on's "deep in one thing" lasts at most this long unless renewed
 OPEN_S = 5 * 60  # a break counts as "now" this long, so the next minute's round can still use it
 FRESH_S = 15 * 60  # a sensed break older than this when it's first seen (a late phone bin) is history, not a break
 ADDON_DAY_S = 86400  # an add-on that signalled within a day counts as a way of seeing breaks
@@ -45,6 +53,7 @@ LABELS = {
     "session_end": "a study session or focus time ended",
     "looked": "you looked up",
     "back": "you came back to the desk",
+    "surfaced": "you came up from a long stretch on one thing",
 }
 EVENTS = {  # Kurooto's own events that are breaks (or start the thing whose end will be one)
     "study_session_end": "session_end",
@@ -214,3 +223,28 @@ def last(app: App) -> dict:
 
 def label(kind: str | None) -> str:
     return LABELS.get(kind or "", "a break")
+
+
+def deep(app: App, until: float) -> bool:
+    """(0.9.0, mind.workspace.deep_hold) An add-on says you're deep in one thing until `until` (time.time(); at most
+    DEEP_MAX_S ahead, so a stopped add-on's mark runs out); 0 ends it. Numbers only. True when it was taken."""
+    try:
+        if not on(app) or app.settings.get("mind.workspace.deep_hold") is False:
+            return False
+        t = time.time()
+        with Lock(app.paths.state, "mind-breaks"):
+            d = _load(app)
+            d["deep_until"] = round(max(0.0, min(float(until), t + DEEP_MAX_S)), 1)
+            _save(app, d)
+        return True
+    except Exception as e:
+        app.events.emit("mind_break_failed", error=type(e).__name__)
+        return False
+
+
+def deep_now(app: App, now: float | None = None) -> bool:
+    """(mind.workspace.deep_hold) Is someone deep in one thing now, by an add-on's word?"""
+    if not on(app) or app.settings.get("mind.workspace.deep_hold") is False:
+        return False
+    t = time.time() if now is None else now
+    return t < float(_load(app).get("deep_until") or 0)

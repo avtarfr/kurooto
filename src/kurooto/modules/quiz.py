@@ -82,6 +82,9 @@ register_defaults(
     "quiz",
     {
         "per_session": 3,
+        # (0.9.0) a session ends with one extra card on a concept another feature marked "learning now" (Brain's
+        # frontier), after the usual ones; nothing changes until something marks one
+        "learning_now": True,
         "exam_per_session": 6,  # in exam mode
         "offer_at": "19:00",  # the evening before a quiz or exam: offer practice from this time (empty: never)
         "exam_daily": "",  # in exam mode: a practice check-in every day at this time, e.g. "18:00" (empty: never)
@@ -346,12 +349,55 @@ class Quiz(Module):
             return None
         s["left"] = int(s.get("left", 1)) - 1
         subj, items = self.due(s.get("subject"))
+        if (s["left"] <= 0 or not items) and not s.get("extra"):  # (quiz.learning_now) one more, after the usual
+            extra = self._learning_extra()
+            if extra is not None:
+                s["extra"], s["left"] = True, 0
+                jsave(self._session_file(), s)
+                self._ask_item(*extra, note="learning now")
+                return None
         if s["left"] <= 0 or not items:
             self._session_file().unlink(missing_ok=True)
             return "That's the session. /quiz for more." if items else "That's everything due for now."
         jsave(self._session_file(), s)
         self.ask_next(subj)
         return None
+
+    def _learning_extra(self) -> tuple[str, str, dict] | None:
+        """(quiz.learning_now) A card on a concept marked "learning now" (mind/frontier.py learning_now): its text or
+        section names the concept, and it wasn't answered today. (subject, id, item) or None."""
+        if self.setting("learning_now") is False:
+            return None
+        try:
+            from kurooto.mind import frontier
+            from kurooto.mind.tom import knowledge
+
+            marked = frontier.learning_now(self.app)
+            if not marked:
+                return None
+            notes = knowledge.concepts(self.app)
+            want = {s: notes[s] for s in marked if s in notes}
+            if not want:
+                return None
+            today = dt.date.today().isoformat()
+            for subj in dict.fromkeys([*self.sources(), *self.card_subjects()]):
+                for iid, it in self.state(subj)["items"].items():
+                    if any(h.get("date") == today for h in it.get("history") or []):
+                        continue
+                    if knowledge.mentions(f"{it.get('section') or ''} {it.get('text') or ''}", want):
+                        return subj, iid, it
+        except Exception:
+            return None
+        return None
+
+    def _ask_item(self, subj: str, iid: str, it: dict, note: str = "") -> None:
+        self.app.notify(
+            f"Quiz ({subj}, {it['section']}{', ' + note if note else ''}):\n{it['text']}\n\nReply with your answer.",
+            kind="question",
+            map_kind="quiz",
+            map_ref=f"{subj}|{iid}",
+            why="asked",
+        )
 
     def ask_next(self, subject: str | None) -> str:
         subj, items = self.due(subject)

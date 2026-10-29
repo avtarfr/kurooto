@@ -36,6 +36,12 @@ Extension points an add-on feature (a Module in modules/) may define, besides wh
                                 problem; None is a note)
     health_check() -> core.health.Check | None   its one check for the daily pass, the dashboard and doctor: how
                                 often it should work (an event it emits) and/or a read-only probe
+    reminder_buttons(what) -> [(label, data)]   (0.9.0) a row of its own buttons on a reminder as it fires
+                                (modules/reminders.py; reminders.addon_buttons)
+    guest_name() -> str         (0.9.0) the name of the guest in front of it, for Voice's greeting and a local guest
+                                AI only (core/guest.py addon_name; voice.addons.guest_name)
+    context_lines() -> [str]    (0.9.0) a few short lines for the owner's AI requests, when its own switch allows
+                                (providers/context.py addon_context; mind.context.addons)
 """
 
 from __future__ import annotations

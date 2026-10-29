@@ -18,7 +18,9 @@ a not-interested list, exam mode and start-by dates.
 ## Reminders
 
 **What it does.** A message on Telegram at the time you ask for, with two buttons: **+10 min** and **+1 h** (each
-sets the same reminder again that much later).
+sets the same reminder again that much later). An add-on may put a row of its own under them (0.9.0,
+`reminders.addon_buttons`, on): for example a grocery add-on's **Order on Zepto** under "buy milk". Its button does
+nothing until you tap it, and what it starts asks you again before anything that pays or sends.
 
 **Turn it on.** Features → Reminders. It needs Telegram. It's in the ★ Starter set.
 

@@ -140,6 +140,11 @@ hand. A window whose title names a subject (its name or a short name: a PDF call
 in that subject's folder) counts while you're at the computer: not idle for 5 minutes and the screen not locked. Only
 minutes per subject are kept, never window titles.
 
+**Seen minutes** (0.9.0, `study.seen`, on). An add-on may add minutes it saw you on one of a subject's topics where the
+window doesn't name the subject itself (a paper titled after a concept note in that subject's folder, say). It hands
+over a subject and a number, never a title; they count in your totals, kept apart, and /study ends with "(of which
+0.4 h seen on screen, not timed)". Never while a session or Study mode's focus runs, so nothing counts twice.
+
 **Turn it on.** Features → Study tracker (needs Subjects). Works on Windows, macOS (it asks once for permission to see
 window titles; say no and it can only log by hand) and Linux on X11, Hyprland or Sway. Other Linux desktops can only
 log by hand.
@@ -202,6 +207,7 @@ focus and break timer: a focus holds calls and messages and logs its minutes her
 | `study.keywords` | `{}` | extra words per subject, e.g. `{"linear-algebra": ["matrix", "eigen"]}` |
 | `study.focus_min` / `study.break_min` | 25 / 5 | Study mode's timer: minutes of focus, then of break |
 | `study.timer_ends_mode` | off | Study mode ends when a focus ends, instead of a break |
+| `study.seen` | on | (0.9.0) an add-on may add minutes it saw you on a subject's topic, kept apart as "seen" |
 
 **What leaves your computer.** Nothing. Window titles are read here and thrown away.
 

@@ -318,6 +318,11 @@ It never waits longer than 90 minutes (`mind.workspace.max_hold_min`), except wh
 those can see a break coming (no activity or phone screen sense, no Face presence, no add-on), there's nothing to wait
 for and a winner goes at once.
 
+**Deep in one thing** (0.9.0, `mind.workspace.deep_hold`, on): an add-on may tell Brain you're deep in one thing (the
+same topic at the desk for a while, say). Until you come up from it, a winner waits even at a break, still never longer
+than `max_hold_min`; when you surface, that's a break and it goes. Nothing on the list below is ever held for it. Only
+an add-on can say it, and only as a time: never what you're on.
+
 **Always straight through, never held:** the alarm, reminders you set, calls, approvals you're waiting on, deadlines less
 than 12 hours away and anything urgent, and answers to what you asked.
 
@@ -675,6 +680,10 @@ asked for: answers, requested actions, alarms, reminders you set, calls and clos
 shaky on lately (up to three, from your quizzes and notes) and what's on its mind (the workspace's winners that aren't
 about you). It's read from Brain's files with no model call, in well under 50 ms. Your read, tone, mood and body state
 never go in, so a cloud AI never gets them; answers use it silently, never "since you seem stressed".
+
+**An add-on's lines** (0.9.0, `mind.context.addons`, on): an add-on may add a few short lines of its own to your
+requests (at most four, 300 characters each), only when its own switch allows it (for example an add-on's list of
+topics from your notes, behind an off-by-default switch). Never to a guest's request. Off: no add-on's line goes in.
 
 ## When you'll be free (0.8.16)
 
