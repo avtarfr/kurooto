@@ -659,7 +659,7 @@
 "mind.tom": "Brain's model of what you know, believe and want.",
 "mind.tom.attention": "Hold a message (at most 15 minutes) while you're deep in one project.",
 "mind.tom.false_beliefs": "When something you were told turns out wrong, tell you once, with the evidence.",
-"mind.tom.from_chat": "Goals you state, due dates you give for your deadlines and exam results you report (\"I got 12/30 on the LA midterm\"), in your messages, go into Brain's model of you.",
+"mind.tom.from_chat": "Goals, due dates and exam results you mention in your messages go into Brain's model of you.",
 "mind.tom.on": "A model of what you know, believe, want and prefer, each row with its source (`/model`).",
 "mind.tone": "One-word tone tags on what you write, from the model on this computer only.",
 "mind.tone.calls": "With tone on, what you say on a call is tagged too, by the model on this computer.",

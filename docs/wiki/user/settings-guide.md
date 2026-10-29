@@ -6200,8 +6200,7 @@ When something you were told turns out wrong, tell you once, with the evidence.
 
 ### `mind.tom.from_chat`
 
-Goals you state, due dates you give for your deadlines and exam results you report ("I got 12/30 on the LA midterm"), in
-your messages, go into Brain's model of you.
+Goals, due dates and exam results you mention in your messages go into Brain's model of you.
 
 "My goal is to finish the draft by Friday" becomes a stated goal; "the essay is due Monday" (one of your open deadlines)
 becomes what you believe about its date, so a wrong date can be pointed out once. An exam result counts as evidence of

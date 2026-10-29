@@ -901,7 +901,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.talk.on` | `true` | Being talked to is a small reward for Brain (at most 0.2 a day; nothing for answers to its own pings). ([guide](wiki/user/settings-guide.md#mindtalkon)) |
 | `mind.tom.attention` | `false` | Hold a message (at most 15 minutes) while you're deep in one project. ([guide](wiki/user/settings-guide.md#mindtomattention)) |
 | `mind.tom.false_beliefs` | `true` | When something you were told turns out wrong, tell you once, with the evidence. ([guide](wiki/user/settings-guide.md#mindtomfalsebeliefs)) |
-| `mind.tom.from_chat` | `true` | Goals you state, due dates you give for your deadlines and exam results you report ("I got 12/30 on the LA midterm"), in your messages, go into Brain's model of you. ([guide](wiki/user/settings-guide.md#mindtomfromchat)) |
+| `mind.tom.from_chat` | `true` | Goals, due dates and exam results you mention in your messages go into Brain's model of you. ([guide](wiki/user/settings-guide.md#mindtomfromchat)) |
 | `mind.tom.on` | `true` | A model of what you know, believe, want and prefer, each row with its source (`/model`). ([guide](wiki/user/settings-guide.md#mindtomon)) |
 | `mind.tone.calls` | `true` | With tone on, what you say on a call is tagged too, by the model on this computer. ([guide](wiki/user/settings-guide.md#mindtonecalls)) |
 | `mind.tone.on` | `false` | Tag each message you write with one word (calm, tired…), using the model on this computer only. ([guide](wiki/user/settings-guide.md#mindtoneon)) |
