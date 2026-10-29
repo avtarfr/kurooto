@@ -278,6 +278,10 @@ class Api:
             from kurooto.mind import status
 
             return 200, status.view(self.app)
+        if path == "memory":  # (0.9.0) the Memory page: every about-you store side by side (core/memorypage.py)
+            from kurooto.core import memorypage
+
+            return 200, memorypage.view(self.app)
         if path == "brain/console":  # the Brain console: decisions, timeline, search, parts (mind/console.py)
             from kurooto.mind import console
 
@@ -477,6 +481,10 @@ class Api:
             return chat_api.post(self.app, path, b)
         if path.startswith("addons/"):  # Features → Add-ons by link, `kurooto addons` (core/addons.py)
             return self._addons_post(path[len("addons/") :], b)
+        if path == "brain/console":  # (0.9.0) Wrong / Forget on a row of the model of you (mind/tom/prefs.py)
+            from kurooto.mind.tom import prefs
+
+            return 200, prefs.console_edit(self.app, str(b.get("act") or ""), str(b.get("id") or ""))
         if path.startswith("brain/claude-accounts/"):  # the setup page's AI step, Settings → Claude accounts
             return self._claude_accounts_post(path[len("brain/claude-accounts/") :], b)
         if path == "jobs/cancel":  # a Cancel button on the AI jobs page, `kurooto jobs --cancel ID|all` (core/jobs.py)

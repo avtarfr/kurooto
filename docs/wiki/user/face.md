@@ -241,6 +241,10 @@ Telegram or your phone. With "what to call you" on your [persona card](teaching-
 out of the greeting. When you answer it, your AI is told what it had just said (0.9.0, `face.greet.tell_ai`, on), so
 "yes" goes on from it; that's the only time the greeting's words leave the computer.
 
+(0.9.0, `voice.answers_questions`, on) Answer "yes" (or "sure", "go through them") and it reads the waiting questions
+one by one; what you say answers each, "skip" or "later" leaves one, "stop" ends it. Approvals are only counted: they
+wait for your tap on the phone or Telegram. Only your voice counts, and with someone else here it doesn't read them.
+
 Then the conversation opens for 12 seconds (`face.greet.listen_s`), like after you'd said "Kurooto": "what's next?"
 or "yes" goes to your AI without saying its name. Chatter nearby closes it at once and isn't sent. That needs Voice
 listening on; without it you hear the greeting only.
@@ -293,6 +297,11 @@ Other features may use whether you're at your desk, each behind its own switch (
 paper?" and pause/resume offers in a focus (`study.face`, off), the exam debrief that waits until you're back
 (`exam_season.debrief_at_desk`, off), and the focus offered when a planned block starts (`agent_plan.start_focus`).
 They only offer; nothing is recorded about you being away, and no frame is kept.
+
+(0.9.0) It can also steer messages: `notify.follow_me` sends the desktop's messages to the phone app while you're away,
+and while you're at the desk `notify.desk_silent_phone` keeps Telegram quiet and `notify.desk_first` pops everything up
+here; `notify.guests_hold` and `voice.speak.guests_private` keep pop-ups and answers read aloud private when two faces
+look at the screen ([Messages: where they show up](messages-it-sends.md#where-messages-show-up)).
 
 ## Learning over time
 

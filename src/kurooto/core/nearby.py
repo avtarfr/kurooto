@@ -160,6 +160,14 @@ def facing_most(app: App, since: float, until: float | None = None) -> int:
         return max((r[2] for r in _looks(app) if since <= r[0] <= hi), default=0)
 
 
+def facing_many(app: App, within: float = 10.0) -> bool:
+    """(0.9.0, notify.guests_hold) Two or more faces close and facing the camera in a frame of the last `within`
+    seconds: someone besides you could read the screen. Counts only."""
+    lo = time.monotonic() - within
+    with _lock:
+        return any(r[0] >= lo and r[2] >= 2 for r in _looks(app))
+
+
 def last_facing(app: App) -> float | None:
     with _lock:
         return getattr(app, "_nearby_facing_at", None)

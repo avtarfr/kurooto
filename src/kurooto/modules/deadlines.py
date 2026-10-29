@@ -1054,6 +1054,7 @@ class Deadlines(Module):
                 why="deadlines.overdue",
                 about=it["title"],
                 item=i,
+                ws_item=f"deadline:{i}",
                 map_kind="deadline",
                 map_ref=i,
             )
@@ -1085,6 +1086,7 @@ class Deadlines(Module):
             why="deadlines.reminder",
             about=it["title"],
             item=i,
+            ws_item=f"deadline:{i}",
             due=it["due"],
             **({} if it["kind"] == "exam" else {"map_kind": "deadline", "map_ref": i}),  # a reply "4/7" (_reply)
         )

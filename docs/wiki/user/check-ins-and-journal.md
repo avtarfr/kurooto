@@ -175,7 +175,9 @@ message too, so a check-in never stays "calling".
 (`alarm.bedtime`), or within 3 hours of you setting the alarm yourself. It moves to your wake-up call, and a message
 says so ("Your alarm is set, so I took it you're asleep: the night check-in moves to your wake-up call.") with
 **Call me now** and **Skip**. A night check-in you moved after setting the alarm still rings. Turn this off with
-`checkins.asleep_defers`.
+`checkins.asleep_defers`. With `checkins.asleep_follows_brain` on (0.9.0, off), Brain's sleep (from the phone, Face
+presence, the bedside) counts as the night too: check-ins and calls Kurooto places by itself wait while it says you're
+asleep, and the night check-in moves to the wake-up call the same way. Calls you asked for and the alarm still ring.
 
 **The daily call limit.** [Calm](messages-it-sends.md) allows one call a day that comes by itself
 (`notify.calm.calls`). Past it, a check-in comes as a message ("today's call came already"). `/calm calls 2` allows

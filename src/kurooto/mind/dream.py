@@ -55,6 +55,10 @@ register_defaults(
             "cards_max": 3,  # at most this many a night (1 to 3)
             "lessons": True,  # nightly how-to-help-me lines from the day's outcomes, written only when you tap Keep
             "voice": True,  # one morning line on what the nightly voice learning saw (counts only)
+            # 0.9.0: the lessons also learn from what the look back after calls flagged and from proposals you
+            # discarded (counts only, never a call's words)
+            "from_calls": True,
+            "from_proposals": True,
         }
     },
 )
@@ -392,7 +396,25 @@ def outcomes(app: App, day: dt.date) -> dict:
                 wrong[r["part"]] += 1
     except Exception:  # noqa: S110
         pass
-    return {"undos": undos, "pest": pest, "voice": len(mis), "pattern": voice_pattern(mis), "wrong": wrong}
+    cases: Counter = Counter()  # (0.9.0) Wrong taps, by what the request did (mind.dream.from_wrong)
+    calls = 0  # (0.9.0) lessons the look back after calls found (mind.dream.from_calls)
+    made: dict = {}
+    dropped: Counter = Counter()  # (0.9.0) proposals you discarded, by what made them (mind.dream.from_proposals)
+    s = app.settings
+    for rec in app.events.tail(20000):
+        t, k = _ts(rec), str(rec.get("kind") or "")
+        if k == "proposal_made":
+            made[str(rec.get("id") or "")] = str(rec.get("source") or "")
+        if t is None or not lo <= t < hi:
+            continue
+        if k == "case_kept" and rec.get("wrong") and s.get("mind.dream.from_wrong"):
+            cases[str(rec.get("did") or "")] += 1
+        elif k == "call_reviewed" and s.get("mind.dream.from_calls"):
+            calls += int(rec.get("lessons") or 0)
+        elif k == "proposal_discarded" and s.get("mind.dream.from_proposals"):
+            dropped[made.get(str(rec.get("id") or ""), "") or "night"] += 1
+    return {"undos": undos, "pest": pest, "voice": len(mis), "pattern": voice_pattern(mis), "wrong": wrong,
+            "cases": cases, "calls": calls, "proposals": dropped}  # fmt: skip
 
 
 def distil(out: dict) -> list[dict]:
@@ -415,6 +437,20 @@ def distil(out: dict) -> list[dict]:
     for part, n in out["wrong"].items():
         found.append((n, {"kind": "wrong", "line": f"Ask me before assuming {TOM_WORDS.get(part, part)}",
                           "why": f"{n} guess{'es' if n != 1 else ''} about it marked wrong"}))  # fmt: skip
+    for did, n in (out.get("cases") or {}).items():  # (0.9.0) Wrong taps
+        if n < 2 or did in ("", "none", "sync", "other"):
+            continue
+        line = ("When a short request of mine isn't clear, ask what I meant before answering" if did == "ai"
+                else f"Check with me before taking a request as {did.replace('_', ' ')}")  # fmt: skip
+        found.append((n, {"kind": "case", "line": line, "why": f"{n} answers marked Wrong"}))
+    if int(out.get("calls") or 0) >= 2:  # (0.9.0) the look back after calls
+        n = int(out["calls"])
+        found.append((n, {"kind": "calls", "line": "On calls, keep to the lessons from earlier calls (/lessons)",
+                          "why": f"the look back after calls found {n} things to do better"}))  # fmt: skip
+    for source, n in (out.get("proposals") or {}).items():  # (0.9.0) proposals you discarded
+        if n >= 2:
+            found.append((n, {"kind": "proposal", "line": f"Fewer proposals from {source.replace('_', ' ')}",
+                              "why": f"you discarded {n}"}))  # fmt: skip
     found.sort(key=lambda x: -x[0])
     return [x[1] for x in found[:LESSONS_MAX]]
 

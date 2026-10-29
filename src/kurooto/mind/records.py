@@ -546,9 +546,39 @@ def why_lines(app: App, message_ref: str) -> list[str]:
         out = [f"Brain's gate: {w['gate']}.", f"The door: {w['door']}."]
         if w["expect"]:
             out.append(f"It expected {w['expect']}: {SAID.get(w['outcome'], 'still open')}.")
+        link = console_link(app, w.get("decision") or "")
+        if link:
+            out.append(f"What it weighed, in the Brain console: {link}")
         return out
     except Exception:
         return []
+
+
+def console_link(app: App, decision_id: str) -> str:
+    """(0.9.0, mind.why.console_link) The dashboard address that opens this decision in the Brain console
+    (web/static/home.js reads #console?d=<id>); "" when it's off or the id isn't one."""
+    if not decision_id or not REF.match(decision_id) or not app.settings.get("mind.why.console_link"):
+        return ""
+    from kurooto.core.state import jload
+
+    url = (jload(app.paths.state / "web.json", {}) or {}).get("url") or (
+        f"http://127.0.0.1:{app.settings.get('web.port') or 8770}/"
+    )
+    return f"{str(url).split('#')[0]}#console?d={decision_id}"
+
+
+def message_of(app: App, decision_id: str) -> dict | None:
+    """(0.9.0) The message a decision sent, for the Brain console: its Calm record id and Calm's Why? answer."""
+    try:
+        row = _row(app, decision_id) if REF.match(decision_id or "") else None
+        if row is None or row.get("id") != decision_id:
+            return None
+        calm = getattr(app, "calm", None)
+        rec = calm.get(row["ref"]) if calm is not None else None
+        why = calm.why_text(rec) if rec else ""
+        return {"rid": row["ref"], "why": [ln for ln in why.splitlines() if not ln.startswith("What it weighed")]}
+    except Exception:
+        return None
 
 
 def with_why(app: App, msg):

@@ -25,6 +25,7 @@ shadow.
 
 from __future__ import annotations
 
+import re
 import time
 import uuid
 from collections.abc import Callable
@@ -58,7 +59,13 @@ register_defaults(
     {
         "act": {
             "more": True,  # its trust decides more of what it proposes: below the bar it asks, above it acts and tells
-        }
+            # 0.9.0: a change you asked for on a call or in a chat (a tool that writes) is listed in the Sunday digest
+            # too, apart from what it did on its own, with Undo where the tool has one; never orders or money
+            "record_asked": True,
+        },
+        # 0.9.0: an Undo of a change you asked for also lowers trust in that kind of action (off: only what it did on
+        # its own counts, since nothing autonomous happened)
+        "trust": {"from_asked_undo": False},
     },
 )
 
@@ -290,8 +297,11 @@ def _ask(app: App, action: str, klass: str, args: object, summary: str) -> None:
     return None
 
 
-def record(app: App, action: str, summary: str, undo: dict | None = None, klass: str | None = None) -> str:
-    """An act it did on its own, to list in the Sunday digest (with Undo when it has one)."""
+def record(
+    app: App, action: str, summary: str, undo: dict | None = None, klass: str | None = None, asked: bool = False
+) -> str:
+    """An act it did on its own, to list in the Sunday digest (with Undo when it has one). asked (0.9.0): one you
+    asked for on a call or in a chat, listed apart."""
     aid = uuid.uuid4().hex[:8]
     with Lock(app.paths.state, "mind-acts"):
         st = _state(app)
@@ -307,6 +317,7 @@ def record(app: App, action: str, summary: str, undo: dict | None = None, klass:
                 "undone": False,
                 "listed": False,
                 "seen": False,
+                **({"asked": True} if asked else {}),
             },
         ][-KEEP_ACTS:]
         _save(app, st)
@@ -320,6 +331,26 @@ def evidence(app: App, action_or_class: str, kind: str, seen: bool = True) -> bo
     if k not in risk.PRIORS or kind not in trust.EVIDENCE:
         return False
     return mind.connect(app).report("trust_evidence", {"class": k, "evidence": kind, "seen": bool(seen)})
+
+
+MONEY = re.compile(r"order|pay|upi|grocer|money|bank|finance|buy|purchase|wallet", re.I)  # never recorded (R8)
+
+
+def record_asked(app: App, tool, args: dict | None, via: str = "") -> str | None:
+    """(0.9.0, mind.act.record_asked) A tool that writes, run because you asked (a call, a chat, an AI request of
+    yours): written down for the Sunday digest, with Undo when an undoer is registered under its name. Never gated,
+    never an order or money. The act's id, or None."""
+    try:
+        if not app.settings.get("mind.act.record_asked") or not on(app):
+            return None
+        name = str(getattr(tool, "name", "") or "")
+        if getattr(tool, "writes", None) is not True or not name or MONEY.search(name):
+            return None
+        where = {"call": " on a call", "chat": " in a chat"}.get(via, "")
+        undo = {"runner": name, "payload": args} if name in UNDOERS and args is not None else None
+        return record(app, name, f"{name.replace('_', ' ')} (you asked{where})", undo, asked=True)
+    except Exception:
+        return None
 
 
 # -------------------------------------------------------------------------------------------------- buttons
@@ -355,7 +386,8 @@ def button(app: App, ref: str, act: str) -> str:
                 return "Alright, not now."
             _save(app, st)
     if act == "undo":
-        evidence(app, a["klass"], "undo")
+        if not a.get("asked") or app.settings.get("mind.trust.from_asked_undo"):  # (0.9.0) yours: not its trust
+            evidence(app, a["klass"], "undo")
         return msg
     runner = RUNNERS.get(p["action"])
     if runner is None:
@@ -375,7 +407,8 @@ def _seen(app: App) -> str:
             a["seen"] = True
         _save(app, st)
     for a in todo:  # an act in a digest you opened and left alone: a little trust
-        evidence(app, a["klass"], "silence", seen=True)
+        if not a.get("asked"):  # (0.9.0) one you asked for says nothing about what it may do alone
+            evidence(app, a["klass"], "silence", seen=True)
         n += 1
     return f"Thanks: {n} noted as fine." if n else "Nothing new to mark."
 
@@ -399,13 +432,17 @@ def digest(app: App, payload: dict | None = None) -> bool:
     since = time.time() - 7 * 86400
     with Lock(app.paths.state, "mind-acts"):
         st = _state(app)
-        acts = [a for a in st["acts"] if a["at"] >= since and not a["listed"] and not a["undone"]][-DIGEST_MAX:]
+        new = [a for a in st["acts"] if a["at"] >= since and not a["listed"] and not a["undone"]]
+        acts = [a for a in new if not a.get("asked")][-DIGEST_MAX:] + [a for a in new if a.get("asked")][-DIGEST_MAX:]
         for a in acts:
             a["listed"] = True
         _save(app, st)
     if not acts:
         return False
-    lines = ["What I did on my own this week:"] + [f"- {a['summary']}" for a in acts]
+    own, yours = [a for a in acts if not a.get("asked")], [a for a in acts if a.get("asked")]
+    lines = (["What I did on my own this week:"] + [f"- {a['summary']}" for a in own]) if own else []
+    if yours:  # (0.9.0, mind.act.record_asked)
+        lines += ["What you asked me to change on calls and in chats:"] + [f"- {a['summary']}" for a in yours]
     rows = [[("Undo", f"aut:{a['id']}:undo")] for a in acts if a.get("undo")][:4]
     rows.append([("Seen it", "aut:digest:seen")])
     app.notify("\n".join(lines), kind="info", why="mind.act_digest", buttons=rows)

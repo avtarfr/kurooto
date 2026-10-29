@@ -158,6 +158,17 @@ Linear Algebra): the essay"**. It's placed by itself when the block ends.
 | A calendar event | Every timed event (`calendar.no_calls_in_events`), or only events tagged `#nocall` and events in a calendar whose name contains "no call" when `calendar.nocall_events` = `tagged`. |
 | An exam | With Exam season on and its `no_calls` part on: from 15 minutes before an exam until `exam_season.exam_min` (180) minutes after it starts. |
 | A block you planned | Off by default (`agent_plan.holds_calls`, 0.9.0): only calls Kurooto places by itself (check-ins, nudges) wait until a block in your [Agent plan calendar](google.md#agent-plan-calendar) ends. Calls you asked for and alarms ring. |
+| The phone's own alarm (0.9.0) | `availability.night.phone_alarm` (on, but it needs Brain's phone alarm sense): an alarm on the phone earlier than the night's end ends the night then; it never makes the night longer. When it and Kurooto's alarm disagree for the same morning, Kurooto asks once: **Keep both** or **Ring me at 06:00 too**. Neither changes without your tap. |
+
+**Only calls Kurooto places by itself** (0.9.0, each off by default; calls you asked for, the alarm and deadlines less
+than 12 hours away still ring):
+
+| What holds them | Details |
+|---|---|
+| Brain says you're asleep | `checkins.asleep_follows_brain`: Brain's sleep (from the phone, Face presence, the bedside) counts as the night, for check-ins too. |
+| The phone's Do Not Disturb | `notify.respect_phone_dnd` (Brain's phone DND sense): calls wait, and messages that can wait queue as during focus until it ends. |
+| On the move | `calls.hold_moving` (the phone's motion sense): walking or in a vehicle. Headphones never hold a call. |
+| On another call on the phone | `calls.phone_busy`: the phone app says it's in a WhatsApp or Meet call (only until when, never who). Retries wait too. `voice.listen.phone_call` makes desk listening stand down as well. |
 
 Never held: the morning alarm and exam leave-by alarms (they ring through the night and holds), "call me now", and
 `kurooto call --force`. A repeat ring of an unanswered call is dropped (it becomes a missed call) if a block started

@@ -275,6 +275,15 @@ tip = "Make its trust verdicts bind: it asks first for what it isn't trusted wit
 when = "Turn it on after the shadow weeks if you want its learned trust to take effect."
 needs = "`mind.autonomy.on`."
 
+[parent."mind.trust"]
+tip = "What, besides what it did on its own, may change its trust in a kind of action."
+
+[s."mind.trust.from_wrong"]
+tip = "A Wrong on what a request did counts as a complaint against that kind of action, so Kurooto asks first before doing it on its own."
+what = "It only ever makes it ask more; nothing you asked for changes. Off: Wrong keeps a test case and nothing else changes in its trust."
+when = "Turn it on if a Wrong should also make Kurooto more careful acting by itself."
+needs = "`mind.autonomy.on` and Wrong button and test cases."
+
 [s."mind.autonomy.shadow_days"]
 tip = "Days its trust verdicts are only counted and shown, not used."
 when = "Raise it to watch longer before anything changes."
@@ -358,6 +367,12 @@ tip = "Hours a message may keep losing at the door before it goes into the eveni
 when = "Lower it to clear the door sooner; nothing is ever dropped, only moved to the bundle."
 needs = "`mind.workspace.arbiter` and Calm (`notify.calm.on`); with Calm off it simply goes."
 
+[s."mind.workspace.item_fatigue"]
+tip = "Deadline, class and quiz reminders also tire at the door, and need their item to be on Brain's mind, like its promises."
+what = "These messages name their item for Brain's workspace (a deadline, a class or a quiz). By default that only makes one count double at the door while the item is on Brain's mind. On, it also counts toward the item's fatigue (told three times today, it drops out) and, with the door off, the gate holds one whose item didn't win."
+when = "Turn it on if reminders about the same thing come too often; more of them then wait for the evening bundle."
+needs = "`mind.workspace.on`."
+
 [s."mind.expect.on"]
 tip = "Each message Kurooto starts says what it expects (a reply, or done within 2 hours), and what came of it is recorded."
 what = "A question or check-in expects a reply within 3 hours; a nudge expects to be acted on within 2. Your reply, a tap on one of its buttons or the time running out closes it; the scorekeeper writes the outcome. Ids and numbers only, never the words."
@@ -374,6 +389,11 @@ what = "For a message with the word why: the last three messages Kurooto started
 when = "Turn it off if you don't want those reasons in requests to your AI."
 cost = "A few lines more in requests that ask why."
 needs = "Brain and mind.why.on."
+
+[s."mind.why.console_link"]
+tip = "Why? ends with a link that opens that message's decision in the Brain console."
+when = "Turn it off to leave the link out of Why?."
+needs = "`mind.why.on`; the link opens the dashboard on this computer."
 
 [s."mind.attention.on"]
 tip = "A model of its own attention: \"what are you thinking about?\" is answered from it."
@@ -595,6 +615,12 @@ needs = "Phone calls."
 tip = "Its own promises (\"I'll check back at 6\") are noticed, kept, or owned up to first."
 when = "Turn it off if you don't want them tracked. `/promises` lists them."
 
+[s."mind.promises.answers"]
+tip = "Promises in its answers to you, its side of a call and what it says at the desk are tracked too, not only in messages it starts."
+what = "Read on this computer with the same rules (an \"I'll\" with a time); nothing is sent anywhere. A broken one is owned up to like the rest."
+when = "Turn it off to track only the messages it starts by itself."
+needs = "`mind.promises.on`."
+
 [s."mind.story.on"]
 tip = "One life story every part of Kurooto reads first: a fixed core, then its recent weeks."
 when = "Turn it off to have each request start without it."
@@ -656,6 +682,12 @@ values = "`true` (the page and the view read what the Brain keeps), `false` (bot
 when = "Turn it off if you don't want its reasoning on screen. It only reads; nothing the Brain does depends on it."
 needs = "Brain on."
 
+[s."mind.console.edit"]
+tip = "Wrong and Forget beside each row of the model of you on the dashboard's Brain console (the phone's view stays read-only)."
+what = "The same as `/model wrong` and `/model forget`, only on your click. A Wrong on a line Kurooto wrote in your how-to-help-me note offers to take the line out of the note as well, which happens only when you confirm; your own lines are never offered."
+when = "Turn it off to keep the console read-only."
+needs = "`mind.console.on`."
+
 [s."mind.dream.on"]
 tip = "Brain goes over the day at night and brings cards, how-to-help lines and a voice line to the morning message."
 when = "Turn it off to stop all of its dreaming at once; each piece also has its own switch."
@@ -681,6 +713,21 @@ when = "Turn it off if you'd rather write that note yourself."
 tip = "One morning line on what the nightly voice learning saw: turns it learned from and any misfire pattern."
 when = "Turn it off if you don't need it. Counts and flags only, never words."
 needs = "Voice with `voice.listen.learn_nightly`."
+
+[s."mind.dream.from_wrong"]
+tip = "The nightly lessons also learn from your Wrong taps: two on the same kind of request suggest a how-to-help-me line."
+when = "Turn it off to leave Wrong out of the lessons. A line is only written when you tap Keep."
+needs = "`mind.dream.lessons` and Wrong button and test cases."
+
+[s."mind.dream.from_calls"]
+tip = "The nightly lessons also count what the look back after calls flagged (counts only, never a call's words)."
+when = "Turn it off to leave calls out of the lessons."
+needs = "`mind.dream.lessons` and Phone calls' look back (`calls.review`)."
+
+[s."mind.dream.from_proposals"]
+tip = "The nightly lessons also count proposals you discarded: two from the same source suggest fewer of them."
+when = "Turn it off to leave proposals out of the lessons."
+needs = "`mind.dream.lessons`."
 
 [s."mind.study_push.on"]
 tip = "One morning line about the subject Brain is most uneasy about (due date, minutes logged, cards due), with Yes and Later."
@@ -773,6 +820,17 @@ tip = "Its trust decides study blocks, reshaped plans, revision packs and keepin
 what = "Five kinds of thing it proposes: a study block from the morning line (R1), moving part of a slipping deadline's work to tomorrow (R2), a revision pack the evening before a quiz or exam (R1, with packs set to ask), keeping a quiz card it wrote at night (R1) and keeping a how-to-help-me line from the night (R2). While its trust in that class is below the bar (`mind.autonomy.thresholds`), it asks with the feature's own buttons, as before, and each yes is an OK that builds trust. Once it's above, it does it and says so with Undo; an Undo costs trust and pauses the class for a week. A low mood, or beliefs no better than a guess lately (`mind.knobs.on`), make it ask first again. It works whether or not `mind.autonomy.enforce` is on, and needs no shadow weeks: the bar is the gate. /mind and /autonomy list each kind with its trust."
 when = "Turn it off to have every one of them ask, as in 0.8.15."
 needs = "`mind.autonomy.on`; each kind needs its feature (Deadlines, Start-by, Reminders, Skills, Quiz, Brain's dreaming)."
+
+[s."mind.act.record_asked"]
+tip = "The Sunday list also shows what tools changed because you asked on a call or in a chat, with Undo."
+what = "Never an order or anything about money. It doesn't change what needs your OK: these ran because you asked."
+when = "Turn it off to list only what it did on its own."
+needs = "`mind.autonomy.on`."
+
+[s."mind.trust.from_asked_undo"]
+tip = "An Undo of a change you asked for also lowers its trust in that kind of action."
+when = "Leave it off: nothing it did on its own happened there. Turn it on if you'd rather every Undo make it more careful."
+needs = "`mind.act.record_asked`."
 
 [s."mind.presence_forecast.on"]
 tip = "Forecast, hour by hour for the next six hours, when you'll be at your desk and free; scored against what the senses then show."

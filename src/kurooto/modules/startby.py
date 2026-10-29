@@ -1033,6 +1033,7 @@ class StartBy(Module):
                 why="startby.negotiate",
                 about=x["title"],
                 item=i,
+                ws_item=f"deadline:{i}",
                 due=x["due"].isoformat(),
             )
             return True
@@ -1044,6 +1045,7 @@ class StartBy(Module):
             why="startby.negotiate",
             about=x["title"],
             item=i,
+            ws_item=f"deadline:{i}",
             due=x["due"].isoformat(),
         )
         return True
@@ -1168,6 +1170,7 @@ class StartBy(Module):
             why="startby.moved",
             about=it["title"],
             item=i,
+            ws_item=f"deadline:{i}",
             due=it["due"],
         )
 

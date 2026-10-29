@@ -272,6 +272,7 @@
         ${card("Why", kv([["The reason its rules gave", d.reason ? `<code>${esc(d.reason)}</code>` : '<span class="bc-dim">none given</span>']].concat(d.stated ? [["What the AI said", `“${esc(d.stated)}”`]] : []), "bc-stack") + claim + setp, "bc-flat")}
         ${card("What it weighed", cands, "bc-flat")}
         ${card("What came of it", out, "bc-flat")}
+        ${d.message && (d.message.why || []).length ? card("The message it sent (Calm's Why?)", `<ul class="bc-quote">${d.message.why.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`, "bc-flat") : ""}
         <h4 class="bc-ev">Evidence</h4>${evh}`);
       detail.scrollTop = 0;
     }
@@ -361,10 +362,14 @@
       const m = S.data.model || {};
       if (m.on === false && !(m.rows || []).length) return empty("The model of you is off (mind.tom.on).");
       const counts = Object.keys(m.counts || {}).map((k) => chip(`${k} ${num(m.counts[k])}`)).join(" ");
-      const rows = (m.rows || []).length ? `<ul class="bc-list">${m.rows.map((r) => `<li class="bc-row"><span class="bc-main"><b>${esc(r.claim)}</b><span class="bc-sub">${esc(r.part)}${r.subject ? " · " + esc(r.subject) : ""} · ${esc(SOURCES[r.source] || r.source)} · ${num(r.evidence)} piece${r.evidence === 1 ? "" : "s"} of evidence</span></span><span class="bc-tags"><span class="bc-n">${pct(r.confidence)}</span>${bar(r.confidence)}</span></li>`).join("")}</ul>`
+      // (0.9.0, mind.console.edit) Wrong and Forget beside each row, on the dashboard only
+      const edit = !!(m.edit && opts.post);
+      const acts = (r) => edit ? `<span tabindex="0" role="button" class="bc-link" data-edit="wrong" data-id="${esc(r.id)}">Wrong</span> <span tabindex="0" role="button" class="bc-link" data-edit="forget" data-id="${esc(r.id)}">Forget</span>` : "";
+      const rows = (m.rows || []).length ? `<ul class="bc-list">${m.rows.map((r) => `<li class="bc-row"><span class="bc-main"><b>${esc(r.claim)}</b><span class="bc-sub">${esc(r.part)}${r.subject ? " · " + esc(r.subject) : ""} · ${esc(SOURCES[r.source] || r.source)} · ${num(r.evidence)} piece${r.evidence === 1 ? "" : "s"} of evidence</span></span><span class="bc-tags">${acts(r)}<span class="bc-n">${pct(r.confidence)}</span>${bar(r.confidence)}</span></li>`).join("")}</ul>`
         : empty("Nothing yet.");
-      return `<p class="bc-note">What it thinks you know, believe, want, prefer and attend to. It may only make Kurooto more helpful and quieter, never more persuasive; it never models your inner life. Mark a row wrong or forget it with /model.</p>
-        <p>${counts}</p>${rows}<p class="bc-note">${num(m.forgot)} forgotten at your word · ${num(m.denied)} left unkept because of their topic.</p>`;
+      const f = S.edited, flash = f ? `<p class="bc-note" role="status">${esc(f.said)}${f.offer ? ` Also take “${esc(f.offer.line)}” out of your how-to-help-me note? <span tabindex="0" role="button" class="bc-link" data-edit="unline" data-id="${esc(f.offer.id)}">Take it out</span> <span tabindex="0" role="button" class="bc-link" data-edit="keep">Keep it</span>` : ""}</p>` : "";
+      return `<p class="bc-note">What it thinks you know, believe, want, prefer and attend to. It may only make Kurooto more helpful and quieter, never more persuasive; it never models your inner life. ${edit ? "Wrong or Forget beside a row, or /model." : "Mark a row wrong or forget it with /model."}</p>
+        ${flash}<p>${counts}</p>${rows}<p class="bc-note">${num(m.forgot)} forgotten at your word · ${num(m.denied)} left unkept because of their topic.</p>`;
     }
 
     // ---------------------------------------------------------------------------------------------- Memory
@@ -499,6 +504,13 @@
       const tl = t.closest("[data-goto-tl]"); if (tl) { S.part = tl.getAttribute("data-goto-tl"); S.day = ""; S.tl = null; S.paged = false; fetchTimeline(false); setTab("timeline"); return; }
       const gp = t.closest("[data-goto-part]"); if (gp) { S.sticky.part = gp.getAttribute("data-goto-part"); setTab("parts"); return; }
       const dec = t.closest("[data-dec]"); if (dec) { openDecision(dec.getAttribute("data-dec")); return; }
+      const ed = t.closest("[data-edit]");
+      if (ed && opts.post) { // (0.9.0) Wrong / Forget / take the line out, only on a click
+        const act = ed.getAttribute("data-edit");
+        if (act === "keep") { S.edited = null; render(); return; }
+        Promise.resolve(opts.post(act, ed.getAttribute("data-id") || "")).then((r) => { S.edited = { said: (r && r.said) || "", offer: r && r.offer }; refresh(); render(); }).catch(() => {});
+        return;
+      }
       const row = t.closest("[data-seq]");
       if (row && !t.closest("dl")) { const s = Number(row.getAttribute("data-seq")); S.openRow = S.openRow === s ? null : s; S.sig.body = ""; render(); }
     });
@@ -517,6 +529,7 @@
     function update(data) {
       if (!data || typeof data !== "object") return;
       S.data = data;
+      if (S.pendingOpen) { const id = S.pendingOpen; S.pendingOpen = ""; openDecision(id); }
       if (S.open && !S.open.d && !opts.api) openDecision(S.open.id);
       if (!opts.api && S.q.trim().length >= 2) S.found = localSearch(S.q.trim());
       render(true);
@@ -537,6 +550,8 @@
       clearInterval(S.poll);
       window.removeEventListener("keydown", onKey, true);
     }
+    // (0.9.0) opened from Calm's Why? link (#console?d=<id>): the decision opens once the first copy is in
+    if (opts.open && /^[A-Za-z0-9_.:-]{1,64}$/.test(opts.open)) { S.tab = "decisions"; S.pendingOpen = opts.open; }
     if (opts.data) update(opts.data);
     else render();
     if (opts.api) { refresh(); S.poll = setInterval(tick, POLL_MS); }

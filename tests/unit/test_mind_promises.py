@@ -115,3 +115,18 @@ def test_heartbeat_once_per_outage(app):
     assert "%%SINCE%%" in text and "no guarantee" in text and text.count("%%SINCE%%") == 1  # one notice, with the list
     app.settings.set("mind.heartbeat.on", False)
     assert promises.outage_line(app) == "" and "no guarantee" not in app.presence.line_text()
+
+
+def test_promises_in_its_own_answers_calls_and_desk(app):
+    """L95 (0.9.0, mind.promises.answers): its answers, its side of a call and the desk are read with the same rules."""
+    assert promises.said(app, "Sure, I'll look at it tomorrow morning", "answer") == 1
+    rows = promises._state(app)["rows"]
+    assert rows[-1]["source"] == "said.answer" and rows[-1]["state"] == "open"
+    calls = app.modules["calls"]
+    calls.save_transcript({"lines": [{"who": "you", "text": "I'll check in 20 minutes"},
+                                     {"who": app.name, "text": "I'll remind you Friday about the lab."}]})  # fmt: skip
+    rows = promises._state(app)["rows"]
+    assert rows[-1]["source"] == "said.call" and "remind you" in rows[-1]["text"]  # only its own side
+    assert not any("check in" in r["text"] for r in rows)
+    app.settings.set("mind.promises.answers", False)
+    assert promises.said(app, "I'll check back at 6.", "desk") == 0

@@ -49,7 +49,7 @@ const denseFits = () => WANT() === "dense" && window.innerWidth >= 1280 && windo
 // browsers. The pages (activity … settings) open over the whole board, Alt and the underlined letter opens one, and
 // Esc goes back. Roomy (narrow windows) shows every pane, with the pages in its tabs.
 const PANES = { status: "#pane-status", systems: "#pane-systems", brain: "#pane-brain", notes: "#pane-vault", terminal: "#pane-tabs" };
-const PKEY = { brain: "b", console: "o", today: "t", chat: "h", activity: "a", jobs: "j", schedule: "c", features: "f", phone: "p", research: "r", about: "y", settings: "s", face: "e" };
+const PKEY = { brain: "b", console: "o", today: "t", chat: "h", activity: "a", jobs: "j", schedule: "c", features: "f", phone: "p", research: "r", about: "y", settings: "s", face: "e", memory: "u" };
 let HIDE = new Set(), MAX = null, PAGE = null; // hidden panes, the pane filling the board, the page over the board
 let STUDY = false; // Study mode: the NOTES map and the STUDY pane only (look.study_mode); HIDE and MAX wait untouched
 let HIDDEN_F = new Set(); // features taken off the Features page (look.hidden_features; only ones that are off)
@@ -799,8 +799,8 @@ function renderBoard(m) {
 
 const feed = [];
 const SEEN = new WeakMap(); // when each live event arrived (fresh ones are bright in SYSTEMS)
-const TABS = { brain: "Brain", console: "Brain console", today: "Today", chat: "Chat", activity: "Activity", jobs: "AI jobs", schedule: "Schedule", features: "Features", phone: "Phone", research: "Research", about: "About you", settings: "Settings", face: "Face" };
-const DLABEL = { brain: "brain", console: "console", today: "today", chat: "chat", activity: "activity", jobs: "jobs", schedule: "schedule", features: "features", phone: "phone", research: "research", about: "you", settings: "settings", face: "face" };
+const TABS = { brain: "Brain", console: "Brain console", today: "Today", chat: "Chat", activity: "Activity", jobs: "AI jobs", schedule: "Schedule", features: "Features", phone: "Phone", research: "Research", about: "About you", settings: "Settings", face: "Face", memory: "Memory" };
+const DLABEL = { brain: "brain", console: "console", today: "today", chat: "chat", activity: "activity", jobs: "jobs", schedule: "schedule", features: "features", phone: "phone", research: "research", about: "you", settings: "settings", face: "face", memory: "memory" };
 let tab = "activity"; // roomy: the tab below the panes
 let LEFT = null; // what the dense board showed when the window went narrow ({page}; null: a tab was picked since)
 let dtab = "kurooto"; // dense: the terminal pane shows "kurooto" (the chat) or a terminal; the pages open over the board
@@ -811,7 +811,7 @@ function showTab(name) {
   renderNav();
   try { localStorage.setItem("kurooto.dash.tab", name); } catch { /* fine */ }
   // the settings-like tabs get room (the canvases above shrink and redraw by themselves)
-  $(".grid").classList.toggle("tall", ["features", "phone", "research", "about", "settings", "terminals", "console", "chat"].includes(name));
+  $(".grid").classList.toggle("tall", ["features", "phone", "research", "about", "settings", "terminals", "console", "chat", "memory"].includes(name));
   renderTab();
 }
 function renderNav() {
@@ -874,6 +874,41 @@ function renderPage(name, body) {
   else if (name === "console") renderConsole(body);
   else if (name === "face") renderFace(body);
   else if (name === "chat") renderChat(body);
+  else if (name === "memory") renderMemory(body);
+}
+// The Memory page (0.9.0, look.memory_page, core/memorypage.py): every store of what Kurooto keeps about you, side by
+// side. Changes stay with each store's command and its Undo; the model of you has Wrong and Forget here too.
+async function renderMemory(body) {
+  body.onclick = body.onchange = body.onsubmit = null;
+  let m;
+  try { m = await api("memory"); } catch { body.innerHTML = '<p class="d">The Memory page could not load.</p>'; return; }
+  if (m.off) { body.innerHTML = '<p class="d">The Memory page is off (Settings: look.memory_page).</p>'; return; }
+  const list = (rows, line) => rows && rows.length ? `<ul>${rows.map((r) => `<li>${line(r)}</li>`).join("")}</ul>` : '<p class="d">Nothing.</p>';
+  const led = m.ledger || {};
+  const ledHtml = led.locked ? '<p class="d">The ledger\'s key can\'t be read yet (a keychain still locked).</p>'
+    : `<p class="d">${Object.entries(led.counts || {}).map(([k, n]) => `${esc(k)}: ${n}`).join(" · ") || "Empty."} /memory finds and forgets rows.</p>${list(led.rows, (r) => `${esc(r.text)} <span class="d">(${esc(r.from)})</span>`)}`;
+  const model = m.model || {};
+  const acts = (r) => model.edit ? ` <a href="#" data-medit="wrong" data-id="${esc(r.id)}">Wrong</a> <a href="#" data-medit="forget" data-id="${esc(r.id)}">Forget</a>` : "";
+  body.innerHTML = `<p class="d">Everything Kurooto keeps about you, side by side, on this computer. Each list's own command changes it, with Undo.</p>
+    <h4>Memory ledger</h4>${ledHtml}
+    <h4>Open threads</h4>${list(m.threads, (r) => `${esc(r.text)} <span class="d">(${esc(r.from)})</span>`)}<p class="d">/threads closes or drops one.</p>
+    <h4>Set up from what you said</h4>${list(m.inferred, (r) => `${esc(r.day)} ${esc(r.text)} <span class="d">(/inferred undo ${esc(r.id)})</span>`)}
+    <h4>Learned from its own work</h4>${list(m.learned, (r) => `${esc(r.day)} ${esc(r.text)}`)}<p class="d">/learned has an Undo for each.</p>
+    <h4>Not interested</h4>${list((m.not_interested || []).map((t) => ({ t })), (r) => esc(r.t))}
+    <h4>Brain's model of you</h4><p class="d" id="mem-said"></p>${list(model.rows, (r) => `${esc(r.claim)} <span class="d">(${esc(r.part)}, ${esc(r.source)})</span>${acts(r)}`)}
+    ${(m.addons || []).length ? `<h4>Add-ons</h4>${list(m.addons, (a) => `${esc(a.title)}: ${a.count} ${esc(a.what)}`)}` : ""}`;
+  body.onclick = async (e) => {
+    const a = e.target.closest("[data-medit]"); if (!a) return;
+    e.preventDefault();
+    const r = await api("brain/console", { act: a.dataset.medit, id: a.dataset.id }).catch(() => null);
+    const said = $("#mem-said");
+    if (said) said.textContent = (r && r.said) || "";
+    if (r && r.offer && confirm(`Also take "${r.offer.line}" out of your how-to-help-me note?`)) {
+      const u = await api("brain/console", { act: "unline", id: r.offer.id }).catch(() => null);
+      if (said) said.textContent += " " + ((u && u.said) || "");
+    }
+    setTimeout(() => renderMemory(body), 1200);
+  };
 }
 // Face presence's page (modules/face, 0.8.10): face.js, loaded the first time it opens
 async function renderFace(body) {
@@ -923,6 +958,7 @@ async function mountBrainPane() {
 // skills, plans, the model of you, memory (views/brainconsole.js, the phone app's Brain view too; mind/console.py).
 let CONSOLE = null, CONSOLE_LOADING = null;
 const loadCss = (href) => { if (document.querySelector(`link[href="${href}"]`)) return; const l = document.createElement("link"); l.rel = "stylesheet"; l.href = href; document.head.appendChild(l); };
+let CONSOLE_OPEN = ""; // (0.9.0) a decision to open first: Calm's Why? links to /#console?d=<id>
 async function renderConsole(body) {
   if (CONSOLE && body.contains(CONSOLE.host) && CONSOLE.host.isConnected) return; // open already: it keeps itself live
   if (CONSOLE) { CONSOLE.view.stop(); CONSOLE = null; }
@@ -935,7 +971,10 @@ async function renderConsole(body) {
   CONSOLE = { host, view: window.BrainConsole.mount(host, {
     api: (query) => api(`brain/console?${query}`),
     toggle: async (key, on) => { const r = await api("settings", { key, value: on }); return !!(r && r.ok); },
+    open: CONSOLE_OPEN,
+    post: (act, id) => api("brain/console", { act, id }), // (0.9.0) Wrong / Forget on the model of you
   }) };
+  CONSOLE_OPEN = "";
 }
 // The being (look.board "being", 0.8.9): Kurooto as one body on the live stream, filling the board (being.js). Drag
 // turns it, a click looks into an organ, a part of it shows its Brain parts, features and settings; pages open over it.
@@ -2319,7 +2358,10 @@ window.addEventListener("resize", () => { applyLayout(); refit(); });
   try { tab = localStorage.getItem("kurooto.dash.tab") || "activity"; dtab = localStorage.getItem("kurooto.dash.dtab") || "kurooto"; } catch { /* fine */ }
   if (!TABS[tab] && tab !== "terminals") tab = "activity";
   if (DLABEL[dtab]) dtab = "kurooto"; // 0.5.0 kept the pages in the terminal pane: they open over the board now
-  const asked = location.hash.slice(1); // e.g. /#about, the link /aboutme sends
+  let asked = location.hash.slice(1); // e.g. /#about, the link /aboutme sends
+  if (asked.startsWith("console?")) { // (0.9.0) Calm's Why? link: the Brain console, at that decision
+    CONSOLE_OPEN = new URLSearchParams(asked.slice(8)).get("d") || ""; asked = "console";
+  }
   if (TABS[asked]) tab = asked;
   loadLook();
   api("setup").then(setupLeft).catch(() => {}); // an older Kurooto: the plain setup link

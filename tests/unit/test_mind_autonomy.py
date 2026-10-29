@@ -206,3 +206,24 @@ def test_autonomy_off_changes_nothing(app):
     app.settings.set("mind.autonomy.on", False)
     assert act.run(app, "alarm.set", lambda a: "did it", None) == "did it"  # as before 0.8: the caller's own path asks
     assert act.digest(app) is False
+
+
+def test_changes_you_asked_for_are_listed_apart_and_never_cost_trust(app):
+    """L98 (0.9.0, mind.act.record_asked): a writing tool you asked for on a call or in a chat is in the digest, apart,
+    with Undo when it has one; its Undo isn't evidence (mind.trust.from_asked_undo, off); orders never."""
+    from kurooto.modules.calls.tools import Tool
+
+    undone = []
+    act.register("add_deadline", None, lambda a, payload: undone.append(payload) or "Undone.")
+    add = Tool("add_deadline", "add one", lambda a: "Added.", writes=True)
+    aid = act.record_asked(app, add, {"title": "Essay"}, "call")
+    assert act.record_asked(app, Tool("list_deadlines", "read", lambda a: "", writes=False), {}, "chat") is None
+    assert act.record_asked(app, Tool("grocery_order", "buy", lambda a: "", writes=True), {}, "call") is None
+    assert act.digest(app) is True
+    text, kw = app.said[-1]
+    assert "What you asked me to change on calls and in chats:\n- add deadline (you asked on a call)" in text
+    assert "on my own" not in text
+    assert act.button(app, aid, "undo") == "Undone." and undone == [{"title": "Essay"}]
+    assert (app.keeper.score.get("trust", "R1") or {}).get("meta", {}).get("n", {}).get("undo", 0) == 0
+    app.settings.set("mind.act.record_asked", False)
+    assert act.record_asked(app, add, {}, "call") is None

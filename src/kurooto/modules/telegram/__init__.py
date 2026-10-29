@@ -262,6 +262,7 @@ class Telegram(Module):
             return None
         text = f"{msg.title}\n\n{msg.text}" if msg.title else msg.text
         silent = msg.kind in (self.setting("silent_kinds") or []) and "app" in self.app.notifier.channels
+        silent = silent or bool(getattr(msg, "silent", False))  # (0.9.0) at the desk (notify.desk_silent_phone)
         if msg.file:
             mid = api.document(chat, msg.file, caption=text[:1000], reply_to=msg.reply_to)
         else:

@@ -75,6 +75,19 @@ values = "A list of kinds."
 when = "Remove a kind to start getting it again (or use Undo on the message that stopped it)."
 needs = "`notify.calm.on`. Used only for kinds whose feature has no switch of its own."
 
+[s."notify.calm.recheck"]
+tip = "A message that waited says what changed meanwhile when it goes out (\"done 14:10\", \"class skipped\")."
+what = "It applies wherever a message waited: the evening bundle, the end of focus time, the morning after Kurooto slept, the network coming back, Brain's door. It reads the deadline list and the day's skipped classes."
+values = "`rewrite`: the line is added and the message still comes; `drop`: such a message is left out; `false`: it comes as it was written."
+when = "Set `drop` if you'd rather not see reminders about something already done; `false` for messages exactly as they were."
+needs = "`notify.calm.on`."
+
+[s."notify.calm.talk"]
+tip = "Tune these messages in plain words: \"why did you send that?\", \"less of this\", \"send me what's waiting\"."
+what = "The same as the Why? and Less of this buttons, the evening bundle and /calm. A change made this way comes with an Undo on your chat. On a call the AI gets four tools for it."
+when = "Turn it off if these words should go to your AI instead."
+needs = "`notify.calm.on`."
+
 [s."notify.calm.lighter_after"]
 tip = "After an exam or a heavy day, the next day's limit is halved."
 when = "Turn it off if you'd rather have the same flow every day."
@@ -140,6 +153,39 @@ what = "Everything not already in `notify.app_kinds`: reminders, results, inform
 when = "Turn it on where Telegram is blocked or you'd rather use the app's chat."
 cost = "Sealed with your phone's key through your call line."
 needs = "A paired phone app."
+
+[s."notify.follow_me"]
+tip = "Follow me: while Face presence says you've stepped away, messages that pop up on the desktop also go to the phone app."
+what = "The desktop pop-up still waits for you when `face.away.hold_desktop` is on, and Telegram gets everything as usual. Kinds the app already gets (`notify.app_kinds`) don't come twice. With Face presence off it can't tell where you are, and nothing changes."
+when = "Turn it on if you walk away from the computer with the phone and want the desktop's messages there too."
+needs = "Face presence (`face.away.on`) and a paired phone app."
+
+[s."notify.desk_silent_phone"]
+tip = "While you're at the desk, Telegram's copy comes without a sound (urgent ones, calls and approvals still ring)."
+when = "Turn it on if the phone buzzing beside the screen that already shows the message bothers you."
+needs = "`notify.follow_me` and Face presence."
+
+[s."notify.desk_first"]
+tip = "While you're at the desk, every message also pops up on the desktop, not only `notify.desktop_kinds`."
+when = "Turn it on to see everything on the screen in front of you first."
+needs = "`notify.follow_me`, `notify.desktop` and Face presence."
+
+[s."notify.guests_hold"]
+tip = "With someone else at the desk, the desktop pop-up only says \"A message from Kurooto\"."
+what = "Someone else means two faces close and looking at the screen (Face presence) or a voice that isn't yours lately (Voice ID). Only counts are used, never who. Nothing is held or dropped."
+when = "Turn it on if people often sit with you at this computer."
+needs = "Face presence or Voice ID to notice others."
+
+[s."notify.respect_phone_dnd"]
+tip = "While your phone is on Do Not Disturb, what isn't urgent waits (as during focus) and calls Kurooto places by itself wait too."
+what = "From the phone's Do Not Disturb sense (Brain). What waited goes when Do Not Disturb ends, or when the phone stops saying so for 15 minutes. The alarm, your own reminders, approvals, deadlines under 12 hours and anything urgent still come. Used on this computer only."
+when = "Turn it on so Kurooto respects the phone's quiet."
+needs = "Brain and the phone's Do Not Disturb sense (`mind.senses.phone.dnd`)."
+
+[s."notify.desktop_retract"]
+tip = "A desktop pop-up for a question closes once you've answered it anywhere, and one held while you were away doesn't show."
+what = "On Linux the pop-up is closed through the desktop's notification service; on Windows and macOS pop-ups stay (best effort)."
+when = "Turn it off to keep every pop-up until you close it."
 
 [s."ask.expire_hours"]
 tip = "Hours an unanswered question stays open before it expires (unless its asker set another time)."

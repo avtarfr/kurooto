@@ -8,6 +8,12 @@ alarm set holds calls: for people who set the alarm every night they want quiet)
 
     call_block(t)   -> (reason, until) or (None, None)
     next_callable(t)-> the earliest time a call is allowed
+
+(0.9.0) Holds that only calls Kurooto places by itself wait for (a call you asked for, the alarm and a deadline less
+than 12 hours away go on): Brain asleep (checkins.asleep_follows_brain, also part of night() for check-ins and the
+rest), the phone's Do Not Disturb (notify.respect_phone_dnd), the phone moving (calls.hold_moving) and the phone in
+another call (calls.phone_busy). The phone's own earlier alarm can end the night early (availability.night.phone_alarm).
+Each is off by default except the phone alarm, which needs the phone's alarm sense (off by default) to do anything.
 """
 
 from __future__ import annotations
@@ -24,7 +30,8 @@ register_defaults(
     "availability",
     {
         # no calls overnight unless it's an alarm; alarm_only: only from bedtime to the alarm, none without one
-        "night": {"enabled": True, "from": "23:30", "to": "07:00", "alarm_only": False},
+        # phone_alarm (0.9.0): the phone's own alarm (its alarm sense, Brain) ends the night earlier, never later
+        "night": {"enabled": True, "from": "23:30", "to": "07:00", "alarm_only": False, "phone_alarm": True},
         "nocall_keyword": "#nocall",  # in a calendar event's title or description: no calls during it
         "nocall_calendar": "no call",  # every event in a calendar whose name contains this holds calls
         "focus_keyword": "#focus",  # in a calendar event: focus time (calls held, messages wait) while it runs
@@ -32,6 +39,9 @@ register_defaults(
 )
 
 ON_CALL = "you're on a call"  # the reason call_block() gives while a call is live (updates wait for it too)
+BRAIN_ASLEEP = "you're asleep (Brain)"  # (0.9.0) night()'s reason when Brain's sleep says so
+PHONE_CALL = "you're on a phone call"  # (0.9.0) the phone app said it's in another call (calls.phone_busy)
+OWN_WHY = ("calls.own", "alarm.ring", "reminders.own")  # calls you asked for: the soft holds don't apply
 
 # a blocker returns (reason, until) for time t, or None
 Blocker = Callable[[dt.datetime], "tuple[str, dt.datetime] | None"]
@@ -45,6 +55,7 @@ class Availability:
         self.settings = settings
         self.blockers: dict[str, Blocker] = {}
         self.sleep: SleepWindows | None = None  # set by the alarm while it's on
+        self.app = None  # (0.9.0) set by the App: Brain's sleep and the phone's senses, for the soft holds
 
     # quiet: "no calls until X" (messages still come)
     def quiet_until(self, t: dt.datetime | None = None) -> dt.datetime | None:
@@ -73,14 +84,28 @@ class Availability:
     def set_on_call(self, until: dt.datetime | None) -> None:
         self._set("oncall.json", until)
 
-    def night(self, t: dt.datetime) -> tuple[str, dt.datetime] | None:
+    # (0.9.0) the phone app is in another call (a WhatsApp or Meet call): kept apart from Kurooto's own calls, so only
+    # what's switched on (calls.phone_busy, voice.listen.phone_call) waits for it
+    def phone_busy_until(self, t: dt.datetime | None = None) -> dt.datetime | None:
+        return self._until("phone-busy.json", t)
+
+    def set_phone_busy(self, until: dt.datetime | None) -> None:
+        self._set("phone-busy.json", until)
+
+    def night(self, t: dt.datetime, brain: bool = True) -> tuple[str, dt.datetime] | None:
         n = self.settings.get("availability.night") or {}
         if not n.get("enabled"):
             return None
+        b = self._brain_asleep(t) if brain else None
+        if b:
+            return b
         windows = self._sleep_windows()
         for bed, alarm in windows:
             if bed <= t < alarm:
-                return "you're asleep (alarm set)", alarm
+                early = self._phone_end(bed, alarm, t)
+                if early is False:
+                    return None  # the phone's own alarm has rung: you're up
+                return "you're asleep (alarm set)", early or alarm
         if n.get("alarm_only"):
             return None  # no alarm set for this time: no night hours either
         start, end = dt.time.fromisoformat(n["from"]), dt.time.fromisoformat(n["to"])
@@ -93,7 +118,75 @@ class Availability:
         began = dt.datetime.combine(day - dt.timedelta(days=1) if start > end else day, start)
         if any(bed < until and began < alarm for bed, alarm in windows):
             return None  # the alarm sets this night's hours instead: from bedtime until it rings
-        return "it's night", until
+        early = self._phone_end(began, until, t)
+        if early is False:
+            return None  # the phone's own alarm has rung: the night is over
+        return "it's night", early or until
+
+    def _phone_end(self, began: dt.datetime, until: dt.datetime, t: dt.datetime):
+        """(0.9.0, availability.night.phone_alarm) The phone's own alarm inside this night: when it ends instead (only
+        ever earlier); False once it has rung; None when there's none or the switch is off."""
+        if self.app is None or not (self.settings.get("availability.night") or {}).get("phone_alarm"):
+            return None
+        try:
+            from kurooto.mind.senses import phone
+
+            at = phone.next_alarm(self.app)
+        except Exception:
+            return None
+        if at is None:
+            return None
+        a = dt.datetime.fromtimestamp(at).replace(microsecond=0)
+        if not began < a < until:
+            return None
+        return False if t >= a else a
+
+    def _brain_asleep(self, t: dt.datetime) -> tuple[str, dt.datetime] | None:
+        """(0.9.0, checkins.asleep_follows_brain) Brain says you're asleep (its sleep, which follows the phone, Face
+        presence and the bedside): until its window ends."""
+        if self.app is None or not self.settings.get("checkins.asleep_follows_brain"):
+            return None
+        try:
+            from kurooto.mind import sleep
+
+            if sleep.state(self.app, t) != "asleep":
+                return None
+            w = sleep.window(self.app, t)
+        except Exception:
+            return None
+        return (BRAIN_ASLEEP, w[1]) if w and w[1] > t else None
+
+    def soft_block(self, t: dt.datetime) -> tuple[str, dt.datetime] | None:
+        """(0.9.0) What holds only a call Kurooto places by itself: the phone's Do Not Disturb, the phone moving, the
+        phone in another call. Rechecked every 10 minutes while it lasts."""
+        s, app = self.settings, self.app
+        busy = self.phone_busy_until(t) if s.get("calls.phone_busy") else None
+        if busy:
+            return PHONE_CALL, busy
+        if app is None:
+            return None
+        try:
+            from kurooto.mind.senses import phone
+
+            again = t + dt.timedelta(minutes=10)
+            if s.get("notify.respect_phone_dnd") and phone.dnd_on(app):
+                return "your phone is on Do Not Disturb", again
+            if s.get("calls.hold_moving") and phone.moving(app):
+                return f"you're on the move ({phone.moving(app)})", again
+        except Exception:
+            return None
+        return None
+
+    @staticmethod
+    def own_call(why: str | None, due: str | None = None) -> bool:
+        """A call the soft holds let through: one you asked for, the alarm, or a deadline less than 12 hours away."""
+        if why in OWN_WHY:
+            return True
+        try:
+            d = dt.datetime.fromisoformat(str(due)).replace(tzinfo=None) if due else None
+        except ValueError:
+            return False
+        return d is not None and d - now() < dt.timedelta(hours=12)
 
     def _sleep_windows(self) -> list[tuple[dt.datetime, dt.datetime]]:
         if self.sleep is None:
@@ -103,8 +196,13 @@ class Availability:
         except Exception:
             return []
 
-    def call_block(self, t: dt.datetime | None = None) -> tuple[str | None, dt.datetime | None]:
+    def call_block(
+        self, t: dt.datetime | None = None, why: str | None = None, due: str | None = None
+    ) -> tuple[str | None, dt.datetime | None]:
+        """why/due (0.9.0): the call's reason and a deadline's due time; a call you asked for (own_call) isn't held by
+        the soft holds (Brain asleep, the phone's Do Not Disturb, moving or in another call)."""
         t = t or now()
+        own = self.own_call(why, due)
         c = self.on_call_until(t)
         if c:
             return ON_CALL, c
@@ -114,7 +212,7 @@ class Availability:
         f = self.focus_until(t)
         if f:
             return "focus", f
-        n = self.night(t)
+        n = self.night(t, brain=not own)
         if n:
             return n
         for name, b in sorted(self.blockers.items()):
@@ -123,13 +221,18 @@ class Availability:
             r = b(t)
             if r:
                 return r
+        soft = None if own else self.soft_block(t)
+        if soft:
+            return soft
         return None, None
 
-    def next_callable(self, t: dt.datetime | None = None, limit: int = 24) -> tuple[dt.datetime, str | None]:
+    def next_callable(
+        self, t: dt.datetime | None = None, limit: int = 24, why: str | None = None, due: str | None = None
+    ) -> tuple[dt.datetime, str | None]:
         """The earliest time at or after t when a call is allowed (follows chained blocks)."""
         t = t or now()
         for _ in range(limit):
-            reason, until = self.call_block(t)
+            reason, until = self.call_block(t, why=why, due=due)
             if not reason:
                 return t, None
             t = until + dt.timedelta(minutes=1)

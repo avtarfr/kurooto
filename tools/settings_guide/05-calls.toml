@@ -62,6 +62,18 @@ tip = "Minutes after the first ring that an unanswered call rings again."
 values = "A list of minutes, e.g. `[3, 6]`; `[]` rings once."
 when = "Empty it if one ring is enough; add a later one if you sleep through calls you asked for."
 
+[s."calls.hold_moving"]
+tip = "Calls Kurooto places by itself wait while your phone says you're walking or in a vehicle."
+what = "From the phone's motion sense (Brain), checked again every 10 minutes. Calls you asked for, the alarm and deadlines less than 12 hours away still ring. Headphones never hold a call. Used on this computer only, never sent to an AI."
+when = "Turn it on if calls on the way to class or on the road are a nuisance."
+needs = "Brain and the phone's motion sense (`mind.senses.phone.motion`)."
+
+[s."calls.phone_busy"]
+tip = "Calls Kurooto places by itself, and their retries, wait while the phone app says it's in another call (WhatsApp, Meet)."
+what = "The app sends only until when it's busy, never who you're talking to. Kept apart from Kurooto's own calls, so desk listening and the greeting go on unless `voice.listen.phone_call` is on."
+when = "Turn it on so Kurooto doesn't keep retrying while you're on another call."
+needs = "A phone app that reports being in another call."
+
 [s."calls.later_min"]
 tip = "Minutes until it calls back after you tap Later on a ringing call."
 when = "Set it to how long you're usually busy when you tap Later."

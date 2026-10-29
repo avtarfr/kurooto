@@ -57,6 +57,9 @@ offered the same way (the greeting's `answers` part, `face.greet.say`).
 also appears in the phone app's and the dashboard's Chat as "Said aloud at your desk" (never on Telegram), so with
 someone asleep in the room you can answer by typing; the next thing you type is told what it said. Answers to you are
 in Chat already and aren't repeated.
+answer from your AI (Telegram and the phone app ones too), and `off` keeps it silent unless asked. With
+`voice.speak.guests_private` on (0.9.0, off), such an answer isn't read aloud while someone else is at the desk (two
+faces looking, or a voice that isn't yours): it stays on screen, and a message offers **Read it aloud**.
 
 - Pick a voice with `voice.speak.voice` (Kokoro: `af_heart`, the default, `af_bella`, `af_nicole`, `af_sarah`,
   `am_michael`, `am_adam`, `bf_emma`, `bf_isabella`, `bm_george`, `bm_lewis`), and the speed with `voice.speak.rate`.

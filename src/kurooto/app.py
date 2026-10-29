@@ -59,6 +59,7 @@ class App:
         egress.attach(self)
         self.events = Events(self.paths.state)
         self.availability = Availability(self.paths.state, self.settings)
+        self.availability.app = self  # (0.9.0) Brain's sleep and the phone's senses for its soft holds
         self.scheduler = Scheduler(self.paths.state / "schedule.db", tz=self.settings.get("you.timezone") or None)
         self.scheduler.gates["quiet"] = self.availability.quiet_gate
         self.scheduler.gates["call_block"] = self.availability.call_gate
@@ -624,6 +625,14 @@ class App:
             msg.reply(said)
             return
         plain = tidy(text)
+        if msg.via == "voice" and plain:  # (0.9.0) going through what waits, aloud, after the greeting offered it
+            from kurooto.core import walkthrough
+
+            said = walkthrough.take(self, msg, plain)
+            if said:
+                self.events.emit("intent", name="walkthrough")
+                msg.reply(said)
+                return
         cases = self.modules.get("cases") if self.is_on("cases") else None  # (wrong) Wrong button, taught phrasings
         taught = cases.watch(msg, plain, mods) if cases is not None else None  # (request, slots), "ai" or None
         if taught and taught != "ai":
@@ -660,6 +669,12 @@ class App:
                         self.keep.used(m.id, "intent", msg.via)
                         msg.reply(it.run(msg, slots) or "Done.")
                         return
+            calm = getattr(self, "calm", None)  # (0.9.0) "why did you send that?", "less of this", "send me what's
+            got = calm.intent(plain) if calm is not None else None  # waiting", after every feature's own (core/calm.py)
+            if got:
+                self.events.emit("intent", name=got[0])
+                msg.reply(got[1], buttons=got[2])
+                return
             msg.mark("intents")
         if plain and not too_complex(plain) and taught != "ai" and msg.via != "voice":
             # (0.8.17) not by voice: these are buttons it can't see, and the helper's pick is a wait for nothing

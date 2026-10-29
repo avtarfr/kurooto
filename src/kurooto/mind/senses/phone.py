@@ -114,6 +114,11 @@ def ingest(app: App, payload: dict) -> tuple[int, dict]:
         if sensor == "places":
             place_hooks(app, str(b.get("event") or ""), c[1], t / 1000)
     app.events.emit("senses_phone", kept=kept, dropped=dropped)
+    try:  # (0.9.0, notify.respect_phone_dnd) Do Not Disturb ended: what waited for it goes now
+        if kept and enabled(app, "dnd") and not dnd_on(app):
+            app.notifier.flush_dnd()
+    except Exception:
+        pass
     if any(_picked_up(b) for b in bins[:BINS_MAX] if isinstance(b, dict) and enabled(app, "screen")):
         from kurooto.mind import stimulation
 
@@ -155,6 +160,40 @@ def place_hooks(app: App, event: str, label: str, ts: float) -> None:
             m.place_event(label, event, t)
         except Exception as e:
             app.events.emit("senses_failed", part=f"places:{mid}", error=f"{type(e).__name__}"[:80])
+
+
+# ---------------------------------------------- (0.9.0) what the phone says now, for holds (core/availability.py)
+FRESH_S = 15 * 60  # a reading older than this says nothing about now
+
+
+def _last(app: App, sensor: str) -> dict | None:
+    if not enabled(app, sensor):
+        return None
+    rows = store.events(app, f"phone:{sensor}", time.time() - FRESH_S)
+    return rows[-1] if rows else None
+
+
+def dnd_on(app: App) -> bool:
+    """The phone's Do Not Disturb is on, by its last reading of the last 15 minutes. Used here only, as a hold."""
+    r = _last(app, "dnd")
+    return bool(r and r["n"] > 0)
+
+
+def moving(app: App) -> str:
+    """ "walking" or "vehicle" when the phone's last motion reading of the last 15 minutes says so, else ""."""
+    r = _last(app, "motion")
+    return str(r["target"] or r["kind"]) if r and (r["target"] or r["kind"]) in ("walking", "vehicle") else ""
+
+
+def next_alarm(app: App) -> float | None:
+    """The phone's own next alarm (time.time()), from its last reading of the last day; None when unknown."""
+    if not enabled(app, "alarm"):
+        return None
+    rows = store.events(app, "phone:alarm", time.time() - 86400)
+    if not rows or rows[-1]["n"] <= 0:
+        return None
+    at = float(rows[-1]["n"])
+    return at / 1000 if at > 1e11 else at  # the phone says milliseconds
 
 
 def _picked_up(b: dict) -> bool:

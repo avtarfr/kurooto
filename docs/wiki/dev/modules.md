@@ -531,6 +531,18 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   notifies with Undo (Calm reason `cases.rephrased`, event `case_rephrased`). Setting `cases.learn_rephrased`.
   `repaired(text, target, means)` does the same for a reading picked in `core/repair.py` (kind `repair`,
   `repaired_to`; Calm reason `cases.repaired`), and `expected(text)` is a test case's target for a phrasing.
+  (0.9.0) `surface(via)`: telegram and terminal always, plus `cases.surfaces` (`app`, `dashboard`, `voice`); the
+  Wrong button goes on telegram, app and dashboard replies. A voice turn from a guest or unsure speaker is never kept;
+  an owner's `WRONG_SAID` ("that's wrong") within `SAID_S` (180 s) of a reply to the last spoken draft marks it
+  (`wrong(id, via="voice")`) and the words go on as usual. A `jobs.watchers` hook keeps the tool names an answer used
+  on its draft (`tools`, copied to the case on Wrong). `wrong()` ends with `_heard_wrong`: each `WRONG_LISTENERS`
+  entry (`on_wrong(name, fn)`) gets `{id, did, job, tools, via, at, note}` and `text` only past `_sensitive`. Built
+  in: `trust` (`mind.trust.from_wrong`, off: `act.evidence(did, "complaint")` unless did is ai/none/sync/other),
+  `learning` (`learning.from_wrong`: `Learning.corrected` when the job is the last skill's answer), `notes`
+  (`cases.to_dreaming`: event `case_wrong_notes` with the tool names when they meet `NOTES_TOOLS`; Dreaming's
+  `loose_ends` counts them). `mind/dream.outcomes` reads `case_kept` events itself (`mind.dream.from_wrong`), and
+  `modules/retro.py:_learned_from` puts `marked_wrong` (text, did, note; `retro.case_text`, the sensitive filter on
+  both), `call_review_lessons` and `proposals_discarded` (counts) into the look back's context.
 - **voice_notes** (`modules/voice_notes.py`): `transcribe()` posts audio to Gemini `generateContent`; used by Telegram.
   18 MB limit.
 - **face** (`modules/face/`, 0.8.10): Face presence: YuNet and SFace (OpenCV, CPU) recognise the owner; enrolment

@@ -385,6 +385,23 @@ class PhoneChat:
         return sum(bool(self._push(m)) for m in late)
 
     # ------------------------------------------------------------------------------------ from you
+    def _busy(self, v) -> tuple[int, dict]:
+        """(0.9.0) The phone app is in another call (a WhatsApp or Meet call) until `until` (ms), at most 3 hours;
+        0 clears it. Kept apart from Kurooto's own calls (core/availability.py: phone_busy_until)."""
+        import datetime as dt
+        import time as _t
+
+        until = (v or {}).get("until") if isinstance(v, dict) else v
+        if isinstance(until, bool) or not isinstance(until, (int, float)):
+            return 400, {"ok": False, "note": "No time in that."}
+        av = self.app.availability
+        if until <= 0 or until / 1000 <= _t.time():
+            av.set_phone_busy(None)
+        else:
+            av.set_phone_busy(dt.datetime.fromtimestamp(min(until / 1000, _t.time() + 3 * 3600)))
+        self.app.events.emit("phone_busy", on=until > 0)
+        return 200, {"ok": True}
+
     def take(self, body: dict, queued: bool = False) -> tuple[int, dict]:
         """A chat message from a phone, passed on by the call line (now, or from its outbox: queued): {"device",
         "at", "id", and "k1" (sealed by the Android app) or the fields themselves (the iPhone app)}. The fields: "ts"
@@ -411,6 +428,8 @@ class PhoneChat:
         if why:
             self.app.events.emit("phone_chat_refused", why=why)
             return 409, {"ok": False, "note": why.replace("answer", "message")}
+        if "busy" in fields:  # (0.9.0) the phone is in another call until then (ms; 0: not any more), no number
+            return self._busy(fields["busy"])
         if "senses" in fields:  # the phone's senses, aggregated and sealed on the phone (mind/senses/phone.py)
             from kurooto.mind.senses import phone as senses_phone
 

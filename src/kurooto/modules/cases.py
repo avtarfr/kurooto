@@ -64,8 +64,69 @@ register_defaults(
         "review_max": 5,  # phrasings in one look back
         "learn": True,  # a test case may teach its phrasing (only if every test case that passed still passes)
         "learn_rephrased": True,  # the same not-understood phrasing, twice followed by the same request: learn it
+        # 0.9.0: more places than Telegram and the terminal where requests are kept and Wrong works: "app" (the
+        # phone app's chat, a Wrong button), "dashboard" (its chat), "voice" (saying "that's wrong" just after an
+        # answer; your voice only). Remove one to leave it out
+        "surfaces": ["app", "dashboard", "voice"],
+        # 0.9.0: a Wrong on an answer that came from your notes or the concept graph is listed in Dreaming's morning
+        # message as worth a look (nothing is changed in the notes)
+        "to_dreaming": True,
     },
 )
+WRONG_SAID = re.compile(r"^(?:no,?\s+)?(?:that'?s|that\s+is|that\s+was|you'?re)\s+(?:wrong|not\s+right)\b", re.I)
+SAID_S = 180  # "that's wrong" counts for an answer this recent
+NOTES_TOOLS = {"search_notes", "graph_search", "concept_card", "graph_links", "read_note"}
+# 0.9.0 (L82): one Wrong, several learners: name -> fn(app, case); each has its own switch and never raises out
+WRONG_LISTENERS: dict = {}
+
+
+def on_wrong(name: str, fn) -> None:
+    """Register a learner that hears every Wrong (a case dict: id, did, job, tools; text only for those that keep the
+    sensitive-words filter)."""
+    WRONG_LISTENERS[name] = fn
+
+
+# The learners' switches live with what they teach (registered here, where the Wrong comes from)
+register_defaults("mind", {"trust": {"from_wrong": False}, "dream": {"from_wrong": True}})
+register_defaults("retro", {"case_text": True})
+register_defaults("learning", {"from_wrong": True})
+NOT_ACTIONS = ("", "ai", "none", "sync", "other")
+
+
+def _trust_learner(app: App, case: dict) -> None:
+    """mind.trust.from_wrong (off): a Wrong on what a request did counts as a complaint against that kind of action,
+    so Kurooto asks first before doing it on its own (mind/act.py; the scorekeeper keeps trust)."""
+    did = str(case.get("did") or "")
+    if not app.settings.get("mind.trust.from_wrong") or did in NOT_ACTIONS:
+        return
+    from kurooto.mind import act
+
+    act.evidence(app, did, "complaint")
+
+
+def _learning_learner(app: App, case: dict) -> None:
+    """learning.from_wrong: a Wrong on a skill's answer is a correction of that skill (modules/learning.py), as
+    "that's wrong" said just after it is."""
+    if not app.settings.get("learning.from_wrong") or not app.is_on("learning") or not case.get("job"):
+        return
+    lm = app.modules.get("learning")
+    last = (lm._state().get("last_skill") or {}) if lm is not None else {}  # noqa: SLF001
+    if last.get("name") and last.get("job") == case["job"]:
+        lm.corrected(last["name"], case["job"], case.get("note") or "That answer was wrong.")
+
+
+def _notes_learner(app: App, case: dict) -> None:
+    """cases.to_dreaming: a Wrong on an answer that used your notes or the concept graph is flagged for Dreaming's
+    morning message (modules/dreaming.py: loose_ends), as an event with the tools' names only."""
+    used = sorted(set(case.get("tools") or []) & NOTES_TOOLS)
+    if app.settings.get("cases.to_dreaming") and used:
+        app.events.emit("case_wrong_notes", case=case.get("id") or "", tools=",".join(used))
+
+
+on_wrong("trust", _trust_learner)
+on_wrong("learning", _learning_learner)
+on_wrong("notes", _notes_learner)
+# Dreaming (mind/dream.py: outcomes) and the look back (modules/retro.py: context) read the kept cases themselves
 
 # Requests that are never learned from a phrasing: anything that sends, deletes, calls, rings or approves. Matched on
 # a request's name and description (an add-on's too), so "call_me", "hold_calls", "quiz me ... by call" and the alarm
@@ -283,7 +344,39 @@ class Cases(Module):
         self._drafts: OrderedDict[str, dict] = OrderedDict()  # recent requests, in memory only
         self._jobs: OrderedDict[str, str] = OrderedDict()  # AI request id -> its case or draft
         self._last = ""  # the latest plain-English request on Telegram (/wrong marks it)
+        self._last_voice = ""  # (0.9.0) the latest one said aloud ("that's wrong" marks it)
         _listen()
+        if self._job_done not in app.jobs.watchers:  # (0.9.0) which tools an answer used, for Wrong's learners
+            app.jobs.watchers.append(self._job_done)
+
+    def surface(self, via: str) -> bool:
+        """Requests from here are watched: Telegram and the terminal always, the rest by cases.surfaces."""
+        return via in ("telegram", "terminal") or via in (self.setting("surfaces") or [])
+
+    def _said_wrong(self, msg: Incoming, plain: str) -> bool:
+        """(0.9.0) "that's wrong" said aloud just after an answer to something said aloud, in your voice: that
+        request is marked Wrong. The words still go on as usual (to your AI)."""
+        if not self.surface("voice") or msg.speaker not in ("", "owner") or not WRONG_SAID.match(plain):
+            return False
+        with self._lock:
+            d = self._drafts.get(self._last_voice)
+        if not d or not d.get("said"):
+            return False
+        try:
+            age = (now() - dt.datetime.fromisoformat(d["at"])).total_seconds()
+        except (KeyError, ValueError):
+            return False
+        if age > SAID_S:
+            return False
+        return self.wrong(d["id"], via="voice") is not None
+
+    def _job_done(self, job, result, info) -> None:
+        """An AI request this feature saw finished: the names of the tools it used, kept with its draft."""
+        with self._lock:
+            ref = self._jobs.get(getattr(job, "id", ""))
+            d = self._drafts.get(ref) if ref else None
+            if d is not None:
+                d["tools"] = sorted({str(s.get("name") or "") for s in (info or {}).get("steps") or []} - {""})[:20]
 
     # ------------------------------------------------------------------------------------ while handling
     def watch(self, msg: Incoming, plain: str, mods: list):
@@ -291,7 +384,10 @@ class Cases(Module):
         the first reply, keeps it as a case if no instant request understood it, and returns what a taught
         phrasing says: (request, slots), "ai", or None."""
         text = (msg.text or "").strip()
-        if msg.reply_to or msg.files or not plain or text.startswith("/") or msg.via not in ("telegram", "terminal"):
+        guest = msg.via == "voice" and msg.speaker not in ("", "owner")  # someone else's voice: nothing is kept
+        if msg.via == "voice" and not guest:
+            self._said_wrong(msg, plain)  # (0.9.0) "that's wrong": marked, and the words still go on as usual
+        if msg.reply_to or msg.files or not plain or text.startswith("/") or not self.surface(msg.via) or guest:
             _handling.draft = None
             return None
         d = {
@@ -310,6 +406,8 @@ class Cases(Module):
                 self._drafts.popitem(last=False)
             if msg.via == "telegram":
                 self._last = d["id"]
+            elif msg.via == "voice":
+                self._last_voice = d["id"]
         self._wrap(msg, d)
         ex = find(self.store.learned(), plain)
         if ex is None:
@@ -330,7 +428,7 @@ class Cases(Module):
                 d["said"] = str(text)[:300] or "-"
                 _handling.draft = None
                 self._replied(msg, d)
-                if msg.via == "telegram" and self.setting("button", True):
+                if msg.via in ("telegram", "app", "dashboard") and self.setting("button", True):
                     buttons = [*(buttons or []), [("Wrong", f"wrong:{d['id']}:x")]]
             out = orig(text, buttons=buttons)
             if first and d.get("did") not in ("ai", "none", "sync", "other", "") and d.get("how") != "taught":
@@ -490,8 +588,9 @@ class Cases(Module):
             return None
         return [[("Wrong", f"wrong:{ref}:x")]]
 
-    def wrong(self, ref: str, note: str = "") -> dict | None:
-        """Mark a request wrong: its case is kept (or made from the draft in memory). None if it's gone."""
+    def wrong(self, ref: str, note: str = "", via: str = "") -> dict | None:
+        """Mark a request wrong: its case is kept (or made from the draft in memory). None if it's gone. Then every
+        learner (WRONG_LISTENERS, 0.9.0) hears it."""
         with self._lock:
             d = self._drafts.get(ref)
         c = self.store.load()["cases"].get(ref)
@@ -507,7 +606,27 @@ class Cases(Module):
                 extra["answer"] = j.result[:300]
         if c is not None and c.get("kind") == "fallthrough":
             extra["kind"] = "wrong"
-        return self._keep(base, "wrong", extra)
+        if via:
+            extra["wrong_via"] = via
+        if d is not None and d.get("tools"):
+            extra["tools"] = d["tools"]
+        kept = self._keep(base, "wrong", extra)
+        self._heard_wrong(kept)
+        return kept
+
+    def _heard_wrong(self, c: dict) -> None:
+        """One Wrong, to each learner (each checks its own switch). The case's text goes only where the sensitive-words
+        filter lets it."""
+        if not c:
+            return
+        case = {k: c.get(k) for k in ("id", "did", "job", "tools", "via", "at", "note")}
+        if not self._sensitive(c.get("text") or ""):
+            case["text"] = c.get("text") or ""
+        for name, fn in list(WRONG_LISTENERS.items()):
+            try:
+                fn(self.app, case)
+            except Exception as e:
+                self.app.events.emit("cases_listener_failed", listener=name, error=type(e).__name__)
 
     def _button_wrong(self, ref: str, act: str) -> str:
         c = self.wrong(ref)

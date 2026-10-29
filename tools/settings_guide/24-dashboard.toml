@@ -151,3 +151,8 @@ needs = "Kurooto Terminal."
 tip = "As your default terminal, what a launch opens: one shell tab, or the whole window."
 needs = "`terminal.default`."
 when = "Pick `layout` to get every tab each time."
+
+[s."look.memory_page"]
+tip = "The dashboard's Memory page (Alt+U): everything Kurooto keeps about you, side by side."
+what = "The memory ledger, open threads, what was set up from what you said, what it learned from its own work, topics you aren't interested in, Brain's model of you (with Wrong and Forget) and what add-ons keep, as counts. It reads; each list's own command changes it, with Undo. Nothing on it is sent anywhere."
+when = "Turn it off to hide the page."

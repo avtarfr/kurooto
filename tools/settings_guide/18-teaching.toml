@@ -80,6 +80,13 @@ tip = "What you say you'll do, and tasks you start, become open threads (\"did I
 when = "Turn it off if you don't want that kept. `/threads` shows them."
 needs = "Nothing: core."
 
+[s."memory.day_rows"]
+tip = "Each night, one line about the day in the memory ledger: time at the desk, what you studied, classes you skipped."
+what = "Made from what Kurooto already records: Face presence's comings and goings (rounded to the hour), your study sessions and your own class taps. Never a place and never read from the senses. Sealed like every ledger row; \"what was I doing last Thursday?\" and your AI's memory can use it (one-line items, like gists)."
+when = "Turn it on if you'd like Kurooto to remember the shape of your days. /memory forgets a row."
+cost = "Like the rest of the ledger, a line may go to your AI with a request that refers to that day."
+needs = "Nothing: core. It has something to say with Face presence, Study or Classes on."
+
 [s."memory.thread_days"]
 tip = "Days an untouched open thread waits before it closes by itself."
 when = "Raise it if your tasks run long."
@@ -117,6 +124,12 @@ tip = "When you correct a skill's answer, the skill keeps it as a lesson."
 when = "Turn it off to keep skills exactly as written."
 cost = "Your correction and the skill go to the second-look AI."
 needs = "Learns from its own work and Skills."
+
+[s."learning.from_wrong"]
+tip = "A Wrong on a skill's answer counts as a correction of that skill, as \"that's wrong\" said after it does."
+when = "Turn it off to have Wrong keep only a test case."
+cost = "As for corrections: the skill and the answer go to the second-look AI."
+needs = "`learning.corrections`, Skills and Wrong button and test cases."
 
 [s."learning.remember"]
 tip = "The nightly look back keeps facts you stated in your chats and calls in your how-to-help-me note."
@@ -160,6 +173,19 @@ needs = "Wrong button and test cases."
 tip = "The same not-understood phrasing twice followed by the same request: it's learned."
 when = "Turn it off to learn only from test cases you make."
 needs = "Wrong button and test cases."
+
+[s."cases.surfaces"]
+tip = "Where else Wrong works besides Telegram and the terminal: the app's chat, the dashboard's chat, \"that's wrong\" said aloud."
+values = "A list of `app`, `dashboard`, `voice`; `[]`: Telegram and the terminal only, as before 0.9.0."
+what = "Requests from there are kept as cases like Telegram's. Said aloud, only your voice counts (Voice ID), and the words still go to your AI as before."
+when = "Remove one to leave it out."
+needs = "Wrong button and test cases."
+
+[s."cases.to_dreaming"]
+tip = "An answer from your notes or the concept graph you mark Wrong is listed in Dreaming's morning message as worth a look."
+what = "Only that it happened and which kind of answer it was; nothing in your notes is changed."
+when = "Turn it off to keep Wrong out of the morning message."
+needs = "Wrong button and test cases, and Dreaming."
 
 [s."cases.review"]
 tip = "When the monthly list of most common not-understood phrasings may come."
@@ -223,6 +249,13 @@ needs = "`retro.routines`."
 tip = "Make data fixes it's sure of (two copies of one deadline become one), with Undo."
 when = "Turn it off to be asked about every fix."
 needs = "The Nightly look back."
+
+[s."retro.case_text"]
+tip = "The nightly look back also reads the requests you marked Wrong (what you wrote, what Kurooto did, your note)."
+what = "Never one about health, money or other people (the same filter Remember uses). With `mind.dream.from_calls` and `mind.dream.from_proposals` on it also gets how many lessons the look back after calls found and how many proposals you discarded, as counts."
+when = "Turn it off to keep those requests out of the look back."
+cost = "They go to the AI the look back uses."
+needs = "The Nightly look back and Wrong button and test cases."
 
 [s."dreaming.when"]
 tip = "When the morning message comes (\"While you slept\"), covering everything since the last one."

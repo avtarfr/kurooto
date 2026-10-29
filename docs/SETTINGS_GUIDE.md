@@ -121,6 +121,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `availability.night.alarm_only` | `false` | Hold calls at night only on nights you've set a wake-up alarm. ([guide](wiki/user/settings-guide.md#availabilitynightalarmonly)) |
 | `availability.night.enabled` | `true` | No calls during the night hours. ([guide](wiki/user/settings-guide.md#availabilitynightenabled)) |
 | `availability.night.from` | `"23:30"` | When the night hours start. ([guide](wiki/user/settings-guide.md#availabilitynightfrom)) |
+| `availability.night.phone_alarm` | `true` | Your phone's own alarm ends the night's call hold, when it's earlier than the night's end (never later). ([guide](wiki/user/settings-guide.md#availabilitynightphonealarm)) |
 | `availability.night.to` | `"07:00"` | When the night hours end. ([guide](wiki/user/settings-guide.md#availabilitynightto)) |
 | `availability.nocall_calendar` | `"no call"` | Part of a calendar's name: every event in such a calendar holds calls. ([guide](wiki/user/settings-guide.md#availabilitynocallcalendar)) |
 | `availability.nocall_keyword` | `"#nocall"` | A calendar event with this word in its title holds calls while it's on. ([guide](wiki/user/settings-guide.md#availabilitynocallkeyword)) |
@@ -209,6 +210,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `calls.chat_sessions` | `true` | Separate chats in the phone app, each its own conversation whose context carries over. ([guide](wiki/user/settings-guide.md#callschatsessions)) |
 | `calls.chat_titles` | `"first words"` | How a new chat gets its title: its first words, or a short title from your AI. ([guide](wiki/user/settings-guide.md#callschattitles)) |
 | `calls.context_brief` | `true` | Calls and desk Live talks hear what every AI request is told: your profile's brief, how to help you, topics you skip. ([guide](wiki/user/settings-guide.md#callscontextbrief)) |
+| `calls.hold_moving` | `false` | Calls Kurooto places by itself wait while your phone says you're walking or in a vehicle. ([guide](wiki/user/settings-guide.md#callsholdmoving)) |
 | `calls.later_min` | `30` | Minutes until it calls back after you tap Later on a ringing call. ([guide](wiki/user/settings-guide.md#callslatermin)) |
 | `calls.lessons_everywhere` | `true` | Each lesson from the look back after a call is also a dated line in your how-to-help-me note, so every AI request follows it. ([guide](wiki/user/settings-guide.md#callslessonseverywhere)) |
 | `calls.lessons_max` | `12` | How many lessons from past calls every call is told; a repeat replaces the older one. ([guide](wiki/user/settings-guide.md#callslessonsmax)) |
@@ -218,6 +220,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `calls.notes_repo` | `""` | Your notes' repository on GitHub, so calls can read whole notes while this computer is off. ([guide](wiki/user/settings-guide.md#callsnotesrepo)) |
 | `calls.ntfy_server` | `"https://ntfy.sh"` | The push server the phone app listens on. Change it only if you run your own. ([guide](wiki/user/settings-guide.md#callsntfyserver)) |
 | `calls.persona` | `""` | Your own words on how calls should sound, such as "be brief and a bit cheeky". ([guide](wiki/user/settings-guide.md#callspersona)) |
+| `calls.phone_busy` | `false` | Calls Kurooto places by itself, and their retries, wait while the phone app says it's in another call (WhatsApp, Meet). ([guide](wiki/user/settings-guide.md#callsphonebusy)) |
 | `calls.read_agent_tools` | `true` | Calls and desk Live talks also get the read-only tools your AI has, like the concept graph's search and books' pages. ([guide](wiki/user/settings-guide.md#callsreadagenttools)) |
 | `calls.read_tools` | `{}` | One feature's read-only tools left off calls, e.g. {"books": false}. ([guide](wiki/user/settings-guide.md#callsreadtools)) |
 | `calls.realert_min` | `[3, 6]` | Minutes after the first ring that an unanswered call rings again. ([guide](wiki/user/settings-guide.md#callsrealertmin)) |
@@ -266,6 +269,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `cases.review` | `"weekly sun 19:00"` | When the monthly list of most common not-understood phrasings may come. ([guide](wiki/user/settings-guide.md#casesreview)) |
 | `cases.review_days` | `28` | Days at least between two such lists. ([guide](wiki/user/settings-guide.md#casesreviewdays)) |
 | `cases.review_max` | `5` | Phrasings in one list. ([guide](wiki/user/settings-guide.md#casesreviewmax)) |
+| `cases.surfaces` | `["app", "dashboard", "voice"]` | Where else Wrong works besides Telegram and the terminal: the app's chat, the dashboard's chat, "that's wrong" said aloud. ([guide](wiki/user/settings-guide.md#casessurfaces)) |
+| `cases.to_dreaming` | `true` | An answer from your notes or the concept graph you mark Wrong is listed in Dreaming's morning message as worth a look. ([guide](wiki/user/settings-guide.md#casestodreaming)) |
 
 ### `chat`
 
@@ -280,6 +285,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 |---|---|---|
 | `checkins.ai_notes` | `true` | After a check-in call, your AI writes your journal and study logs from what you said. ([guide](wiki/user/settings-guide.md#checkinsainotes)) |
 | `checkins.asleep_defers` | `true` | With check-ins by call and an alarm set, the night check-in waits for the morning once you've gone to bed. ([guide](wiki/user/settings-guide.md#checkinsasleepdefers)) |
+| `checkins.asleep_follows_brain` | `false` | When Brain's sleep says you're asleep, that counts as the night: check-ins and calls Kurooto places by itself wait. ([guide](wiki/user/settings-guide.md#checkinsasleepfollowsbrain)) |
 | `checkins.by_call` | `false` | Check-ins come as a call (a missed call falls back to Telegram). ([guide](wiki/user/settings-guide.md#checkinsbycall)) |
 | `checkins.day_starts` | `"05:00"` | When a check-in day begins, so a night check-in at 00:30 still counts for the evening before. ([guide](wiki/user/settings-guide.md#checkinsdaystarts)) |
 | `checkins.journal` | `true` | Each check-in's answer goes into your journal. ([guide](wiki/user/settings-guide.md#checkinsjournal)) |
@@ -656,6 +662,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 |---|---|---|
 | `learning.brain` | `""` | The AI that looks at finished work; empty uses the concept graph's second-look AI, else your main one. ([guide](wiki/user/settings-guide.md#learningbrain)) |
 | `learning.corrections` | `true` | When you correct a skill's answer, the skill keeps it as a lesson. ([guide](wiki/user/settings-guide.md#learningcorrections)) |
+| `learning.from_wrong` | `true` | A Wrong on a skill's answer counts as a correction of that skill, as "that's wrong" said after it does. ([guide](wiki/user/settings-guide.md#learningfromwrong)) |
 | `learning.remember` | `true` | The nightly look back keeps facts you stated in your chats and calls in your how-to-help-me note. ([guide](wiki/user/settings-guide.md#learningremember)) |
 | `learning.remember_max` | `3` | The most facts kept in a night. ([guide](wiki/user/settings-guide.md#learningremembermax)) |
 | `learning.search` | `true` | A search index of past requests, calls and chats on this computer: `/history`, and the AI's search_history. ([guide](wiki/user/settings-guide.md#learningsearch)) |
@@ -700,6 +707,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `look.hidden_features` | `[]` | Features hidden from the Features list (they still run if they're on). ([guide](wiki/user/settings-guide.md#lookhiddenfeatures)) |
 | `look.layout` | `"dense"` | Dense (everything on one full-screen board) or roomy (bigger panes and type). ([guide](wiki/user/settings-guide.md#looklayout)) |
 | `look.links_in` | `"default"` | Where links to other sites open: this computer's default browser, or the browser showing the dashboard. ([guide](wiki/user/settings-guide.md#looklinksin)) |
+| `look.memory_page` | `true` | The dashboard's Memory page (Alt+U): everything Kurooto keeps about you, side by side. ([guide](wiki/user/settings-guide.md#lookmemorypage)) |
 | `look.palette` | `"kuro"` | The colours of Kurooto's pages and terminals: its own palettes, your desktop's, or a named theme. ([guide](wiki/user/settings-guide.md#lookpalette)) |
 | `look.panes` | `[]` | Panes hidden from the dense board: status, systems, notes, terminal. ([guide](wiki/user/settings-guide.md#lookpanes)) |
 | `look.projects` | `[]` | Folders of git repositories the PROJECTS box shows; empty uses Research's repositories. ([guide](wiki/user/settings-guide.md#lookprojects)) |
@@ -743,6 +751,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | Setting | Default | What it does |
 |---|---|---|
 | `memory.budget_tokens` | `600` | At most about this much of what's remembered goes with one reply or call (about 4 characters a token). ([guide](wiki/user/settings-guide.md#memorybudgettokens)) |
+| `memory.day_rows` | `false` | Each night, one line about the day in the memory ledger: time at the desk, what you studied, classes you skipped. ([guide](wiki/user/settings-guide.md#memorydayrows)) |
 | `memory.recall` | `true` | Replies and calls are told the few remembered items your message refers to ("as we said on the call"). ([guide](wiki/user/settings-guide.md#memoryrecall)) |
 | `memory.thread_days` | `7` | Days an untouched open thread waits before it closes by itself. ([guide](wiki/user/settings-guide.md#memorythreaddays)) |
 | `memory.threads` | `true` | What you say you'll do, and tasks you start, become open threads ("did I finish that thing?"). ([guide](wiki/user/settings-guide.md#memorythreads)) |
@@ -752,6 +761,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | Setting | Default | What it does |
 |---|---|---|
 | `mind.act.more` | `true` | Its trust decides study blocks, reshaped plans, revision packs and keeping its night's cards and lines. ([guide](wiki/user/settings-guide.md#mindactmore)) |
+| `mind.act.record_asked` | `true` | The Sunday list also shows what tools changed because you asked on a call or in a chat, with Undo. ([guide](wiki/user/settings-guide.md#mindactrecordasked)) |
 | `mind.anchor_every` | `1000` | How often (in records) Brain notes where its log has got to, besides once a day. ([guide](wiki/user/settings-guide.md#mindanchorevery)) |
 | `mind.attention.on` | `true` | A model of its own attention: "what are you thinking about?" is answered from it. ([guide](wiki/user/settings-guide.md#mindattentionon)) |
 | `mind.autonomy.enforce` | `false` | Make its trust verdicts bind: it asks first for what it isn't trusted with. ([guide](wiki/user/settings-guide.md#mindautonomyenforce)) |
@@ -770,11 +780,15 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.beliefs.on` | `true` | Keep where each belief came from (said, saw, inferred, imagined) and how sure it is. ([guide](wiki/user/settings-guide.md#mindbeliefson)) |
 | `mind.budget.on` | `true` | The body budget: a few things about Kurooto's own state it tries to keep level, and its drive. ([guide](wiki/user/settings-guide.md#mindbudgeton)) |
 | `mind.checkins.surprise` | `true` | The next check-in comes early when the day departs strongly from Brain's forecast. ([guide](wiki/user/settings-guide.md#mindcheckinssurprise)) |
+| `mind.console.edit` | `true` | Wrong and Forget beside each row of the model of you on the dashboard's Brain console (the phone's view stays read-only). ([guide](wiki/user/settings-guide.md#mindconsoleedit)) |
 | `mind.console.on` | `true` | The Brain console: a dashboard page (Alt+O) and the phone's Brain view showing what the Brain decided and why. ([guide](wiki/user/settings-guide.md#mindconsoleon)) |
 | `mind.context.addons` | `true` | Let an add-on add a few short lines of its own to your AI requests, when its own switch allows it. ([guide](wiki/user/settings-guide.md#mindcontextaddons)) |
 | `mind.context.on` | `true` | Every AI request gets Brain's hints: concepts you're shaky on, and what's on its mind. ([guide](wiki/user/settings-guide.md#mindcontexton)) |
 | `mind.dream.cards` | `true` | Each night, 1 to 3 quiz cards for concepts you studied that day that are on your frontier, kept by a tap. ([guide](wiki/user/settings-guide.md#minddreamcards)) |
 | `mind.dream.cards_max` | `3` | The most dream cards a night (1 to 3). ([guide](wiki/user/settings-guide.md#minddreamcardsmax)) |
+| `mind.dream.from_calls` | `true` | The nightly lessons also count what the look back after calls flagged (counts only, never a call's words). ([guide](wiki/user/settings-guide.md#minddreamfromcalls)) |
+| `mind.dream.from_proposals` | `true` | The nightly lessons also count proposals you discarded: two from the same source suggest fewer of them. ([guide](wiki/user/settings-guide.md#minddreamfromproposals)) |
+| `mind.dream.from_wrong` | `true` | The nightly lessons also learn from your Wrong taps: two on the same kind of request suggest a how-to-help-me line. ([guide](wiki/user/settings-guide.md#minddreamfromwrong)) |
 | `mind.dream.lessons` | `true` | Each night, 1 to 3 lines for your how-to-help-me note from the day's outcomes, written only when you tap Keep. ([guide](wiki/user/settings-guide.md#minddreamlessons)) |
 | `mind.dream.on` | `true` | Brain goes over the day at night and brings cards, how-to-help lines and a voice line to the morning message. ([guide](wiki/user/settings-guide.md#minddreamon)) |
 | `mind.dream.voice` | `true` | One morning line on what the nightly voice learning saw: turns it learned from and any misfire pattern. ([guide](wiki/user/settings-guide.md#minddreamvoice)) |
@@ -837,6 +851,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.presence_forecast.reachable` | `true` | Check-ins and calls Kurooto places by itself go by whether you're reachable: at the desk or on your phone. ([guide](wiki/user/settings-guide.md#mindpresenceforecastreachable)) |
 | `mind.presence_forecast.visitors` | `false` | An add-on's usual busy hours also lower the forecast there a little (never a block). ([guide](wiki/user/settings-guide.md#mindpresenceforecastvisitors)) |
 | `mind.presence_forecast.within_min` | `60` | How far (minutes) a check-in or a call may move to a likelier hour. ([guide](wiki/user/settings-guide.md#mindpresenceforecastwithinmin)) |
+| `mind.promises.answers` | `true` | Promises in its answers to you, its side of a call and what it says at the desk are tracked too, not only in messages it starts. ([guide](wiki/user/settings-guide.md#mindpromisesanswers)) |
 | `mind.promises.on` | `true` | Its own promises ("I'll check back at 6") are noticed, kept, or owned up to first. ([guide](wiki/user/settings-guide.md#mindpromiseson)) |
 | `mind.read.asks_per_week` | `2` | How many times a week, at most, it may ask whether the week felt heavier than usual. ([guide](wiki/user/settings-guide.md#mindreadasksperweek)) |
 | `mind.read.on` | `true` | Brain's read of how you're doing, from numbers about your days; in shadow mode it only watches. ([guide](wiki/user/settings-guide.md#mindreadon)) |
@@ -878,8 +893,11 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.tom.on` | `true` | A model of what you know, believe, want and prefer, each row with its source (`/model`). ([guide](wiki/user/settings-guide.md#mindtomon)) |
 | `mind.tone.calls` | `true` | With tone on, what you say on a call is tagged too, by the model on this computer. ([guide](wiki/user/settings-guide.md#mindtonecalls)) |
 | `mind.tone.on` | `false` | Tag each message you write with one word (calm, tired…), using the model on this computer only. ([guide](wiki/user/settings-guide.md#mindtoneon)) |
+| `mind.trust.from_asked_undo` | `false` | An Undo of a change you asked for also lowers its trust in that kind of action. ([guide](wiki/user/settings-guide.md#mindtrustfromaskedundo)) |
+| `mind.trust.from_wrong` | `false` | A Wrong on what a request did counts as a complaint against that kind of action, so Kurooto asks first before doing it on its own. ([guide](wiki/user/settings-guide.md#mindtrustfromwrong)) |
 | `mind.values.on` | `true` | Brain learns which kinds of things help (values), never affecting a choice in the shadow days. ([guide](wiki/user/settings-guide.md#mindvalueson)) |
 | `mind.values.shadow_days` | `21` | Days learned values are only counted, never used for a choice. ([guide](wiki/user/settings-guide.md#mindvaluesshadowdays)) |
+| `mind.why.console_link` | `true` | Why? ends with a link that opens that message's decision in the Brain console. ([guide](wiki/user/settings-guide.md#mindwhyconsolelink)) |
 | `mind.why.on` | `true` | "Why this?" under a message Kurooto started says what Brain's gate and door did with it, what it expected, and how many it has sent today. ([guide](wiki/user/settings-guide.md#mindwhyon)) |
 | `mind.why.to_ai` | `true` | A message that asks why also gives your AI the plain reasons for Kurooto's own last few messages. ([guide](wiki/user/settings-guide.md#mindwhytoai)) |
 | `mind.workspace.arbiter` | `true` | One door for everything Kurooto says by itself: each message bids, and only winners are sent. ([guide](wiki/user/settings-guide.md#mindworkspacearbiter)) |
@@ -889,6 +907,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.workspace.cycle_s` | `30` | The least gap in seconds between two cycles (events poke it sooner). ([guide](wiki/user/settings-guide.md#mindworkspacecycles)) |
 | `mind.workspace.deep_hold` | `true` | While an add-on says you're deep in one thing, a winner waits even at a break (never past max_hold_min). ([guide](wiki/user/settings-guide.md#mindworkspacedeephold)) |
 | `mind.workspace.fold_h` | `6` | Hours a message may keep losing at the door before it goes into the evening bundle instead. ([guide](wiki/user/settings-guide.md#mindworkspacefoldh)) |
+| `mind.workspace.item_fatigue` | `false` | Deadline, class and quiz reminders also tire at the door, and need their item to be on Brain's mind, like its promises. ([guide](wiki/user/settings-guide.md#mindworkspaceitemfatigue)) |
 | `mind.workspace.max_hold_min` | `90` | The longest a winner waits for a break, in minutes (unless Kurooto is asleep). ([guide](wiki/user/settings-guide.md#mindworkspacemaxholdmin)) |
 | `mind.workspace.on` | `true` | A small "now" stage that parts compete to enter; only what wins may start a message or act on its own. ([guide](wiki/user/settings-guide.md#mindworkspaceon)) |
 | `mind.yield.on` | `true` | The Brain's heavy work waits while your jobs use the graphics card, during a call, on battery or when hot. ([guide](wiki/user/settings-guide.md#mindyieldon)) |
@@ -938,16 +957,24 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `notify.calm.messages` | `6` | How many messages a day may come by themselves; the rest wait for the evening bundle. ([guide](wiki/user/settings-guide.md#notifycalmmessages)) |
 | `notify.calm.monthly` | `true` | Once a month, it names a kind of question you hardly ever answer and offers to turn it off. ([guide](wiki/user/settings-guide.md#notifycalmmonthly)) |
 | `notify.calm.on` | `true` | Calm: each message Kurooto sends by itself says why, has Why? and Less of this, and there's a daily limit. ([guide](wiki/user/settings-guide.md#notifycalmon)) |
+| `notify.calm.recheck` | `"rewrite"` | A message that waited says what changed meanwhile when it goes out ("done 14:10", "class skipped"). ([guide](wiki/user/settings-guide.md#notifycalmrecheck)) |
 | `notify.calm.stopped` | `[]` | Kinds of message you stopped with Less of this → Stop. ([guide](wiki/user/settings-guide.md#notifycalmstopped)) |
+| `notify.calm.talk` | `true` | Tune these messages in plain words: "why did you send that?", "less of this", "send me what's waiting". ([guide](wiki/user/settings-guide.md#notifycalmtalk)) |
 | `notify.calm.voice_stops` | `true` | "Stop" said over something Kurooto said aloud by itself is noted; after a few, it offers to stop that kind. ([guide](wiki/user/settings-guide.md#notifycalmvoicestops)) |
 | `notify.calm.windows` | `{}` | Hours a kind of message may come in; outside them it waits for the evening bundle. ([guide](wiki/user/settings-guide.md#notifycalmwindows)) |
+| `notify.desk_first` | `false` | While you're at the desk, every message also pops up on the desktop, not only `notify.desktop_kinds`. ([guide](wiki/user/settings-guide.md#notifydeskfirst)) |
+| `notify.desk_silent_phone` | `false` | While you're at the desk, Telegram's copy comes without a sound (urgent ones, calls and approvals still ring). ([guide](wiki/user/settings-guide.md#notifydesksilentphone)) |
 | `notify.desktop` | `true` | Pop-up notifications on this computer. ([guide](wiki/user/settings-guide.md#notifydesktop)) |
 | `notify.desktop_kinds` | `["call", "question", "approval", "deadline", "update"]` | Which kinds of message pop up on this computer. ([guide](wiki/user/settings-guide.md#notifydesktopkinds)) |
+| `notify.desktop_retract` | `true` | A desktop pop-up for a question closes once you've answered it anywhere, and one held while you were away doesn't show. ([guide](wiki/user/settings-guide.md#notifydesktopretract)) |
+| `notify.follow_me` | `false` | Follow me: while Face presence says you've stepped away, messages that pop up on the desktop also go to the phone app. ([guide](wiki/user/settings-guide.md#notifyfollowme)) |
+| `notify.guests_hold` | `false` | With someone else at the desk, the desktop pop-up only says "A message from Kurooto". ([guide](wiki/user/settings-guide.md#notifyguestshold)) |
 | `notify.presence.after_min` | `10` | How long Kurooto must be away before going offline or coming back is worth a message. ([guide](wiki/user/settings-guide.md#notifypresenceaftermin)) |
 | `notify.presence.channels` | `["telegram"]` | Where the offline and back-online messages go. ([guide](wiki/user/settings-guide.md#notifypresencechannels)) |
 | `notify.presence.line` | `true` | While this computer can't speak (asleep, crashed, offline), your call line tells you so. ([guide](wiki/user/settings-guide.md#notifypresenceline)) |
 | `notify.presence.line_telegram` | `null` | Whether your call line may keep your bot's token, so it can tell you on Telegram while the computer is away. ([guide](wiki/user/settings-guide.md#notifypresencelinetelegram)) |
 | `notify.presence.on` | `true` | Tell you when Kurooto goes offline, and again when it's back with what it caught up on. ([guide](wiki/user/settings-guide.md#notifypresenceon)) |
+| `notify.respect_phone_dnd` | `false` | While your phone is on Do Not Disturb, what isn't urgent waits (as during focus) and calls Kurooto places by itself wait too. ([guide](wiki/user/settings-guide.md#notifyrespectphonednd)) |
 
 ### `notinterested`
 
@@ -1147,10 +1174,17 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `research_addon.members_off` | `[]` | Parts of the Research add-on you switched off on its card (they stay off when it's turned on). ([guide](wiki/user/settings-guide.md#researchaddonmembersoff)) |
 | `research_addon.run_compare` | `true` | Run compare: `/runs` and `kurooto runlog diff A B` (part of the Research add-on). ([guide](wiki/user/settings-guide.md#researchaddonruncompare)) |
 
+### `reserve`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `reserve.today` | `true` | Keep today.md in the reserve folder: today's alarm, classes, what's due today and tomorrow and events, for every AI request to read. ([guide](wiki/user/settings-guide.md#reservetoday)) |
+
 ### `retro`
 
 | Setting | Default | What it does |
 |---|---|---|
+| `retro.case_text` | `true` | The nightly look back also reads the requests you marked Wrong (what you wrote, what Kurooto did, your note). ([guide](wiki/user/settings-guide.md#retrocasetext)) |
 | `retro.fixes` | `true` | Make data fixes it's sure of (two copies of one deadline become one), with Undo. ([guide](wiki/user/settings-guide.md#retrofixes)) |
 | `retro.journal` | `true` | The look back reads today's journal note. ([guide](wiki/user/settings-guide.md#retrojournal)) |
 | `retro.max_proposals` | `3` | The most changes one look back proposes. ([guide](wiki/user/settings-guide.md#retromaxproposals)) |
@@ -1332,6 +1366,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.addons.chat` | `true` | Let an add-on have Kurooto chat with someone who isn't you, the guest way: no tools, none of your data. ([guide](wiki/user/settings-guide.md#voiceaddonschat)) |
 | `voice.addons.guest_name` | `true` | Let an add-on that recognises a guest name them: a greeting by name, the name to a local guest AI only. ([guide](wiki/user/settings-guide.md#voiceaddonsguestname)) |
 | `voice.addons.listen` | `true` | Let an add-on take one stretch of speech at a time through the microphone (written out here, never sent). ([guide](wiki/user/settings-guide.md#voiceaddonslisten)) |
+| `voice.answers_questions` | `true` | After the greeting's "Want to go through them?", a yes said aloud reads the waiting questions one by one and takes your spoken answers. ([guide](wiki/user/settings-guide.md#voiceanswersquestions)) |
 | `voice.audio.backend` | `"auto"` | How Kurooto plays and records sound: PipeWire's own tools, or the PortAudio library inside Kurooto. ([guide](wiki/user/settings-guide.md#voiceaudiobackend)) |
 | `voice.listen.after_speak_s` | `6` | Seconds after it spoke during which a question counts as an answer to it. ([guide](wiki/user/settings-guide.md#voicelistenafterspeaks)) |
 | `voice.listen.after_talk` | `true` | When a talk at the desk ends, its text goes where a call's does: transcripts, open threads, a line in the day's note. ([guide](wiki/user/settings-guide.md#voicelistenaftertalk)) |
@@ -1374,6 +1409,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.night` | `true` | Keep listening during the night hours. ([guide](wiki/user/settings-guide.md#voicelistennight)) |
 | `voice.listen.on` | `false` | Listen through the microphone, all on this computer; only what's said to Kurooto leaves it. ([guide](wiki/user/settings-guide.md#voicelistenon)) |
 | `voice.listen.phone_away` | `false` | Stop listening while your phone is out (it left a place you saved). ([guide](wiki/user/settings-guide.md#voicelistenphoneaway)) |
+| `voice.listen.phone_call` | `false` | Stop listening while the phone app says it's in another call (WhatsApp, Meet), not only during Kurooto's own calls. ([guide](wiki/user/settings-guide.md#voicelistenphonecall)) |
 | `voice.listen.stt_model` | `"base"` | How big the speech-to-text model is: tiny (75 MB), base (145 MB) or small (484 MB, more accurate). ([guide](wiki/user/settings-guide.md#voicelistensttmodel)) |
 | `voice.listen.tap_to_talk` | `true` | A tap on an add-on's device (the Body face) opens the conversation, as its name would. ([guide](wiki/user/settings-guide.md#voicelistentaptotalk)) |
 | `voice.listen.threshold` | `0.7` | How sure the local model must be (0 to 1) that speech is said to Kurooto. ([guide](wiki/user/settings-guide.md#voicelistenthreshold)) |
@@ -1386,6 +1422,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.mirror_to_chat` | `true` | What Kurooto says aloud by itself also shows in the app's and the dashboard's Chat. ([guide](wiki/user/settings-guide.md#voicemirrortochat)) |
 | `voice.speak.ack` | `"tone"` | While your AI thinks, a short soft sound says Kurooto heard you. ([guide](wiki/user/settings-guide.md#voicespeakack)) |
 | `voice.speak.engine` | `"kokoro"` | The voice made on this computer: Kokoro (natural, about 0.55 GB), Piper (lighter) or off. ([guide](wiki/user/settings-guide.md#voicespeakengine)) |
+| `voice.speak.guests_private` | `false` | With someone else at the desk, an AI answer isn't read aloud by itself: it stays on screen, and a message offers Read it aloud. ([guide](wiki/user/settings-guide.md#voicespeakguestsprivate)) |
 | `voice.speak.join_sentences` | `true` | Speak short sentences together, up to about 200 characters at a time, instead of each on its own. ([guide](wiki/user/settings-guide.md#voicespeakjoinsentences)) |
 | `voice.speak.max_chars` | `800` | How much of a long answer is read aloud before it says "the rest is on screen". ([guide](wiki/user/settings-guide.md#voicespeakmaxchars)) |
 | `voice.speak.numbers_as_words` | `true` | Say numbers as a person would: 21:31 as "nine thirty-one PM", ₹3,000 as "three thousand rupees". ([guide](wiki/user/settings-guide.md#voicespeaknumbersaswords)) |

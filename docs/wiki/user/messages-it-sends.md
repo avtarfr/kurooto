@@ -38,6 +38,11 @@ for, the setting that controls it, and what it was about (the deadline, the clas
   - **Another time**: that kind always waits for the evening bundle (`notify.calm.evening`).
 
   "Done: no more doubt lists." with **Undo** confirms it.
+- **Say it instead** (0.9.0, `notify.calm.talk`): typed, on a call or at the desk, "why did you send that?" answers
+  like Why? for the last one; "less of this" offers its choices; "stop the after-class questions" or "fewer research
+  papers" names a kind and makes that change at once, with **Undo**; "send me what's waiting" sends the evening bundle
+  now; "how many messages today?" answers like /calm. Your features' own requests go first, so "stop the reminder"
+  still means what it did.
 
 The phone app, the desktop and calls get the plain message, without these buttons.
 
@@ -66,6 +71,10 @@ The phone app, the desktop and calls get the plain message, without these button
 - a **call** past the limit isn't placed: a check-in comes as a message instead; anything else waits in the bundle with
   a **Call now** link. A call that rings again (its repeat) counts once.
 - after the bundle time, messages come as they are.
+- **what changed meanwhile** (0.9.0, `notify.calm.recheck`): a message that waited (here, during focus, overnight
+  while Kurooto slept, while the network was down, or at Brain's door) is checked again as it goes out. If its deadline
+  was done, moved or dropped, its class skipped or its quiz is over, a line says so: "(Since then: done 14:10.)". It
+  still comes; `drop` leaves such ones out instead, `false` sends them as they were.
 
 **Never held, never stopped, not counted:** the alarm (and the alarm to leave for an exam, and "tonight's alarm might
 not ring"); approvals; your own reminders (reminders, calls you asked for, quiz times and study sessions you set,
@@ -496,4 +505,20 @@ Every message goes to Telegram. Some also go elsewhere:
 | `telegram.silent_kinds` | `["call"]` | kinds sent to Telegram without a sound (while the phone app is paired, since it rings itself) |
 
 When you answer a question or tap a button somewhere, the copies elsewhere (the phone app's notification) are taken
-down.
+down. (0.9.0, `notify.desktop_retract`, on) So is its desktop pop-up on Linux, and one held while you were away
+doesn't show when you're back. Windows and macOS keep their pop-ups.
+
+**Follow me** (0.9.0, Face presence, all off by default):
+
+- `notify.follow_me`: while you've stepped away from the desk, what pops up on the desktop also goes to the phone app
+  (kinds the app already gets aren't sent twice). The desktop pop-up still waits for you, and Telegram gets everything
+  as usual.
+- `notify.desk_silent_phone`: while you're at the desk, Telegram's copy comes without a sound (urgent ones, calls and
+  approvals still ring).
+- `notify.desk_first`: while you're at the desk, every message also pops up on the desktop.
+
+With Face presence off Kurooto can't tell where you are, and none of these change anything.
+
+**Someone else at the desk** (0.9.0, `notify.guests_hold`, off): with two faces looking at the screen or a voice that
+isn't yours lately, the desktop pop-up says only "A message from Kurooto"; the full text comes on your phone, Telegram
+and the dashboard as usual. Nothing is held or dropped. Only counts are used, never who.

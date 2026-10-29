@@ -200,6 +200,14 @@ def test_why_this_and_outcomes(app, monkeypatch):
     assert w["found"] and "check-in" in w["reason"].lower() and w["door"].startswith("went at once")
     assert w["expect"] == "a reply within 3 h" and w["outcome"] == "" and w["sent_today"] == 1
     assert "The door: went at once" in app.calm.why_text(app.calm.get(m.rid))
+    # (0.9.0, L83) Why? links to its decision in the Brain console, and the decision links back to the message
+    assert f"#console?d={dec['id']}" in app.calm.why_text(app.calm.get(m.rid))
+    back = records.message_of(app, dec["id"])
+    assert back["rid"] == m.rid and any("The door" in ln for ln in back["why"])
+    assert not any("Brain console" in ln for ln in back["why"])
+    app.settings.set("mind.why.console_link", False)
+    assert "#console" not in app.calm.why_text(app.calm.get(m.rid))
+    app.settings.set("mind.why.console_link", True)
     records.heard(app)
     assert ("decision_outcome", {"decision": dec["id"], "result": "replied", "value": 1.0}) in app.facts
     assert records.why(app, m.rid)["outcome"] == "replied"
@@ -232,3 +240,28 @@ def test_outcome_written_by_the_scorekeeper(tmp_path, monkeypatch):
     finally:
         k.close()
     assert records.make("x", expect={"what": "smile", "within_h": 3}).get("expect") is None
+
+
+def test_a_deadline_messages_workspace_id_counts_double_but_never_tires_or_blocks(app, monkeypatch):
+    """L24 (0.9.0): senders name the workspace item apart from Less of this's bare id (Message.ws_item)."""
+    from kurooto.core.notify import Message
+
+    monkeypatch.setattr(workspace, "welcome_p", lambda app, why: 1.0)
+    e = {"key": "m1", "why": "deadlines.reminder", "bkind": "deadline", "item": "7", "at": time.time(), "msg": {}}
+    ws = workspace._state(app)
+    s = workspace._score(app, e, time.time(), set(), ws, 5400)
+    on_mind = workspace._score(app, {**e, "ws_item": "deadline:7"}, time.time(), {"deadline:7"}, ws, 5400)
+    assert on_mind["salience"] == pytest.approx(2 * s["salience"])
+    quiz = workspace._score(app, {**e, "ws_item": "quiz:7"}, time.time(), {"deadline:7"}, ws, 5400)
+    assert quiz["salience"] == pytest.approx(2 * s["salience"])  # a quiz is about its exam's deadline
+    for _ in range(3):
+        workspace.mentioned(app, "deadline:7")
+    ws = workspace._state(app)
+    worn = workspace._score(app, {**e, "ws_item": "deadline:7"}, time.time(), set(), ws, 5400)
+    assert worn["salience"] == pytest.approx(s["salience"])  # fatigue only with mind.workspace.item_fatigue
+    app.settings.set("mind.workspace.arbiter", False)
+    m = Message("Due soon", why="deadlines.reminder", item="7", ws_item="deadline:7")
+    assert workspace.allows(app, m)  # stage 10 never blocks it by default
+    app.settings.set("mind.workspace.item_fatigue", True)
+    assert workspace._score(app, {**e, "ws_item": "deadline:7"}, time.time(), set(), ws, 5400)["salience"] == 0.0
+    assert not workspace.allows(app, m)  # opted in: it needs its item to have won, like a promise

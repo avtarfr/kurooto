@@ -97,6 +97,18 @@ CORE_SAY: tuple[tuple[str, str, tuple[str, ...], str], ...] = (
     ),
     ("research", "meeting minutes", ("about the meeting with Prof Ortiz: we fixed the forcing",), "chat"),
     (
+        "settings",
+        "quieter messages",
+        (
+            "why did you send that?",
+            "less of this",
+            "stop the after-class questions",
+            "send me what's waiting",
+            "how many messages today?",
+        ),
+        "notify.calm.talk",
+    ),
+    (
         "projects",
         "a project from its repository",
         ("set up my project from github.com/ana-ruiz/glacier-flow",),

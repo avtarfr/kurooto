@@ -558,11 +558,15 @@ depend on it, list it in that check's `events` in `core/health_checks.py`.
 
 `core/notify.py:Notifier`; `app.notify(text, **kw)` is the one way to tell the user something.
 
+- (0.9.0) `respect_phone_dnd`: `release()` also queues to `focus-queue.jsonl` when `_phone_dnd(msg)` (the switch,
+  not `asked`/a reply, not `calm.exempt(...)`, `mind/senses/phone.dnd_on`). `flush_dnd()` (focus not running, DND off)
+  is called from `phone.ingest` and `Calm.tick`.
 - `Message` fields: `text`, `title`, `buttons` (`[[("label", "prefix:ref:action" | {"url": ...}), ...]]`), `kind`
   (`info` | `result` | `reminder` | `question` | `approval` | `deadline` | `call` | `update`), `urgent`, `reply_to`,
   `map_kind` / `map_ref` (so a reply or button finds its handler: `Module.replies()[map_kind]`), `file`, `tail` (the
   text's own last line to show quietly: the run receipt, italic on Telegram), and the Calm envelope `why`, `setting`,
-  `about`, `item`, `due`.
+  `about`, `item`, `due`, and (0.9.0) `ws_item`, the same item as Brain's workspace names it (`deadline:<id>`,
+  `class:<subject>`, `quiz:<deadline id>`; see mind.md), kept apart from `item` so Less of this keeps reading the bare id.
 - `send()`: Calm decides first (`Calm.decide`: `send`, `hold`, `stop` or `folded`), then `release()`: during focus, non-urgent messages that aren't
   `approval`/`call` go to `focus-queue.jsonl` (flushed by `flush_queue()` when focus ends); otherwise `_deliver()`:
   Telegram (unless presence holds it because the network is down), the phone app for `notify.app_kinds`, the app's
@@ -578,6 +582,18 @@ depend on it, list it in that check's `events` in `core/health_checks.py`.
   `core/presence.py:Presence.channels` uses `app` in place of `telegram` then. Files: `Message.file` to the chat
   becomes a link (`modules/calls/chat.py:PhoneChat.send_file`, see calls-and-phone.md); `Jobs._deliver` sends a long
   answer's file with the same `reply_to` as its text.
+- (0.9.0) Presence routing in `_deliver` / `_desktop`: `at_desk()` (Face presence's `desk_seen_at()` within `DESK_S`
+  = 120 s; False when it can't tell) and the app's `away_from_desk()`. `notify.follow_me`: away, `_follow()` sends the
+  app a copy unless the kind is in `app_kinds`; the `face.away.hold_desktop` hold stays. `notify.desk_silent_phone`
+  sets `Message.silent` (Telegram's `disable_notification`, `telegram._send`) at the desk, never for urgent, `call` or
+  `approval`. `notify.desk_first` adds any kind to the desktop at the desk. `notify.guests_hold`: `guests_here()`
+  (`nearby.facing_many`: two faces close and facing in a frame of the last 10 s, or `biometric.voice_others`) shows
+  `GENERIC` instead of the text; emits `notify_generic`. Voice's `speak.guests_private` asks `guests_here()` too and
+  keeps the answer in memory for the `vrd:0:read` button. `notify.desktop_retract`: `desktop.notify()` leaves the
+  pop-up's id in `desktop.last_id` (`show()`: Linux `notify-send --print-id`, falling back to the plain call); `Notifier.shown` keeps the last 50 as
+  (map_kind, map_ref, button data, id); `retract()` ends with `_desktop_retract`, which `desktop.close()`s matching
+  ones (`gdbus ... CloseNotification`) and drops matching Face holds (`Face.drop_held`; held entries now carry that
+  key as a fourth item). Emits `notify_retracted` (`channel=desktop`).
 - Channels are registered by modules: `notifier.register("telegram", send, retract=None, edit=None)`. `retract(map_kind,
   map_ref, button)` takes a question down from channels that keep copies (the phone app) once it's dealt with anywhere.
   `edit(ref, msg)` changes a Telegram message in place (Telegram registers `_edit`, which uses `TelegramAPI.edit(...,
@@ -620,6 +636,28 @@ depend on it, list it in that check's `events` in `core/health_checks.py`.
   Fewer / Another time, each changing one setting (`Change`), with Undo. `/calm` and `/why` show the state.
 - Records: `calm.db` table `sent` (45 days; `Calm.forget` blanks `text` and `title` after `privacy.keep_days`).
   `notify.calm.on = false` turns all of it off.
+- (0.9.0) The recheck: `calm.still(app, msg)` says what changed about a held message's item (from `ws_item`, or a
+  `deadline` map_ref): `done HH:MM`, `marked not yours`, `dropped`, `moved to <Ddd HH:MM>` (its `due` differs),
+  `quiz over`, `class skipped` (`subjects.skipped()`). `calm.recheck(app, msg)` applies `notify.calm.recheck`:
+  `rewrite` appends "(Since then: ...)" once (`STILL_MARK`), `drop` returns None, false returns it unchanged. Called
+  where held messages are let out: `Calm.release`, `Calm.bundle` (a dropped one is `settled`), `Notifier.flush_queue`,
+  `Presence.flush_outbox`, `mind/sleep.release`, `mind/workspace._let_out` (through `Notifier._recheck`, which never
+  raises). Emits `calm_rechecked` (`what`: rewritten | dropped). The door's own `_relevant` drop of a passed due time is
+  unchanged.
+- (0.9.0, `notify.calm.talk`) `Calm.intent(plain)` → `(name, reply, buttons)`: `TALK_WHY` (why_last), `TALK_LESS`
+  (`less_of()`: the last record's options), `TALK_HELD` (`send_held()`: the bundle now), `TALK_COUNT` (`/calm`), and
+  `TALK_STOP` / `TALK_FEWER` with a kind `kind_named()` resolves (exact `plural`/`what`, or a multi-word part of one;
+  ambiguous or unknown: None, so the words go on). `App.handle` asks it after every module's intents, so a feature's
+  own "stop ..." wins. `Calm.call_tools()` (added in `Calls.tools`, so Live gets them): `why_that_message`,
+  `less_of_these` (kind, action: stop | fewer | later; the Undo goes to the chat), `send_waiting_messages`,
+  `messages_today`. Every change goes through `Calm.apply`, so it has Undo.
+
+(0.9.0) Add-ons: `calm.register_reason(rid, what, setting="", counted=False, exempt="", rules="", **Reason fields)` adds
+a reason (`<add-on>.<what>`, lower case; a built-in id raises ValueError; registering again replaces the add-on's own;
+`unregister_reason` takes it back). `Reason.rules` names a setting: while it's off, `Calm.rules_apply(r)` is False, so
+`_decide` and `speak_ok` skip `_wait` (no evening, Fewer, window, habit, exam or limit holds) and `options()` offers Stop
+only; the stopped list applies always. The add-on then passes `why=` (and calls `speak_ok` before speaking), and its
+messages get Why? and Less of this.
 
 To add a message that comes by itself: pick a reason id `<module>.<what>`, add an `R(...)` to `REASONS` with the
 setting that controls it (so Less of this can change it), and pass `why=` (plus `about=`/`item=` when it concerns
@@ -668,6 +706,19 @@ app.ask.approval("Send this draft?", hook="mail.send")  # Approve / Deny
   chained blocks. `quiet_gate` / `call_gate` are the scheduler gates.
 - Settings: `availability.night`, `nocall_keyword` (`#nocall`), `nocall_calendar`, `focus_keyword` (`#focus`);
   `learn_night`, `learn_morning`, `absence_days` belong to `core/rhythm.py`, which may move `availability.night`.
+- (0.9.0) `Availability.app` (set by `App.__init__`) lets it read Brain and the phone's senses. `night(t, brain=True)`
+  starts with `_brain_asleep` (`checkins.asleep_follows_brain`: `mind/sleep.state() == "asleep"` until its window's
+  end, reason `BRAIN_ASLEEP`), and `_phone_end` (`availability.night.phone_alarm`: `mind/senses/phone.next_alarm` inside
+  the night ends it earlier; once rung, no night) applies to both the alarm's windows and the fixed hours.
+  `call_block(t, why=None, due=None)` / `next_callable(..., why, due)`: `own_call(why, due)` (`OWN_WHY`: calls.own,
+  alarm.ring, reminders.own; or a due time under 12 h) skips the brain night and `soft_block(t)`: `calls.phone_busy`
+  (`phone_busy_until()` / `set_phone_busy()`, `phone-busy.json`, fed by `calls/chat.py:_busy` from the app's
+  `{"busy": {"until": ms}}`, at most 3 h; apart from `oncall.json`), `notify.respect_phone_dnd` (`phone.dnd_on`),
+  `calls.hold_moving` (`phone.moving`), each rechecked after 10 minutes. `Calls._held_call` passes the call's why/due;
+  callers without them (retries, `call_gate`) get the soft holds. Phone readings older than 15 minutes
+  (`phone.FRESH_S`) say nothing. Voice's `listen.phone_call` makes `blocked()` say "you're on a phone call".
+  Alarm: `Alarm.phone_mismatch()` (on the `suggest` job) asks once per pair (`alarm-phone.json`) with
+  `alm:phone:keep` / `alm:<YYYYmmddHHMM>:set`; reason `alarm.phone_mismatch`.
 
 ## Power
 
@@ -750,10 +801,31 @@ has its own budget that learns them: `core/readbudget.py`, see
 ## The reserve
 
 `core/reserve.py`: Markdown copies an AI program can read instead of running commands: `alarm.md`, `deadlines.md`,
-`calendar.md`, `settings.md` (non-default settings, never secrets), `addons.md`, `agent-guide.md`, in
+`calendar.md`, `today.md` (0.9.0, `reserve.today`: `today_md`, the alarm, `classes_on(include_skipped)`, deadlines due
+today or tomorrow, today's events; titles past `remember.sensitive` only; no clock time, so it changes once a day or
+when they do; listed in `guide_md` while on), `settings.md` (non-default settings, never secrets), `addons.md`,
+`agent-guide.md`, in
 `<state>/reserve/`. Rewritten every 10 minutes (`reserve:refresh`), on change, and by `kurooto reserve`; a file is only
 written when its text changed (`write_if_changed`). Kurooto never reads them back. `<state>/reserve` is in
 `places.read_roots`, and the headless context points the AI at it.
+
+## Going through what waits, aloud (0.9.0)
+
+`core/walkthrough.py` (`voice.answers_questions`): `Face._greet` calls `offered(app)` when the greeting ended with
+"Want to go through them?" and opened the conversation. `App.handle` gives every voice turn to `take(app, msg,
+plain)` first: within `OFFER_S` (120 s) a `YES` from the owner (speaker "" or "owner") starts it (`ask.pending`
+questions, approvals only counted; not while `biometric.others_present`); each next owner turn answers the current one
+(`ask.answer(..., "voice")`), `SKIP` leaves it, `STOP` ends it; `IDLE_S` (300 s) lapses it. In memory only (`_state`
+by app). Interest's (the Body add-on's) own spoken questions aren't wired to it here.
+
+## The Memory page (0.9.0)
+
+`core/memorypage.py:view(app)` (`GET /api/memory`, `look.memory_page`): the ledger (`counts` by `NAMES`, the newest
+`ROWS` rows with `label`), `threads.open_threads`, `infer` items not undone, `learning.changes()`,
+`notinterested.ignored_topics`, `mind/console.model` (with `edit`), and `COUNTERS`: `register_counter(name, fn(app) ->
+{title, count, what})` for an add-on's own store (counts only). `home.js:renderMemory` draws it (page `memory`, Alt+U;
+Alt+M stays Study mode); the model's Wrong/Forget post to `brain/console` (L90), and an `offer` asks with `confirm()`
+before `unline`. Everything else is read-only here: each store's command keeps its Undo.
 
 ## Space keeper
 
@@ -875,7 +947,10 @@ daily job keeps the words:
 Three pieces (0.5.18), all rules, no AI.
 
 **The ledger** (`core/ledger.py`). One SQLite store, `state/ledger.db`, opened lazily per app (`of(app)`, closed by
-`App.close`). Kinds (`NAMES`): `gist`, `thread` (only here), `fact`, `day`, `meeting` (`NOTES`: read from notes).
+`App.close`). Kinds (`NAMES`): `gist`, `thread` (only here), `fact`, `day`, `meeting` (`NOTES`: read from notes), and
+(0.9.0, `memory.day_rows`, off) `dayrow`: `day_row(app, day)` from events only (`face_back`→`face_left` spans, rounded to
+the hour and said from 1 h; `study_logged`/`study_session_end` minutes by subject; `class_skip`/`class_attend` from your
+taps), written by `memory:nightly` for yesterday at noon (`write_day_row`, replacing that day's), shown by `day_story`.
 
 - Crypto: `Ledger.key()` is a 32-byte key in `app.secrets` as `ledger.key` (base64), made under
   `Lock(state, "ledger-key")` on first use. With rows present and no key it raises `Locked` (never a new key over old

@@ -65,3 +65,23 @@ def test_the_command_writes_them(tmp_path, monkeypatch, capsys):
     assert "settings.md" in capsys.readouterr().out
     assert cli.main(["reserve"]) == 0
     assert "already up to date" in capsys.readouterr().out
+
+
+def test_today_at_a_glance(env):
+    """L33 (0.9.0, reserve.today): today's classes, what's due today and tomorrow, never a health or money line."""
+    import datetime as dt
+
+    from kurooto.core.clock import now
+
+    env.on("deadlines")
+    dl = env.app.modules["deadlines"]
+    t = now()
+    dl.add("Group theory sheet", t.replace(hour=23, minute=0) if t.hour < 23 else t + dt.timedelta(minutes=30))
+    dl.add("Pay the rent", t + dt.timedelta(hours=20))
+    dl.add("Thesis chapter", t + dt.timedelta(days=9))
+    text = reserve.today_md(env.app)
+    assert text.startswith("# Today") and "Group theory sheet" in text
+    assert "Pay the rent" not in text and "Thesis chapter" not in text
+    assert "today.md" in reserve.guide_md(env.app)
+    env.app.settings.set("reserve.today", False)
+    assert "Off" in reserve.today_md(env.app) and "today.md" not in reserve.guide_md(env.app)

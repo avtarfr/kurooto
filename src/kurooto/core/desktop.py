@@ -31,10 +31,22 @@ $app = '{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell
 _MAC = "on run argv\ndisplay notification (item 2 of argv) with title (item 1 of argv)\nend run"
 
 
+last_id = ""  # (0.9.0) the id of the pop-up notify() just showed, where the system gives one (Linux); else ""
+
+
 def notify(title: str, text: str, urgent: bool = False) -> bool:
+    """Show a pop-up. Its id, where the system gives one, is left in last_id for close()."""
+    global last_id
+    ok, last_id = show(title, text, urgent)
+    return ok
+
+
+def show(title: str, text: str, urgent: bool = False) -> tuple[bool, str]:
+    """A pop-up, and (0.9.0) its id where the system gives one (Linux: notify-send --print-id), so close() can take
+    it down once its question is answered elsewhere; "" elsewhere (Windows, macOS: best effort, no close)."""
     title, text = str(title)[:120], str(text)[:500]
     if os.environ.get("KUROOTO_NO_DESKTOP"):  # a developer's scratch run: nothing pops up on the real desktop
-        return False
+        return False, ""
     try:
         if sys.platform == "win32":
             script = base64.b64encode(_WIN_TOAST.encode("utf-16-le")).decode()
@@ -45,11 +57,30 @@ def notify(title: str, text: str, urgent: bool = False) -> bool:
         elif sys.platform == "darwin":
             r = proc.run(["osascript", "-e", _MAC, title, text], timeout=10)
         elif shutil.which("notify-send"):
-            r = proc.run(
-                ["notify-send", "-a", "Kurooto", "-u", "critical" if urgent else "normal", title, text], timeout=10
-            )
+            cmd = ["notify-send", "-a", "Kurooto", "-u", "critical" if urgent else "normal"]
+            r = proc.run([*cmd, "--print-id", title, text], timeout=10)
+            if r.ok:
+                nid = (r.out or "").strip().splitlines()[-1:]
+                return True, nid[0] if nid and nid[0].isdigit() else ""
+            r = proc.run([*cmd, title, text], timeout=10)  # an older notify-send without --print-id
         else:
-            return False
+            return False, ""
+        return r.ok, ""
+    except Exception:
+        return False, ""
+
+
+def close(nid: str) -> bool:
+    """(0.9.0) Take a pop-up down by the id show() returned (Linux, through the desktop's notification service)."""
+    if not str(nid or "").isdigit() or os.environ.get("KUROOTO_NO_DESKTOP") or not shutil.which("gdbus"):
+        return False
+    try:
+        r = proc.run(
+            ["gdbus", "call", "--session", "--dest", "org.freedesktop.Notifications", "--object-path",
+             "/org/freedesktop/Notifications", "--method", "org.freedesktop.Notifications.CloseNotification",
+             str(nid)],
+            timeout=5,
+        )  # fmt: skip
         return r.ok
     except Exception:
         return False
