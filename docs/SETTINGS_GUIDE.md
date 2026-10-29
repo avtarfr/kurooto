@@ -1459,6 +1459,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.speak.guests_private` | `false` | With someone else at the desk, an AI answer isn't read aloud by itself: it stays on screen, and a message offers Read it aloud. ([guide](wiki/user/settings-guide.md#voicespeakguestsprivate)) |
 | `voice.speak.join_sentences` | `true` | Speak short sentences together, up to about 200 characters at a time, instead of each on its own. ([guide](wiki/user/settings-guide.md#voicespeakjoinsentences)) |
 | `voice.speak.max_chars` | `800` | How much of a long answer is read aloud before it says "the rest is on screen". ([guide](wiki/user/settings-guide.md#voicespeakmaxchars)) |
+| `voice.speak.messages` | `false` | A due reminder or a question for you is also said aloud while you're alone at the desk; your spoken answer closes it. ([guide](wiki/user/settings-guide.md#voicespeakmessages)) |
 | `voice.speak.numbers_as_words` | `true` | Say numbers as a person would: 21:31 as "nine thirty-one PM", ₹3,000 as "three thousand rupees". ([guide](wiki/user/settings-guide.md#voicespeaknumbersaswords)) |
 | `voice.speak.on` | `true` | Kurooto speaks through this computer's speakers. ([guide](wiki/user/settings-guide.md#voicespeakon)) |
 | `voice.speak.rate` | `1.0` | How fast it speaks: 1.0 is normal, 0.8 slower, 1.2 faster. ([guide](wiki/user/settings-guide.md#voicespeakrate)) |

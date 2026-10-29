@@ -1027,6 +1027,7 @@
 "voice.speak.guests_private": "With someone else at the desk, an AI answer isn't read aloud by itself: it stays on screen, and a message offers Read it aloud.",
 "voice.speak.join_sentences": "Speak short sentences together, up to about 200 characters at a time, instead of each on its own.",
 "voice.speak.max_chars": "How much of a long answer is read aloud before it says \"the rest is on screen\".",
+"voice.speak.messages": "A due reminder or a question for you is also said aloud while you're alone at the desk; your spoken answer closes it.",
 "voice.speak.numbers_as_words": "Say numbers as a person would: 21:31 as \"nine thirty-one PM\", ₹3,000 as \"three thousand rupees\".",
 "voice.speak.on": "Kurooto speaks through this computer's speakers.",
 "voice.speak.rate": "How fast it speaks: 1.0 is normal, 0.8 slower, 1.2 faster.",

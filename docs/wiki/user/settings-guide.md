@@ -43,7 +43,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 66 settings
 - [Brain](#brain): 157 settings
-- [Voice and voice notes](#voice-and-voice-notes): 91 settings
+- [Voice and voice notes](#voice-and-voice-notes): 92 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 12 settings
@@ -7866,6 +7866,18 @@ presence) or a voice that isn't yours lately (Voice ID).
 - **Values:** On or off. **Default:** off.
 - **When to change it:** Turn it on if answers about your work shouldn't be heard by whoever is with you.
 - **Depends on:** `voice.speak.what` = `all`, and Face presence or Voice ID to notice others.
+
+### `voice.speak.messages`
+
+A due reminder or a question for you is also said aloud while you're alone at the desk; your spoken answer closes it.
+
+Only with Face presence seeing you at the desk and nobody else there. The phone and Telegram copies still come. A
+question's answer counts only in your own voice (Voice ID), and then it's answered everywhere; "done" to a reminder
+takes its copies down. Approvals are never said: they wait for your tap. Each kind goes through Calm (Why?, Stop).
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you'd rather hear reminders at the desk than look at the phone.
+- **Depends on:** Voice speaking and listening, Face presence; Voice ID for answers to close anything.
 
 ### `voice.listen.timing`
 

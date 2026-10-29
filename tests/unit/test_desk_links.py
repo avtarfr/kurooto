@@ -210,3 +210,92 @@ def test_calls_settle_messages_closes_them_instead(chat):  # noqa: F811
     _call_with(chat, tools, [{"who": "Sam", "text": "skipping la"}])
     assert app.calm.held_rows() == []
     assert app.ask.get(qid)["status"] == "expired" and app.ask.get(aid)["status"] == "open"
+
+
+# --------------------------------------------------------------------------------------------- L41, L42
+@pytest.fixture
+def desk_voice(tmp_path, monkeypatch):
+    """Voice on with a fake mouth and ear: say() records, listen_once returns the next scripted answer."""
+    monkeypatch.setenv("KUROOTO_HOME", str(tmp_path))
+    from kurooto.app import App
+
+    app = App()
+    v = app.modules["voice"]
+    monkeypatch.setattr(v.parts, "missing", lambda keys: [])
+    monkeypatch.setattr(v, "_on_call", lambda: False)
+    monkeypatch.setattr(v, "_night", lambda: False)
+    ok, why = app.enable("voice")
+    assert ok, why
+    v.said, v.heard = [], []
+    monkeypatch.setattr(v, "say", lambda text, wait=False, unprompted=False, why="": v.said.append(text) or (True, ""))
+    monkeypatch.setattr(v, "listen_once", lambda timeout_s=8.0, own=False: v.heard.pop(0) if v.heard else None)
+    monkeypatch.setattr(v, "others_here", lambda: False)
+    monkeypatch.setattr(app.notifier, "at_desk", lambda: True)
+    started = []
+
+    class Now:  # the thread runs at once, here
+        def __init__(self, target, args=(), **kw):
+            self.target, self.args = target, args
+
+        def start(self):
+            started.append(1)
+            self.target(*self.args)
+
+    import kurooto.modules.voice as vmod
+
+    monkeypatch.setattr(vmod.threading, "Thread", Now)
+    yield app, v
+    app.close()
+
+
+def test_the_spoken_answer_says_whose_voice_and_never_with_others_here(desk_voice, monkeypatch):
+    app, v = desk_voice
+    v.heard = [("yes please", None, 1.4)]
+    assert v.spoken_answer("Shall I?") == {"text": "yes please", "who": ""}  # Voice ID off: unchecked
+    assert v.said == ["Shall I?"]
+    monkeypatch.setattr(v, "verdict_of", lambda emb, s: "owner")
+    v.heard = [("yes", None, 1.2)]
+    assert v.spoken_yes("Shall I?") is True
+    monkeypatch.setattr(v, "verdict_of", lambda emb, s: "guest")
+    v.heard = [("yes", None, 1.2)]
+    assert v.spoken_yes("Shall I?") is None  # not your voice
+    monkeypatch.setattr(v, "others_here", lambda: True)
+    v.heard = [("yes", None, 1.2)]
+    assert v.spoken_answer("Shall I?") is None and v.heard  # nothing said, nothing taken
+
+
+def test_a_question_is_said_aloud_and_your_spoken_answer_closes_it(desk_voice, monkeypatch):
+    app, v = desk_voice
+    app.settings.set("voice.speak.messages", True)
+    monkeypatch.setattr(v, "verdict_of", lambda emb, s: "owner")
+    v.heard = [("chapter four", None, 1.5)]
+    qid = app.ask.ask("Which chapter is the quiz on?", source="study")
+    assert v.said[0] == "A question for you: Which chapter is the quiz on?"
+    q = app.ask.get(qid)
+    assert q["status"] == "answered" and q["answer"] == "chapter four" and q["via"] == "voice"
+    aid = app.ask.approval("Send the draft?")
+    assert len(v.said) == 2 and app.ask.get(aid)["status"] == "open"  # an approval is never said: "Noted." only
+
+
+def test_messages_aloud_is_off_by_default_and_not_your_voice_changes_nothing(desk_voice, monkeypatch):
+    app, v = desk_voice
+    v.heard = [("chapter four", None, 1.5)]
+    qid = app.ask.ask("Which chapter is the quiz on?", source="study")
+    assert v.said == [] and app.ask.get(qid)["status"] == "open"
+    app.settings.set("voice.speak.messages", True)
+    monkeypatch.setattr(v, "verdict_of", lambda emb, s: "unsure")
+    qid = app.ask.ask("Which chapter is the quiz on?", source="study")
+    assert v.said and app.ask.get(qid)["status"] == "open"
+
+
+def test_a_reminder_said_aloud_and_done_takes_its_copies_down(desk_voice, monkeypatch):
+    app, v = desk_voice
+    app.settings.set("voice.speak.messages", True)
+    monkeypatch.setattr(v, "verdict_of", lambda emb, s: "owner")
+    gone = []
+    monkeypatch.setattr(app.notifier, "retract", lambda k=None, r=None, b=None: gone.append((k, r)))
+    v.heard = [("done", None, 0.9)]
+    app.notify(
+        "Call the lab.\n\nDone · Snooze", kind="reminder", map_kind="reminder", map_ref="r1", why="reminders.own"
+    )
+    assert v.said == ["Reminder: Call the lab."] and gone == [("reminder", "r1")]

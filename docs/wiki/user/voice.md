@@ -61,6 +61,11 @@ answer from your AI (Telegram and the phone app ones too), and `off` keeps it si
 `voice.speak.guests_private` on (0.9.0, off), such an answer isn't read aloud while someone else is at the desk (two
 faces looking, or a voice that isn't yours): it stays on screen, and a message offers **Read it aloud**.
 
+- **Reminders and questions aloud** (0.9.1, `voice.speak.messages`, off): while Face presence has you alone at the
+  desk, a due reminder or a question for you is also said aloud ("Reminder: call the lab."); the phone and Telegram
+  copies still come. Answer it aloud: in your own voice (Voice ID) a question is answered everywhere at once, and
+  "done" to a reminder takes its copies down. Approvals are never said; they wait for your tap. Each kind goes
+  through Calm (`voice.messages.reminder`, `voice.messages.question`: Why? and Stop).
 - Pick a voice with `voice.speak.voice` (Kokoro: `af_heart`, the default, `af_bella`, `af_nicole`, `af_sarah`,
   `am_michael`, `am_adam`, `bf_emma`, `bf_isabella`, `bm_george`, `bm_lewis`), and the speed with `voice.speak.rate`.
 - Long answers are read up to `voice.speak.max_chars` (800 characters), then "The rest is on screen."

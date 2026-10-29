@@ -2208,6 +2208,9 @@ that. Packages go into Kurooto's own folder, never your system.
 *Leaves:* nothing while no conversation is open; then only the turns said to Kurooto, as text, to your AI (and kept
 in the chat history like typed ones). Sound is never saved; the words of noise and chatter are dropped at once and
 never stored, logged or sent. Setting up downloads from PyPI, GitHub and Hugging Face.
+**Reminders and questions aloud** (0.9.1, `voice.speak.messages`, off): alone at the desk, a due reminder or a question
+for you is also said aloud (the phone copy still comes); your own voice's answer closes a question everywhere, "done"
+takes a reminder down; never approvals. *Undo:* turn it off.
 *Undo:* `/voice mute` stops listening and speaking at once; `voice.listen.barge_in` off drops the microphone while it
 speaks, as before; `voice.speak.ack` `off`, `voice.speak.stream` off and `voice.listen.fast_brain` `same` put a turn
 back as in 0.8.15; `voice.listen.on` off stops listening; turning Voice off

@@ -25,6 +25,9 @@
 - **What a call went over** (`calls.settle_messages`, off): held messages and open questions about what a call or a
   desk talk went over say "talked through on your 17:00 call", with Settled on the Waiting page; the switch closes
   them instead. Never approvals.
+- **Reminders and questions said aloud at the desk** (`voice.speak.messages`, off): while you're alone at the desk, as
+  well as the usual copies; your own spoken answer closes a question everywhere, and "done" takes a reminder down.
+  Never approvals. Features and add-ons share one spoken-answer helper (`Voice.spoken_answer`, `spoken_yes`).
 - **While you were away** (`face.away.summary`, off): back at the desk, one pop-up and a card listing what came
   meanwhile; `face.away.summary_only` (off) shows only that pop-up until you press Send now.
 
