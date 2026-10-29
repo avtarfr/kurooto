@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.0 (unreleased)
+## 0.9.0 (2026-10-29)
 
 - **Handwritten notes say what's already in your notes** (`handwritten.overlap`, on; `handwritten.overlap_courses`
   limits it to the courses you list). After a written-out note is linked, one AI request compares its sections with
