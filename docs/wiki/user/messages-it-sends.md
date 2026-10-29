@@ -307,6 +307,7 @@ No Stop; only Another time. When sent as urgent they always come.
 | handwritten pages written out into notes | Handwritten notes | | list | one a day | yes | |
 | a handwritten file that couldn't be written out | Handwritten notes | | list | | yes | |
 | handwritten notes linked to their lecture, course page and concepts | Handwritten notes | | list | one a day | yes | |
+| the sections of new handwritten notes that are already in your notes | Handwritten notes | `handwritten.overlap` | no more marking | one a day | yes | |
 | a book that was read | Books and PDFs | `books.at` | list | | yes | |
 | what the concept graph did overnight | Concept graph | `integrate.at` | list | | yes | |
 | concept notes that look like one concept, up to three pairs (Merge / Keep both / Add alias, each with Undo) | Concept graph | `integrate.duplicates` | no more | | yes | |

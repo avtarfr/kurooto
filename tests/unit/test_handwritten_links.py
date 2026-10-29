@@ -69,6 +69,7 @@ def world(env):
     app.settings.set("subjects.timetable", [{"day": "wed", "start": "10:00", "end": "11:00", "subject": SUBJ}])
     app.power.current = "normal"
     app.settings.set("handwritten.local_model", "fake-vision")  # ready, without a key
+    app.settings.set("handwritten.overlap", False)  # the linking alone (the overlap: test_handwritten_overlap.py)
     env.on("subjects", "handwritten")
     ws = app.workspace
     for rel, text in {
@@ -260,6 +261,7 @@ def test_the_kurooto_layout_gets_a_header_and_its_own_course_page(env):
         app.settings.set("subjects.list", [{"name": "Linear Algebra", "slug": "linear-algebra", "aliases": ["la"]}])
         app.power.current = "normal"
         app.settings.set("handwritten.local_model", "fake-vision")  # ready, without a key
+        app.settings.set("handwritten.overlap", False)
         env.on("subjects", "handwritten")
         ws = app.workspace
         (ws / "linear-algebra").mkdir(parents=True)

@@ -19,6 +19,10 @@ Then it's linked like any other note (modules/handwritten_links.py): a real titl
 it was written and the timetable, or from what it says), a ## Links list (the lecture, the course page, the concept
 notes it covers, with reasons) and a ## Doubts list, and a line on the course page. One request to your AI does the
 choosing; /handwritten link does it for notes written out before, /handwritten undo takes the last one back.
+
+After that, what's already in your notes (modules/handwritten_overlap.py): the sections your notes for that course have
+are marked "(already in [[note]])", with an "Already in your notes" and a "New here" list; "only from <topic>" (a text
+file next to the scan, its name, or /handwritten only) adds the part from that heading on.
 """
 
 from __future__ import annotations
@@ -42,6 +46,7 @@ from kurooto.core.lock import Lock, Timeout
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Module
 from kurooto.modules.handwritten_links import Linker
+from kurooto.modules.handwritten_overlap import Overlap
 from kurooto.modules.voice_notes import gemini_api
 
 register_defaults(
@@ -59,6 +64,9 @@ register_defaults(
         "max_pages": 60,  # pages written out per PDF
         "keep_original": "copy",  # copy (next to the note, or in files.folder) | link (leave it where it is)
         "link": True,  # link each written-out note to its lecture, course page and concept notes (one AI request)
+        "overlap": True,  # mark the sections of a written-out note your notes already have (one AI request)
+        "overlap_courses": [],  # the courses whose handwritten notes are checked for overlap; empty: every course
+        "only_from": True,  # "only from <topic>" (a .txt next to the scan, its name, /handwritten only): that part on
     },
 )
 KINDS = {
@@ -102,7 +110,8 @@ class Handwritten(Module):
         "Pages are read by a model on this computer when there is one; otherwise they go to Google (Gemini, your "
         "free key), unless you turn that off (handwritten.cloud). To link a written-out note to your other notes, "
         "its text and the titles and opening lines of the notes it may relate to go to the AI you picked, like any "
-        "request (handwritten.link off: no linking)."
+        "request (handwritten.link off: no linking). To mark what's already in your notes, its text and the titles, "
+        "openings and headings of your notes for that course go to the same AI (handwritten.overlap off: no marking)."
     )
 
     def __init__(self, app):
@@ -111,6 +120,7 @@ class Handwritten(Module):
         self._halt = threading.Event()
         self.status = ""  # what it's doing now, for /handwritten status
         self.linker = Linker(self)  # linking the notes into the rest (modules/handwritten_links.py)
+        self.overlap = Overlap(self)  # what's already in your notes, "only from" (modules/handwritten_overlap.py)
 
     def folder(self) -> Path:
         f = self.setting("folder")
@@ -507,10 +517,15 @@ class Handwritten(Module):
         note.write_text(put_block(old, block, head), encoding="utf-8")
         known[src.name] = {"note": str(note), "copy": kept}
         jsave(notes_file, dict(list(known.items())[-2000:]))
+        linking = None
         try:  # linked like any other note; the answer comes later (a failure never costs the transcription)
-            self.linker.submit(note, src)
+            linking = self.linker.submit(note, src)
         except Exception as e:
             self.app.events.emit("handwritten_link_failed", error=str(e)[:200])
+        try:  # "only from", and the overlap request when there's no linking to wait for
+            self.overlap.after_file(note, src, linking=bool(linking))
+        except Exception as e:
+            self.app.events.emit("handwritten_overlap_failed", error=str(e)[:200])
         return layout.shown(self.app, note)
 
     # ------------------------------------------------------------------------------------- telegram
@@ -519,7 +534,8 @@ class Handwritten(Module):
             Command(
                 "handwritten",
                 "write out the handwritten pages waiting in the folder now (/handwritten status, /handwritten retry, "
-                "/handwritten link, /handwritten undo)",
+                "/handwritten link, /handwritten undo; /handwritten only <file or course> from <topic>: add the part "
+                "from that heading on, marked where your notes already have it)",
                 self._cmd,
             )
         ]
@@ -537,6 +553,8 @@ class Handwritten(Module):
             return self.linker.link_all()
         if a == "undo":
             return self.linker.undo()
+        if a == "only" or a.startswith("only "):  # the part from a topic on (modules/handwritten_overlap.py)
+            return self.overlap.only(arg.strip()[4:])
         if a == "retry":  # files that failed get another go
             failed = jload(failed_file, {}) or {}
             seen = jload(self.app.paths.state / "handwritten.json", {}) or {}

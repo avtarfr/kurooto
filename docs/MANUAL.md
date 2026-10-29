@@ -2860,8 +2860,24 @@ failed): every transcription with no Links section yet, one message when they're
 note's text goes to that AI, like any request. With `"handwritten"` in `integrate.sources`, a linked note is then read
 into the [concept graph](#concept-graph-books-into-linked-notes) too.
 
+**What's already in your notes** (`handwritten.overlap`, on). For notes someone sends you that repeat what you have:
+after linking, one more request to the same AI compares each section of the note (its headings, else bold title lines,
+else pages) with your notes for that course (its folder, its handwritten notes written out before, and the concept notes
+the concept graph's search finds per section). A covered section's heading gets `(already in [[note]])`, and a
+`<!-- kurooto:overlap -->` block after the links lists "Already in your notes" (section → note: what both have) and
+"New here"; one line tells you how many sections repeat. Only Kurooto's parts of the new note change: nothing is
+deleted and no other note is touched. `handwritten.overlap_courses` limits it to the courses you list (empty: every
+course). The note's text and those notes' titles, openings and headings go to that AI.
+
+**Only from a topic** (`handwritten.only_from`, on). A text file next to the scan with its name (`week5.txt`: "only from
+Functions of Several Variables"), a scan named "… from <topic>.pdf", or `/handwritten only <file or course> from
+<topic>` adds the part of the note from the best-matching heading on, with the marks, in a
+`<!-- kurooto:only-from -->` block; the full transcription stays. A scan still waiting gets it when it's written out.
+
 *Undo:* Features → Handwritten notes off; the notes and copies stay. `handwritten.local` = `false` goes back to Gemini
-for everything. `/handwritten undo` takes back the last linking; `handwritten.link` = `false` stops linking.
+for everything. `/handwritten undo` takes back the last linking with its marks (or the last "only from" part);
+`handwritten.link` = `false` stops linking, `handwritten.overlap` = `false` the marks, `handwritten.only_from` =
+`false` the "only from" part.
 
 ### Books and PDFs
 Your reference books and other PDFs, per subject, read at night into text your AI uses when it writes your course

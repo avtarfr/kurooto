@@ -806,6 +806,31 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   (last 60; `/handwritten undo` restores only files still as written); `/handwritten link` (`link_all`) queues every
   transcription without a Links section as one batch (one message at the end), skipping ones already queued. State:
   `<state>/handwritten-links.json`. Tests: `tests/unit/test_handwritten_links.py`.
+  Then `modules/handwritten_overlap.py` (`Overlap`, `hw.overlap`, 0.9.0): `Linker.done` calls `overlap.after_link(note,
+  batch, undo=got["undo"])` (the linking's undo key, so one `/handwritten undo` takes both back); with no linking
+  (`handwritten.link` off, no AI) `_file` → `overlap.after_file(note, src, linking=False)` asks straight away.
+  `submit` (switch `handwritten.overlap`; `handwritten.overlap_courses` against the course from `handwritten-links.json`
+  or `course:`, matched by slug, name or alias through `cg.normalise`) splits the transcription with `sections()`
+  (Markdown headings except `## Page N`; else whole-line bold; else pages; else the whole), gets candidates per section
+  (first 20) from a keyword `cg.Index` over the course's folder (`layout.path("subject")`, minus the course page) and
+  the course's earlier handwritten notes, plus `linker.index()` (concepts), `rerank=False`, plus the 6 newest handwritten
+  notes of the course; at most 30 cards (title, opening, headings). One job (`lane="chk"`, `linker.brain()`,
+  `then="handwritten.overlap"`). `done` keeps a covered section only when its index still has the same key, the target
+  was a candidate and exists, `lint_reason` passes and confidence ≥ 0.5; the result goes to
+  `<state>/handwritten-overlap.json` (`notes`, `only`, `scans`, `pending`) and `refresh(note)` writes: the marks inside
+  the handwritten block (`mark()`: `" (already in <link>)"` on the heading line; `handwritten_links.unmark` takes them
+  off, and `parts()` returns the transcription unmarked unless `marks=True`, so linking and the concept graph's
+  `take_handwritten` hash the same text), the `<!-- kurooto:overlap -->` block and the `<!-- kurooto:only-from -->`
+  block (`put_after`: after the transcription and the Kurooto blocks right after it). `yours()` must not change, or
+  nothing is written; each write goes into `linker.keep_undo` (titles no longer repeat in one record), and
+  `Linker.undo` calls `overlap.forget()` so what was taken back isn't written again (and keeps the linking's record
+  when the restored text still has its links block). "Only from": `topic_of(src)` (a `<stem>.txt` or `<name>.txt`
+  next to the scan, any first line "only from X" or just X; else "from X" in the name, stamps cut off), a
+  `/handwritten only` for a scan not written out yet (`scans`), or `Overlap.only()` (`find()`: a scan or note name or
+  title, an inbox file, a course by slug/name/alias → its newest linked note, nothing → the newest note).
+  `find_topic` matches any heading (exact, containment ≥ 4 characters, else the better of difflib's ratio and word
+  overlap, ≥ 0.7). Switch `handwritten.only_from`. Calm reason `handwritten.overlap`. Tests:
+  `tests/unit/test_handwritten_overlap.py`.
 
 ### Notes, sync and safety
 

@@ -714,6 +714,13 @@ REASONS: dict[str, Reason] = {
         R("handwritten.done", "handwritten pages written out into notes", fewer=DAILY),
         R("handwritten.failed", "a handwritten file that couldn't be written out"),
         R("handwritten.linked", "handwritten notes linked to their lecture, course page and concepts", fewer=DAILY),
+        R(
+            "handwritten.overlap",
+            "the sections of new handwritten notes that are already in your notes",
+            setting="handwritten.overlap",
+            fewer=DAILY,
+            stop=to(False, "handwritten notes aren't checked against your notes any more"),
+        ),
         R("books.read", "a book that was read", setting="books.at"),
         R("space.cleaned", "the Space keeper cleaned off old files", setting="space.when"),
         R("integrate.summary", "what the concept graph did overnight", setting="integrate.at"),

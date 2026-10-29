@@ -536,6 +536,9 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `handwritten.local_model` | `""` | An Ollama model of your choice that reads pictures; empty uses Local AI models' pick. ([guide](wiki/user/settings-guide.md#handwrittenlocalmodel)) |
 | `handwritten.max_pages` | `60` | The most pages written out per PDF. ([guide](wiki/user/settings-guide.md#handwrittenmaxpages)) |
 | `handwritten.model` | `"gemini-flash-latest"` | Which Gemini model reads handwriting when it's used. ([guide](wiki/user/settings-guide.md#handwrittenmodel)) |
+| `handwritten.only_from` | `true` | "Only from <topic>": add the part of a note from that heading on (a .txt next to the scan, its name, or /handwritten only). ([guide](wiki/user/settings-guide.md#handwrittenonlyfrom)) |
+| `handwritten.overlap` | `true` | Mark the sections of a written-out note that your notes for its course already have, and list what's new. ([guide](wiki/user/settings-guide.md#handwrittenoverlap)) |
+| `handwritten.overlap_courses` | `[]` | Only these courses' handwritten notes are checked for overlap; empty: every course. ([guide](wiki/user/settings-guide.md#handwrittenoverlapcourses)) |
 | `handwritten.pdf_hours` | `"23:00-07:00"` | When the model on this computer reads PDFs (on the charger); empty: any time. ([guide](wiki/user/settings-guide.md#handwrittenpdfhours)) |
 
 ### `hardware`

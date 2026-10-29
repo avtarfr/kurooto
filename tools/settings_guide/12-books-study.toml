@@ -239,3 +239,21 @@ tip = "Link each written-out note to its lecture, course page and concept notes.
 when = "Turn it off to save one AI request per note."
 cost = "One AI request per note, with the note's text."
 needs = "Handwritten notes."
+
+[s."handwritten.overlap"]
+tip = "Mark the sections of a written-out note that your notes for its course already have, and list what's new."
+what = "After linking, one AI request compares each section with the course's folder, its earlier handwritten notes and the concept notes: a covered section's heading gets \"(already in [[note]])\", and the note gets an \"Already in your notes\" and a \"New here\" list. Only Kurooto's parts of the new note change."
+when = "Keep it on when someone sends you full notes that repeat yours; turn it off to save the request."
+cost = "One AI request per note, with the note's text and the titles, openings and headings of the notes it may repeat."
+needs = "Handwritten notes and an AI."
+
+[s."handwritten.overlap_courses"]
+tip = "Only these courses' handwritten notes are checked for overlap; empty: every course."
+values = "A list of courses (slug, name or short name), or empty."
+when = "List the courses where a friend's notes repeat yours, so the rest cost nothing."
+needs = "`handwritten.overlap`; a note's course comes from linking (or `course:` in its header)."
+
+[s."handwritten.only_from"]
+tip = "\"Only from <topic>\": add the part of a note from that heading on (a .txt next to the scan, its name, or /handwritten only)."
+when = "Turn it off if your scans' names say \"from ...\" for another reason."
+needs = "Handwritten notes."
