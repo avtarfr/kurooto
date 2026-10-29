@@ -310,7 +310,7 @@ class VoiceID:
 
     # ---------------------------------------------------------------------------------------- the status
     def mic_now(self) -> str:
-        dev = str(self.v.setting("listen.device") or "")
+        dev = self.v.ears_device() if hasattr(self.v, "ears_device") else str(self.v.setting("listen.device") or "")
         if dev:
             return dev
         try:

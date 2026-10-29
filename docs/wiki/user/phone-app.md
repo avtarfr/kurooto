@@ -430,6 +430,9 @@ computer last sent them, as cards (see [The app's panes](#the-apps-panes-0810)).
 - **On your computer** (0.9.0): how many messages are held by the daily limit (tap it to send today's now), how many
   proposals wait for your tap, the Brain's state (`calls.today_waiting`); the hours studied today; and whether the
   laptop's camera is on and why (`face.phone_badge`, with Face presence on: words only, never a picture).
+- **Room** (0.9.2, with Voice and `voice.room_modes.on`): Alone, Company, Night, Silent, four buttons, with what the
+  mode does and until when. A tap asks your computer (it has to be on; sealed, this phone only) and shows its answer.
+  See [Room modes](voice.md#room-modes-alone-company-night-silent-092).
 
 Your computer sends a new list within seconds of a change on it (a deadline done on Telegram, an alarm set) and looks
 for changes every 5 minutes; the phone fetches it when it's told, when you open the app, and when it reconnects. Turn it off with `calls.today` (Dashboard → Settings → calls): the app then says "Turned off

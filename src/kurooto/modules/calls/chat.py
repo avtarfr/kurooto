@@ -83,6 +83,7 @@ BEING_OPS = (
     "module",
     "note.get",
     "voice.mute",
+    "voice.room",  # (0.9.2) Today's Room card: the room mode
 )  # the being on the phone (Views): only sealed, only now
 OFF_NOW = "Your computer was off when you sent that, so it wasn't done. Try again now that it's on."
 # (0.9.0) bedside mode opening or closing on a paired phone reaches this computer as a flag (no sensor): the event
@@ -811,6 +812,19 @@ class PhoneChat:
             code, out = api.post("voice/mute", {} if a.get("on") is None else {"on": bool(a.get("on"))})
             res = (
                 {"ok": True, "muted": bool(out.get("muted")), "note": str(out.get("message") or "")}
+                if code == 200
+                else {"ok": False, "note": "Voice isn't on this computer (Features: Voice: talk and listen)."}
+            )
+        elif op == "voice.room":  # (0.9.2) the room mode, through the dashboard's own POST /api/voice/room
+            code, out = api.post("voice/room", {"mode": str(a.get("mode") or ""), "by": "phone"})
+            room = out.get("room") or {}
+            res = (
+                {
+                    "ok": bool(out.get("ok")),
+                    "mode": room.get("mode", ""),
+                    "until_hm": room.get("until_hm", ""),
+                    "note": str(out.get("message") or ""),
+                }  # fmt: skip
                 if code == 200
                 else {"ok": False, "note": "Voice isn't on this computer (Features: Voice: talk and listen)."}
             )

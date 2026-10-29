@@ -5,14 +5,14 @@ import java.util.regex.Pattern;
 
 /**
  * The being's requests to your computer (0.8.10, Views → Being): a setting, a feature on or off, a note's preview,
- * mute. The page asks the app (ViewsPane answers /ask), the app sends it like a chat message, sealed with this phone's
+ * mute; (0.9.2) the room mode (voice.room: Today's Room card and the being's Hearing panel). The page asks the app (ViewsPane answers /ask), the app sends it like a chat message, sealed with this phone's
  * chat key (Crypto, k1) and marked live (the call line passes it on now or says your computer is off; it never waits
  * there), and your computer answers sealed for this phone alone (Seal, s1; or k1 from an older line), through chat.py's
  * "op". These are the rules, with no Android classes and no JSON library, so android/build.sh --test runs them on a
  * plain JVM (BeingTest). ViewsPane.ask does the sending.
  */
 final class BeingRules {
-    static final String[] OPS = {"settings.set", "module", "note.get", "voice.mute"};
+    static final String[] OPS = {"settings.set", "module", "note.get", "voice.mute", "voice.room"};
     static final int ARGS_MAX = 4000;
     static final String OFF = "Your computer is off: try again when it's on.";
     private static final Pattern TOKEN = Pattern.compile("\"(s1|k1)\"\\s*:\\s*\"([A-Za-z0-9_.-]{8,200000})\"");

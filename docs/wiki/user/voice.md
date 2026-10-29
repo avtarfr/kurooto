@@ -393,6 +393,45 @@ said something is counted, as a typed message's is.
   listening when your phone leaves a place you saved, and starts again when it arrives at one or someone is back at
   the desk (a face Face presence knows, or the keyboard). Only that the phone left goes anywhere, never the place.
 
+## Room modes: alone, company, night, silent (0.9.2)
+
+One word changes how Kurooto behaves at the desk for a while, and it goes back by itself (`voice.room_modes.on`, on;
+the modes do nothing until you pick one).
+
+| Mode | What changes | Ends |
+|---|---|---|
+| **Alone** | nothing: your settings as they are | (the usual mode) |
+| **Company** | nothing of yours is said aloud by itself (answers you asked for elsewhere, reminders, questions, reading your waiting questions); only your own look opens a talk; nobody else's turns go to Gemini Live | after `voice.room_modes.company_h` hours (3) |
+| **Night** | the same quiet about your things; every sound `voice.room_modes.night_db` quieter (12 dB); the soft tone instead of "Hmm."; the dashboard's button and the Body face show it | at the end of your night hours, else after `night_h` (10) |
+| **Silent** | nothing aloud at all: answers are on screen only (the dashboard, the app); Gemini Live isn't used | after `voice.room_modes.silent_h` hours (2) |
+
+A mode only ever turns things off or narrows them. It never turns on something you switched off (Gemini Live for
+everyone, spoken reminders), and never touches Voice ID, Face presence or approvals. Your saved settings don't change:
+when the mode ends they're back as they were.
+
+How to set one:
+
+- **Type** `/room night` (Telegram, the phone app's chat, the dashboard's talk box); `/room silent 30m` or
+  `/room company 5h` for a length of your own; `/room` says the mode now; `/room alone` (or `/room off`) ends it.
+- **The dashboard:** the room button beside MUTE on the board (a click goes to the next mode), or the four buttons in
+  the Hearing panel (click the ear).
+- **The phone app:** Today's **Room** card, four buttons (your computer has to be on).
+- **Say it:** "night mode", "go silent", "company mode", "I'm alone", "end night mode". The whole turn has to be the
+  phrase, and it counts only in your own voice (Voice ID; `voice.room_modes.spoken`). Anyone else is told to type
+  `/room`.
+- **The Body face** (an add-on): a long-press, while Face presence sees you.
+
+## When a part fails (0.9.2)
+
+- **Ears source lost** (`voice.degrade.ears`, off): with a microphone named in `voice.listen.device` (an add-on's
+  phone, say), when it goes away (no sound, only digital silence, or the sound system stops listing it) listening
+  carries on from this computer's own microphone within about two seconds, and Voice ID uses the voice print made on
+  that microphone. `/voice` and `/health` say "ears source lost"; it goes back to the named one when it's listed again.
+- **Kokoro fails** (`voice.degrade.piper`, on): Piper says the rest, but only when Piper is already set up; nothing is
+  fetched. Without it, answers are on screen only. Kokoro is tried again ten minutes later.
+- **One output stage** (a fix, always on): every sound (the voice, the "heard you" sound, Gemini Live) is levelled to
+  about the same loudness and held under -3 dBFS, so nothing it plays clips; night's quieter volume is applied there.
+
 ## Sound: how it plays and records
 
 On Linux with PipeWire, Kurooto plays its voice through PipeWire's `pw-play` and hears the microphone through
@@ -416,6 +455,7 @@ the sounddevice library (PortAudio) inside Kurooto, as before 0.8.16.
 | Kurooto stopped by itself while listening or speaking (0.8.10 to 0.8.15; `coredumpctl list` shows python with SIGSEGV or SIGABRT) | Fixed in 0.8.16: stopping or muting closed the microphone under the thread still reading it. Update. If it ever happens again, `coredumpctl info <pid>` shows where; set `voice.audio.backend` to `pipewire` so no sound code runs inside Kurooto. |
 | No sound, or no listening, after updating to 0.8.16 on Linux | Kurooto now uses `pw-play` and `pw-record`. Check they're installed (the `pipewire` package) and that PipeWire runs (`wpctl status`). Set `voice.audio.backend` to `portaudio` to go back to the old way. |
 | It listens to the wrong microphone | With `pipewire`, it follows your system's default input: change it in your sound settings, or set `voice.listen.device` to the PipeWire node's name. With `portaudio`, `voice.listen.device` takes sounddevice's names or numbers. |
+| "ears source lost" in `/voice` or `/health` (0.9.2) | The microphone named in `voice.listen.device` went away (the phone unplugged) and it's listening through this computer's own. Plug it back; it goes back by itself. Turn `voice.degrade.ears` off to have it stop listening instead. |
 | "the microphone stopped sending sound" in `/health` | The microphone went away and didn't come back within about half a minute. Plug it back in or pick another; it tries again by itself a minute later. |
 
 ## Commands
@@ -432,6 +472,7 @@ the sounddevice library (PortAudio) inside Kurooto, as before 0.8.16.
 | `/voice id retrain` | build your voice print again from your samples (after changing the strictness) |
 | `/voice id undo today`, `/voice id undo all` | drop what it learned from your turns (improving over time) |
 | `/voice id forget` | delete your voice print and its key (with Forget my voice / Keep it buttons) |
+| `/room [alone\|company\|night\|silent] [2h\|30m]` | (0.9.2) the room mode; with nothing after it, the mode now; each ends by itself |
 
 The same from a terminal: `kurooto voice`, `kurooto voice mute`, `kurooto voice say Hello`, `kurooto voice id`,
 `kurooto voice id forget` (asks y/N; `--yes` skips it), `kurooto voice parts add FILE...`.

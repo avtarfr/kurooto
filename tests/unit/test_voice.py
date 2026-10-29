@@ -711,9 +711,11 @@ def test_kokoros_pause_is_put_back_between_pieces(voice, speakers, monkeypatch):
     voice.say("One, and then. Two.", wait=True)
     voice.say("Three, four", wait=True)
     first, last, alone = speakers.got
-    assert first == Kokoro().synth("One, and then.")[0] + bytes(2 * 4000)  # 0.25 s after a sentence, at 16 kHz
-    assert last == Kokoro().synth("Two.")[0]  # nothing after the last piece: the microphone's tail covers it
-    assert alone == Kokoro().synth("Three, four")[0]
+    from kurooto.modules.voice.outstage import process  # (0.9.2) every piece goes through the output stage
+
+    assert first == process(Kokoro().synth("One, and then.")[0] + bytes(2 * 4000), 16000)  # 0.25 s after a sentence
+    assert last == process(Kokoro().synth("Two.")[0], 16000)  # nothing after the last piece: the mic's tail covers it
+    assert alone == process(Kokoro().synth("Three, four")[0], 16000)
     from kurooto.modules.voice import pause_after
 
     assert pause_after(Kokoro(), "a clause,", 24000) == bytes(2 * 2400)  # 0.1 s after a clause

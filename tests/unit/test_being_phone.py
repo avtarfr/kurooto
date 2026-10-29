@@ -130,11 +130,20 @@ def test_being_js_keeps_the_dashboard_as_it_was():
 def test_the_phone_page_asks_only_the_four_sealed_requests_and_answers_the_rest_from_the_copy():
     js = (STATIC / "being-phone.js").read_text(encoding="utf-8")
     asked = set(re.findall(r'ask\("([a-z.]+)"', js))
-    assert asked == {"settings.set", "module", "note.get", "voice.mute"}
+    assert asked == {"settings.set", "module", "note.get", "voice.mute", "voice.room"}  # (0.9.2) the room mode
     rules = (ANDROID / "src/io/github/avtarfr/kurooto/BeingRules.java").read_text(encoding="utf-8")
     assert all(f'"{op}"' in rules for op in asked)  # the app sends these and nothing else
     assert "fetch(" in js and not re.search(r"fetch\(\s*[`\"']https?:", js)  # only the app's own addresses
-    for path in ("settings", "brain3d", "voice", "note", "modules/enable", "modules/disable", "voice/mute"):
+    for path in (
+        "settings",
+        "brain3d",
+        "voice",
+        "note",
+        "modules/enable",
+        "modules/disable",
+        "voice/mute",
+        "voice/room",
+    ):
         assert f'"{path}"' in js
     # chat.py's ops: the computer answers these (the chat-core part) with the dashboard's own validation
     assert "Your computer is off: try again when it's on." in js

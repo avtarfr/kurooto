@@ -2234,6 +2234,14 @@ never stored, logged or sent. Setting up downloads from PyPI, GitHub and Hugging
 **Reminders and questions aloud** (0.9.1, `voice.speak.messages`, off): alone at the desk, a due reminder or a question
 for you is also said aloud (the phone copy still comes); your own voice's answer closes a question everywhere, "done"
 takes a reminder down; never approvals. *Undo:* turn it off.
+**Room modes** (0.9.2, `voice.room_modes.on`): alone, company, night (quieter, `voice.room_modes.night_db`) or silent
+(on screen only), set by `/room`, the dashboard's room button and Hearing panel, the phone's Today card, a phrase in
+your own voice ("night mode": `voice.room_modes.spoken`, Voice ID) or the Body face. A mode only tightens Voice's
+settings, never turns one on, and ends by itself. *Undo:* `/room alone`, or `voice.room_modes.on` off.
+**When a part fails** (0.9.2): `voice.degrade.ears` (off) listens through this computer's microphone within about two
+seconds when the one named in `voice.listen.device` goes away, and goes back; `voice.degrade.piper` (on) has Piper say
+the rest when Kokoro fails, only if Piper is already set up. Every sound goes through one output stage (levelling and
+a -3 dBFS limiter; a fix). *Undo:* turn either switch off.
 *Undo:* `/voice mute` stops listening and speaking at once; `voice.listen.barge_in` off drops the microphone while it
 speaks, as before; `voice.speak.ack` `off`, `voice.speak.stream` off and `voice.listen.fast_brain` `same` put a turn
 back as in 0.8.15; `voice.listen.on` off stops listening; turning Voice off

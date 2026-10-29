@@ -43,7 +43,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 68 settings
 - [Brain](#brain): 159 settings
-- [Voice and voice notes](#voice-and-voice-notes): 92 settings
+- [Voice and voice notes](#voice-and-voice-notes): 100 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 12 settings
@@ -8158,6 +8158,90 @@ you either way.
 - **When to change it:** Turn it off if Live turns shouldn't open threads or set things up.
 - **Costs and what leaves this computer:** Nothing leaves this computer.
 - **Depends on:** `voice.listen.live`.
+
+### `voice.room_modes.on`
+
+Room modes: alone, company, night or silent, set with /room, the dashboard, the phone app or by saying it.
+
+Alone is your settings as they are. Company: nothing of yours is said aloud by itself (answers you asked for elsewhere,
+reminders, questions), only your own look opens a talk, and nobody else's turns go to Gemini Live. Night: the same quiet
+about your things, every sound quieter (`voice.room_modes.night_db`) and the soft tone in place of the "Hmm." word.
+Silent: nothing aloud at all, answers on screen only, and Gemini Live isn't used. A mode only ever turns things off or
+narrows them: it never turns on a feature you switched off, and never touches Voice ID, Face presence or approvals. Each
+ends by itself and goes back to alone.
+
+- **Values:** on or off **Default:** on.
+- **When to change it:** Turn it off to keep Voice exactly as its settings say, with no modes; a mode that's on ends at
+  once.
+- **Costs and what leaves this computer:** Nothing leaves the computer: the mode, until when and who set it are kept in
+  Kurooto's state.
+- **Depends on:** Voice. Night ends with your night hours when you've set them (availability.night).
+
+### `voice.room_modes.spoken`
+
+Set a room mode by saying it ("night mode", "go silent", "I'm alone"), in your own voice only.
+
+The whole turn has to be the phrase. It counts only when Voice ID says it's your voice; anyone else, or a voice it isn't
+sure of, is told to type /room. With Voice ID off it never sets a mode by voice.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you only want /room, the dashboard and the phone to change it.
+- **Depends on:** Room modes and Voice ID.
+
+### `voice.room_modes.company_h`
+
+Company mode ends by itself after this many hours.
+
+- **Values:** A whole number. **Default:** `3`.
+- **When to change it:** Make it longer for a long visit; /room company 5h sets one length only.
+
+### `voice.room_modes.silent_h`
+
+Silent mode ends by itself after this many hours.
+
+- **Values:** A whole number. **Default:** `2`.
+- **When to change it:** Make it longer if you're often in a library or a meeting for longer.
+
+### `voice.room_modes.night_h`
+
+Night mode ends at the end of your night hours, or after this many hours without them.
+
+- **Values:** A whole number. **Default:** `10`.
+- **When to change it:** Set it to your usual night if you haven't set night hours.
+
+### `voice.room_modes.night_db`
+
+At night every sound Kurooto plays is this much quieter (decibels).
+
+- **Values:** -30 (much quieter) to 0 (the same) **Default:** `-12`.
+- **When to change it:** Lower it if night mode is still too loud; 0 keeps night's quiet about your things but not the
+  volume.
+
+### `voice.degrade.ears`
+
+The microphone you named goes away: listening carries on from this computer's own microphone within about two seconds.
+
+The named microphone (voice.listen.device, an add-on's phone, say) counts as gone when no sound comes, only digital
+silence comes, or the sound system stops listing it. Listening switches to this computer's default microphone, Voice ID
+uses the voice print made on that one, /voice and /health say "ears source lost", and it goes back when the named one is
+listed again.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you'd rather it keep hearing you when the phone is unplugged than stop listening.
+- **Costs and what leaves this computer:** This computer's own microphone listens while the named one is gone (sound
+  stays on this computer, as always).
+- **Depends on:** Voice listening with a microphone named in voice.listen.device.
+
+### `voice.degrade.piper`
+
+Kokoro fails to load or to speak: Piper speaks instead, only when it's already set up.
+
+What Kokoro didn't say yet is said by Piper; Kokoro is tried again ten minutes later. Piper is never fetched for this:
+without it the answers stay on screen only. /voice and /health say which it's using.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep only the voice you chose (answers on screen when it fails).
+- **Depends on:** Voice speaking with Kokoro; Piper set up earlier (voice.speak.engine piper once).
 
 ## Privacy and what it keeps
 

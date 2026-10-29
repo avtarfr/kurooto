@@ -25,7 +25,44 @@ with listening a second switch. User page: [../user/voice.md](../user/voice.md).
 | `modules/voice/fast.py` | (0.8.16) speed: `stamp()`, `numbers()`, `medians()`, `line()` (turn timing), `tone()` and `ACK_WORD` (the acknowledgement), `Stream` (speaking an answer as it's written), `chat_only()` and `FastPick` (`voice.listen.fast_brain`) |
 | `tests/unit/test_voice_fast.py` | (0.8.16) timing, streaming (through the portal, Claude Code's stream-json with a fake program, an API's SSE through the queue), the acknowledgement, the fast brain, warm-up |
 | `modules/voice/barge.py` | (0.8.13) barge-in: `Barge` (the listener's frames while it speaks, the echo's expected level, the voice and loudness-and-words checks on the `voice-barge` thread, its own voice print); `Voice.barge_turn()` handles what was said |
+| `modules/voice/room.py` | (0.9.2) `Room`: the mode (`state/voice/room.json`: mode, since, until, by), `TABLE` (per mode, setting key -> a function that only tightens: `_off`, `_what`, `_tone`), `tighten()` (read by `Voice.setting()`), `gain_db()`, `silent()`, `set()`, `heard()` (the spoken phrase, owner only), `phrase()`, `status()`/`line()` |
+| `modules/voice/outstage.py` | (0.9.2) `process(pcm, sr, gain_db)`: levelling (half way to -20 dBFS, at most 6 dB, nothing under -28 dBFS), the room's gain, a block limiter at -3 dBFS; NumPy or plain Python; stateless per piece |
+| `modules/voice/ears.py` | (0.9.2) `Ears`: a `Mic`-like over the named microphone that switches to the default one when it's lost (no frames, all zeros, or `present()` says it's unlisted) and back; `present()` reads `pactl list sources` |
+| `tests/fakes/ears.py` | (0.9.2) the desk tape: `Scene` (made-up voiced sound, room noise, `say()` with Kokoro when `KUROOTO_TEST_KOKORO` names its models; an unplug: stall, zeros, end), `FakeMic`, `Tape` (several microphones and which are listed) |
+| `tests/unit/test_voice_room.py`, `test_voice_ears.py` | (0.9.2) the table, endings, every way in, silent and night through the stage, the limiter; failover through `Ears` and the real `Listener`, Voice ID's microphone, the Piper rung |
 | `tests/unit/test_voice_barge.py` | (0.8.13) barge-in with synthetic voices, a fake clock, VAD and transcriber: own echo never stops it, the owner's voice does, told off, listen, loudness, the switch, an output's stop |
+
+## Room modes, the output stage and degrading (0.9.2)
+
+**Room modes.** `Voice.setting(key)` is the saved value passed through `Room.tighten(key, value)`: in a mode, the
+mode's `TABLE` entry for that key (if any) maps it to something no looser (a switch only to off, `speak.what` all ->
+voice, `speak.ack` word -> tone). Everything in the module that reads its settings through `self.setting` (live.py,
+fast.py, barge.py, voiceid.py's `s()`) sees the mode; other modules reading `app.settings` directly don't. `wants()`
+reads `speak.on` as saved, so silent doesn't change the parts. A table never names `speaker_id.*` or the face
+settings, and never maps off to on: `test_modes_only_tighten_and_never_turn_a_feature_on` checks it. `mode()` ends a
+mode past its `until` (also ticked from `background()`), emitting `voice_room {mode: "alone", by: "time", was}`.
+Ways in: `/room` (`Voice._cmd_room`), `POST /api/voice/room {mode, hours?, by?}` (`room` in `GET /api/voice`), the
+being op `voice.room` (chat.py `_being` -> that POST, `by: "phone"`; Today's copy has `room: {mode, until}` and
+`voice_room` is in today.py's `CHANGES`), the phrase in `ask_brain()` before anything else (`Room.heard`: Voice ID on
+and the verdict "owner", else a set line; never sent to the AI), and the add-on hook:
+
+- `Voice.room_mode() -> str`: "alone", "company", "night", "silent"; "" while `voice.room_modes.on` is off.
+- `Voice.set_room_mode(mode, source="body", hours=None) -> bool`: True when set; "" or "alone" ends one; False for an
+  unknown mode or the switch off. The Body face calls it on a long-press while Face presence sees the owner.
+- `Voice.room_status() -> dict`: the rest (until, until_hm, by, what), and the event `voice_room {mode, by, was}` /
+  the pages' `{"t": "voice", "kind": "voice_room", ...}` after every change.
+
+**The output stage.** `Speaker._play()` runs every piece through `Voice.out_stage()` first (Kokoro and Piper pieces,
+the acknowledgement, Gemini Live's audio: all reach `_play`), so the outputs, the player and barge-in's echo estimate
+get the same processed sound. Silent returns `b""` and nothing plays. A failure in the stage plays the piece as it was.
+
+**Degrading** (`voice.degrade`). `ears`: `_ears_mic()` wraps the named `voice.listen.device` in `ears.Ears` (only
+then); `ears_device()` is the microphone in use, and `VoiceID.mic_now()` reads it, so the print of that microphone is
+used (the per-device prints are the ident builder's). `on_change` emits `voice_ears {state}` (never the device's name)
+and publishes it. `piper`: `tts()` marks Kokoro broken for `BROKEN_S` when it fails to load; a synthesis failure inside
+`_speak()` marks it too and leaves what wasn't said in `after_failure`, which `Speaker._speak_on()` hands to the next
+rung once. Piper is used only when `parts.missing(["pkg:piper", "model:piper"])` is empty; `voice_rung` ("", "piper",
+"captions") is in `status()["degrade"]`, `/voice` and `/health` (`degrade_line()`).
 
 ## Used by Face presence (0.8.10)
 
