@@ -13,6 +13,13 @@ they are. Training is three things done on this computer, in well under a second
 Learning over time (face.learn.on) adds confident samples to a small pool (weight 0.5, never replacing enrolled ones);
 the threshold is still measured only against held-out enrolled samples, so learning can't grade its own homework.
 
+Looks (0.9.0, face.looks.on, "Add this look"): a short capture of how you look today (hair up, a new beard) adds 7 to 10
+enrolled samples with the step "look:<id>", their own condition group and so their own centroid. Before they're added,
+look_check() refuses a look that isn't safe: its average must already count as the same person as your enrolment by
+OpenCV's published 0.363 (or your "unsure" cut-off, if that's higher), and with the impostor set, the re-measured
+cut-off must not leave your usual samples recognised less often. Learning alone can't do this: it only learns from
+frames already well above the cut-off, so a look that scores "unsure" is never learned.
+
 Why not a classifier or a fine-tune on top (yet): there's one identity and about 50 samples of it; a classifier on
 128 numbers (you against the impostors) would mostly learn how made-up impostor faces differ from real ones; a
 fine-tune of SFace would need torch and real impostor images we can't licence. If an evaluation on real held-out data
@@ -21,6 +28,7 @@ ever shows a classifier beating the centroid at the same false-accept rate, it c
 
 from __future__ import annotations
 
+import secrets
 import statistics
 import time
 from dataclasses import dataclass, field
@@ -36,6 +44,10 @@ MODEL = "SFace 2021dec"
 VERSION = 1
 NOVEL = 0.97  # a learned frame must be less like every stored sample than this
 EXTRA = ("near", "far", "glasses", "light")  # the steps that raise the grade
+LOOK = "look:"  # (0.9.0) a look's samples have the step "look:<id>": their own group, so their own centroid
+LOOKS_MAX = 6  # at most this many looks
+LOOK_MIN = 7  # a look needs this many samples: each held-out fold still leaves MIN_GROUP of it to make its centroid
+LOOK_TAR_DROP = 0.05  # (impostor set) a look whose re-measured cut-off drops your usual samples' TAR more is refused
 WORDS = {
     "front": "looking straight at the camera",
     "left": "turned to your left",
@@ -50,7 +62,15 @@ WORDS = {
 
 
 def group_of(step: str) -> str:
-    return step if step in ("glasses", "light") else "base"
+    return step if step in ("glasses", "light") or is_look(step) else "base"
+
+
+def is_look(step: str) -> bool:
+    return step.startswith(LOOK)
+
+
+def _words(step: str) -> str:
+    return "in an added look" if is_look(step) else WORDS.get(step, step)
 
 
 @dataclass
@@ -135,7 +155,8 @@ def train(
     tar_step = {st: (sum(v >= th.hi for v in vs), len(vs)) for st, vs in by_step.items()}
     counts: dict[str, int] = {}
     for s in samples:
-        counts[s.step] = counts.get(s.step, 0) + 1
+        if not is_look(s.step):  # a look's samples are counted with the looks, not the steps
+            counts[s.step] = counts.get(s.step, 0) + 1
     med_g = statistics.median(genuine) if genuine else 0.0
     med_j = statistics.median(j) if j else None
     targets = targets or {}
@@ -148,10 +169,14 @@ def train(
         grade = "weak"
     advice = []
     for st, (k, n) in tar_step.items():
-        if n and k / n < 0.7:
+        if n and k / n < 0.7 and is_look(st):
             advice.append(
-                f"{WORDS.get(st, st).capitalize()}: recognised in {k} of {n} held-out samples. Add more samples "
-                f"{WORDS.get(st, st)}."
+                f"An added look: recognised in {k} of {n} held-out samples. Remove it and add it again facing the "
+                "camera in steady light."
+            )
+        elif n and k / n < 0.7:
+            advice.append(
+                f"{_words(st).capitalize()}: recognised in {k} of {n} held-out samples. Add more samples {_words(st)}."
             )
     if med_j is not None and med_j > 0.25:
         advice.append("Your samples look alike to many other faces. Retake them in better light.")
@@ -175,6 +200,48 @@ def train(
     return {"centroids": cents, "thresholds": th, "grade": grade, "report": report}
 
 
+def look_check(
+    samples: list[Sample],
+    learned: list[Sample] | None,
+    new: list[Sample],
+    impostors: list[list[float]] | None,
+    strictness: str = "normal",
+    override: float = 0.0,
+) -> str:
+    """Whether a look's new samples are safe to add to a template of `samples`: "" when they are, else the reason in
+    plain words. A new centroid widens what's accepted as you; the threshold can only push back when there are
+    impostors to measure, and the impostor set isn't always there (the floor), so the look must first be close to
+    you as you enrolled: its average at least max(FLOOR, the current unsure cut-off) against the enrolment's own
+    centroids (never another look's, so looks can't walk away from you one after another). Then, with impostors,
+    the cut-off re-measured with the look must not leave your usual samples (held out, as enrolment measures them)
+    recognised more than LOOK_TAR_DROP less often."""
+    if len(new) < LOOK_MIN:
+        return f"only {len(new)} clear samples (a look needs {LOOK_MIN})"
+    before = train(samples, learned, impostors, strictness, override)
+    th = before["thresholds"]
+    enrolled = centroids([s for s in samples if not is_look(s.step)])  # never against another look: no drifting
+    if score(mean_unit([s.e for s in new]), enrolled) < max(FLOOR, th.lo):
+        return (
+            "this look is too far from your face model to be sure it's you, and adding it would let other faces "
+            "pass as you. Enrol again (Start over) if your look has changed for good"
+        )
+    after = train(samples + new, learned, impostors, strictness, override)
+    th2 = after["thresholds"]
+    if th2.hi < th.hi - 1e-9:  # can't happen with the maths as it is; kept so a change there can't loosen it
+        return "adding it would lower the cut-off for recognising you"
+    if impostors:
+        old = [v for _, v in held_out(samples)]
+        mine = [v for st, v in held_out(samples + new) if not is_look(st)]
+        tar0 = sum(v >= th.hi for v in old) / len(old) if old else 0.0
+        tar1 = sum(v >= th2.hi for v in mine) / len(mine) if mine else 0.0
+        if tar1 < tar0 - LOOK_TAR_DROP:
+            return (
+                "this look is too close to other faces: to keep them out, the cut-off would rise so far that your "
+                f"usual look would be recognised in {round(tar1 * 100)}% of samples instead of {round(tar0 * 100)}%"
+            )
+    return ""
+
+
 class Template:
     """The decoded template: samples, learned samples, centroids and thresholds. Kept only sealed (TemplateStore)."""
 
@@ -191,6 +258,8 @@ class Template:
         self.last_test: dict = {}
         self.baseline: dict = {}  # the front step's pitch, face height and light (for Add samples)
         self.gaze: dict = {}  # (0.8.17) Calibrate my eyes: h, v, yaw, pitch, n, at (gaze.py); never a picture
+        self.looks: list[dict] = []  # (0.9.0) Add this look: {id, label, at, n}; the samples are in self.samples
+        self.use_looks = True  # (face.looks.on) off: the looks' centroids don't count (never stored)
         self.created = time.time()
         self.updated = self.created
         self.impostors_sha = ""
@@ -212,6 +281,7 @@ class Template:
             "last_test": self.last_test,
             "baseline": self.baseline,
             "gaze": self.gaze,
+            "looks": self.looks,
         }
 
     @classmethod
@@ -230,6 +300,7 @@ class Template:
         t.last_test = dict(d.get("last_test") or {})
         t.baseline = dict(d.get("baseline") or {})
         t.gaze = dict(d.get("gaze") or {})
+        t.looks = [dict(x) for x in d.get("looks") or [] if isinstance(x, dict) and x.get("id")]
         t.created = float(d.get("created") or time.time())
         t.updated = float(d.get("updated") or t.created)
         return t
@@ -238,7 +309,8 @@ class Template:
         """face.json: counts and dates only (the card and /face work with the keychain locked)."""
         per = {}
         for s in self.samples:
-            per[s.step] = per.get(s.step, 0) + 1
+            if not is_look(s.step):
+                per[s.step] = per.get(s.step, 0) + 1
         return {
             "enrolled": True,
             "samples": len(self.samples),
@@ -251,12 +323,15 @@ class Template:
             "trained": round(self.updated),
             "last_test_at": self.last_test.get("at"),
             "gaze_at": self.gaze.get("at"),  # (0.8.17) when your eyes were calibrated: a date, never the numbers
+            "looks": len(self.looks),  # (0.9.0) how many looks were added: a count, never their labels
             "model": MODEL,
             "impostors": self.thresholds.get("method") == "impostors",
         }
 
     # ------------------------------------------------------------------------------------------ deciding
     def score(self, x) -> float:
+        if not self.use_looks:  # stricter, never looser: a centroid fewer, the same cut-off
+            return score(x, [(g, c) for g, c in self.cents if not is_look(g)])
         return score(x, self.cents)
 
     def classify(self, x) -> tuple[str, float]:
@@ -303,3 +378,24 @@ class Template:
         n = len(self.learned)
         self.learned = []
         return n
+
+    # ------------------------------------------------------------------------------------------- looks
+    def add_look(self, label: str, new: list[Sample], at: float) -> dict:
+        """Adds a look's samples as enrolled samples of their own step (look_check first; retrain after)."""
+        lid = secrets.token_hex(4)
+        while any(x["id"] == lid for x in self.looks):
+            lid = secrets.token_hex(4)
+        for s in new:
+            self.samples.append(Sample(list(s.e), LOOK + lid, s.at, dict(s.q)))
+        look = {"id": lid, "label": label, "at": round(at), "n": len(new)}
+        self.looks.append(look)
+        return look
+
+    def remove_look(self, lid: str) -> dict | None:
+        """Takes a look and its samples out (retrain after); None when there's no such look."""
+        look = next((x for x in self.looks if x.get("id") == lid), None)
+        if look is None:
+            return None
+        self.looks = [x for x in self.looks if x is not look]
+        self.samples = [s for s in self.samples if s.step != LOOK + lid]
+        return look

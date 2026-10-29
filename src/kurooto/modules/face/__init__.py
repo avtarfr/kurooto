@@ -46,6 +46,13 @@ Camera resolution (0.8.17): sizes are shares of the frame (close_facing, owner_d
 pixels of a 480-high frame scaled to the camera's (vision.px_scale), so a camera switched from 480x640 to 1080x1440
 changes nothing but sharper eyes. YuNet always looks at a 320-wide copy.
 
+Add this look (0.9.0, face.looks.on): a look your template doesn't know (hair up, a new beard) scores "unsure", and
+learning never learns from unsure frames. The Face page's Add this look, `/face add-look [label]` or `kurooto face
+add-look [label]` (only you start it: camera.open, typed or the button) opens the camera for about 10 seconds, takes up
+to 10 samples through enrolment's checks (enrol.py's Look), and adds them as enrolled samples of their own look after
+model.look_check() says they're safe; a look that isn't is refused with the reason, never added with a looser
+threshold. Each look is listed on the Face page with Remove; at most model.LOOKS_MAX.
+
 Tracking (0.8.12, face.track.on): while the camera is open and a dashboard is in sight or an add-on holds the camera,
 every face in view goes out as {"t": "face", "kind": "faces", "faces": [{id, x, y, h, owner, m}]} (at most 10 a
 second; watch.py's tracking), so the being's eye can follow anyone; watch_faces(cb) hands the same to an add-on. A
@@ -70,8 +77,30 @@ from kurooto.core.state import jsave
 from kurooto.modules.base import Answer, Command, Incoming, Intent, Module
 from kurooto.modules.face import gaze as gaze_mod
 from kurooto.modules.face import parts as face_parts
-from kurooto.modules.face.enrol import MINIMUM, PLAN, TARGET, TARGETS, Enrolment, Session, Vision
-from kurooto.modules.face.model import FLOOR, MODEL, STRICTNESS, Template
+from kurooto.modules.face.enrol import (
+    LOOK_S,
+    LOOK_TARGET,
+    MINIMUM,
+    PLAN,
+    TARGET,
+    TARGETS,
+    Enrolment,
+    Look,
+    Session,
+    Vision,
+)
+from kurooto.modules.face.model import (
+    FLOOR,
+    LOOK_MIN,
+    LOOKS_MAX,
+    MODEL,
+    STRICTNESS,
+    Template,
+    centroids,
+    is_look,
+    look_check,
+    score,
+)
 from kurooto.modules.face.vision import YAW_K, pitch_degrees, px_scale, yaw_degrees
 from kurooto.modules.face.watch import PAUSES, TRACK_FAST, TRACK_OFF, TRACK_SLOW, Watcher
 
@@ -174,6 +203,11 @@ register_defaults(
             # that frame too, not only after an arrival and typing (the same caps, spacing and Undo)
             "from_voice": False,
         },
+        "looks": {
+            # (0.9.0) Add this look: you may add a short capture of how you look now (hair up, a new beard) to your
+            # face model, only when you start it; off: no new looks, and the ones you added stop counting
+            "on": True,
+        },
     },
 )
 
@@ -207,7 +241,8 @@ LICENCES = [
     },
 ]
 EARLY = PAUSES[:3] + ("template locked",)  # no watcher is built for these
-STAGES = {"enrol": "capturing", "test": "testing", "gaze": "calibrating"}  # a session's kind -> the page's stage
+# a session's kind -> the page's stage
+STAGES = {"enrol": "capturing", "test": "testing", "gaze": "calibrating", "look": "looking"}
 SAY_PARTS = ("next", "waiting", "deadline", "held", "answers")
 TOGGLES = {
     "greet.on": "Greet me when I sit down",
@@ -225,6 +260,7 @@ STATUS = re.compile(
     r"|^(?:is )?face presence (?:on|watching)\b",
     re.I,
 )
+LABEL_MAX = 40  # (looks) a look's label, in characters
 FORGET = re.compile(r"^(?:please\s+)?(?:forget|delete|erase) my face(?: data| model| template)?[\s.!]*$", re.I)
 
 
@@ -312,6 +348,7 @@ class Face(Module):
         self._light: tuple[float, float] | None = None  # (0.9.0, light_sense) (level 0..1, monotonic time)
         self._greet_rec = ""  # (0.9.0, greet.records) the open greeting's decision record id, until its talk closes
         self._others_away: dict[int, int] = {}  # (0.9.0, away.report_others) minute (epoch // 60) -> most faces seen
+        self._look_last: dict = {}  # (0.9.0, looks) the last look's result: {at, ok, message}, for the terminal
 
     # ------------------------------------------------------------------------------------------- the parts
     def wants(self) -> list[str]:
@@ -545,8 +582,15 @@ class Face(Module):
             "light": bool(self.setting("light_sense")),  # (0.9.0) each frame's mean brightness, a number only
         }
 
-    def _classify(self, e) -> tuple[str, float]:
+    def _tpl_live(self) -> Template | None:
+        """The template as recognition uses it now: with face.looks.on off, the looks' centroids don't count."""
         t = self._template_or_none()
+        if t is not None:
+            t.use_looks = bool(self.setting("looks.on"))
+        return t
+
+    def _classify(self, e) -> tuple[str, float]:
+        t = self._tpl_live()
         if t is None:
             return "stranger", 0.0
         over = float(self.setting("recognise.threshold") or 0)
@@ -557,7 +601,7 @@ class Face(Module):
         return t.classify(e)
 
     def _learnable(self, e) -> bool:
-        t = self._template_or_none()
+        t = self._tpl_live()
         return bool(t and self.setting("learn.on") and t.learnable(e, float(self.setting("learn.margin") or 0.08)))
 
     def build_watcher(self, camera=None, detector=None, embedder=None, frames=None, clock=time.monotonic) -> Watcher:
@@ -1447,7 +1491,7 @@ class Face(Module):
     def learn(self, e) -> bool:
         if not e or not self.setting("learn.on"):
             return False
-        t = self._template_or_none()
+        t = self._tpl_live()
         if t is None or not t.learnable(e, float(self.setting("learn.margin") or 0.08)):
             return False
         every = float(self.setting("learn.every_h") or 6) * 3600
@@ -1523,7 +1567,7 @@ class Face(Module):
             return "Another enrolment or test is open: finish or discard it first."
         return ""
 
-    def _start(self, kind: str, cid, mode: str = "new") -> tuple[bool, dict]:
+    def _start(self, kind: str, cid, mode: str = "new", label: str = "", via: str = "page") -> tuple[bool, dict]:
         why = self._refuse()
         if why:
             return False, {"message": why}
@@ -1547,6 +1591,13 @@ class Face(Module):
                 plan = Enrolment(px, have, t.baseline, [c for _, c in t.cents])
             else:
                 plan = Enrolment(int(self.setting("recognise.min_face_px") or 60))
+        elif kind == "look":
+            t = self._template_or_none()
+            if t is None:
+                return False, {"message": "Your face model's key can't be read just now: nothing was started."}
+            mine = centroids([x for x in t.samples if not is_look(x.step)])  # your enrolment's, never another look's
+            px = int(self.setting("recognise.min_face_px") or 60)
+            plan = Look(px, t.baseline, lambda e: score(e, mine), t.lo, label)
         else:
             t = self._template_or_none()
             if t is None:
@@ -1554,7 +1605,7 @@ class Face(Module):
             if kind == "gaze" and not self.parts.has_model("iris"):
                 return False, {"message": f"Get the eye model first ({EYE_MB:g} MB)."}
         try:
-            det, emb, frames = self._vision_objects(4 if kind == "enrol" else 1)
+            det, emb, frames = self._vision_objects(4 if kind in ("enrol", "look") else 1)
         except Exception as e:
             self._failed("loading the models", e)
             return False, {"message": f"The models didn't load: {type(e).__name__}."}
@@ -1573,6 +1624,9 @@ class Face(Module):
             thresholds=(t.hi, t.lo) if (t is not None and kind == "test") else (0.0, 0.0),
             on_mark=self._test_result if kind == "test" else None,
             on_gaze=self._gaze_done if kind == "gaze" else None,
+            on_look=(lambda got, why: self._look_done(got, why, label, via)) if kind == "look" else None,
+            keep=self._look_keep if kind == "look" else None,
+            preview=kind != "look" or via == "page",
         )
         self.session = sess
         if self.watcher is not None:
@@ -1601,6 +1655,110 @@ class Face(Module):
 
     def test_start(self, cid=None) -> tuple[bool, dict]:
         return self._start("test", cid)
+
+    # ------------------------------------------------------------------------------------------- looks (0.9.0)
+    def looks(self) -> list[dict]:
+        """Your looks: {id, label, at, n}; [] when there's no model or its key can't be read."""
+        t = self._template_or_none()
+        return [dict(x) for x in t.looks] if t is not None else []
+
+    def look_start(self, label: str = "", cid=None, via: str = "page") -> tuple[bool, dict]:
+        """Add this look: the Face page's button (via "page"), /face add-look ("chat": the result comes as a message)
+        or `kurooto face add-look` ("terminal": it asks look_status()). Only ever started by you."""
+        if not self.setting("looks.on"):
+            return False, {"message": "Add this look is off (face.looks.on in Settings)."}
+        why = self._refuse()
+        if why:
+            return False, {"message": why}
+        if not self.enrolled() or self.reenrol_needed():
+            return False, {"message": "Enrol first on the Face page: a look is added to your face model."}
+        t = self._template_or_none()
+        if t is None:
+            return False, {"message": "Your face model's key can't be read just now: nothing was started."}
+        if len(t.looks) >= LOOKS_MAX:
+            return False, {"message": f"You have {LOOKS_MAX} looks, the most it keeps: remove one on the Face page."}
+        shown = "".join(c if c.isprintable() else " " for c in str(label or ""))  # a newline is a space
+        label = re.sub(r"\s+", " ", shown).strip()[:LABEL_MAX]
+        label = label or f"Look {len(t.looks) + 1}"
+        self._look_last = {}
+        return self._start("look", cid, label=label, via=via)
+
+    def _look_keep(self) -> str:
+        return "" if self.setting("looks.on") else "face.looks.on was turned off"
+
+    def _look_done(self, got: list, why: str, label: str, via: str) -> dict:
+        """The look's end (on its session's thread): checked by model.look_check, then added and retrained, or not."""
+        ok, n = False, len(got)
+        if why:
+            msg = "Add this look stopped" + (f": {why}" if why != "stopped" else "") + ". Nothing was added."
+            result = "stopped"
+        elif n < LOOK_MIN:
+            msg = (
+                f"Only {n} clear frame{'s' if n != 1 else ''} of you in {LOOK_S:g} seconds (a look needs {LOOK_MIN}): "
+                "nothing was added. Try again alone, facing the camera, in steady light."
+            )
+            result = "too few"
+        else:
+            with self._tpl_lock:
+                t = self._template_or_none()
+                if t is None or not self.enrolled():
+                    msg, result = "Your face model isn't there any more: nothing was added.", "stopped"
+                elif len(t.looks) >= LOOKS_MAX:
+                    msg, result = f"You have {LOOKS_MAX} looks already: nothing was added.", "refused"
+                else:
+                    imp = self.impostors()
+                    reason = look_check(
+                        t.samples,
+                        t.learned,
+                        got,
+                        imp,
+                        str(self.setting("recognise.strictness") or "normal"),
+                        float(self.setting("recognise.threshold") or 0),
+                    )
+                    if reason:
+                        msg, result = f'"{label}" wasn\'t added: {reason}.', "refused"
+                    else:
+                        self._previous = t.to_payload()  # Undo the last training puts it back (this run only)
+                        t.add_look(label, got, time.time())
+                        rep = self._retrain(t)
+                        ok, result = True, "added"
+                        msg = (
+                            f'Added "{label}" ({n} samples) to your face model: recognised in '
+                            f"{round(float(rep.get('tar') or 0) * 100)}% of held-out samples, grade {t.grade}. Remove "
+                            "it on the Face page any time."
+                        )
+        got.clear()  # the numbers live only in the sealed template now (or nowhere)
+        self.app.events.emit("face_look", **_event_safe(result=result, count=len(self.looks())))
+        self._look_last = {"at": time.time(), "ok": ok, "message": msg}
+        if via == "chat":
+            try:
+                self.app.notify(msg, kind="result", why="face.look")
+            except Exception as e:
+                self._failed("telling you about the look", e)
+        return {"ok": ok, "message": msg}
+
+    def look_remove(self, lid: str) -> tuple[bool, str]:
+        """Takes a look and its samples out of your template, then retrains (Undo the last training puts it back)."""
+        with self._tpl_lock:
+            t = self._template_or_none()
+            if t is None:
+                return False, "Your face model's key can't be read just now."
+            before = t.to_payload()
+            look = t.remove_look(str(lid or ""))
+            if look is None:
+                return False, "There's no such look."
+            self._previous = before
+            self._retrain(t)
+        self.app.events.emit("face_look", **_event_safe(result="removed", count=len(t.looks)))
+        return True, f'Removed "{look.get("label") or "the look"}": its {look.get("n", 0)} samples are gone.'
+
+    def look_status(self) -> dict:
+        """For `kurooto face add-look`: the look being taken (counts) and the last one's result."""
+        s = self.session
+        live = None
+        if s is not None and s.kind == "look" and s.state != "ended" and s.plan is not None:
+            live = {"state": s.state, "got": s.plan.total(), "need": LOOK_TARGET}
+        return {"session": live, "last": dict(self._look_last)}
 
     def _session(self, sid: str) -> Session | None:
         s = self.session
@@ -1884,6 +2042,7 @@ class Face(Module):
                     "created": round(t.created),
                     "trained": round(t.updated),
                     "last_test": t.last_test,
+                    "looks": [dict(x) for x in t.looks],  # (0.9.0) id, label, at, n: never the samples
                 }
         s = self.session
         missing = self.parts.missing(self.wants())
@@ -1918,6 +2077,7 @@ class Face(Module):
             "holds": self.holds(),
             "voice_speaks": bool(vo is not None and self.app.is_on("voice") and not vo.muted()),
             "gaze": self.gaze_status(),  # (0.8.17) look to talk by the eyes or the head; never the numbers
+            "looks": {"on": bool(self.setting("looks.on")), "max": LOOKS_MAX, "samples": LOOK_TARGET, "s": LOOK_S},
         }
 
     def card(self) -> dict:
@@ -1953,9 +2113,9 @@ class Face(Module):
         return [
             Command(
                 "face",
-                "Face presence: what it's doing; pause [1h|off], forget",
+                "Face presence: what it's doing; pause [1h|off], forget, add-look [label] (about 10 s at the camera)",
                 self._cmd,
-                usage="/face [pause [1h|off]|forget]",
+                usage="/face [pause [1h|off]|forget|add-look [label]]",
             )
         ]
 
@@ -1966,6 +2126,18 @@ class Face(Module):
             return self.pause(rest)
         if word in ("forget", "delete"):
             return self.forget_question()
+        if word in ("add-look", "addlook"):  # typed by you: camera.open (core/tap.py), never by voice
+            if msg.via == "voice" or msg.voice:
+                return "Adding a look is typed only: type /face add-look, or use Add this look on the Face page."
+            via = "terminal" if msg.via == "terminal" else "chat"
+            ok, out = self.look_start(rest, None, via)
+            if not ok:
+                return str(out.get("message") or "That didn't start.")
+            then = "" if via == "terminal" else " I'll say how it went."
+            return (
+                f"Look at this computer's camera now, alone, as you are (its light is on), for about {LOOK_S / 2:g} "
+                f"seconds; move your head a little.{then}"
+            )
         return self.describe()
 
     def forget_question(self) -> Answer:
@@ -1986,13 +2158,14 @@ class Face(Module):
                 f"Model: {st.get('samples', 0)} samples, grade {st.get('grade') or '?'}"
                 + (f", recognised {round(float(tar) * 100)}% of held-out samples" if tar is not None else "")
                 + (f"; {st.get('learned')} learned" if st.get("learned") else "")
+                + (f"; {st.get('looks')} added look{'s' if st.get('looks') != 1 else ''}" if st.get("looks") else "")
                 + "."
             )
         else:
             out.append("Not enrolled: the dashboard's Face page has Start.")
         c = self.counts()
         out.append(f"Faces since start: you {c['you']}, unsure {c['unsure']}, not you {c['not_you']} (only counts).")
-        out.append("/face pause [1h|off], /face forget")
+        out.append("/face pause [1h|off], /face forget, /face add-look [label]")
         return "\n".join(out)
 
     def intents(self) -> list[Intent]:

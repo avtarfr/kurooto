@@ -471,6 +471,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `face.learn.max` | `30` | At most this many learned samples (the oldest goes first); the enrolled ones are never replaced. ([guide](wiki/user/settings-guide.md#facelearnmax)) |
 | `face.learn.on` | `false` | Slowly refine your face template from times it was very sure it was you (never unsure ones), with Undo. ([guide](wiki/user/settings-guide.md#facelearnon)) |
 | `face.light_sense` | `false` | Read the room's light from the camera's frames, as one smoothed number, for Brain and add-ons. ([guide](wiki/user/settings-guide.md#facelightsense)) |
+| `face.looks.on` | `true` | Add this look: you may add a short capture of how you look now (hair up, a new beard) to your face model. ([guide](wiki/user/settings-guide.md#facelookson)) |
 | `face.phone_badge` | `true` | The phone app's Today shows whether this computer's camera is on, and why. ([guide](wiki/user/settings-guide.md#facephonebadge)) |
 | `face.recognise.frames` | `3` | Recognised in this many of the last 4 frames means you're here. ([guide](wiki/user/settings-guide.md#facerecogniseframes)) |
 | `face.recognise.min_face_px` | `60` | Faces smaller than this many pixels are ignored: too far away to judge. ([guide](wiki/user/settings-guide.md#facerecogniseminfacepx)) |

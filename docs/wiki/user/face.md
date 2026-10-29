@@ -16,6 +16,7 @@ It's a convenience, **never a lock**: a face match never approves, unlocks or al
 - [The greeting and the conversation](#the-greeting-and-the-conversation)
 - [When you step away](#when-you-step-away)
 - [Learning over time](#learning-over-time)
+- [Add this look](#add-this-look)
 - [Forgetting your face](#forgetting-your-face)
 - [Privacy](#privacy)
 - [It's not a lock](#its-not-a-lock)
@@ -323,6 +324,40 @@ with Undo.
 The Face page lists what it learned ("Learned 1 sample on 3 Nov"), with **Undo the last** and **Forget what it
 learned**.
 
+## Add this look
+
+(0.9.0, `face.looks.on`, on.) With your hair up, a new beard or a hat, it may say "unsure" where it used to know you.
+Learning can't fix that by itself: it only learns from frames it's already very sure of. So you show it the look:
+
+- the Face page: type a label ("hair up") under **Looks** and tap **Add this look**;
+- or `/face add-look hair up` in a chat (the result comes as a message), or `kurooto face add-look hair up` in a
+  terminal (it shows the count and the result there).
+
+The camera opens (its light comes on) for about 10 seconds. Look at it as you are, alone, moving your head a little.
+It takes up to 10 samples through the same checks as enrolling (one face, close enough, sharp, lit, roughly facing the
+camera), and only frames that look at least a bit like you: a frame it would call "not you" is never taken. Then it
+checks the look as a whole and either adds it ("Added "hair up" (10 samples) to your face model: recognised in 97% of
+held-out samples, grade good.") or says why not.
+
+**When it says no.** If the look is too far from the face you enrolled to be sure it's you, adding it would let other
+faces pass as you too, so it isn't added: "this look is too far from your face model to be sure it's you". It never
+loosens the threshold to make a look fit. If your look has changed for good, **Start over** (enrol again). With fewer
+than 7 clear frames it adds nothing and asks you to try again in steady light.
+
+**What it changes.** The samples join your enrolled ones as a look of their own (its own centroid), and the threshold
+is measured again the way enrolling does. Each look is listed under **Looks** with its label, how many samples and when,
+and a **Remove** button; at most 6 looks. Only you start one, typed or tapped: never by voice, the AI, a plain-English request or a schedule.
+
+**Privacy.** As with enrolling: the frames are looked at in memory and dropped (a look started from a chat doesn't even
+make the preview picture); only the samples' numbers are added to your template, encrypted with it, and the label is
+kept inside the encrypted template too (the status file only says how many looks there are). Nothing leaves your
+computer, except the result message itself when you started it from Telegram or the phone app.
+
+**Undo.** **Remove** next to the look takes its samples out and measures the threshold again; **Undo the last training**
+puts back the model from before the last add or remove (until Kurooto restarts). Turning `face.looks.on` off stops any
+look being taken at once and makes the looks you added stop counting straight away (they stay in your model, unused,
+until you remove them; on again, they count again). Forgetting your face deletes them with everything else.
+
 ## Forgetting your face
 
 Any of these deletes your face model:
@@ -345,7 +380,7 @@ elsewhere.
   two numbers (where the irises sit), dropped with the frame.
 - **What it keeps:** your template only: numbers that describe your face, never a picture, encrypted (AES-GCM) under a
   key in your system's keychain, in `state/face/template.bin`, with a status file of counts and dates. Calibrating
-  your eyes adds four numbers to the same template. Never in a
+  your eyes adds four numbers to the same template, and each look you add its samples and label (0.9.0). Never in a
   backup, Profile sync or a diagnostics bundle.
 - **What it never keeps:** the camera's frames (looked at in memory and dropped), the preview (made in memory for the
   Face page), and anything of other people: a stranger's face is dropped with the frame, and only a count since start
@@ -389,12 +424,13 @@ yours is a risk where you live.
 | `/face` | what it's doing, the model's grade, and the faces it saw since start (counts only) |
 | `/face pause [1h\|30m\|off]` | no camera for that long (or until `/face pause off`) |
 | `/face forget` | delete your face model (asks first) |
+| `/face add-look [label]` | (0.9.0) add how you look now to your face model: about 10 seconds at the camera, alone ([Add this look](#add-this-look)) |
 | "is the camera on?", "are you watching me?" | the same as `/face` |
 | "stop watching", "pause the camera for an hour" | pause it |
 | "forget my face" | asks, then forgets |
 
 From a terminal: `kurooto face`, `kurooto face pause 1h`, `kurooto face forget [--yes]`,
-`kurooto face install-from FOLDER`, `kurooto face test-camera`.
+`kurooto face add-look [label]`, `kurooto face install-from FOLDER`, `kurooto face test-camera`.
 
 ## Settings
 
@@ -421,6 +457,7 @@ From a terminal: `kurooto face`, `kurooto face pause 1h`, `kurooto face forget [
 | `face.away.report_others` | off | the times someone else was at your desk while you were away, told on your return |
 | `face.learn.on`, `every_h`, `max`, `margin` | off, 6, 30, 0.08 | learning over time |
 | `face.learn.from_voice` | off | a turn Voice ID is sure is your voice, with only your face in view, may teach it too |
+| `face.looks.on` | on | Add this look (only when you start it); off: no new looks, and added ones stop counting |
 | `face.track.on`, `fps` | on, 10 | the being's eye follows every face in view, and how often it looks then |
 | `face.addons.watch`, `hold` | on, on | let add-ons see who's in view, and keep the camera looking while you type |
 | `face.addons.known_guests` | on | an add-on may say everyone else in view is known (yes or no), for the short greeting |
@@ -452,6 +489,8 @@ All of them: [the settings guide](../../SETTINGS_GUIDE.md).
 | It picked an infrared camera (grey picture, never recognises you) | set `face.camera.device` to your ordinary camera's number or name |
 | Good frames rejected as blurry or dark | more light on your face; the limits are first guesses, so tell us |
 | "weak model" | Add samples on the Face page, especially the steps the advice names, then Retrain |
+| "Unsure" when you look different (hair up, a hat) | **Add this look** on the Face page, or `/face add-look hair up` |
+| "this look is too far from your face model" | it can't be sure that look is you, so it won't let it in: try again facing the camera in good light; if your look changed for good, Start over |
 | It took someone else (a lookalike) for you | set strictness to strict; retrain; remember it's never a lock |
 | "re-enrol needed (the recognition model changed)" | a new release brought another model: enrol again (old samples can't be compared with it) |
 | "template locked" | the keychain is locked (often right after boot); it waits and never makes a new key over your model |

@@ -88,6 +88,7 @@ More: [Voice](voice.md).
 | `/face` | what Face presence is doing (camera on or off, and why), the model's grade, faces seen since start (counts only) |
 | `/face pause [1h\|30m\|off]` | keep the camera off for that long (or until `/face pause off`) |
 | `/face forget` | delete your face model (asks first: Forget / Keep it) |
+| `/face add-look [label]` | (0.9.0) about 10 seconds at the computer's camera, alone: adds how you look now (hair up, a hat) to your face model as a labelled look, or says why it can't safely; the result comes as a message |
 
 More: [Face presence](face.md).
 
@@ -386,7 +387,7 @@ help with setup, repairs and scripts. `kurooto <command> --help` shows each one'
 | `kurooto voice`, `kurooto voice mute`, `kurooto voice unmute`, `kurooto voice stop`, `kurooto voice say <text>` | Voice, as `/voice` ([Voice](voice.md)) |
 | `kurooto voice id`, `kurooto voice id forget [--yes]` | Voice ID's status; forget your voice print and its key (asks y/N; works with Kurooto stopped too) ([Voice](voice.md#voice-id-only-your-voice-can-make-it-act)) |
 | `kurooto voice parts add FILE...` | install Voice's parts from files on this computer (a model file checked against its pinned checksum, or a package's `.whl`), for a computer without internet |
-| `kurooto face`, `kurooto face pause 1h`, `kurooto face forget [--yes]`, `kurooto face install-from FOLDER`, `kurooto face test-camera` | Face presence ([Face presence](face.md)); forget and install-from work with Kurooto stopped; test-camera prints numbers only |
+| `kurooto face`, `kurooto face pause 1h`, `kurooto face forget [--yes]`, `kurooto face add-look [label]`, `kurooto face install-from FOLDER`, `kurooto face test-camera` | Face presence ([Face presence](face.md)); forget and install-from work with Kurooto stopped; test-camera prints numbers only; add-look shows the count and the result |
 | `kurooto notify "text"` (`--title`, `--kind`, `--urgent`, `--button "Label=…"`, `--click URL`, `--print-id`, `--reply-to ID`) | send yourself a message |
 | `kurooto send <file>` (`--caption`, `--to drive`) | send yourself a file on Telegram (up to 50 MB), or to your Google Drive |
 | `kurooto ask-me "question"` (`--choices "a\|b"`, `--wait`, `--timeout`, `--expires`, `--title`, `--then CMD`, `--pending`, `--id`) | ask yourself something, answered anywhere |

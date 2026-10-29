@@ -358,6 +358,7 @@ REASONS: dict[str, Reason] = {
         R("mind.off", "you turned Brain off: what it kept, and whether to delete it", exempt="own", stop=None),
         R("mood.off", "you turned Brain's read off: whether to delete what it kept", exempt="own", stop=None),
         R("face.off", "you turned Face presence off: whether to delete your face model", exempt="own", stop=None),
+        R("face.look", "how Add this look went, which you started with /face add-look", exempt="own", stop=None),
         R(
             "mind.skill_learned",
             "a new skill it learned from a task that worked out (it asks before it runs)",

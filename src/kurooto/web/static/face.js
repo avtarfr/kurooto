@@ -43,7 +43,7 @@
     let h = `<div class="fc">${also()}<h3>Face presence</h3><p class="d">${esc(st.line)}</p>`;
     if (st.stage === "off") h += off();
     else if (st.stage === "setup") h += setup();
-    else if (st.stage === "capturing" || st.stage === "testing" || st.stage === "calibrating") h += live();
+    else if (st.stage === "capturing" || st.stage === "testing" || st.stage === "calibrating" || st.stage === "looking") h += live();
     else if (st.stage === "enrol") h += start();
     else h += manage();
     b.innerHTML = h + "</div>";
@@ -80,6 +80,14 @@
       <p><b>Look at the camera's lens</b>, not the screen, with your head turned to it, for about three seconds.</p>
       <div class="m"><i data-gz style="width:0%"></i></div><p class="d">Only four numbers are kept: where your irises sit in your eyes, and how your head was turned. Never a picture.</p>
       <p><button data-stop>Stop</button></p></div></div>`;
+    if (S.kind === "look") { // (0.9.0) Add this look: one short step, then it adds or refuses by itself
+      const p = S.prog || {};
+      return `<div class="row"><div class="prev"><canvas data-cv width="320" height="240"></canvas><p class="why" data-why></p></div><div class="side">
+      <p><b>Look at the camera as you are now</b>${p.label ? ` (${esc(p.label)})` : ""}, alone, moving your head a little. It takes about ten seconds.</p>
+      <div class="m"><i data-lk style="width:${p.need ? (100 * (p.got || 0) / p.need).toFixed(0) : 0}%"></i></div><p class="d" data-lkn>${p.got || 0} of ${p.need || S.st.looks.samples} samples</p>
+      <p class="d">Only numbers that describe your face are added to your encrypted face model, never a picture. A look too far from your face model is refused, never let in with a looser threshold.</p>
+      <p><button data-look-stop>Stop</button></p></div></div>`;
+    }
     const enrol = S.kind === "enrol";
     const side = enrol ? `<div data-steps>${steps()}</div>${sayBox()}
         <p><button data-pause>${S.paused ? "Resume" : "Pause"}</button> <button data-skip>Skip this step</button> <button data-noglasses>I don't wear glasses</button></p>
@@ -110,7 +118,7 @@
     const learned = m.learned ? `${m.learned} (${m.learned_at.map(day).join(", ")}) <button data-undo>Undo the last</button> <button data-unlearn>Forget what it learned</button>` : "none";
     return `<table><tr><td>Grade</td><td class="grade">${esc(m.grade || "?")}</td></tr>
       <tr><td>Recognised</td><td>${pct(r.tar)} of held-out samples (median score ${r.median_you ?? "?"}, needs ${m.t_hi}; unsure below that, down to ${m.t_lo})</td></tr>
-      <tr><td>Samples</td><td>${m.samples} (${per})</td></tr><tr><td>Learned</td><td>${learned}</td></tr>
+      <tr><td>Samples</td><td>${m.samples} (${per})</td></tr><tr><td>Learned</td><td>${learned}</td></tr>${looks(m)}
       <tr><td>Impostor set</td><td>${m.impostors ? `yes (others' median ${r.median_others})` : "none: calibrated to OpenCV's floor"} · ${esc(th.method || "")}</td></tr>
       <tr><td>Model</td><td>${esc(m.model)} · made ${day(m.created)} · trained ${day(m.trained)}</td></tr>
       <tr><td>Last test</td><td>${test}</td></tr></table>
@@ -120,6 +128,15 @@
       <p class="d">Training here is honest: no network is trained. Your template is the centroid of SFace's numbers for your samples, and the cut-off is calibrated on your held-out samples against a set of made-up impostor faces, never below OpenCV's published 0.363.</p>
       ${eyes()}
       <p><button data-forget>Forget everything</button></p><p data-said></p>`;
+  }
+  function looks(m) { // (0.9.0) Add this look: each look with Remove, and the button while there's room
+    const L = S.st.looks || {}, have = m.looks || [];
+    if (!L.on && !have.length) return "";
+    const rows = have.map((k) => `<div>${esc(k.label)} <span class="d">${k.n} samples · ${day(k.at)}</span> <button data-look-remove="${esc(k.id)}">Remove</button></div>`).join("");
+    const add = !L.on ? '<span class="d">Add this look is off (face.looks.on).</span>'
+      : have.length >= L.max ? `<span class="d">${L.max} looks, the most it keeps: remove one to add another.</span>`
+      : `<input data-look-label maxlength="40" size="16" placeholder="e.g. hair up"> <button data-look>Add this look</button> <span class="d">about ${Math.round(L.s / 2)} s at the camera, alone</span>`;
+    return `<tr><td>Looks</td><td>${rows || '<span class="d">none: if it says "unsure" when you look different (hair up, a new beard), add that look.</span>'}<div>${add}</div></td></tr>`;
   }
   function eyes() { // (0.8.17) look to talk by your eyes: the eye model and your calibration
     const g = S.st.gaze; if (!g) return "";
@@ -189,7 +206,14 @@
       const w = S.body.querySelector("[data-why]"); if (w) { w.textContent = m.ok ? "✓ keep looking" : m.reason || ""; w.className = `why ${m.ok ? "ok" : "bad"}`; }
       return;
     }
-    if (m.kind === "gaze_result") { S.note = { text: m.message, bad: !m.ok }; return; }
+    if (m.kind === "gaze_result" || m.kind === "look_result") { S.note = { text: m.message, bad: !m.ok }; return; }
+    if (m.kind === "look") {
+      S.last = m; S.prog = m;
+      const bar = S.body.querySelector("[data-lk]"); if (bar && m.need) bar.style.width = `${(100 * (m.got || 0) / m.need).toFixed(0)}%`;
+      const n = S.body.querySelector("[data-lkn]"); if (n) n.textContent = `${m.got || 0} of ${m.need} samples`;
+      const w = S.body.querySelector("[data-why]"); if (w) { w.textContent = m.ok ? "✓ got it" : m.reason || ""; w.className = `why ${m.ok ? "ok" : "bad"}`; }
+      return;
+    }
     if (m.kind === "test_result") { S.testRes[m.who] = m; const el = S.body.querySelector("[data-results]"); if (el) el.innerHTML = results(); }
   }
   function speak(text) { if (!text) return; S.sayAt = Date.now(); S.api("voice/say", { text }).catch(() => {}); }
@@ -234,6 +258,16 @@
       if (!r.ok) { t.disabled = false; said(r.message, true); return; }
       S.sid = r.session; S.kind = "gaze"; S.st.stage = "calibrating"; render(); return;
     }
+    if (d.look !== undefined) { // camera.open: Add this look, this button (or /face add-look typed)
+      const lab = (S.body.querySelector("[data-look-label]") || {}).value || "";
+      t.disabled = true; S.busy = true;
+      const r = await post("face/look/start", { cid: S.opts.cid ? S.opts.cid() : null, label: lab.trim() });
+      S.busy = false;
+      if (!r.ok) { t.disabled = false; said(r.message, true); return; }
+      S.sid = r.session; S.kind = "look"; S.prog = r.plan; S.st.stage = "looking"; render(); return;
+    }
+    if (d.lookStop !== undefined) { await post("face/look/stop", { session: S.sid }); return; }
+    if (d.lookRemove) { const r = await post("face/look/remove", { id: d.lookRemove }); await load(); said(r.message, !r.ok); return; }
     if (d.gazeGet !== undefined) { t.disabled = true; await post("face/gaze/setup"); progress(); return; }
     if (d.gazeClear !== undefined) { const r = await post("face/gaze/clear"); await load(); said(r.message, !r.ok); return; }
     if (d.pause !== undefined) { const r = await post("face/enrol/pause", { session: S.sid, on: !S.paused }); if (r.ok) { S.paused = r.state === "paused"; t.textContent = S.paused ? "Resume" : "Pause"; } else said(r.message, true); return; }

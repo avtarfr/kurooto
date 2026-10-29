@@ -25,6 +25,11 @@ Calibrate my eyes (0.8.17, kind "gaze"): CAL_S seconds of frames of you, recogni
 while you look at its lens; each frame gives two numbers for your eyes (gaze.py) and the head's yaw and pitch; their
 medians go to your template (Face._gaze_done). No frame, crop or point is kept.
 
+Add this look (0.9.0, kind "look", Look below): one short step, LOOK_S seconds of capturing at most, LOOK_TARGET
+samples of you as you are now (hair up, a new beard), through the same checks as enrolment, plus: roughly facing the
+camera, and each sample at least "unsure" against your enrolment (a stranger's frame is refused). At the end the
+samples go to on_look (Face._look_done: model.look_check, then they're added as a look), or nowhere.
+
 Samples live in memory only, in the Session, until training seals them into the template; Discard, a stop, turning
 the feature off, or 30 minutes without training drops them. Preview frames are JPEGs made in memory for the page
 (GET /api/face/frame), never written anywhere. What's pushed to the page is rounded numbers, never an embedding.
@@ -43,7 +48,7 @@ from typing import Any
 
 from kurooto.core.biometric import dot, mean_unit
 from kurooto.modules.face.gaze import CAL_YAW, Calibration
-from kurooto.modules.face.model import Sample
+from kurooto.modules.face.model import LOOK_MIN, Sample
 from kurooto.modules.face.vision import SCORE_ENROL, SCORE_OTHER, Face, Pose, Stats, moved, pose, px_scale
 
 # quality limits (§4.3); BLUR_MIN is a first guess, to be tuned on the first real run
@@ -88,6 +93,13 @@ R_LIGHT = "Change the light a little more: a lamp, the room light, the window."
 R_EYES = "Can't see your eyes clearly: more light on your face, or come a little closer."
 R_LENS = "Look at the camera's lens, with your head turned to it."
 R_NOT_OWNER = "That doesn't look like you: only you should be in view."
+R_LOOK_TURN = "Face the camera a little more."
+R_LOOK_NOT_YOU = "That doesn't look enough like you: only you should be in view."
+# Add this look (0.9.0)
+LOOK_TARGET = 10  # samples a look aims for (at least model.LOOK_MIN)
+LOOK_S = 20.0  # seconds of capturing at most: about 10 at the 0.5 s spacing when every frame passes
+LOOK_WALL_S = 90.0  # a look session ends after this long whatever happens (opening the camera, an error)
+LOOK_YAW = 0.3  # roughly facing the camera: a little turn either way, for some variety
 
 
 @dataclass(frozen=True)
@@ -346,9 +358,9 @@ class Enrolment:
         if last is not None and dot(e, last[0]) > REPEAT_COS and moved(last[1], f) < REPEAT_PX * scale:
             return Verdict(False, R_REPEAT, key, f, p, st)
         known = [s.e for s in self.samples] + self.prior
-        if len(self.samples) + sum(self.have.values()) >= NOT_YOU_AFTER and known:
-            if dot(e, mean_unit(known)) < NOT_YOU_COS:
-                return Verdict(False, R_NOT_YOU, key, f, p, st)
+        unlike = self._unlike(e, known)
+        if unlike:
+            return Verdict(False, unlike, key, f, p, st)
         s = Sample(e, key, now, {"blur": round(st.blur), "light": round(st.mean)})
         self.samples.append(s)
         self._last[key] = (e, f)
@@ -361,6 +373,73 @@ class Enrolment:
             self.baseline.update({k: round(statistics.median(v), 4) for k, v in self._front.items() if v})
         self._advance()
         return Verdict(True, "", key, f, p, st, s)
+
+    def _unlike(self, e: list[float], known: list[list[float]]) -> str:
+        """The "not you" check: after NOT_YOU_AFTER samples, one unlike the rest is someone else."""
+        if len(self.samples) + sum(self.have.values()) >= NOT_YOU_AFTER and known:
+            if dot(e, mean_unit(known)) < NOT_YOU_COS:
+                return R_NOT_YOU
+        return ""
+
+
+class Look(Enrolment):
+    """Add this look (0.9.0): one step of LOOK_TARGET samples of you as you look now, through enrolment's checks.
+    `score` is your enrolment's (never another look's), `lo` its "unsure" cut-off: a frame under it isn't taken."""
+
+    def __init__(
+        self,
+        min_face_px: int,
+        baseline: dict | None,
+        score: Callable[[list[float]], float],
+        lo: float,
+        label: str = "",
+        target: int = LOOK_TARGET,
+        mirror: bool = True,
+    ):
+        self.score = score
+        self.lo = float(lo)
+        self.label = label
+        self.target = max(LOOK_MIN, int(target))
+        self.step = Step("look", "Look at the camera as you are now, moving your head a little.", self.target, False)
+        super().__init__(min_face_px, None, baseline, None, mirror)
+
+    def got(self, key: str) -> int:
+        return len(self.samples)
+
+    def done(self, key: str) -> bool:
+        return len(self.samples) >= self.target
+
+    def _advance(self) -> None:
+        return None
+
+    def current(self) -> Step | None:
+        return None if len(self.samples) >= self.target else self.step
+
+    def ready(self) -> bool:
+        return len(self.samples) >= LOOK_MIN
+
+    def total(self) -> int:
+        return min(len(self.samples), self.target)
+
+    def progress(self) -> dict:
+        return {
+            "step": "look" if self.current() else "",
+            "label": self.label,
+            "got": self.total(),
+            "need": self.target,
+            "minimum": LOOK_MIN,
+            "ready": self.ready(),
+            "new": len(self.samples),
+        }
+
+    def act(self, action: str) -> str:
+        return "A look has one step: nothing to skip."
+
+    def _step_rule(self, key: str, p: Pose, face: Face, frame_h: float = 480.0, scale: float = 1.0) -> str:
+        return "" if abs(p.yaw) <= LOOK_YAW else R_LOOK_TURN
+
+    def _unlike(self, e: list[float], known: list[list[float]]) -> str:
+        return "" if self.score(e) >= self.lo else R_LOOK_NOT_YOU
 
 
 def shape(v: Verdict, size: tuple[int, int]) -> dict:
@@ -395,7 +474,10 @@ class Session:
 
     kind "enrol": every frame goes through Enrolment.judge. kind "test": every face is scored against the template
     (classify) and the decision shown; mark("me" | "other") looks for MARK_S seconds and keeps only the result.
-    kind "gaze": Calibrate my eyes; on_gaze(numbers) gets the calibration's numbers once, then it ends."""
+    kind "gaze": Calibrate my eyes; on_gaze(numbers) gets the calibration's numbers once, then it ends.
+    kind "look": Add this look (plan is a Look); it needs no page (preview False: no JPEG is made), ends by itself after
+    LOOK_S seconds of capturing or LOOK_TARGET samples, and on_look(samples, why) gets them (why "" when it ran to its
+    end, else why it stopped and no samples); keep() says why it must stop now ("" to go on)."""
 
     kind: str
     cid: int | None
@@ -408,6 +490,9 @@ class Session:
     clock: Callable[[], float] = time.monotonic
     on_mark: Callable[[str, dict], None] | None = None
     on_gaze: Callable[[dict], None] | None = None
+    on_look: Callable[[list[Sample], str], dict] | None = None
+    keep: Callable[[], str] | None = None
+    preview: bool = True  # a JPEG of each frame for the page (a look started from a chat has no page)
     id: str = field(default_factory=lambda: secrets.token_urlsafe(12))
     state: str = "capturing"  # capturing, paused (why), ended
     why: str = ""
@@ -427,6 +512,7 @@ class Session:
         self.marking: dict | None = None
         self.camera_open = False
         self.cal = Calibration()  # (kind "gaze") numbers only, in memory
+        self._looked = False  # (kind "look") its result was reported
 
     # ------------------------------------------------------------------------------------------- the camera
     def open_camera(self) -> None:
@@ -462,14 +548,23 @@ class Session:
             if self.camera_open:
                 self.close_camera()
             return None
-        if now - self.started > (KEEP_S if self.kind == "enrol" else TEST_S):
+        if self.kind == "look":
+            stop = self._keep()
+            if stop or now - self.started > LOOK_WALL_S:
+                self.end(stop or "time up")
+                return None
+            done = self.plan is not None and self.plan.current() is None
+            if self.state == "capturing" and (done or self.captured_s >= LOOK_S):
+                self._finish_look()
+                return None
+        elif now - self.started > (KEEP_S if self.kind == "enrol" else TEST_S):
             self.end("time up")
             return None
         if self.state != "capturing":
             if self.camera_open:
                 self.close_camera()
             return None
-        if now - self.last_fetch > PAGE_GONE_S:
+        if self.kind != "look" and now - self.last_fetch > PAGE_GONE_S:
             self.pause("page gone")
             return None
         if self.kind == "enrol" and self.captured_s > CAPTURE_MAX_S:
@@ -484,11 +579,12 @@ class Session:
         try:
             v = self.vision
             size = v.frames.size(frame)
-            jpg = v.frames.jpeg(frame)
-            with self._lock:
-                self._jpeg = jpg
+            if self.preview:
+                jpg = v.frames.jpeg(frame)
+                with self._lock:
+                    self._jpeg = jpg
             faces = v.detector.detect(frame, SCORE_OTHER)
-            if self.kind == "enrol":
+            if self.kind in ("enrol", "look"):
                 out = self._enrol(frame, faces, size, now)
             elif self.kind == "gaze":
                 out = self._gaze(frame, faces, now)
@@ -630,13 +726,39 @@ class Session:
     def _push(self, fields: dict) -> dict:
         msg = {"t": "face", "kind": self.kind if "kind" not in fields else fields.pop("kind"), "session": self.id}
         msg.update(fields)
-        if self.plan is not None and msg["kind"] == "enrol":
+        if self.plan is not None and msg["kind"] in ("enrol", "look"):
             msg.update(self.plan.progress())
         try:
             self.push(msg)
         except Exception:
             pass
         return msg
+
+    # ------------------------------------------------------------------------------------------- a look's end
+    def _keep(self) -> str:
+        try:
+            return str(self.keep() or "") if self.keep is not None else ""
+        except Exception:
+            return ""
+
+    def _finish_look(self) -> None:
+        """A look ran to its end: the camera closes first, then on_look gets the samples, then they're dropped."""
+        self._looked = True
+        samples = list(self.plan.samples) if self.plan is not None else []
+        self.close_camera()  # step() runs on the session's own thread: it closes now, before the maths
+        res = self._report_look(samples, "")
+        del samples
+        self.end("added" if res.get("ok") else "not added")
+
+    def _report_look(self, samples: list[Sample], why: str) -> dict:
+        res: dict = {"ok": False, "message": ""}
+        if self.on_look is not None:
+            try:
+                res = dict(self.on_look(samples, why) or {})
+            except Exception as e:
+                res = {"ok": False, "message": f"That didn't work ({type(e).__name__}): nothing was added."}
+        self._push({"kind": "look_result", "ok": bool(res.get("ok")), "message": str(res.get("message") or "")})
+        return res
 
     # ------------------------------------------------------------------------------------------ the session
     def pause(self, why: str) -> None:
@@ -656,6 +778,9 @@ class Session:
         """Closes the camera and drops what's in memory."""
         if self.state == "ended":
             return
+        if self.kind == "look" and not self._looked:  # stopped before its end: say so, nothing is added
+            self._looked = True
+            self._report_look([], why)
         self.state, self.why = "ended", why
         self._stop.set()
         self.close_camera()

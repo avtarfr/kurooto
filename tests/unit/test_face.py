@@ -1288,7 +1288,7 @@ def test_a_face_never_authorises_anything():
     from kurooto.core import tap
 
     assert "face" not in " ".join(tap.WAYS)
-    assert tap.GUARDED["camera.open"].ways == ("button",)
+    assert tap.GUARDED["camera.open"].ways == ("typed", "button")  # typed: /face add-look only (0.9.0)
     assert tap.BUTTONS["fce"] == "data.delete"
 
 

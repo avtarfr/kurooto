@@ -30,6 +30,12 @@
 - **Study mode keeps the camera on** (`face.watch.in_focus`, on). Focus and a study timer no longer pause Face
   presence, so look to talk, the desk keeping Kurooto awake and the desk phone's eye go on while you study. Off: paused
   in focus, as before. (Listening never paused for focus.)
+- **Add this look** (`face.looks.on`, on). Face presence calls you "unsure" with your hair up or a hat, and learning
+  never learns from unsure frames. Now the Face page's Add this look, `/face add-look [label]` or `kurooto face add-look
+  [label]` takes about 10 seconds of you at the camera, alone, through enrolment's checks, and adds up to 10 samples as
+  a labelled look of their own, listed with Remove (at most 6). A look too far from your enrolment to be sure it's you
+  is refused with the reason: the threshold is never loosened for it. Numbers only, sealed in your template; typed or
+  tapped only.
 - **Calls know you as your AI does** (`calls.context_brief`, on). A phone call and a Live talk at the desk now hear
   what every AI request is told: your profile's brief, your how-to-help-me note, your not-interested topics and the
   Brain's own state. Never your read, mood, tone or senses.

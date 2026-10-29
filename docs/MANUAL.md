@@ -2246,16 +2246,23 @@ never approves, unlocks or allows anything. Details: [the user guide](wiki/user/
   someone else in view (`face.greet.with_others`).
 - **Optional:** noticing you left (`face.away.on`) to hold desktop pop-ups and calls; learning slowly from confident
   sightings (`face.learn.on`, with Undo).
-- `/face`, `/face pause [1h|off]`, `/face forget`; "is the camera on?", "stop watching", "forget my face".
+- **Add this look** (0.9.0, `face.looks.on`, on): "unsure" with your hair up or a hat? The Face page's Add this look,
+  `/face add-look [label]` or `kurooto face add-look [label]` takes about 10 seconds of you at the camera (enrolment's
+  checks, only frames at least "unsure" against your enrolment) and adds up to 10 samples as a labelled look of their
+  own, after checking it's safe: a look too far from your enrolment to be sure it's you is refused, never let in with a
+  looser threshold. At most 6 looks, each listed with Remove.
+- `/face`, `/face pause [1h|off]`, `/face forget`, `/face add-look [label]`; "is the camera on?", "stop watching",
+  "forget my face".
 
 *Leaves:* nothing. Frames are looked at in memory and dropped; strangers are a count only. Your template (numbers,
 never a picture) is kept encrypted under the key `face.key`, never in backups, Profile sync or diagnostics. Setting up
 downloads from media.githubusercontent.com and PyPI; the optional eye model (look to talk by your eyes, 0.8.17: Get
 the eye model, then Calibrate my eyes on the Face page, which keeps four numbers in the sealed template) from
 storage.googleapis.com.
-*Undo:* turn Face presence off (the camera closes at once; it offers Delete my face data); `/face forget`,
-`kurooto face forget` or Forget everything on the Face page deletes the key, the template and its status. To free the
-space, delete the `face` folder in Kurooto's app folder (`kurooto paths`, `app`).
+*Undo:* a look: Remove next to it on the Face page, or Undo the last training (this run); `face.looks.on` off makes
+added looks stop counting at once. Turn Face presence off (the camera closes at once; it offers Delete my face data);
+`/face forget`, `kurooto face forget` or Forget everything on the Face page deletes the key, the template and its
+status. To free the space, delete the `face` folder in Kurooto's app folder (`kurooto paths`, `app`).
 
 ### Stay awake on charger
 While your computer is plugged in, it doesn't go to sleep by itself, so Kurooto keeps answering; on battery it sleeps

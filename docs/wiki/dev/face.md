@@ -21,9 +21,9 @@ strictness never do; see [voice.md](voice.md).
 | `modules/face/parts.py` | `FACE_PACKAGES` (`vision`: opencv-python-headless, numpy; module `cv2`), `face_models()` (pinned URLs and sha256), `parts(app)`: Voice's `Parts` with `root=<app>/voice` (one shared `py-X.Y`) and `models_dir=<app>/face/models` |
 | `modules/face/camera.py` | `Camera` (open/read/close, per-OS backends), `devices()`, `pick()`, `holders()` (Linux busy; Kurooto's own process tree, `own()`, left out), `shared()` (v4l2loopback: a `max_openers` file, never busy), `free()`, `windows_busy()`, `CameraError(why)` |
 | `modules/face/vision.py` | `Face(box, landmarks, score)`, `Stats`, `Pose`, the `Detector`/`Embedder`/`Frames` protocols, `pose()`, `moved()`, `opencv_detector()`, `opencv_embedder()`, `opencv_frames()` (cv2 imported only inside) |
-| `modules/face/enrol.py` | `PLAN`, `Step`, the quality limits, `Enrolment` (pure: progress, `act()`, `judge()`), `shape()`, `Session` (camera, preview, timeouts, test marks) |
+| `modules/face/enrol.py` | `PLAN`, `Step`, the quality limits, `Enrolment` (pure: progress, `act()`, `judge()`, `_unlike()`), (0.9.0) `Look(Enrolment)` (Add this look's one step), `shape()`, `Session` (camera, preview, timeouts, test marks, a look's end) |
 | `modules/face/gaze.py` | (0.8.17) look to talk by the eyes: `offset()` (iris along/across the eye from MediaPipe's contour), `eyes_of()`, `angles()` (head + eyes, degrees from the lens, against a calibration), `valid()`, `Calibration` (medians of h, v, yaw, pitch), `CvGazer` / `opencv_gazer()` (cv2 imported only inside) |
-| `modules/face/model.py` | `Sample`, `centroids()`, `score()`, `folds()`, `held_out()`, `train()`, `Template` (payload, `classify()`, `retrain()`, `learn()`, `undo_learn()`, `forget_learned()`) |
+| `modules/face/model.py` | `Sample`, `centroids()`, `score()`, `folds()`, `held_out()`, `train()`, (0.9.0) `look_check()`, `Template` (payload, `classify()`, `retrain()`, `learn()`, `undo_learn()`, `forget_learned()`, `add_look()`, `remove_look()`) |
 | `modules/face/watch.py` | `Watcher` (pure: injected clock, idle, locked, camera, models, classify, pause reasons, emit), `PAUSES` |
 | `modules/face/greet.py` | `compose()` (rules, ≤ 220 characters), `may_greet()` |
 | `core/biometric.py` | `BioStore(app, feature)` (key, seal, unseal, save, load, forget, `Locked`), `calibrate()`, `load_impostors()`, `npz_read`/`npz_write` (numpy's format without numpy), `BIOMETRIC_SECRETS`. Shared with Voice ID |
@@ -31,6 +31,7 @@ strictness never do; see [voice.md](voice.md).
 | `web/static/face.js` | the Face page (`FACE.mount`, `FACE.live`), loaded on demand by `home.js:renderFace` |
 | `tools/face_impostors.py` | the maintainer's impostor-set builder (never at install) |
 | `tests/unit/test_face.py`, `tests/unit/test_biometric.py` | everything with fakes |
+| `tests/unit/test_face_looks.py` | (0.9.0) Add this look: the plan's checks, `look_check` (safe, too far, anchored to the enrolment, impostors), the template's looks and `use_looks`, the session end to end, refusals, the switch, Remove and Undo, the command, the API |
 | `tests/unit/test_face_gaze.py` | (0.8.17) the iris maths, gaze angles, calibration, `looking()` by the eyes, the calibration session, the watcher's eyes and `look_fps`, resolution independence (480x640 vs 1080x1440), the part, look to talk end to end; one real-model test (made-up drawn eyes), skipped unless `KUROOTO_TEST_MODELS` holds `iris_landmark.tflite` and cv2 imports |
 
 ## Changes elsewhere
@@ -41,9 +42,11 @@ strictness never do; see [voice.md](voice.md).
 - `modules/voice/__init__.py`: `Voice.greet(text, listen_s, talk=True) -> (spoken, "talk" | why)`; `_job_done` doesn't
   read answers aloud while `app.away_from_desk()` with `face.away.hold_desktop`.
 - `modules/voice/portal.py`: `Portal.invite(text, hold_s)`.
-- `core/calm.py`: reasons `face.greet` (`counted=False`, `later=False`, `feature="face"`) and `face.off` (exempt);
+- `core/calm.py`: reasons `face.greet` (`counted=False`, `later=False`, `feature="face"`), `face.off` and (0.9.0)
+  `face.look` (exempt);
   `Calm.speak_ok(why, about)`.
-- `core/tap.py`: `GUARDED["camera.open"]` (ways: button), `data.delete`'s where, `BUTTONS["fce"]`.
+- `core/tap.py`: `GUARDED["camera.open"]` (ways: button; typed since 0.9.0, for `/face add-look` only),
+  `data.delete`'s where, `BUTTONS["fce"]`.
 - `core/egress.py`: `media.githubusercontent.com`; (0.8.17) `storage.googleapis.com` (the eye model). `core/notify.py`: `Notifier._desktop` (held while away).
 - `app.py`: `App.away_from_desk()`, the core `fce` button. `core/retention.py`: `/forget all` forgets the face model.
 - `core/profile.py:NEVER`, `modules/backups.py` (`SKIP_STATE_DIRS` + `face`, `backup_secret_names()` leaves out
@@ -423,6 +426,47 @@ appends to the FIFO pool (`learn.max`), retrains (thresholds still from enrolled
 A change of the SFace file (another sha256 than `face.json`'s `model_sha`) means "re-enrol needed": embeddings from two
 models are never mixed.
 
+## Add this look (0.9.0, `face.looks.on`, on)
+
+Why: a look the template doesn't know (hair up) scores between `T_lo` and `T_hi` ("unsure"); learning needs
+`>= T_hi + margin`, so it can never pick up a new look by itself, and lowering strictness would let others in too.
+
+- **Start** (`camera.open`, now `("typed", "button")`): the Face page's **Add this look** (POST `face/look/start {cid,
+  label}`, via `page`), `/face add-look [label]` (`Face._cmd`; via `chat`, or `terminal` when `Incoming.via` is
+  `terminal`), `kurooto face add-look [label]` (`cli.py:face_add_look`: `/face add-look` through `/api/say`, then
+  POST `face/look/status` every second: `{session: {state, got, need} | None, last: {at, ok, message}}`, counts and
+  words only). Typed only: a spoken one (`via == "voice"` or a voice note) is refused, as `/voice enrol`. No intent and
+  no AI tool reach it. `Face.look_start` refuses, in order: the switch off, `_refuse()`
+  (feature off, parts, a call, another session), not enrolled or re-enrol needed, the template locked, `LOOKS_MAX`
+  (6) looks. The label: printable characters, whitespace squeezed, `LABEL_MAX` (40), default "Look N".
+- **Capture** (`Session(kind="look")`, plan `enrol.Look`): one step, `LOOK_TARGET` (10) samples, `judge()` as
+  enrolment (covered, no face, two faces, too far/close, edge, tilt, blur, dark, bright, spacing 0.5 s, repeat), with
+  the step rule `|yaw| <= LOOK_YAW` (0.3) and `_unlike` = the frame's score against the **enrolment's** centroids
+  (looks left out) `>= T_lo` ("That doesn't look enough like you"). The session ends by itself at the target or after
+  `LOOK_S` (20) s of capturing; `LOOK_WALL_S` (90) s whatever happens; no page-gone pause; `preview` only when started
+  from the page (a chat's look makes no JPEG). `keep()` (`Face._look_keep`) ends it at once when the switch goes off.
+  At its end the camera closes first, then `on_look(samples, "")`; any other end (Stop, off, forget, the camera didn't
+  open, time up) calls `on_look([], why)` once. Then `{t: "face", kind: "look_result", ok, message}` and the session's
+  end. Live: `{kind: "look", ok, reason, box, landmarks, quality, step, label, got, need, minimum, ready, new}`.
+- **The check** (`model.look_check(samples, learned, new, impostors, strictness, override)`, under `_tpl_lock`):
+  fewer than `LOOK_MIN` (7; a held-out fold still leaves `MIN_GROUP` of the look) → refused; the look's mean must score
+  `>= max(FLOOR, T_lo)` against the enrolment's own centroids (never another look's: no chain of looks walking away
+  from you); training with the look must not lower `T_hi`; with the impostor set, the non-look held-out TAR at the new
+  `T_hi` must not fall more than `LOOK_TAR_DROP` (0.05) below the old TAR at the old `T_hi`. Why both: without
+  impostors (today, the set isn't shipped) `T_hi` is the floor whatever you add, so a new centroid widens the accepted
+  region with nothing pushing back; the anchor is what keeps a far look (or someone else) out.
+- **Adding:** `_previous` = the payload (Undo the last training), `Template.add_look(label, samples, at)`: the samples
+  appended with step `look:<8 hex>`, `looks += {id, label, at, n}`; `model.group_of` gives each look its own group
+  (`>= LOOK_MIN` samples, so never merged into base), then `_retrain` (held-out folds stratified by step, as
+  enrolment). `train()`'s `per_step` and `Template.status()`'s `per_step` leave look steps out; `face.json` gets
+  `looks` (a count, never a label). Learned samples may join a look's group (nearest centroid) as before.
+- **Off:** `Template.use_looks` (never stored) is set from the switch by `Face._tpl_live()` (`_classify`,
+  `_learnable`, `learn`): off, `score()` skips `look:` centroids with the same `T_hi`, so it's only ever stricter.
+- **Remove:** POST `face/look/remove {id}` → `Template.remove_look` + `_retrain`, `_previous` set first.
+- **Events:** `face_look {result: added | refused | too few | stopped | removed, count}` (count = looks kept).
+- **Messages:** a chat's look ends with `app.notify(..., why="face.look")` (`core/calm.py`, `exempt="own"`, no Stop:
+  the answer to what you started). The page and the terminal show it themselves.
+
 From a Voice ID turn (0.9.0, `face.learn.from_voice`, off, under `learn.on`): `Seen` gained `good` (the frame's
 quality, as the arrival candidate uses). `Voice` calls `_face_learn()` for an addressed turn whose verdict is `owner`
 and not `assisted` (a face-assisted verdict would have the face confirm itself); `Face.learn_from_voice()` needs
@@ -434,9 +478,9 @@ mirror of `voiceid.learn_face`.
 
 | What | Where | Form |
 |---|---|---|
-| template | `<state>/face/template.bin` | AES-GCM-256, nonce + ciphertext, AAD `kurooto-face:template:v1`; the sealed JSON: version, model_sha256, created, updated, samples (base64 fp16, step, at, q), learned, centroids, thresholds, grade, report, last_test, baseline, gaze (0.8.17: h, v, yaw, pitch, n, at) |
+| template | `<state>/face/template.bin` | AES-GCM-256, nonce + ciphertext, AAD `kurooto-face:template:v1`; the sealed JSON: version, model_sha256, created, updated, samples (base64 fp16, step, at, q), learned, centroids, thresholds, grade, report, last_test, baseline, gaze (0.8.17: h, v, yaw, pitch, n, at), looks (0.9.0: id, label, at, n) |
 | key | secret `face.key` | keychain, else `config/secrets.json` (owner-only) |
-| status | `<state>/face/face.json` | counts and dates: enrolled, samples, per_step, learned, grade, tar, created, trained, last_test_at, model, model_sha (12 chars), greets |
+| status | `<state>/face/face.json` | counts and dates: enrolled, samples, per_step, learned, grade, tar, created, trained, last_test_at, model, model_sha (12 chars), greets, looks (0.9.0, a count) |
 | frames, crops, previews, strangers | nowhere | memory only; previews served with `Cache-Control: no-store`, `X-Content-Type-Options: nosniff` |
 
 Never in a backup (`SKIP_STATE_DIRS`, `backup_secret_names`), Profile sync (`NEVER`) or the diagnostics bundle (only
@@ -446,10 +490,10 @@ boot (`core/autostart.py`) and uninstalling (`core/leave.py:forget_keys`) must r
 Events (no scores, embeddings or image data; `test_events_carry_no_scores_or_pictures` checks the keys):
 `face_watch {on, why}`, `face_arrived {away_min}`, `face_left {}`, `face_back {}`, `face_greeted {parts, talk}`,
 `face_greet_skipped {why}`, `face_enrolled {samples, grade}`, `face_trained {samples, grade}`, `face_learned {count}`,
-`face_forgotten {}`, `face_gaze {calibrated}` (0.8.17), `face_failed {part, error}` (the exception type only). `core/nearby.py` emits `nearby_others {on,
+`face_forgotten {}`, `face_gaze {calibrated}` (0.8.17), `face_look {result, count}` (0.9.0), `face_failed {part, error}` (the exception type only). `core/nearby.py` emits `nearby_others {on,
 source}`.
 
-The live stream: `{t: "face", kind: "enrol" | "test" | "test_result" | "gaze" | "gaze_result" | "session"}` to the Face page's `cid` only;
+The live stream: `{t: "face", kind: "enrol" | "test" | "test_result" | "gaze" | "gaze_result" | "look" | "look_result" | "session"}` to the Face page's `cid` only (a look started from a chat has no `cid`: every page);
 `{t: "face", kind: "camera", on}` to every page (the badge).
 
 ## API
@@ -465,6 +509,7 @@ The live stream: `{t: "face", kind: "enrol" | "test" | "test_result" | "gaze" | 
 | `POST /api/face/test/mark {session, who}`, `test/stop` | |
 | `POST /api/face/retrain`, `strictness {level}`, `learn/undo`, `learn/forget`, `pause {arg}` | |
 | `POST /api/face/undo` | back to the template before the last `train` (Start over, i.e. `enrol/start {mode: new}` while enrolled, or Add samples); held in memory (`Face._previous`, a payload) for this run only, dropped by forget; `status().can_undo`. A Start over never trains over a template whose key can't be read |
+| `POST /api/face/look/start {cid, label}` | (0.9.0) guarded `camera.open` (the page's Add this look); `look/stop {session}`, `look/remove {id}`, `look/status` (for `kurooto face add-look`) |
 | `POST /api/face/gaze/start {cid}` | (0.8.17) guarded `camera.open` (the page's Calibrate my eyes); `gaze/stop {session}`, `gaze/clear`, `gaze/setup` (the eye model, in the background) |
 | `POST /api/face/forget` | `data.delete` (after the page's confirm) |
 | `POST /api/face/install-from {folder}` | runs in the background; progress at `GET /api/progress` |
@@ -484,6 +529,9 @@ owner's check (3 s, numbers only).
 - The expected scores (same person about 0.55 to 0.8, others 0 to 0.3, `T_hi` about 0.40 to 0.48) are from the
   literature, not measured.
 - The Windows busy check and macOS permission behaviour are written from documentation, untested.
+- (0.9.0) Add this look ran only on made-up vectors. `LOOK_YAW` (0.3), `LOOK_S` (20), `LOOK_TARGET` (10), the anchor
+  `max(0.363, T_lo)` and `LOOK_TAR_DROP` (0.05) are first guesses: a real "hair up" look may sit further from the
+  enrolment than the anchor allows, which shows as a refusal ("too far"), never as a looser threshold.
 - The SFace training-data line in the user page is from the SFace paper as remembered, not re-checked against it.
 - (0.8.17) The iris model ran here only on drawn eyes (OpenCV 4.14): it follows a drawn iris at 480x640 and 1080x1440
   and with the head tilted, both eyes alike. Not tried on a real face: the mirroring of the picture's left eye, the
