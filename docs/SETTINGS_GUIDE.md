@@ -921,6 +921,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.tom.on` | `true` | A model of what you know, believe, want and prefer, each row with its source (`/model`). ([guide](wiki/user/settings-guide.md#mindtomon)) |
 | `mind.tone.calls` | `true` | With tone on, what you say on a call is tagged too, by the model on this computer. ([guide](wiki/user/settings-guide.md#mindtonecalls)) |
 | `mind.tone.on` | `false` | Tag each message you write with one word (calm, tired…), using the model on this computer only. ([guide](wiki/user/settings-guide.md#mindtoneon)) |
+| `mind.tools.feelings` | `true` | Your AI, calls and desk Live can ask how Kurooto feels and why: its own feeling, what it's about, its plan and its top concerns. ([guide](wiki/user/settings-guide.md#mindtoolsfeelings)) |
 | `mind.tools.on` | `true` | Your AI and calls can read Brain's plan, when you're likely free (in words) and your precedents; "call me when I'm free" works. ([guide](wiki/user/settings-guide.md#mindtoolson)) |
 | `mind.trust.from_asked_undo` | `false` | An Undo of a change you asked for also lowers its trust in that kind of action. ([guide](wiki/user/settings-guide.md#mindtrustfromaskedundo)) |
 | `mind.trust.from_wrong` | `false` | A Wrong on what a request did counts as a complaint against that kind of action, so Kurooto asks first before doing it on its own. ([guide](wiki/user/settings-guide.md#mindtrustfromwrong)) |

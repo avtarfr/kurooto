@@ -51,7 +51,7 @@ def test_brain_tools_and_when_im_free(env, monkeypatch):
     assert m.call_tools() == []  # Brain is off
     monkeypatch.setattr(mind_mod.mind, "part_on", lambda a, part: True)
     got = {t.name: t for t in m.call_tools()}
-    assert set(got) == {"brain_plan", "brain_free_time", "brain_precedents"}
+    assert set(got) == {"brain_plan", "brain_free_time", "brain_precedents", "brain_feelings"}  # 0.9.3
     assert all(t.writes is False for t in got.values())
     later = (now() + dt.timedelta(hours=2)).replace(minute=0, second=0, microsecond=0)
     monkeypatch.setattr(pf, "on", lambda a: True)
