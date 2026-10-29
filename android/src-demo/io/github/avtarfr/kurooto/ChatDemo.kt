@@ -35,7 +35,9 @@ object ChatDemo {
 
         m("0000000000000a01", "main", "kurooto", "Good morning. Today: Linear algebra at 09:30, the study group at 16:30.", 5 * 3600)
         m("0000000000000a02", "main", "kurooto", "Reminder: **Problem sheet 4** is due Thursday 17:00.", 13 * 60) {
-            put("buttons", buttons("Done", "Snooze 1h"))
+            put("buttons", buttons("Done", "Snooze 1h").apply { // (0.9.1) feedback buttons: small, after the message's own
+                listOf("Wrong", "Why?", "Less of this").forEach { put(JSONObject().put("label", it).put("quiet", true)) }
+            })
         }
         m("0000000000000a03", "main", "kurooto", "Your computer finished the backup.", 12 * 60)
 

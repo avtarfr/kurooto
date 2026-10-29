@@ -560,20 +560,19 @@ private fun Quote(cu: ChatUi, q: ChatQuote, mine: Boolean) {
 }
 
 /** A message's buttons (as on Telegram: the first filled, the rest tonal), and Reply under one that takes a reply.
- *  (0.9.1) Feedback buttons (Wrong, Why?, Less of this: "quiet") come last as small text buttons; each keeps its number. */
+ *  (0.9.1) Feedback buttons (Wrong, Why?, Less of this: "quiet") go on a small line of their own under them; each keeps
+ *  its number. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Buttons(cu: ChatUi, m: ChatMsg) {
     val cs = MaterialTheme.colorScheme
-    val order = remember(m.buttons) { m.buttons.indices.sortedBy { if (m.buttons[it].quiet) 1 else 0 } }
-    val first = order.firstOrNull { !m.buttons[it].quiet }
+    val main = remember(m.buttons) { m.buttons.indices.filter { !m.buttons[it].quiet } }
+    val quiet = remember(m.buttons) { m.buttons.indices.filter { m.buttons[it].quiet } }
     FlowRow(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        order.forEach { i ->
+        main.forEach { i ->
             val b = m.buttons[i]
             var busy by remember(m.id, i) { mutableStateOf(false) }
-            if (b.quiet) {
-                TextButton({ cu.tap(m, i, b) { busy = it } }, enabled = !busy, shapes = ButtonDefaults.shapes()) { Text(b.label) }
-            } else if (i == first) {
+            if (i == main.first()) {
                 Button({ cu.tap(m, i, b) { busy = it } }, enabled = !busy, shapes = ButtonDefaults.shapes()) { Text(b.label) }
             } else {
                 FilledTonalButton(
@@ -587,6 +586,18 @@ private fun Buttons(cu: ChatUi, m: ChatMsg) {
                 Icon(painterResource(R.drawable.ic_chat_reply), null, Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("Reply")
+            }
+        }
+    }
+    if (quiet.isNotEmpty()) { // (0.9.1) the feedback ones: a small line of their own under the message's buttons
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+            quiet.forEach { i ->
+                val b = m.buttons[i]
+                var busy by remember(m.id, i) { mutableStateOf(false) }
+                TextButton(
+                    { cu.tap(m, i, b) { busy = it } }, enabled = !busy, shapes = ButtonDefaults.shapes(),
+                    contentPadding = PaddingValues(horizontal = 10.dp),
+                ) { Text(b.label, style = MaterialTheme.typography.labelMedium) }
             }
         }
     }
