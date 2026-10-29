@@ -518,10 +518,25 @@ class Ask:
                     **({"choices": q["choices"]} if q["choices"] else {}),
                     **({"kept_for_this_call": True} if q["status"] == "later" else {}),
                     **self._asked_on(q),
+                    **self._for_call(q),
                 }
                 for q in items[:10]
             ]
         }
+
+    def _for_call(self, q: dict) -> dict:
+        """(0.9.2) What the feature that asked adds about its question for a call (its call_question(q) -> dict; After
+        class: "today's quiz in that class was the same talk"). {} when it adds nothing or fails."""
+        m = self.app.modules.get(str(q.get("source") or ""))
+        fn = getattr(m, "call_question", None) if m is not None and self.app.is_on(m.id) else None
+        if not callable(fn):
+            return {}
+        try:
+            out = fn(q)
+        except Exception as e:  # a feature's note never stops the call's brief
+            self.app.events.emit("ask_call_note_failed", source=m.id, error=type(e).__name__)
+            return {}
+        return out if isinstance(out, dict) else {}
 
     @staticmethod
     def _asked_on(q: dict) -> dict:
@@ -549,7 +564,10 @@ class Ask:
                 hint="Ask the open_questions from pending_items naturally, one at a time, and save each answer with "
                 "answer_question (approvals with answer_approval). Never answer one for them. One with asked_on is "
                 'about that day: say so ("How was Wednesday\'s Linear Algebra?"). Ask each one once a call: once '
-                "they've answered, even unclearly, save what they said (or \"later\") and don't ask it again.",
+                "they've answered, even unclearly, save what they said (or \"later\") and don't ask it again. One "
+                'they\'ve already answered in spirit on this call ("How was the Organic Chemistry class?" after they '
+                "told you how its quiz went; one with same_as says so) isn't asked: save what they said with "
+                "answer_question. If they say they already answered it, save what they said before and move on.",
             ),
             Tool(
                 "answer_approval",

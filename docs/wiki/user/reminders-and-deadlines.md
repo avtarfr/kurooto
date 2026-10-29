@@ -40,7 +40,10 @@ nothing until you tap it, and what it starts asks you again before anything that
 | `/remind in 3 days call the bank` · `/remind 1w renew library book` | days (`d`) and weeks (`w`) work in `/remind` |
 | `/remind fri 17:00 submit the form` · `/remind next mon 9am lab` | that weekday (a weekday with no time is 09:00) |
 | `/remind 2026-11-02 14:00 dentist` | that date and time (a date alone is 09:00) |
-| `/reminders` | your upcoming reminders (up to 15), each with a **Cancel** button |
+| `remind me every day at 22:15 to call home` · `remind me to call home from today onwards every day at 10 pm` | a repeating reminder (see "Every day" below) |
+| `remind me on weekdays at 7 to stretch` · `remind me every Monday and Thursday at 9 to go to the gym until 4 dec` | weekdays only; given days, with a last day |
+| `/remind 22:15 call home every day` | the same with `/remind` |
+| `/reminders` | your upcoming reminders (up to 15), each with a **Cancel** button; a repeating one is listed once, with **Cancel** (every time of it) and **Skip next** |
 
 What's left after the time is the text of the reminder. Words like "to", "that", "about", ":" or "-" at its start
 are dropped, so `remind me at 6 pm: call mum` says "call mum".
@@ -54,10 +57,28 @@ otherwise it's the next time the clock shows that hour (at 10:00, "at 9" means 2
 Type `! 18:30 call mum`, `! in 20m tea` or `! tomorrow 9am gym` in its box to set one. Ctrl+K anywhere on the board
 does the same: `remind 18:30 call mum`.
 
-**On the phone and on calls.** On a call, just say it: "remind me at six to buy milk". The AI's `add_reminder` tool
-sets it (a reminder *message*; ask for a call if you want it to ring, see [calls.md](calls.md)). With Phone calls on,
+**On the phone and on calls.** On a call, just say it: "remind me at six to buy milk", "every day at 22:15". The AI's
+`add_reminder` tool sets it (a reminder *message*; ask for a call if you want it to ring, see [calls.md](calls.md)). With Phone calls on,
 your next day's reminders are part of the brief your call line keeps. With
 [Reminders with the lid shut](calls.md) on, your Android phone gets them at their time even when the computer sleeps.
+
+### Every day (repeating reminders)
+
+0.9.2, `reminders.repeat`, on. Say how often in the reminder: "every day", "daily", "every night", "on weekdays",
+"at weekends", "every Monday and Thursday", "on Tuesdays", optionally with "until 4 dec" (or a date, a weekday,
+"tomorrow"). "From today onwards" and "from now on" are fine too. The answer says it: "I'll remind you every day at
+22:15, starting Thu 29 Oct: call home". Each time it comes with the usual **+10 min** and **+1 h** (those snooze that
+time only), and books its next time by itself. `/reminders` lists it once: **Cancel** ends it, **Skip next** skips
+one time. On calls the AI's `add_reminder` takes a `repeat` ("daily", "weekdays", "weekends", "mon,thu") and `until`;
+the call is told never to say a reminder repeats unless the tool's answer says so. *Off:* a repeating reminder comes
+once more at its next time and isn't booked again; new ones come once and the answer says so.
+
+### Changing one
+
+On a call or in an AI request, "make it 10:15" or "can you do that every day?" right after setting a reminder changes
+that reminder (the `change_reminder` tool: its time, how often, its last day) instead of adding a second. A bare time
+keeps the reminder's day and takes the reading nearest the old time: "10:15" after 22:00 is 22:15. A second
+`add_reminder` with the same words as one set in the last 15 minutes moves the first instead, unless you want both.
 
 ### Waiting for a focus's break
 

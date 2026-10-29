@@ -825,6 +825,7 @@
 "reminders.addon_buttons": "Let an add-on put its own buttons under a reminder as it fires (for example Order on Zepto under \"buy milk\").",
 "reminders.place_names": "The phone app shares the names of the places you saved, so \"the lib\" finds \"Library\".",
 "reminders.places": "Location reminders: \"remind me when I reach the library to …\".",
+"reminders.repeat": "Repeating reminders: \"remind me every day at 22:15 to …\", \"on weekdays\", \"every Monday and Thursday\", with \"until <date>\".",
 "reminders.wait_for_break": "During a Study mode focus, your reminders wait for its break; a pause or reset brings them at once.",
 "repair.on": "When a short request could mean either of two things, ask which with both as buttons.",
 "reply_drafts.ask_days": "Days the Send / Edit / Discard question on a draft stays open.",

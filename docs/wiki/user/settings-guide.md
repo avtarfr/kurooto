@@ -30,7 +30,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [When it may interrupt you](#when-it-may-interrupt-you): 14 settings
 - [Phone calls and the call line](#phone-calls-and-the-call-line): 52 settings
 - [Morning alarm](#morning-alarm): 13 settings
-- [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 49 settings
+- [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 50 settings
 - [Check-ins, journal and the week](#check-ins-journal-and-the-week): 21 settings
 - [Classes and timetable](#classes-and-timetable): 19 settings
 - [Calendar](#calendar): 11 settings
@@ -2119,6 +2119,20 @@ until you tap it; what it starts (an order, say) asks you again before it pays o
 - **When to change it:** Turn it off to keep reminders to their snooze buttons only.
 - **Costs and what leaves this computer:** Nothing.
 - **Depends on:** Reminders, and an add-on that offers buttons.
+
+### `reminders.repeat`
+
+Repeating reminders: "remind me every day at 22:15 to …", "on weekdays", "every Monday and Thursday", with "until
+<date>".
+
+One reminder that books its own next time after each one. /reminders lists it once, with Cancel (every time of it) and
+Skip next. On calls, add_reminder takes repeat and until, and change_reminder makes one just set repeat.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you only want one-off reminders. Each repeating one then comes once more and
+  stops.
+- **Costs and what leaves this computer:** Nothing.
+- **Depends on:** Reminders.
 
 ### `reminders.wait_for_break`
 

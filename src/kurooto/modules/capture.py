@@ -9,6 +9,12 @@ the AI also writes a proper study log for the class (the study-log skill).
 
 Only some subjects: capture.subjects lists the ones to ask about (empty: every subject), capture.skip_subjects the
 ones never to ask about (a subject's short name, full name or alias works in both).
+
+On a call (0.9.2): a question about a class that had a quiz or test today (a Deadlines exam item of that subject due
+that day) says so in the call's brief (same_as), so the call asks about both once, or not at all once they've said
+how it went. After the call, a question still open for a class the call talked about (Kurooto named the subject and
+they answered) is answered with what they said, as a reply would be; one they only said "I already answered that" to
+is closed as not needed. It's never asked again.
 """
 
 from __future__ import annotations
@@ -44,6 +50,21 @@ NOT_THERE = re.compile(
     re.I,
 )
 NOT_THERE_MAX = 160  # longer answers are about the class itself, even when they mention skipping something
+# (0.9.2) after a call: "I already answered that", and replies too short to be about the class
+ALREADY = re.compile(
+    r"\b(?:already\s+(?:answered|told|said|covered|went\s+over)|(?:i\s+)?(?:just\s+)?(?:told|said)\s+(?:you|that)"
+    r"|answered\s+(?:that|it|this)\s+already)\b",
+    re.I,
+)
+NOT_AN_ANSWER = re.compile(
+    r"^\W*(?:yes|yeah|yep|no|nope|ok(?:ay)?|sure|hmm+|right|all right|fine|later|not now|ask me later)\W*$", re.I
+)
+# words of a subject's name too general to say which class a sentence is about
+GENERIC = {
+    "theory", "practice", "introduction", "advanced", "methods", "principles", "applied", "topics", "special",
+    "basic", "general", "elementary", "laboratory", "course", "class", "studies", "fundamentals", "seminar",
+    "project", "modern", "and", "with",
+}  # fmt: skip
 
 
 def not_there(text: str) -> bool:
@@ -248,3 +269,87 @@ class Capture(Module):
 
     def callbacks(self):
         return {"cap": lambda ref, act: "OK."}
+
+    # ------------------------------------------------------------------------------------- on calls (0.9.2)
+    def call_question(self, q: dict) -> dict:
+        """For the call's brief (core/ask.py): an after-class question about a class that had a quiz or test that day
+        says so, so the call asks about both at once, or not at all once they've said how it went."""
+        p = q.get("hook_payload") or {}
+        slug, day = p.get("subject"), str(p.get("day") or "")
+        dl = self.app.modules.get("deadlines")
+        if not slug or not day or dl is None or not self.app.is_on("deadlines"):
+            return {}
+        same = [
+            str(it.get("title") or "")
+            for it in dl.items().values()
+            if it.get("subject") == slug
+            and it.get("kind") == "exam"
+            and str(it.get("due") or "")[:10] == day
+            and it.get("status") not in ("removed", "dropped", "cancelled")
+        ]
+        if not same or not same[0]:
+            return {}
+        return {
+            "same_as": f"{same[0]} was in this class that day: one question covers both. If they've already said "
+            "how it went on this call, don't ask this: save what they said with answer_question. Otherwise ask once "
+            f'about both ("How did {same[0]} and the class go?").'
+        }
+
+    def named(self, slug: str, text: str) -> bool:
+        """Does a sentence name this subject: its name, short name or an alias, or a word of its name no other subject
+        has ("Bayesian" for "Bayesian Statistics" when no other subject's name has it)."""
+        subjects = self.app.modules["subjects"]
+        if slug in subjects.find_in(text):
+            return True
+        rows = subjects.subjects()
+        mine = next((s for s in rows if s["slug"] == slug), None)
+        if mine is None:
+            return False
+        others = " ".join(s["name"].lower() for s in rows if s["slug"] != slug)
+        low = text.lower()
+        for w in re.findall(r"[a-z]{5,}", mine["name"].lower()):
+            if w in GENERIC or re.search(rf"\b{w}\b", others):
+                continue
+            if re.search(rf"\b{w}\b", low):
+                return True
+        return False
+
+    def covered_by_call(self, lines: list[dict]) -> int:
+        """(0.9.2) After a call: each after-class question still open for a class the call talked about (Kurooto named
+        the subject and they answered) is answered with what they said, as a reply would be (the class log; a study
+        log with Chat on). One they only answered "I already answered that", with nothing said about it before, is
+        closed as not needed. One they said "later" to stays. How many were closed."""
+        mine = {self.app.name.lower(), "kurooto", "assistant", "ai"}
+        rows = [
+            (str(x.get("who") or "").lower() in mine, str(x.get("text") or "").strip())
+            for x in lines
+            if x.get("who") != "(note)"
+        ]
+        rows = [r for r in rows if r[1]]
+        n = 0
+        for q in self.app.ask.pending(kind="question", source=self.id):
+            slug = (q.get("hook_payload") or {}).get("subject")
+            if not slug:
+                continue
+            said, already, later = [], False, False
+            for i, (ours, text) in enumerate(rows):
+                if not ours or not self.named(slug, text) or i + 1 >= len(rows) or rows[i + 1][0]:
+                    continue
+                reply = rows[i + 1][1]
+                if ALREADY.search(reply):
+                    already = True
+                elif re.search(r"\b(?:later|not now)\b", reply, re.I) and len(reply) < 40:
+                    later = True
+                elif len(reply) >= 12 and not NOT_AN_ANSWER.match(reply):
+                    said.append(reply)
+            if later:
+                continue
+            if said:
+                self.app.ask.answer(q["id"], " ".join(dict.fromkeys(said))[:2000], "call")
+            elif already:
+                self.app.ask.expire(q["id"])
+            else:
+                continue
+            self.app.events.emit("capture_covered_by_call", subject=slug, answered=bool(said))
+            n += 1
+        return n

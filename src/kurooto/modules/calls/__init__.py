@@ -603,7 +603,8 @@ class Calls(Module):
                 "open questions. Call it at the start of every call.",
                 lambda a: self.pending(context=True),
                 offline="brief",
-                hint="At the start of every call, call pending_items and bring up what matters, briefly.",
+                hint="At the start of every call, call pending_items (unless the call's first message already gives "
+                "it) and bring up what matters, briefly.",
             ),
             Tool(
                 "send_message",
@@ -1731,6 +1732,12 @@ class Calls(Module):
         from kurooto.mind import tone
 
         tone.from_call(self.app, lines)  # (0.9.0, mind.tone.calls) the day's tone counts your call lines too, locally
+        capture = self.app.modules.get("capture")
+        if capture is not None and self.app.is_on("capture"):
+            try:  # (0.9.2) an after-class question the call already went over isn't asked again
+                capture.covered_by_call(lines)
+            except Exception as e:
+                self.app.events.emit("calls_settle_failed", error=type(e).__name__)
         try:  # (0.9.1, L29) what the call went over: held messages and open questions about it say so (or settle)
             review.settle_covered(self, lines, used, str(b.get("layer") or ""))
         except Exception as e:
@@ -1846,6 +1853,9 @@ class Calls(Module):
             "Ask each question once a call: once they've answered it, even unclearly, don't ask it again (an open "
             "question marked raised_this_call was raised already); if the answer was unclear, ask one short "
             "follow-up about what they said instead.",
+            "One thing at a time: after a question, stop and wait for their answer. Never ask two questions in one "
+            "turn, and never go on to the next topic before they've answered; a tool result that comes while you "
+            "wait is for after their answer.",
             "If something needs a screen or their computer, say so. Don't read out email contents or other people's "
             "details.",
         ]
@@ -1889,7 +1899,9 @@ class Calls(Module):
             f"update; {notes}; anything that needs the computer is saved and done when it's back on. Say so when it "
             "matters.",
             "purpose": "You placed this call yourself. Reason: %%REASON%%. When the call connects, speak first: greet "
-            "them and get straight to the reason.",
+            "them once and get straight to the reason. When the call's first message gives pending_items (and "
+            "checkin_script) already, don't call them again; otherwise call them before you say anything, so the "
+            "greeting isn't cut off and said twice.",
             "queued": "Saved. Their computer is off; it will do this as soon as it's back on.",
             # when Gemini Live is down (fallback.py): turn by turn with the phone's own speech, or text on Telegram
             "turns": "This call goes turn by turn: their phone turns what they say into text and reads your answers "

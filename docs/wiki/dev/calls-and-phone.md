@@ -256,6 +256,15 @@ transcripts, events and answers until the computer takes them (`Calls.take_queue
   `presence_forecast.free_now`, else `next_free`'s hour; with `mind.tools.on` or the forecast off, or no free hour, it
   answers "give a time". Still `guarded="call.place"`. With the computer off, each tool's `offline` value decides: `brief` (answered from the last pushed
   brief), `queue` (done later), `needs` (the assistant says it can't).
+- (0.9.2) The call page's opening: `start()` calls `prime()`, which fetches `pending_items` (and `checkin_script`
+  when the purpose is one of `CHECKINS`) through `/tool` *without* `since` (so `_mark_raised` doesn't count that
+  listing), and `greet()` sends `[The call just connected. Speak first.]` plus `[pending_items, already called for
+  you: …]` lines (at most `PRIME_MS` = 4 s wait). The hints of `pending_items` and `checkin_script` say to skip them
+  when the first message has them. Before: the model said "Hi, ", called both, then greeted again.
+- (0.9.2) Tool results: with `NON_BLOCKING` tools, `runTool` holds a result while the model is speaking and sends it
+  when its turn ends (`sendHeld`): `SILENT` while `awaiting` (its turn ended on "?" and no input transcription since),
+  else `WHEN_IDLE`. Before, a result arriving after a question started a second turn over the question. The transcript
+  (`note()`) starts a new line after `turnComplete` or `interrupted` (`lineEnded`), so two turns aren't joined.
 - `/tasks` is polled for finished jobs and approvals; `Calls.on_call` keeps `availability.set_on_call` 90 s ahead
   (`ON_CALL_S`), so nothing else rings and updates wait. The end: the page's `/transcript` (`ended: true`) clears it at
   once (`Calls._transcript`, and the Worker's `oncall`); a call that never sent one ends 90 s after its last `/tool` or

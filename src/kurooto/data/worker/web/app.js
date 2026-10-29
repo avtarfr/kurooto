@@ -40,7 +40,20 @@ let micStream, inCtx, outCtx, worklet, muted = false, wakeLock = null, pollTimer
 let playAt = 0; const playing = new Set();
 let lineMe = null, lineAi = null;
 const transcript = []; // [{who, text}] sent to your computer when the call ends (kept there, never synced)
-function note(who, text) { const last = transcript[transcript.length - 1]; if (last && last.who === who) last.text += text; else transcript.push({ who, text }); }
+// A line goes on while the same side keeps talking in the same turn; a finished or cut-off turn ends it, so two turns of
+// the assistant in a row are two lines (0.9.2: "…your Lab Journal submission?To prepare for…" was two run together).
+let lineEnded = true;
+function note(who, text) { const last = transcript[transcript.length - 1]; if (last && last.who === who && !lineEnded) last.text += text; else transcript.push({ who, text }); lineEnded = false; }
+// (0.9.2) While the assistant's last turn ended on a question they haven't answered yet, a tool's result is added
+// quietly (SILENT) instead of starting another turn: one question at a time, never a second one over the first.
+let speaking = false, turnText = '', awaiting = false;
+const held = []; // tool responses that came while it was still speaking: sent when its turn ends
+// (0.9.2) What a call it placed starts from, fetched while Live connects: pending_items, and checkin_script on a
+// check-in call, so its first words are the greeting and the reason, said once (not "Hi, " then, once it had fetched
+// them, "Hi, how did…").
+const CHECKINS = { 'evening debrief': 'evening', 'midday check-in': 'midday', 'night check-in': 'night' };
+const PRIME_MS = 4000; // at most this long after connecting before it speaks anyway
+let primer = null;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function status(text, cls = '') { const s = $('status'); s.textContent = text; s.className = cls; }
@@ -224,8 +237,31 @@ function openSession(t, resume) {
 
 function liveUp(resumed) {
   status(startedOffline ? 'Connected (your computer is off: some things wait for it)' : 'Connected', 'live');
-  if (purpose && !resumed) session.sendClientContent({ turns: [{ role: 'user', parts: [{ text: '[The call just connected. Speak first.]' }] }], turnComplete: true });
+  if (purpose && !resumed) greet(session);
+  sendHeld();
   callIsOn();
+}
+
+function prime() {
+  if (!purpose || primer) return primer;
+  const name = CHECKINS[purpose.trim().toLowerCase()];
+  // no `since`: listing them here doesn't count as the call having raised its open questions yet
+  const get = (tool, args) => api('/tool', { name: tool, args }).then((r) => (r && r.result) || null).catch(() => null);
+  primer = Promise.all([get('pending_items', {}), name ? get('checkin_script', { name }) : null]);
+  return primer;
+}
+const shown = (v) => (typeof v === 'string' ? v : JSON.stringify(v));
+async function opening() {
+  const got = await Promise.race([prime() || Promise.resolve([]), sleep(PRIME_MS).then(() => [])]).catch(() => []);
+  const [items, script] = got || [];
+  const parts = ['[The call just connected. Speak first.]'];
+  if (items) parts.push(`[pending_items, already called for you: ${shown(items)}]`);
+  if (script) parts.push(`[checkin_script, already called for you: ${shown(script)}]`);
+  return parts.join('\n');
+}
+async function greet(s) {
+  const text = await opening();
+  if (s && s === session) s.sendClientContent({ turns: [{ role: 'user', parts: [{ text }] }], turnComplete: true });
 }
 
 function retrying() { status('Reconnecting…'); say('reconnecting…', 'sys'); }
@@ -243,7 +279,7 @@ async function startLive(from = 0, why = '') {
 // A session that closed. Going away (its time is up) resumes; closing before anything was said means it never really
 // started (the next model is tried); a drop mid-call is tried again once, then the call goes on turn by turn.
 function onLiveClose(c) {
-  session = null;
+  session = null; speaking = false; // a resumed session gets the results still held (liveUp)
   if (ending || mode !== 'live') return;
   if (goingAway) { goingAway = false; return reopen('', false); }
   const early = !heard && performance.now() - liveAt < STARTUP_MS;
@@ -286,10 +322,16 @@ function onMessage(m) {
     if (sc.interrupted) { stopPlayback(); dropAudio = false; }
     if (sc.turnComplete || sc.generationComplete) dropAudio = false;
     if (sc.turnComplete) midRetries = 0; // it works again: a later drop gets its own retry
+    if (sc.modelTurn) speaking = true;
     for (const p of (sc.modelTurn && sc.modelTurn.parts) || []) if (p.inlineData && p.inlineData.data) play(p.inlineData.data);
-    if (sc.inputTranscription && sc.inputTranscription.text) { lineAi = null; lineMe = lineMe || say('', 'me'); lineMe.textContent += sc.inputTranscription.text; note(me, sc.inputTranscription.text); }
-    if (sc.outputTranscription && sc.outputTranscription.text) { lineMe = null; lineAi = lineAi || say('', 'ai'); lineAi.textContent += sc.outputTranscription.text; note(ai, sc.outputTranscription.text); }
-    if (sc.turnComplete) { lineMe = null; lineAi = null; }
+    if (sc.inputTranscription && sc.inputTranscription.text) { lineAi = null; lineMe = lineMe || say('', 'me'); lineMe.textContent += sc.inputTranscription.text; note(me, sc.inputTranscription.text); awaiting = false; }
+    if (sc.outputTranscription && sc.outputTranscription.text) { speaking = true; turnText += sc.outputTranscription.text; lineMe = null; lineAi = lineAi || say('', 'ai'); lineAi.textContent += sc.outputTranscription.text; note(ai, sc.outputTranscription.text); }
+    if (sc.turnComplete || sc.interrupted) {
+      lineMe = null; lineAi = null; lineEnded = true; speaking = false;
+      awaiting = !sc.interrupted && /\?["'”’)]*\s*$/.test(turnText.trim());
+      turnText = '';
+      sendHeld();
+    }
   }
   if (m.toolCall) for (const fc of m.toolCall.functionCalls || []) runTool(fc);
 }
@@ -298,7 +340,18 @@ async function runTool(fc) {
   sayTool(fc);
   let result;
   try { result = (await api('/tool', { name: fc.name, args: fc.args || {}, since })).result; } catch (e) { result = `Tool failed: ${e.message}`; }
-  if (session) session.sendToolResponse({ functionResponses: [{ id: fc.id, name: fc.name, response: nonBlocking ? { result, scheduling: 'WHEN_IDLE' } : { result } }] });
+  if (!session) return;
+  if (!nonBlocking) return session.sendToolResponse({ functionResponses: [{ id: fc.id, name: fc.name, response: { result } }] });
+  held.push({ id: fc.id, name: fc.name, result });
+  if (!speaking) sendHeld();
+}
+// Tool results, once the assistant isn't speaking: quietly (SILENT) while its question waits for their answer, else
+// WHEN_IDLE as before (it says what the result means).
+function sendHeld() {
+  if (!session || !held.length) return;
+  const scheduling = awaiting ? 'SILENT' : 'WHEN_IDLE';
+  const out = held.splice(0).map((r) => ({ id: r.id, name: r.name, response: { result: r.result, scheduling } }));
+  session.sendToolResponse({ functionResponses: out });
 }
 function toolLabel(fc) {
   const a = fc.args || {};
@@ -561,6 +614,7 @@ async function start() {
     return fallBack('mic', '');
   }
   if (ending) return;
+  primer = null; prime(); // what the call starts from, fetched while Live connects
   startLive(0);
 }
 

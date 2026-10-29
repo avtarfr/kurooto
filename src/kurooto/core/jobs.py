@@ -120,6 +120,7 @@ ACTS = {
     "read_book": ("read books", ""),
     "fetch_url": ("read", "web page"),
     "add_reminder": ("set", "reminder"),
+    "change_reminder": ("changed", "reminder"),
     "set_alarm": ("set", "alarm"),
     "add_deadline": ("added", "deadline"),
     "move_deadline": ("moved", "deadline"),

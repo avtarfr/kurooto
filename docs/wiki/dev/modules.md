@@ -589,6 +589,16 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   goes in a second row under the snooze row: at most `ADDON_BUTTONS` (2), a label cut at 30, data with a `prefix:`
   that fits Telegram's 64 bytes, answered by that feature's own `callbacks()`. A failing one emits
   `reminder_buttons_failed` (its id and the error's type) and is skipped.
+  (0.9.2, `reminders.repeat`, on) A series is still one `once` job: its payload has `repeat` `{days: [0-6], at:
+  "HH:MM", until?}` and `series` (the key's ref); `_fire` calls `_rearm` first (not for `released` or lidsafe `here`
+  re-runs), which books `next_time(rep, now())` under the same key. That works because `Scheduler._finish` deletes a
+  once job only `where key=? and next_run=?` (tested in test_callfix_092). Each time's payload `ref` is
+  `occurrence(series, when)` (`<ref>-YYMMDD`) so lidsafe's item ids differ per day. `skip_next(ref)` (button `remk`),
+  `find(key, words, recent_s)` (newest `set_at` first) and `change(job, when, repeat, until)` (`moved_time`: a bare
+  time keeps the day, nearest reading to the old time) back the `change_reminder` tool; `_tool_add` turns an
+  `add_reminder` with the same words (`_words`) as one set in the last `RECENT_S` (15 min) into a change unless
+  `another`. Parsing: `repeat_days`, `strip_repeat` (`REPEAT_WORDS`, `REPEAT_FILLER`, `UNTIL`), `until_date`,
+  `repeat_label`. Off: `_rearm` stops (the series comes once more); `call_tools` drops the `repeat`/`until` params.
 - **checkins** (`modules/checkins.py`): evening/midday/night prompts by message or call, answers into the daily note;
   `checkins:plan` books the day's `checkins:<name>` jobs; call hooks `call_schedule`, `call_outcome`,
   `call_reschedule`, `call_transcript`. A check-in day starts at `checkins.day_starts` (05:00). `learn()`
@@ -838,6 +848,12 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `.kurooto-course` file with a strict schema that refuses personal data.
 - **capture** (`modules/capture.py`): after each class, a question about what was worth keeping; answers to the class log,
   a `study-log` skill job with Chat on.
+  (0.9.2) `call_question(q)` is `core/ask.py:_for_call`'s hook (any feature that asked may add fields to its open
+  question in the call brief): a question about a class with a Deadlines `exam` item of that subject due that day gets
+  `same_as`. `covered_by_call(lines)` runs from `Calls.save_transcript` before `review.settle_covered`: per open
+  capture question, Kurooto's lines that name the subject (`named`: `subjects.find_in` or a name word of 5+ letters no
+  other subject has, not in `GENERIC`) and the reply right after; replies are answered with `ask.answer(..., "call")`
+  (the hook writes the class log), `ALREADY` only expires it, "later" leaves it.
 - **doubts** (`modules/doubts.py`): a per-subject doubts list, sent before the next class.
   0.9.0: `doubts.to_revision` (read by `revision.Revision._doubts`), and `doubts.share` (off): `shared(slug)` for
   the hint ladder's request (`Hints._go`) and `call_brief()` → `open_doubts_before_class` for classes starting within
