@@ -1511,6 +1511,7 @@ class Voice(Module):
             if said is not None:
                 self._talk_line("you", text)  # (after_talk) a Live turn is a turn of this talk too
                 self._talk_line(self.app.name, said)
+                self._desk_chat(text, said, "live")
                 return said
         replies: list[str] = []
         msg = Incoming(
@@ -1563,6 +1564,7 @@ class Voice(Module):
             fast.stamp(turn, "first_text")
             fast.stamp(turn, "answer")
             self._talk_line(self.app.name, "\n".join(replies))
+            self._desk_chat(text, "\n".join(replies))
             return "\n".join(replies)
         answer = self._wait_job(msg) if stream is None else self._wait_job(msg, stream)
         if stream is not None and stream.cut and not answer:  # cut off mid-answer: what it said is the answer shown
@@ -1571,6 +1573,7 @@ class Voice(Module):
         fast.stamp(turn, "first_text")
         fast.stamp(turn, "answer")
         self._talk_line(self.app.name, answer)
+        self._desk_chat(text, answer)
         chat = self.app.modules.get("chat")
         if chat is not None and answer and chat.owns(jid):  # the conversation goes on, as a typed one does
             try:
@@ -1924,6 +1927,17 @@ class Voice(Module):
             return True, f"spoken; not listening: {blocked}"
         self.portal.invite(text, listen_s)
         return True, "talk"
+
+    def _desk_chat(self, said: str, answer: str, how: str = "spoken") -> None:
+        """(0.9.1, calls.chat_desk) Your turn at the desk and its answer, into the phone app's and the dashboard's
+        "Desk" chat. Only your own turns reach here (a guest's returned before). Never raises."""
+        calls = self.app.modules.get("calls")
+        if calls is None or not self.app.is_on("calls") or not hasattr(calls, "chat"):
+            return
+        try:
+            calls.chat.desk_turn(said, answer, how)
+        except Exception as e:
+            self.app.events.emit("voice_failed", part="desk chat", error=f"{type(e).__name__}"[:100])
 
     def _talk_line(self, who: str, text: str) -> None:
         """(after_talk) One text line of this conversation, in memory until it closes (at most TALK_MAX lines)."""

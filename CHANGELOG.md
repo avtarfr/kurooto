@@ -15,6 +15,15 @@
   as a to-do on the wake-up call, even when the plan drafted before it or a note still lists it.
 - **One question, once a call** (a fix): an answered question, even an unclear answer, isn't asked again in the same
   call.
+- **The Desk chat** (`calls.chat_desk`, on): what you say at your desk (aloud, a Live talk, the board's talk box) and
+  the answers, as one chat named Desk on the dashboard's Chat page and the phone app, without a notification. Your
+  turns only. `calls.chat_desk_history` (off) lets the talk box follow on from it.
+- **Talk-box answers aren't lost when the page closes** (a fix): an AI answer to the talk box arrives in the Desk chat
+  and on the "while you were away" card, never on Telegram.
+- **The Waiting page** (`look.being_held_link`, on; Alt+W): click the being's held count to read every held message in
+  full, with Send now.
+- **While you were away** (`face.away.summary`, off): back at the desk, one pop-up and a card listing what came
+  meanwhile; `face.away.summary_only` (off) shows only that pop-up until you press Send now.
 
 ## 0.9.0 (2026-10-29)
 

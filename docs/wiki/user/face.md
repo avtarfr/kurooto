@@ -287,6 +287,10 @@ switches use it:
 - `face.away.places_close_camera` (0.9.0, off, with `use_places`): while your phone is out, the camera stays closed
   ("paused: your phone is out"); it opens again when the phone arrives at a saved place or someone types. Off, the
   camera keeps looking as before (an arrival can be seen, and `report_others` has something to report).
+- `face.away.summary` (0.9.1, off): back at the desk, one "While you were away" pop-up ("2 messages and 1 answer to
+  what you asked in the talk box") and a card on the dashboard's Waiting page with the held pop-ups in full and those
+  answers, with Send now. The held pop-ups still show one by one. `face.away.summary_only` (off): only that pop-up;
+  the rest wait on the card until Send now. In memory only.
 - `face.away.report_others` (0.9.0, off): while you're away, it notes the minutes when someone else's face was in view
   (and how many faces), and once you're back sends one message: "While you were away, Face presence saw someone else
   at your desk at 14:10 and 14:25 (2 faces)." Times and counts only, in memory, then forgotten: never a picture, never

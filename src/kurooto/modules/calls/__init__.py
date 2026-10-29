@@ -94,6 +94,12 @@ register_defaults(
         "chat_files_inline": True,  # files in the phone app's chat both ways, shown in place (photos, documents, audio)
         "chat_edit": True,  # edit (15 minutes), delete and pin your messages in the phone app's chat
         "chat_titles": "first words",  # a new chat's name: "first words" of its first message, or "ai" (a short title)
+        # (0.9.1) what you say at the desk (aloud, Live, the board's talk box) and its answers, as one "Desk" chat on
+        # the dashboard's Chat page and the phone app (sealed like the rest; no notification for it). Your turns only
+        "chat_desk": True,
+        # (0.9.1) the board's talk box also sends the Desk chat's recent turns to your AI, so it can follow on. Never
+        # the kurooto command, the terminal or setup: each of those stays a request on its own
+        "chat_desk_history": False,
         # (0.9.0) what every AI request is told goes to calls and desk Live talks too: your profile's brief, how to help
         # you, your not-interested topics, Brain's state (never the read, mood, tone or senses; providers/context.py)
         "context_brief": True,

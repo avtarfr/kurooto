@@ -3,7 +3,8 @@ Kurooto's own messages land), each session is a separate AI conversation whose c
 it lives (modules/chat.py keeps each one's turns), like an AI web app. Telegram and "main" keep the old 2-hour window.
 
 Kept in <state>/calls/sessions.json: {"rev", "sessions": {id: {id, title, created, updated, pinned, last, read,
-named}}}. An id is 16 hex characters the phone makes (so it can start a chat with the computer off) or "main". A
+named}}}. An id is 16 hex characters the phone makes (so it can start a chat with the computer off) or "main";
+(0.9.1) the Desk chat (DESK, calls.chat_desk) has a fixed one of that shape and holds what you said at the desk. A
 session's title is its first message's first words, or with calls.chat_titles = "ai" a short title the AI writes
 after the first answer; a title you gave it (session.rename) is never replaced. The list, with the commands from
 /help, goes to the call line (op "chat-sessions") after each change, so a phone can catch up with the computer off;
@@ -26,6 +27,10 @@ if TYPE_CHECKING:
 
 MAIN = "main"
 SID = re.compile(r"[0-9a-f]{16}")
+# (0.9.1, calls.chat_desk) the Desk chat: what you say at the desk (spoken, Live, the board's talk box) as one chat. A
+# fixed id of the same shape as the phone's own (16 hex), so the call line and the apps take it as any other chat
+DESK = "de5c000000000000"
+DESK_TITLE = "Desk"
 MAX = 100  # sessions at most (main included)
 TITLE_MAX = 80
 LAST_MAX = 120
@@ -54,6 +59,27 @@ class Sessions:
 
     def on(self) -> bool:
         return bool(self.calls.setting("chat_sessions"))
+
+    def desk_on(self) -> bool:
+        """(0.9.1) The Desk chat: calls.chat_desk, inside separate chats (calls.chat_sessions)."""
+        return self.on() and bool(self.calls.setting("chat_desk"))
+
+    def ensure_desk(self) -> bool:
+        """The Desk chat's row, made the first time something is said at the desk. False with it off."""
+        if not self.desk_on():
+            return False
+        with self._lock():
+            d = self._load()
+            if DESK in d["sessions"]:
+                return True
+            if len(d["sessions"]) >= MAX:
+                return False
+            t = int(time.time())
+            d["sessions"][DESK] = {"id": DESK, "title": DESK_TITLE, "created": t, "updated": t, "pinned": False,
+                                   "last": "", "read": "", "named": "fixed"}  # fmt: skip
+            self._save(d)
+        self.push()
+        return True
 
     def _lock(self):
         return Lock(self.app.paths.state, "calls-sessions")
@@ -94,6 +120,8 @@ class Sessions:
     def listing(self) -> list[dict]:
         """For the phone: main first, then pinned, then the latest."""
         rows = list(self._load()["sessions"].values()) if self.on() else [self._load()["sessions"][MAIN]]
+        if not self.desk_on():  # (0.9.1) the Desk chat stays out of sight with calls.chat_desk off (kept until back on)
+            rows = [r for r in rows if r["id"] != DESK]
         rows.sort(key=lambda r: (r["id"] != MAIN, not r.get("pinned"), -int(r.get("updated") or 0)))
         keys = ("id", "title", "created", "updated", "pinned", "last", "read")
         return [{k: r.get(k, "" if k in ("title", "last", "read") else 0) for k in keys} for r in rows]
@@ -189,6 +217,8 @@ class Sessions:
             return False, "A chat needs a name."
         if sid == MAIN:
             return False, "Kurooto's own chat keeps its name."
+        if sid == DESK:
+            return False, "The Desk chat keeps its name."
         return self._change(sid, {"title": title, "named": "you"}, "Renamed.")
 
     def pin(self, sid: str, on: bool) -> tuple[bool, str]:

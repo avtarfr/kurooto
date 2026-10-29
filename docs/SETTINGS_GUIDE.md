@@ -205,6 +205,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | Setting | Default | What it does |
 |---|---|---|
 | `calls.after_infer` | `true` | After a call, what you said on it is read like a typed message: stated facts are set up, "remember that" is kept. ([guide](wiki/user/settings-guide.md#callsafterinfer)) |
+| `calls.chat_desk` | `true` | What you say at the desk (aloud, Live, the board's talk box) and its answers, as one Desk chat on the dashboard and phone. ([guide](wiki/user/settings-guide.md#callschatdesk)) |
+| `calls.chat_desk_history` | `false` | The board's talk box sends the Desk chat's recent turns with each request, so your AI can follow on. ([guide](wiki/user/settings-guide.md#callschatdeskhistory)) |
 | `calls.chat_edit` | `true` | Edit your own messages in the app's chat for 15 minutes after sending. ([guide](wiki/user/settings-guide.md#callschatedit)) |
 | `calls.chat_files_inline` | `true` | Files in the app's chat show inline and open in the app. ([guide](wiki/user/settings-guide.md#callschatfilesinline)) |
 | `calls.chat_sessions` | `true` | Separate chats in the phone app, each its own conversation whose context carries over. ([guide](wiki/user/settings-guide.md#callschatsessions)) |
@@ -447,6 +449,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `face.away.on` | `false` | Notice when you leave the desk and come back. ([guide](wiki/user/settings-guide.md#faceawayon)) |
 | `face.away.places_close_camera` | `false` | While your phone is out, keep the camera closed. ([guide](wiki/user/settings-guide.md#faceawayplacesclosecamera)) |
 | `face.away.report_others` | `false` | While you're away, note the times someone else's face was in view at your desk, and tell you once when you're back. ([guide](wiki/user/settings-guide.md#faceawayreportothers)) |
+| `face.away.summary` | `false` | Back at the desk: one "while you were away" pop-up, and a card on the dashboard's Waiting page with what came meanwhile. ([guide](wiki/user/settings-guide.md#faceawaysummary)) |
+| `face.away.summary_only` | `false` | With the away summary: its one pop-up instead of every held pop-up; they wait on the card until Send now. ([guide](wiki/user/settings-guide.md#faceawaysummaryonly)) |
 | `face.away.use_places` | `false` | Your phone leaving a place you saved marks you away from the desk at once. ([guide](wiki/user/settings-guide.md#faceawayuseplaces)) |
 | `face.breaks` | `true` | Leaving, looking up at the camera and standing up are natural breaks for Brain's door. ([guide](wiki/user/settings-guide.md#facebreaks)) |
 | `face.camera.device` | `""` | The camera to use: empty for the first ordinary one (infrared ones are skipped), or a number or part of its name. ([guide](wiki/user/settings-guide.md#facecameradevice)) |
@@ -703,6 +707,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 
 | Setting | Default | What it does |
 |---|---|---|
+| `look.being_held_link` | `true` | The being's held count opens the Waiting page (Alt+W): every held message in full, with Send now. ([guide](wiki/user/settings-guide.md#lookbeingheldlink)) |
 | `look.being_hints` | `true` | The being's hints: what to click and what each part is (H on the board toggles them). ([guide](wiki/user/settings-guide.md#lookbeinghints)) |
 | `look.being_live_waveform` | `true` | The being's YOU lane live: a trace of the microphone's loudness as you speak, the last six seconds. ([guide](wiki/user/settings-guide.md#lookbeinglivewaveform)) |
 | `look.being_mood` | `true` | Brain's own mood in the drawing: the fluid's tint and the heart's beat; its pupil and pulse show the three knobs. ([guide](wiki/user/settings-guide.md#lookbeingmood)) |

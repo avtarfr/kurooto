@@ -174,6 +174,20 @@ values = "`first words` or `ai`."
 when = "Pick `ai` for neater titles; it costs one small AI request per new chat."
 cost = "`ai` sends the chat's first message and answer to your AI once."
 
+[s."calls.chat_desk"]
+tip = "What you say at the desk (aloud, Live, the board's talk box) and its answers, as one Desk chat on the dashboard and phone."
+what = "Your own turns only, never a guest's. The Desk chat sits beside your other chats; its messages are sealed to your call line like the rest and come to the phone without a notification. A message you type in it follows on from what you said at the desk."
+when = "Turn it off to keep desk talk out of the chat list (the Desk chat and its context are kept until it's back on)."
+cost = "Sealed copies on your call line, as for every chat message."
+needs = "`calls.chat_sessions`."
+
+[s."calls.chat_desk_history"]
+tip = "The board's talk box sends the Desk chat's recent turns with each request, so your AI can follow on."
+what = "Only the dashboard's talk box: the kurooto command, the terminal tab and setup stay requests on their own."
+when = "Turn it on if you use the talk box for back-and-forth conversations."
+cost = "Longer requests to your AI (the recent turns go with each one)."
+needs = "`calls.chat_desk`."
+
 [s."lidsafe.hours"]
 tip = "How far ahead your call line holds reminders and the morning line, in hours."
 values = "12 to 24."

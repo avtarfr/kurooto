@@ -1993,6 +1993,12 @@ features and notes are changed and read through the same checks as the dashboard
 *Undo:* Settings → calls → `chat_sessions`, `chat_files_inline`, `chat_edit` to `false` (each stops at once; your
 chats come back when it's on again); delete a chat to forget what was said in it.
 
+**The Desk chat (0.9.1, `calls.chat_desk`, on).** What you say at the desk (aloud, a Live talk, the board's talk box)
+and Kurooto's answers land in one chat named Desk, on the dashboard's Chat page and the phone app, without a
+notification; your turns only, never a guest's. An answer to a talk-box request comes there even after you closed the
+page, and never to Telegram. `calls.chat_desk_history` (off) also sends the Desk chat's recent turns with each talk-box
+request, so your AI can follow on (never the kurooto command or the terminal). *Undo:* turn `calls.chat_desk` off.
+
 **When the computer is off:** chat messages, button taps, answers and files you share from a paired phone wait on your
 call line (at most 100 things and 20 MB of files) and reach the computer when it's back, in order, each once. The app
 shows "Waiting for your computer" until then, and says "Reached your computer" for an answer or a file.
@@ -2261,6 +2267,10 @@ never approves, unlocks or allows anything. Details: [the user guide](wiki/user/
   someone else in view (`face.greet.with_others`).
 - **Optional:** noticing you left (`face.away.on`) to hold desktop pop-ups and calls; learning slowly from confident
   sightings (`face.learn.on`, with Undo).
+- **While you were away** (0.9.1, `face.away.summary`, off): back at the desk, one pop-up says what came meanwhile and
+  the dashboard's Waiting page (Alt+W) has a card with the held pop-ups in full and the talk box's answers, with Send
+  now; the held pop-ups still show as before. `face.away.summary_only` (off): that one pop-up instead of all of them.
+  *Undo:* turn them off.
 - **Add this look** (0.9.0, `face.looks.on`, on): "unsure" with your hair up or a hat? The Face page's Add this look,
   `/face add-look [label]` or `kurooto face add-look [label]` takes about 10 seconds of you at the camera (enrolment's
   checks, only frames at least "unsure" against your enrolment) and adds up to 10 samples as a labelled look of their
@@ -4477,6 +4487,8 @@ embedding order.
 - **`look.being_resting_sparks`** (on): a low trickle of sparks in the being's brain from what Kurooto does all the time
   (its body's readings, its own processor use, timers firing, notes changing, sound heard). **Undo:** turn it off.
 - **The talk box** (`look.talk_box`, on; Alt+K): talk to Kurooto from any board. **Undo:** turn `look.talk_box` off.
+- **The Waiting page** (0.9.1, `look.being_held_link`, on; Alt+W): click the being's held count to see every message
+  Calm holds in full (why it waits, when), with Send now, and the "while you were away" card. **Undo:** turn it off.
 
 ## What 0.8.7 added to Brain
 

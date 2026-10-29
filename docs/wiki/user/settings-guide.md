@@ -28,7 +28,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Your AI](#your-ai): 37 settings
 - [Messages and where they reach you](#messages-and-where-they-reach-you): 40 settings
 - [When it may interrupt you](#when-it-may-interrupt-you): 14 settings
-- [Phone calls and the call line](#phone-calls-and-the-call-line): 47 settings
+- [Phone calls and the call line](#phone-calls-and-the-call-line): 49 settings
 - [Morning alarm](#morning-alarm): 13 settings
 - [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 45 settings
 - [Check-ins, journal and the week](#check-ins-journal-and-the-week): 21 settings
@@ -47,10 +47,10 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 12 settings
-- [Dashboard and terminal](#dashboard-and-terminal): 33 settings
+- [Dashboard and terminal](#dashboard-and-terminal): 34 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 28 settings
-- [Face presence](#face-presence): 51 settings
+- [Face presence](#face-presence): 53 settings
 
 ## You and how it talks to you
 
@@ -1395,6 +1395,32 @@ How a new chat gets its title: its first words, or a short title from your AI.
 - **Values:** `first words` or `ai`. **Default:** `first words`.
 - **When to change it:** Pick `ai` for neater titles; it costs one small AI request per new chat.
 - **Costs and what leaves this computer:** `ai` sends the chat's first message and answer to your AI once.
+
+### `calls.chat_desk`
+
+What you say at the desk (aloud, Live, the board's talk box) and its answers, as one Desk chat on the dashboard and
+phone.
+
+Your own turns only, never a guest's. The Desk chat sits beside your other chats; its messages are sealed to your call
+line like the rest and come to the phone without a notification. A message you type in it follows on from what you said
+at the desk.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep desk talk out of the chat list (the Desk chat and its context are kept
+  until it's back on).
+- **Costs and what leaves this computer:** Sealed copies on your call line, as for every chat message.
+- **Depends on:** `calls.chat_sessions`.
+
+### `calls.chat_desk_history`
+
+The board's talk box sends the Desk chat's recent turns with each request, so your AI can follow on.
+
+Only the dashboard's talk box: the kurooto command, the terminal tab and setup stay requests on their own.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you use the talk box for back-and-forth conversations.
+- **Costs and what leaves this computer:** Longer requests to your AI (the recent turns go with each one).
+- **Depends on:** `calls.chat_desk`.
 
 ### `lidsafe.hours`
 
@@ -8748,6 +8774,16 @@ list's own command changes it, with Undo. Nothing on it is sent anywhere.
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off to hide the page.
 
+### `look.being_held_link`
+
+The being's held count opens the Waiting page (Alt+W): every held message in full, with Send now.
+
+Also the "while you were away" card and how many questions and proposals wait. It reads on this computer; Send now sends
+the held messages as the evening bundle would.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to hide the page and make the count a plain number again.
+
 ## Add-ons
 
 Your own add-ons folder (extra features, skills, prompts and default settings laid over Kurooto), and add-ons by link
@@ -9132,6 +9168,26 @@ it isn't sure about (maybe you) don't count, and it only knows about the times t
 - **When to change it:** Turn it on if you want to know whether someone used your computer while you were out.
 - **Costs and what leaves this computer:** One message on your return when someone was seen.
 - **Depends on:** Noticing when you leave (face.away.on).
+
+### `face.away.summary`
+
+Back at the desk: one "while you were away" pop-up, and a card on the dashboard's Waiting page with what came meanwhile.
+
+The card lists the pop-ups held while you were away in full and the talk box's answers that came meanwhile, with Send
+now. The held pop-ups still show one by one, as before. In memory only.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on to see at a glance what you missed.
+- **Costs and what leaves this computer:** One more pop-up when you come back to something waiting.
+- **Depends on:** Noticing when you leave (face.away.on).
+
+### `face.away.summary_only`
+
+With the away summary: its one pop-up instead of every held pop-up; they wait on the card until Send now.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if the pop-ups on your return come all at once.
+- **Depends on:** `face.away.summary`.
 
 ### `face.away.hold_calls`
 

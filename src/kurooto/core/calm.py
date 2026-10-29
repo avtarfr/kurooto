@@ -1580,6 +1580,35 @@ class Calm:
             rows = db.execute("select * from sent where state='held' order by ts, rowid").fetchall()
         return [dict(r) for r in rows]
 
+    def held_rows(self) -> list[dict]:
+        """(0.9.1) What waits, for the dashboard's Waiting page and the being's held count (the same list Today counts):
+        each held message's id, title, full text, why it waits in words, and when; a question answered meanwhile is
+        left out. Send now (send_held) sends them all."""
+        from kurooto.core.ask import OPEN
+
+        out = []
+        for rec in self.held():
+            if rec.get("map_kind") == "ask":
+                q = self.app.ask.get(rec.get("map_ref") or "")
+                if not q or q.get("status") not in OPEN:
+                    continue
+            try:
+                body = json.loads(rec.get("msg") or "{}")
+            except ValueError:
+                body = {}
+            out.append(
+                {
+                    "id": rec["id"],
+                    "title": str(body.get("title") or rec.get("title") or ""),
+                    "text": str(body.get("text") or rec.get("text") or ""),
+                    "waits": HELD.get(rec.get("held") or "", "it waits for the evening"),
+                    "at": float(rec.get("ts") or 0),
+                    "map_kind": rec.get("map_kind") or "",
+                    "map_ref": rec.get("map_ref") or "",
+                }
+            )
+        return out
+
     def bundle(self) -> int:
         """What waited today, as one message (its buttons numbered by item); files come after it. The phone app
         gets the waiting questions one by one, as it would have."""
