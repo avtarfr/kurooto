@@ -103,6 +103,7 @@ final class Places {
             out.put(n); // saved where you stand: you're inside it, so it says its reminders the next time you arrive
             put(c, "places", out);
             if (on(c)) register(c, n);
+            Chat.IO.execute(() -> shareNames(c));
             return n;
         } catch (Exception e) {
             return null;
@@ -120,6 +121,35 @@ final class Places {
         JSONArray rs = reminders(c), keep = new JSONArray();
         for (int i = 0; i < rs.length(); i++) if (!k.equals(rs.optJSONObject(i).optString("place"))) keep.put(rs.optJSONObject(i));
         put(c, "reminders", keep);
+        Chat.IO.execute(() -> shareNames(c));
+    }
+
+    // ---------- (0.9.1) the names, for your computer's matching ----------
+    /** The names of the places saved here, in order (never where they are). */
+    static JSONArray names(Context c) {
+        JSONArray ps = places(c), out = new JSONArray();
+        for (int i = 0; i < ps.length() && out.length() < 50; i++) {
+            String n = PlaceRules.name(ps.optJSONObject(i).optString("name"));
+            if (!n.isEmpty()) out.put(n);
+        }
+        return out;
+    }
+
+    static void forgetSent(Context c) {
+        try { if (sp(c).contains("namesSent")) sp(c).edit().remove("namesSent").apply(); } catch (Exception ignored) { }
+    }
+
+    /** Your computer asked for them (reminders.place_names, the "sessions" message's switches): the names go to it,
+     *  sealed, when they changed since it last took them, so "the lib" can find "Library" there. Never where they
+     *  are. Off the main thread. */
+    static void shareNames(Context c) {
+        try {
+            if (Chat.demo != null || !Chat.computerSwitch(c, "place_names")) return;
+            JSONArray ns = names(c);
+            String sig = PlaceRules.namesSig(ns.toString());
+            if (sig.equals(sp(c).getString("namesSent", ""))) return;
+            if (Chat.quietOp(c, "place_names", new JSONObject().put("names", ns))) sp(c).edit().putString("namesSent", sig).apply();
+        } catch (Exception ignored) { }
     }
 
     /** A reminder for a place (by name, saved or not): once (gone after it's said) or every time you arrive. */

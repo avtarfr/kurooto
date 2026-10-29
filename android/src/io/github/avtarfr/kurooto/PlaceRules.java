@@ -26,6 +26,11 @@ final class PlaceRules {
         return s.length() > 40 ? s.substring(0, 40).trim() : s;
     }
 
+    /** (0.9.1) A short fingerprint of the names list as sent, so the same list isn't sent twice. */
+    static String namesSig(String json) {
+        return Integer.toHexString(json == null ? 0 : json.hashCode()) + ":" + (json == null ? 0 : json.length());
+    }
+
     /** Metres between two points (haversine). */
     static double distance(double lat1, double lon1, double lat2, double lon2) {
         double r = 6371008.8, p1 = Math.toRadians(lat1), p2 = Math.toRadians(lat2);

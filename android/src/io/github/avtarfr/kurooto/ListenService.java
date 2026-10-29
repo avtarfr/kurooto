@@ -71,6 +71,7 @@ public class ListenService extends Service {
     private boolean callHeld = false; // a call is on: this service's notification is the call's, and it holds the mic
     private final Handler main = new Handler(Looper.getMainLooper());
     private android.content.BroadcastReceiver dock; // bedside mode opening by itself while charging (BedsideActivity)
+    private Object otherCall; // (0.9.1) watching for this phone in another call (OtherCall)
 
     static void start(Context c) {
         Intent i = new Intent(c, ListenService.class);
@@ -148,6 +149,7 @@ public class ListenService extends Service {
         instance = this;
         channels(this);
         dock = BedsideActivity.watch(this);
+        otherCall = OtherCall.watch(this); // (0.9.1, L87) only told to your computer when it asks
     }
 
     /** The quiet "listening" notification (it names your assistant). */
@@ -191,6 +193,7 @@ public class ListenService extends Service {
         if (direct != null) direct.stop();
         stopRing();
         if (dock != null) try { unregisterReceiver(dock); } catch (Exception ignored) { }
+        OtherCall.stop(this, otherCall);
         instance = null;
         super.onDestroy();
     }

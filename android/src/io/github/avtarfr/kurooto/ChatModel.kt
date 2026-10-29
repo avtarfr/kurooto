@@ -46,7 +46,9 @@ data class ChatFile(val name: String, val size: Long, val mime: String, val url:
 }
 
 @Immutable
-data class ChatButton(val label: String, val url: String)
+/** A button under one of Kurooto's messages. quiet (0.9.1): feedback (Wrong, Why?, Less of this), shown small, after the
+ *  message's own buttons. */
+data class ChatButton(val label: String, val url: String, val quiet: Boolean = false)
 
 @Immutable
 data class ChatMsg(
@@ -222,7 +224,7 @@ object ChatStore {
                     it.optString("fid"), it.optString("path"))
             },
             // the Open button older apps get for a file is the file itself here: hidden
-            buttons = (0 until bs.length()).mapNotNull { i -> bs.optJSONObject(i)?.let { ChatButton(it.optString("label"), it.optString("url")) } }
+            buttons = (0 until bs.length()).mapNotNull { i -> bs.optJSONObject(i)?.let { ChatButton(it.optString("label"), it.optString("url"), it.optBoolean("quiet")) } }
                 .filter { b -> f == null || b.url.isEmpty() || b.url != f.optString("url") },
             takesReply = x.optBoolean("reply"),
             edited = x.optBoolean("edited"),

@@ -46,4 +46,16 @@ final class CallRules {
         String base = hash < 0 ? u : u.substring(0, hash), frag = hash < 0 ? "" : u.substring(hash);
         return base + (base.contains("?") ? "&" : "?") + "auto=1" + frag;
     }
+    // (0.9.1, L87) this phone in another call (WhatsApp, Meet, a phone call): AudioManager's modes, as numbers so the
+    // JVM tests run without Android: NORMAL 0, RINGTONE 1, IN_CALL 2, IN_COMMUNICATION 3, CALL_SCREENING 4, and the
+    // redirect modes 5 and 6 (Android 13)
+    static final long BUSY_MS = 3 * 3600_000L; // "busy until" sent at the start; your computer never holds it longer
+
+    /** In another call: the audio is in a call or a voice chat, and it isn't Kurooto's own call on this phone. */
+    static boolean otherCall(int mode, boolean ownCall) {
+        return !ownCall && mode >= 2 && mode <= 6;
+    }
+
+    /** What goes to your computer: busy until (ms), or 0 when the other call ended. */
+    static long busyUntil(boolean busy, long now) { return busy ? now + BUSY_MS : 0; }
 }

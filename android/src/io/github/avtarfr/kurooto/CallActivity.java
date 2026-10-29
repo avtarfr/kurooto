@@ -75,6 +75,7 @@ public class CallActivity extends ComponentActivity {
     static final int SDK = Build.VERSION.SDK_INT;
     static final int MIN_WEBVIEW = 80; // Chrome version the call page needs (audio worklets, modern JavaScript)
     static volatile boolean showing; // on screen now (a call joining this phone's alarm comes here, not a new ring)
+    static volatile boolean live; // (0.9.1) Kurooto's own call is on (OtherCall doesn't count it as another call)
 
     private WebView web;
     private FrameLayout page; // the WebView, kept clear of the status and navigation bars (Android 15 draws behind them)
@@ -411,6 +412,7 @@ public class CallActivity extends ComponentActivity {
     @SuppressWarnings("deprecation")
     private void endAudio() {
         inCall = false;
+        live = false;
         releaseProximity();
         try {
             if (SDK >= 31) am.clearCommunicationDevice(); else am.setSpeakerphoneOn(false);
@@ -428,6 +430,7 @@ public class CallActivity extends ComponentActivity {
         }
         @JavascriptInterface public void callStarted() {
             inCall = true;
+            live = true;
             h.post(() -> { back.setEnabled(true); ListenService.onCall(CallActivity.this, true); });
             // The WebView's own audio setup can override routing a moment later, so set it again.
             h.post(CallActivity.this::route);

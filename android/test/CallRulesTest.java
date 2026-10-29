@@ -41,6 +41,12 @@ public class CallRulesTest {
                 "before the fragment, which stays");
         check(CallRules.withAuto("https://line.example/c#x?y").equals("https://line.example/c?auto=1#x?y"), "a ? in the fragment isn't a query");
 
+        // (0.9.1, L87) in another call
+        check(CallRules.otherCall(2, false) && CallRules.otherCall(3, false), "a phone call or a voice chat: busy");
+        check(!CallRules.otherCall(3, true), "Kurooto's own call on this phone: not another call");
+        check(!CallRules.otherCall(0, false) && !CallRules.otherCall(1, false), "normal or ringing: not busy");
+        check(CallRules.busyUntil(true, 1000) == 1000 + CallRules.BUSY_MS && CallRules.busyUntil(false, 1000) == 0, "busy until");
+
         System.out.println(failed == 0 ? "call rules ok" : failed + " failed");
         if (failed > 0) System.exit(1);
     }

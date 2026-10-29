@@ -255,7 +255,12 @@ final class Chat {
         JSONObject d = load(c);
         try {
             if (commands != null) d.put("commands", commands);
-            if (switches != null) d.put("switches", switches);
+            if (switches != null) {
+                d.put("switches", switches);
+                // (0.9.1) what your computer asks this phone to share: place names (L60), its other calls (L87)
+                if (switches.optBoolean("place_names", false)) IO.execute(() -> Places.shareNames(c));
+                else Places.forgetSent(c); // turned off there: its copy is gone, so the names go again when it's back on
+            }
             if (from != null) {
                 Set<String> listed = new HashSet<>();
                 JSONArray out = new JSONArray();
@@ -700,6 +705,34 @@ final class Chat {
         try {
             Sent s = post(c, newId(), new JSONObject().put("op", op).put("args", new JSONObject().put("on", on)));
             return s.ok && !s.queued;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** (0.9.1, L87) This phone is in another call until `untilMs` (0: not any more): a time only, sealed, never who.
+     *  True when your computer took it. Off the main thread. */
+    static boolean busy(Context c, long untilMs) {
+        try {
+            Sent s = post(c, newId(), new JSONObject().put("busy", new JSONObject().put("until", untilMs)));
+            return s.ok && !s.queued;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** (0.9.1) One of your computer's switches from its last "sessions" message (false when it never said). */
+    static boolean computerSwitch(Context c, String key) {
+        JSONObject sw = load(c).optJSONObject("switches");
+        return sw != null && sw.optBoolean(key, false);
+    }
+
+    /** (0.9.1) A one-way op with arguments for your computer (the place names): sealed like a message, never kept on
+     *  the call line for later, never a toast. True when your computer took it. Call off the main thread. */
+    static boolean quietOp(Context c, String op, JSONObject args) {
+        try {
+            Sent s = post(c, newId(), new JSONObject().put("op", op).put("args", args));
+            return s.ok && !s.queued && (s.body == null || s.body.optBoolean("ok", true));
         } catch (Exception e) {
             return false;
         }
