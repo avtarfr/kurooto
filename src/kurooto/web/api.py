@@ -1027,9 +1027,9 @@ class Api:
         return 404, {"error": "not found"}
 
     def _face(self, action: str, b: dict) -> tuple[int, dict]:
-        """POST face/<action>. enrol/start, test/start and gaze/start open the camera (the guarded action camera.open:
-        the Face page's Start, Test and Calibrate my eyes buttons only); forget deletes the face model (data.delete: a
-        button after a confirm)."""
+        """POST face/<action>. enrol/start, test/start, gaze/start and look/start open the camera (the guarded action
+        camera.open: the Face page's Start, Test, Calibrate my eyes and Add this look buttons); forget deletes the face
+        model (data.delete: a button after a confirm)."""
         f = self.app.modules.get("face")
         if f is None:
             return 404, {"error": "no Face presence here"}
@@ -1060,6 +1060,14 @@ class Api:
             return out(f.gaze_start(b.get("cid")))
         if action == "gaze/stop":
             return out(f.test_stop(sid))
+        if action == "look/start":  # (0.9.0) Add this look: camera.open, the button (or /face add-look typed)
+            return out(f.look_start(str(b.get("label") or ""), b.get("cid"), "page"))
+        if action == "look/stop":
+            return out(f.test_stop(sid))
+        if action == "look/remove":
+            return out(f.look_remove(str(b.get("id") or "")))
+        if action == "look/status":  # `kurooto face add-look` waits on this: counts and the result's words only
+            return 200, {"ok": True, **f.look_status()}
         if action == "gaze/clear":
             return out(f.gaze_clear())
         if action == "gaze/setup":  # Get the eye model (2.6 MB, pinned)

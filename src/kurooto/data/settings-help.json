@@ -260,6 +260,8 @@
 "face.learn.max": "At most this many learned samples (the oldest goes first); the enrolled ones are never replaced.",
 "face.learn.on": "Slowly refine your face template from times it was very sure it was you (never unsure ones), with Undo.",
 "face.light_sense": "Read the room's light from the camera's frames, as one smoothed number, for Brain and add-ons.",
+"face.looks": "Add this look: a short capture of how you look now, added to your face model when you start it.",
+"face.looks.on": "Add this look: you may add a short capture of how you look now (hair up, a new beard) to your face model.",
 "face.phone_badge": "The phone app's Today shows whether this computer's camera is on, and why.",
 "face.recognise": "How sure it must be that a face is yours, and how far away a face may be.",
 "face.recognise.frames": "Recognised in this many of the last 4 frames means you're here.",

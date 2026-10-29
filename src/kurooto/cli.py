@@ -1987,10 +1987,15 @@ def voice_run(a) -> int | None:
 
 def face_parsers(sub) -> None:
     fa = sub.add_parser(
-        "face", help="Face presence: status; forget [--yes]; pause [1h|off]; install-from FOLDER; test-camera"
+        "face",
+        help="Face presence: status; forget [--yes]; pause [1h|off]; add-look [label]; install-from FOLDER; "
+        "test-camera",
     )
     fa.add_argument(
-        "what", nargs="*", help="nothing (status), forget, pause [1h|30m|off], install-from FOLDER, test-camera"
+        "what",
+        nargs="*",
+        help="nothing (status), forget, pause [1h|30m|off], add-look [label] (about 10 s at the camera), "
+        "install-from FOLDER, test-camera",
     )
     fa.add_argument("--yes", action="store_true", help="forget without asking")
 
@@ -2039,11 +2044,42 @@ def face_run(a) -> int | None:
             app.close()
         print(msg)
         return 0 if ok else 1
+    if word in ("add-look", "addlook"):
+        return face_add_look(" ".join(what[1:]))
     r = say(("/face " + " ".join(what)).strip())
     if r is None:
         return 1
     print("\n".join(r.get("replies") or []) or "Done.")
     return 0
+
+
+def face_add_look(label: str) -> int:
+    """`kurooto face add-look [label]`: /face add-look through the running Kurooto, then its progress and result here
+    (face/look/status: counts and words only)."""
+    import time
+
+    r = say(f"/face add-look {label}".strip())
+    if r is None:
+        return 1
+    print("\n".join(r.get("replies") or []) or "Started.")
+    shown, since, end = -1, time.time() - 1, time.monotonic() + 120
+    while time.monotonic() < end:
+        st = ask_running("face/look/status", {})
+        if st is None:
+            print("Kurooto stopped answering.", file=sys.stderr)
+            return 1
+        live, last = st.get("session"), st.get("last") or {}
+        if last.get("message") and float(last.get("at") or 0) >= since:  # this look's result, not an older one
+            print(last["message"])
+            return 0 if last.get("ok") else 1
+        if not live:  # it didn't start: the reply above says why
+            return 1
+        if live.get("got") != shown:
+            shown = live.get("got")
+            print(f"{shown} of {live.get('need')} samples")
+        time.sleep(1)
+    print("No result yet: the Face page shows it.", file=sys.stderr)
+    return 1
 
 
 def face_test_camera() -> int:

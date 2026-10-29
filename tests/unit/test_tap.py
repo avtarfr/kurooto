@@ -124,7 +124,8 @@ def test_the_table_names_each_action_and_how_it_is_approved():
         "voice.enrol",  # (voice id) enrolling and changing the voice it knows: typed or a button, never by voice
         "camera.open",  # Face presence's Start and Test buttons (0.8.10)
     }
-    assert tap.GUARDED["camera.open"].ways == ("button",)  # never the AI, a request, the phone or a schedule
+    # never the AI, a plain-English request or a schedule; typed only for /face add-look (0.9.0)
+    assert tap.GUARDED["camera.open"].ways == ("typed", "button")
     for action, g in tap.GUARDED.items():
         assert g.what and g.where and g.ways, action
         assert set(g.ways) <= set(tap.WAYS), action

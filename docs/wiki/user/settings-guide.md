@@ -50,7 +50,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Dashboard and terminal](#dashboard-and-terminal): 27 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 26 settings
-- [Face presence](#face-presence): 45 settings
+- [Face presence](#face-presence): 46 settings
 
 ## You and how it talks to you
 
@@ -8207,6 +8207,20 @@ At most this many learned samples (the oldest goes first); the enrolled ones are
 
 - **Values:** A whole number. **Default:** `30`.
 - **When to change it:** Lower it to keep the template closer to your enrolment.
+
+### `face.looks.on`
+
+Add this look: you may add a short capture of how you look now (hair up, a new beard) to your face model.
+
+When it says "unsure" because you look different today, the Face page's Add this look (or /face add-look) opens the
+camera for about 10 seconds and adds up to 10 samples of you as you are, as a look of their own, labelled and listed
+with Remove. Only you start it, alone in view, with enrolment's checks. A look too far from your face model to be sure
+it's you is refused with the reason; the threshold is never loosened for it. Off: no new looks, and the looks you added
+stop counting (they stay in your model until you remove them, and count again when it's back on).
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to recognise you only by your enrolment (and anything learned).
+- **Depends on:** Face presence, enrolled.
 
 ### `face.recognise.frames`
 
