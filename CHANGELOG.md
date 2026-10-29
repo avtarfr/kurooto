@@ -5,6 +5,13 @@
 - **One person is one face** (a fix). A smaller face box inside a bigger one (half a face, a reflection in glasses)
   is no longer counted as a second person, which kept "others nearby" flickering and made Kurooto careful with its
   name when you were alone.
+- **"Chem hw is done" marks it done** (a fix). Saying a deadline is done in your own words, even with a slip of the
+  keyboard ("doje", "dun", "finsihed", "submited"), marks the one open deadline the words name, with Undo: homework
+  words plus a course's name or short name find that course's nearest open homework, a number picks that one. When two
+  fit as well, it asks which with a button each; nothing is marked without one clear match.
+- **Your AI can find a deadline to tick off** (a fix). AI requests (Claude Code, agy, an API key) get `list_deadlines`,
+  each open deadline with its id, and `mark_deadline_done` and `move_deadline` also take words of the title and course
+  instead of the id; when two fit, nothing changes and the AI asks you which. Ids are in the reserve's deadlines.md too.
 - **Study mode keeps the camera on** (`face.watch.in_focus`, on). Focus and a study timer no longer pause Face
   presence, so look to talk, the desk keeping Kurooto awake and the desk phone's eye go on while you study. Off: paused
   in focus, as before. (Listening never paused for focus.)

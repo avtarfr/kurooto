@@ -35,7 +35,7 @@ from kurooto.core.lock import Lock
 from kurooto.core.notinterested import add_topic, ignored_topics, is_ignored, matcher, remove_topic
 from kurooto.core.state import jload, jsave
 from kurooto.modules import recurring
-from kurooto.modules.base import Command, Incoming, Intent, Module
+from kurooto.modules.base import Answer, Command, Incoming, Intent, Module
 from kurooto.modules.calls.tools import Tool, arg, note_files
 
 register_defaults(
@@ -211,6 +211,121 @@ def similar(a: str, b: str, drop: set[str] | frozenset = frozenset()) -> bool:
     return wa <= wb or wb <= wa or len(wa & wb) / len(wa | wb) >= 0.5
 
 
+# (0.9.0) "chem hw is done", even as "Chem Hw is doje": the words name one open deadline (Deadlines.by_words),
+# a slip of the keyboard in the done word is forgiven, and only a single clear match is ever marked done
+DONE_WORDS = ("done", "finished", "submitted", "completed")
+DONE_SAID = {"dun"}  # said that way on purpose
+NOT_DONE = {  # real words one slip away from a done word: never read as one
+    "dine", "dome", "dose", "dote", "doe", "doer", "don", "dong", "dune", "dole", "dove", "doze", "node", "bone",
+    "cone",
+    "gone", "hone", "lone", "none", "tone", "zone", "one", "doner", "donne", "dons", "finishes", "finisher",
+    "submitter", "completes", "completer", "competed",
+}  # fmt: skip
+KEYS = {c: (r, i + (0, 0.25, 0.75)[r]) for r, row in enumerate(("qwertyuiop", "asdfghjkl", "zxcvbnm")) for i, c in
+        enumerate(row)}  # fmt: skip
+DONE_FILL = {"now", "already", "finally", "today", "lol", "yay", "tonight"}  # "... is done now"
+DONE_LINK = {"is", "are", "was", "were", "been", "has", "have", "had", "got", "all", "now", "just", "finally",
+             "already", "completely", "fully", "totally", "officially"}  # fmt: skip
+NOT_YET = {  # "is not done", "will be done", "almost done": not done
+    "not", "isn't", "isnt", "aren't", "arent", "wasn't", "never", "almost", "nearly", "half", "partly", "partially",
+    "barely", "hardly", "yet", "no", "be", "will", "should", "would", "could", "must", "need", "needs", "gonna",
+    "going", "can", "cannot", "can't", "might", "when", "if", "until", "before", "after", "once", "hopefully",
+}  # fmt: skip
+ASKS = re.compile(r"(?i)^(?:is|are|was|were|did|do|does|has|have|had|will|should|can|could|when|what|which|how|why)\b")
+DONE_HEAD = re.compile(
+    r"(?i)^(?:i(?:'ve|\s+have)?\s+|i'?m\s+|i\s+am\s+)?(?:just\s+|already\s+|finally\s+)?"
+    r"(?:(?:handed|turned)\s+in|(?P<v>[a-z]{3,11}))\s+(?P<with>with\s+)?(?P<what>.+)$"
+)  # "I submitted the chem hw", "finished LA hw", "I'm done with the essay"
+HW_SAID = re.compile(
+    r"(?i)\b(?:hws?|homeworks?|assignments?|problem\s*sets?|psets?|ps(?=\s*\d)|problem\s*sheets?|worksheets?|"
+    r"exercise\s*sheets?|sheets?|exercises?|coursework|tutorial\s*sheets?)\b"
+)  # what you call homework
+HW_TITLE = re.compile(
+    r"(?i)\b(?:hw|homeworks?|assignments?|problems?|problem\s*sets?|psets?|ps|sheets?|worksheets?|exercises?|"
+    r"coursework|tutorials?)(?:\b|(?=\d))"
+)  # a deadline that is homework
+WORDS_FILL = STOP | {"i", "ive", "im", "just", "already", "finally", "now", "with", "this", "that", "our", "all", "ok",
+                     "okay", "so", "yay", "today", "s", "it", "its", "one", "thing"}  # fmt: skip
+PAST_H = 14 * 24  # how far back an open deadline is still found by words (the most recently past)
+CLEAR_H = 24  # the nearest one is a clear pick only when the next is at least this much further away
+
+
+def _near_key(a: str, b: str) -> bool:
+    if a == b:
+        return True
+    if a not in KEYS or b not in KEYS:
+        return False
+    (ra, ca), (rb, cb) = KEYS[a], KEYS[b]
+    return ((ra - rb) ** 2 + (ca - cb) ** 2) ** 0.5 <= 1.3
+
+
+def one_slip(word: str, target: str) -> bool:
+    """Is `word` `target` typed with at most one slip: two letters swapped, one left out, one extra, or one wrong? For a
+    short target ("done") a wrong or extra letter must be a key next to the right one ("doje": j is beside n), so
+    ordinary words a letter away aren't taken for it; a longer one ("finished") takes any one slip."""
+    if word == target:
+        return True
+    strict, n, m = len(target) <= 5, len(word), len(target)
+    if n == m:
+        diff = [i for i in range(n) if word[i] != target[i]]
+        if len(diff) == 1:
+            return not strict or _near_key(word[diff[0]], target[diff[0]])
+        a = diff[0] if len(diff) == 2 else -1
+        return a >= 0 and diff[1] == a + 1 and word[a] == target[a + 1] and word[a + 1] == target[a]
+    if n == m + 1:  # one letter too many
+        for i in range(n):
+            if word[:i] + word[i + 1 :] == target and (
+                not strict or any(_near_key(word[i], word[j]) for j in (i - 1, i + 1) if 0 <= j < n)
+            ):
+                return True
+        return False
+    if n == m - 1 and m >= 4:  # one letter left out
+        return any(target[:i] + target[i + 1 :] == word for i in range(m))
+    return False
+
+
+def done_word(word: str) -> bool:
+    """done, finished, submitted or completed, allowing one slip ("doje", "finsihed", "submited"); "dun" too."""
+    w = word.lower().strip(",;:")
+    if w in DONE_SAID:
+        return True
+    if w in NOT_DONE or not 3 <= len(w) <= 11 or not w.isalpha():
+        return False
+    return any(one_slip(w, t) for t in DONE_WORDS)
+
+
+def done_said(text: str) -> str | None:
+    """ "chem hw is done", "LA problem set 3 submitted", "I finished the essay": the words naming what's done, or
+    None (a question, "not done", "will be done", "almost done", no done word)."""
+    t = re.sub(r"\s+", " ", text.strip()).rstrip(".! ").strip()
+    if not t or t.endswith("?") or ASKS.match(t) or re.search(r"\d\s*(?:/|of|out of)\s*\d", t):
+        return None  # a question; "ps3 4/7 done" is progress (PROGRESS)
+    words = t.split(" ")
+    while len(words) > 1 and words[-1].lower() in DONE_FILL:
+        words.pop()
+    what: list[str] = []
+    if len(words) > 2 and [w.lower() for w in words[-2:]] in (["handed", "in"], ["turned", "in"]):
+        what = words[:-2]
+    elif len(words) > 1 and done_word(words[-1]):
+        what = words[:-1]
+    else:
+        m = DONE_HEAD.match(" ".join(words))
+        if m and (m["v"] is None or done_word(m["v"])):
+            if re.match(r"(?i)i'?m\b|i am\b", t) and not m["with"]:
+                return None  # "I'm finished reading": not about a deadline
+            what = m["what"].split(" ")
+    while what and what[-1].lower() in DONE_LINK:
+        what.pop()
+    if what:
+        what[-1] = re.sub(r"(?i)['’]s$", "", what[-1])  # "hw's done"
+    low = [w.lower().strip(",;:") for w in what]
+    if all(w in WORDS_FILL or w in ("i'm", "we", "we're", "i've") for w in low) or any(
+        w in NOT_YET or w.endswith("n't") for w in low
+    ):
+        return None
+    return " ".join(what).strip(" ,;:-")
+
+
 class Deadlines(Module):
     id = "deadlines"
     title = "Deadlines"
@@ -286,6 +401,78 @@ class Deadlines(Module):
             if similar(words, it["title"]) or similar(words, self.full_title(it), drop)
         ]
         return min(found, key=lambda x: x[1]["due"]) if found else None
+
+    def by_words(self, words: str) -> tuple[list[tuple[str, dict, float]], bool]:
+        """(0.9.0) The open deadlines these words describe ("chem hw", "LA problem set 3", "the essay"), nearest
+        in time first (due soonest or most recently past, up to two weeks back), and whether the first is a clear pick.
+
+        Homework words (hw, homework, assignment, problem set, sheet...) keep to things you hand in, homework-like
+        titles first; a course's name or short name ("chem", "LA") keeps to that course; a number keeps to titles
+        with that number ("hw 8" is "Homework 08"); every other word must be in the title. With a course, a number or
+        title words, the nearest is clear when the next one is at least CLEAR_H hours further away; with homework
+        words alone, only when it's the only one. Nothing fits: []."""
+        low = words.lower()
+        hw = bool(HW_SAID.search(low))
+        bare = HW_SAID.sub(" ", low)
+        tokens = re.findall(r"[a-z]+", bare)
+        nums = {int(x) for x in NUM.findall(bare)}
+        s = self._subjects()
+        slugs: set[str] = set(s.find_in(low)) if s else set()
+        used: set[str] = set()
+        for slug in slugs:
+            used |= self._subject_words(slug)
+        if s:
+            for tok in tokens:
+                slug = s.resolve(tok) if tok not in used and tok not in WORDS_FILL and len(tok) >= 4 else None
+                if slug:
+                    slugs.add(slug)
+                    used.add(tok)
+        rest = [t for t in tokens if t not in WORDS_FILL and t not in used]
+        if not (hw or slugs or rest or nums):
+            return [], False
+        t, skip, out = now(), matcher(self.app), []
+        for i, it in self.items().items():
+            h = hours_left(it["due"], t)
+            if it.get("status") != "open" or not -PAST_H <= h <= 24 * 60 or skip(it["title"]):
+                continue
+            if it["kind"] == "exam" and (h < 0 or hw):
+                continue  # a quiz or exam that's past is over; homework isn't a quiz
+            full = self.full_title(it)
+            if slugs and it.get("subject") not in slugs and not (s and set(s.find_in(full)) & slugs):
+                continue
+            have = set(re.findall(r"[a-z]+", full.lower())) | self._subject_words(it.get("subject"))
+            if any(w not in have for w in rest):
+                continue
+            if nums and not nums <= {int(x) for x in NUM.findall(full)}:
+                continue
+            out.append((i, it, h))
+        if hw and any(HW_TITLE.search(self.full_title(it)) for _, it, _ in out):
+            out = [x for x in out if HW_TITLE.search(self.full_title(x[1]))]
+        out.sort(key=lambda x: (abs(x[2]), x[1]["due"]))
+        if len(out) < 2:
+            return out, bool(out)
+        narrowed = bool(slugs or rest or nums)
+        return out, narrowed and abs(out[1][2]) - abs(out[0][2]) >= CLEAR_H
+
+    def _pick(self, a: dict) -> tuple[str | None, str]:
+        """The deadline a tool's arguments name: its id, as always, or (0.9.0) `what`, words of its title or course
+        resolved by by_words. (id, "") or (None, what to answer: no match, or the candidates with their ids)."""
+        i, what = str(a.get("id") or "").strip(), str(a.get("what") or "").strip()
+        if i and (self._resolve(self.items(), i) or (not what and " " not in i)):
+            return i, ""  # an id: as before ("That one is gone." for one that isn't there)
+        what = what or i  # a title given as the id
+        if not what:
+            return None, "Say which deadline: its id (list_deadlines has them) or words of its title or course (what)."
+        found, clear = self.by_words(what)
+        if not found:
+            return None, f'No open deadline fits "{what}". list_deadlines lists them with their ids.'
+        if not clear:
+            rows = "; ".join(f"id {j}: {self.full_title(it)}, due {it['due'][:16]}" for j, it, _ in found[:5])
+            return (
+                None,
+                f'More than one open deadline fits "{what}": {rows}. Ask them which one, then call again with its id.',
+            )
+        return found[0][0], ""
 
     def progress(self, words: str, done: int, total: int) -> str:
         """ "ps3 4/7": how much of a deadline with parts is done; Start-by plans from what's left."""
@@ -380,6 +567,25 @@ class Deadlines(Module):
         self.app.events.emit("deadline_done")
         said = "Marked done" + (f" (ticked in {it['note']})." if it.get("ticked") else ".")
         return said, f"dl:{j}:undo{snap['u']}"
+
+    def done_by_words(self, what: str) -> str:
+        """(0.9.0) "chem hw is done": the one open deadline the words name is marked done, with Undo; when more
+        than one fits as well, Which one is done? with a button each (dl:<id>:done). Never a guess."""
+        found, clear = self.by_words(what)
+        if not found:
+            return f'No open deadline fits "{what}". /deadlines lists them.'
+        if clear:
+            j, it, _h = found[0]
+            said, undo = self._done_by_reply(j)
+            if not undo:
+                return said
+            ticked = said.removeprefix("Marked done").rstrip(".")  # " (ticked in <note>)" or ""
+            return Answer(
+                f"Marked done: {self.full_title(it)}, due {when_text(it['due'])}{ticked}.", [[("Undo", undo)]]
+            )
+        names = [f"{self.full_title(it)} ({dt.datetime.fromisoformat(it['due']):%a %d %b})" for _j, it, _h in found[:4]]
+        rows = [[(name[:48], f"dl:{j}:done")] for name, (j, _it, _h) in zip(names, found[:4], strict=True)]
+        return Answer("Which one is done? " + "; ".join(names) + ".", rows)  # named too: a voice can't see buttons
 
     def _undo(self, j: str, u: str) -> str:
         """Undo under a reply's answer: puts back the parts count (or the open status) the last change replaced."""
@@ -1537,6 +1743,10 @@ class Deadlines(Module):
             out = self.add_recurring(s["subject"], s["what"], s["every"], s["day"], s["time"], s["next"])
             return "OK. " + out if out.startswith("One question first") else out
 
+        def said_done(text: str):
+            what = done_said(text)
+            return {"what": what} if what and self.by_words(what)[0] else None
+
         return [
             Intent(
                 "show_due",
@@ -1585,6 +1795,13 @@ class Deadlines(Module):
                 examples=("ps3 4/7",),
             ),
             Intent(
+                "deadline_done",
+                "<deadline> is done: marks the one open deadline those words name",
+                said_done,
+                lambda m, s: self.done_by_words(s["what"]),
+                examples=("ps3 is done", "I submitted ps3"),
+            ),
+            Intent(
                 "photo_dates",
                 "the dates in the photo you just sent, as buttons",
                 photo,
@@ -1631,13 +1848,29 @@ class Deadlines(Module):
                 offline="queue",
             ),
             Tool(
+                "list_deadlines",
+                "The open deadlines, quizzes and exams, from two weeks back to 60 days ahead, nearest in time first, "
+                "each with its id, title, course and due time. Call it to find a deadline's id before "
+                "mark_deadline_done, move_deadline, remove_deadline or deadline_progress; what (optional) keeps the "
+                "ones those words fit.",
+                self._tool_list,
+                {"what": arg("optional: words of its title or course, e.g. chem hw")},
+                (),
+                offline="brief",
+                writes=False,
+            ),
+            Tool(
                 "mark_deadline_done",
-                "Mark a deadline done (its id is in pending_items).",
-                lambda a: self._button(str(a.get("id", "")), "done"),
-                {"id": arg()},
-                ("id",),
+                "Mark a deadline done. Give its id (from list_deadlines, or pending_items on a call), or what: words "
+                'of its title and course ("chem homework"), and the open one they fit that is nearest in time is '
+                "marked. When more than one fits, nothing is marked and the answer lists them with their ids: ask "
+                "which one, then call again with that id.",
+                lambda a: self._tool_done(a),
+                {"id": arg("its id"), "what": arg("or words of its title or course, when you don't have the id")},
+                (),
                 offline="queue",
-                hint="mark_deadline_done when they say something is submitted or finished; add_deadline adds one "
+                hint="mark_deadline_done when they say something is submitted or finished (by id, or what: words of "
+                "its title or course; list_deadlines has the ids); add_deadline adds one "
                 '("I have a quiz on Thursday" is a deadline, never something to remember); move_deadline when it got '
                 "a new date; remove_deadline when one is cancelled, not happening or wrong (\"I don't have that "
                 'quiz"); ignore_topic only for a kind of announcement they never want to hear about, never to remove '
@@ -1660,10 +1893,12 @@ class Deadlines(Module):
             ),
             Tool(
                 "move_deadline",
-                'Give a deadline a new due date (its id is in pending_items; due like "fri 17:00").',
-                lambda a: self._new_date(str(a.get("id", "")), str(a.get("due", ""))),
-                {"id": arg(), "due": arg()},
-                ("id", "due"),
+                'Give a deadline a new due date (due like "fri 17:00"). Name it by its id (from list_deadlines, or '
+                "pending_items on a call) or by what: words of its title and course, resolved as in "
+                "mark_deadline_done (more than one fits: nothing moves, and the answer lists them with their ids).",
+                lambda a: self._tool_move(a),
+                {"id": arg("its id"), "what": arg("or words of its title or course"), "due": arg()},
+                ("due",),
                 offline="queue",
             ),
             Tool(
@@ -1706,6 +1941,39 @@ class Deadlines(Module):
                 offline="queue",
             ),
         ]
+
+    def _tool_list(self, a: dict) -> dict:
+        """list_deadlines: the open ones with their ids (all of them, or the ones `what` fits, as by_words finds)."""
+        what = str(a.get("what") or "").strip()
+        if what:
+            rows = self.by_words(what)[0]
+        else:
+            t, skip, rows = now(), matcher(self.app), []
+            for i, it in self.items().items():
+                h = hours_left(it["due"], t)
+                if it.get("status") == "open" and -PAST_H <= h <= 24 * 60 and not skip(it["title"]):
+                    if not (it["kind"] == "exam" and h < 0):
+                        rows.append((i, it, h))
+            rows.sort(key=lambda x: (abs(x[2]), x[1]["due"]))
+        out = [{**self._row(i, it, h), "title": self.full_title(it)} for i, it, h in rows[:40]]
+        if not out:
+            return {"deadlines": [], "note": f'Nothing open fits "{what}".' if what else "Nothing open."}
+        return {"deadlines": out}
+
+    def _tool_done(self, a: dict) -> str:
+        j, said = self._pick(a)
+        if j is None:
+            return said
+        if j == str(a.get("id") or "").strip():
+            return self._button(j, "done")  # by id: as it always was
+        it = self.items().get(j) or {}
+        return f"{self.full_title(it)} (due {when_text(it['due'])}): " + self._button(j, "done")
+
+    def _tool_move(self, a: dict) -> str:
+        j, said = self._pick(a)
+        if j is None:
+            return said
+        return self._new_date(j, str(a.get("due", "")))
 
     def _tool_progress(self, a: dict) -> str:
         it = self.items().get(str(a.get("id", "")))

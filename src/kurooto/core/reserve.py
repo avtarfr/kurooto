@@ -5,7 +5,7 @@ permission it doesn't have, and one that reads a file can't.
 Files, in <state>/reserve/ (one more folder an AI may read: core/places.py):
 
     alarm.md        the next alarm and the daily one (written by the alarm feature as it changes)
-    deadlines.md    what's due, nearest first
+    deadlines.md    what's due, nearest first, each with its id (for the deadline tools)
     calendar.md     the next two weeks of events
     settings.md     every setting that differs from its default, and which features are on (never a secret)
     addons.md       your add-ons and whether each loaded
@@ -54,6 +54,7 @@ def deadlines_md(app: App) -> str:
         subj = f" ({it['subject']})" if it.get("subject") else ""
         lines.append(
             f"- {it['due'][:16]}: {it['title']}{subj}: {it.get('kind', 'task')}, in {mod._row(_id, it, hours)['when']}"
+            f" (id {_id})"  # (0.9.0) what mark_deadline_done and move_deadline take (or words: list_deadlines)
         )
     return "\n".join(lines) + "\n"
 

@@ -269,6 +269,7 @@ the AI. A request that asks a question only matches the requests below that answ
 | "remind me when I reach the library to return the book", "remind me whenever I'm at the gym to stretch" | a location reminder: the Android app says it when you arrive at a place saved there (`reminders.places`, off by default) | Reminders |
 | "what's due?", "anything due?", "show my deadlines" (two weeks), "what's due this week?" (7 days), "what's due soon?" (`deadlines.plan_h`, 3 days) | the deadline list | Deadlines |
 | "add a deadline: essay draft due friday 5pm", "I have a lab report due fri 17:00" | a new deadline | Deadlines |
+| "chem hw is done", "LA problem set 3 submitted", "I finished the essay" (a slip like "doje" or "dun" is fine) | marks the one open deadline those words name, with Undo; two that fit: which one, as buttons | Deadlines |
 | "I don't care about the drama club", "stop telling me about …" | a topic on your not-interested list | Deadlines |
 | "find the dates in that photo", "deadlines from this notice" | the newest photo of the last two hours, read for its dates (Add buttons) | Deadlines |
 | "linear algebra has a quiz every thursday" | a recurring quiz | Deadlines |

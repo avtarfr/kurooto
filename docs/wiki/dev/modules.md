@@ -621,6 +621,26 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   so it can be tapped again; `PhoneChat._button` says the answer with the same button under it. `_row()` adds
   `parts` ("4/7"); `due_line()` / `due_day()` make "ps3 4/7, due Fri" for the wake-up call (`alarm.py`), `/status`
   (Telegram) and the morning page (`daily.morning_view`).
+- **deadlines** done by words (0.9.0, a fix): `done_said(text)` reads "<what> is done" / "<what> submitted" / "I
+  finished <what>" / "I'm done with <what>" / "handed in" (questions, `NOT_YET` words such as "not", "will be",
+  "almost", and "4/7" progress return None); `done_word()` takes done, finished, submitted, completed with one slip
+  (`one_slip`: a swap, a left-out letter, or for "done" a wrong or extra letter only on a neighbouring key, `KEYS`),
+  "dun", and never a word in `NOT_DONE` ("gone", "none", "dine"). `by_words(words)` returns open deadlines from
+  `PAST_H` (14 days) back to 60 days ahead, sorted by `abs(hours)`, and whether the first is clear: `HW_SAID` words
+  keep to non-exams (homework-like `HW_TITLE` titles first), a course (`Subjects.find_in`, or `resolve()` of a word of
+  four letters or more) keeps to its `subject` or a title naming it, numbers must be in the title (`NUM`, as ints),
+  every other word must be in the full title or the subject's words. Clear: one candidate, or, with a course, a
+  number or title words, the second is at least `CLEAR_H` (24) hours further away. The `deadline_done` intent matches
+  only when `by_words` finds something (else the message goes on to the AI); `done_by_words` marks a clear one through
+  `_done_by_reply` (Undo `dl:<id>:undo<u>`) and otherwise answers "Which one is done?" with `dl:<id>:done` buttons.
+  Tools: `list_deadlines` (read-only, `offline="brief"`, optional `what` through `by_words`; rows are `_row()` with the
+  full title), `mark_deadline_done` and `move_deadline` take `id` or `what` through `_pick()`: an id that resolves, or
+  any id with no spaces and no `what`, goes the old way (`_button(id, "done")`, `_new_date`); otherwise `what` (or an
+  id with spaces, a title given as the id) goes through `by_words`, and a tie returns the candidates with their ids and
+  changes nothing. `pending_items` stays `CALL_ONLY`, so `list_deadlines` is how jobs learn ids; the reserve's
+  `deadlines.md` lines end with `(id <id>)` too. `calls.UNCHANGED` keeps "More than one ...", "Say which ..." and
+  "That one is gone" answers from being reported as a change to the day (`_reshaped`). Tests:
+  `tests/unit/test_deadline_done_words.py`.
 - **startby** (`modules/startby.py`): start-by dates from size estimates and free time; local arithmetic only.
   `learn_window()` (`startby:learn_window`, weekly sun 12:00, `startby.learn_window`) reads `message_in` events of the
   last 21 days (a day turns at 04:00), and with 7+ days of 3+ messages sets `startby.window` from the medians of the
