@@ -2238,6 +2238,20 @@ that. Packages go into Kurooto's own folder, never your system.
   both plays and hears (its echo comes later, or is cancelled by the phone); Live's sound goes to a phone's speaker in
   pieces of about a second, so it doesn't cut out between small chunks; enrolment never keeps its own spoken steps as
   your samples.
+- **Stalls and honest numbers** (0.9.2): every stretch heard leaves one numbers-only row (`voice.listen.trace`, on):
+  `/voice turns` shows the last 20 with p50 / p90, the dashboard's hearing panel the same in short. Fixes: a voice
+  Voice ID is unsure of is written out once (not edges and then all of it); the transcriber uses 4 threads and Kokoro
+  2; an AI program doing automatic work runs 10 nicer; a long first sentence is said from its first clause. Switches,
+  off: `voice.listen.stage_deadline_s` (seconds; past it, "Sorry, I lost you there. Say that again?" and nothing is
+  sent), `voice.listen.wait_unfinished` (waits up to 1.4 s when your words stop on "and", "so" or a comma).
+  *Undo:* each switch off or 0.
+- **Faster Live** (0.9.2, all off, with `voice.listen.live`): `voice.listen.fast_live` (your face looking at the camera
+  and talking opens Live while you speak; the gate, the local model and Voice ID judge at your first pause; only turns
+  judged said to Kurooto are sent), `voice.listen.live_prewarm` (Live's connection opened ahead on your recognised face
+  looking at it or your wake word in your voice; closed after 30 s unused; **your session's setup goes to Google
+  then**), `voice.live.breaker.on` ("Live resting" after two failed connections in 10 minutes), `voice.live.ack` (a
+  soft sound while Live hasn't answered), `voice.live.resume` (context kept 10 minutes, your session only),
+  `voice.live.spoken_max_s` (stops at a sentence end past that many seconds). *Undo:* turn them off.
 - `/voice` says what it's doing and counts what it heard (`/health` has a line too).
 
 *Leaves:* nothing while no conversation is open; then only the turns said to Kurooto, as text, to your AI (and kept

@@ -5,7 +5,8 @@ With voice.speaker_id.on, each stretch of speech Voice hears is scored against t
 App.handle sends anything that isn't the owner's to core/guest.py: chat only, no actions, none of his data. Unsure
 counts as not the owner. With voice.speaker_id.gate on (the default once Voice ID is on), the verdict comes before the
 words are written out: a voice that isn't his, not calling Kurooto by name and not in a conversation with it, is
-dropped as chatter without being transcribed (only its first and last two seconds are, to hear the name).
+dropped as chatter without being transcribed (only its first and last two seconds are, to hear the name; 0.9.2: a
+voice it is only unsure of is written out once in full, in memory, and dropped the same way).
 
 Enrolment (enrol.py) runs here, on the computer's own microphone, started only by the owner (/voice enrol typed, or
 the Your voice page at /voice-id); never by voice, the AI or a schedule. Training is a template and calibrated

@@ -394,6 +394,29 @@ something that acts or reads your things) and `owner_only_at_all` still go the u
 can be approved from the guest session. **Privacy: with it on, other people's voices and your own unsure turns go to
 Google**, even with `voice.speaker_id.guest_brain` `local`. Nothing is written to disk. Failures go the usual way.
 
+**Faster Live (0.9.2, all off).** Four switches make Live answer sooner or behave better at the desk:
+
+- `voice.listen.fast_live`: when Face presence sees your face looking at the camera and your mouth moving while you
+  speak, Live's connection opens right then (no sound), and at your first short pause the gate judges your words so
+  far (the local model too, where its rules need it) and Voice ID checks your voice. If you then stop, the turn goes at
+  once. Only turns judged said to Kurooto are ever sent. The mouth reading is rough: five points of your face, a few
+  times a second.
+- `voice.listen.live_prewarm`: the connection is opened ahead when Face presence recognises you looking at it, or hears
+  your wake word in your voice; never on anyone else's face. Unused, it closes after 30 seconds. Your session's setup
+  goes to Google when it opens, even if you then say nothing.
+- `voice.live.breaker.on`: after two failed connections in 10 minutes Live rests ("Live resting" in `/voice`) and your
+  turns go the usual way at once; it tries again every minute with an empty setup.
+- `voice.live.ack` plays the heard-you sound when Live is slow to start; `voice.live.resume` keeps your conversation's
+  context for 10 minutes (your session only, never a guest's); `voice.live.spoken_max_s` stops it at a sentence end past
+  that many seconds, the rest on screen.
+
+**How long your turns take (0.9.2, `voice.listen.trace`, on).** `/voice turns` shows the last 20 stretches it heard:
+what the gate called each one, the face check, Voice ID's word and score, which way it went (Live, the guest session,
+your AI, dropped, "lost"), and the seconds from your last word to the words, the transcriber's wait, Voice ID's check,
+sent and the first sound, with p50 and p90 under it. Numbers only, in memory. If turns come through very late, set
+`voice.listen.stage_deadline_s` (about 8): past it, it says "Sorry, I lost you there. Say that again?" instead of
+answering late, and listens on. `voice.listen.wait_unfinished` waits a little longer when you stop on "and" or a comma.
+
 **Fixes (0.9.2).** Live never says or shows a tool's result as its answer: if it looked something up and then failed,
 the usual way answers; if it did something and then failed, you hear a set line and it isn't done twice. The setup
 also tells it not to use a tool for a greeting or "can you hear me?". Its sound goes to a phone's speaker (an add-on's

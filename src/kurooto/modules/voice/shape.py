@@ -154,6 +154,24 @@ def sentences(text: str, numbers: bool = False) -> list[str]:
     return out
 
 
+FIRST_MAX = 90  # (0.9.2) a first piece longer than this is split at a clause, so the first sound comes sooner
+FIRST_MIN = 20
+_CLAUSE = re.compile(r"(?<=[,;:])\s+")
+
+
+def first_short(parts: list[str], most: int = FIRST_MAX, least: int = FIRST_MIN) -> list[str]:
+    """(0.9.2, a fix) The first piece made by the voice is what you wait for: when it's one long sentence, its first
+    clause (at a comma, semicolon or colon between `least` and `most` characters in) is said alone and the rest is
+    made while it plays. Nothing else changes."""
+    if not parts or len(parts[0]) <= most:
+        return parts
+    p = parts[0]
+    m = next((m for m in _CLAUSE.finditer(p) if least <= m.start() <= most), None)
+    if m is None:
+        return parts
+    return [p[: m.start()], p[m.end() :], *parts[1:]]
+
+
 def join(parts: list[str], first: int = 120, most: int = 200) -> list[str]:
     """Short sentences spoken together (voice.speak.join_sentences), up to `most` characters a piece and `first` for
     the first, so speech still starts soon. Kokoro reads a few words on their own with a hurried, flat tune (its style

@@ -29,6 +29,15 @@ between people unless it's named. An event "nearby_others {on, source}" says whe
     look(app) -> (since, last)    since: None when the last frame looked at didn't have him looking (or the camera
                                   closed); last: when he was last seen looking (monotonic), None never
 
+    set_owner(app, seen, looking, moved)   (0.9.2, voice.listen.live_prewarm / fast_live) Face presence, each frame it
+                                  looks at: the owner's face recognised in it, looking at the camera (the look angles),
+                                  and how much his mouth moved since his last frame (a change of two landmark ratios,
+                                  None without one). Times, flags and that one change only, for FACING_KEEP_S: never
+                                  the landmarks, the ratios themselves, a picture or anyone else's face.
+    owner_attending(app, since, until) -> (looking, talking)   his face looked at the camera in that stretch, and his
+                                  mouth moved as in talking (None: too few frames of him to tell)
+    owner_looking_now(app) -> bool   his face looking at it in a frame of the last LOOK_NOW_S seconds
+
     set_phone_out(app, out)       (0.9.0) Brain's phone senses (mind/senses/phone.py, the places sensor): your phone
                                   just left a place you saved (out) or arrived at one (back in). Only the time it left,
                                   in memory, never the place's label (that stays in the senses' store).
@@ -52,6 +61,10 @@ if TYPE_CHECKING:
 STALE_S = 120  # a signal not refreshed for this long no longer counts (a camera that closed without saying so)
 VIEW_S = 5.0  # the view counts this long after the frame (Face presence looks about once a second, 3 s on battery)
 FACING_KEEP_S = 60.0  # frames older than this are forgotten (a turn's window is a few seconds)
+LOOK_NOW_S = 1.5  # (0.9.2) owner_looking_now: a frame this recent
+# (0.9.2) talking: his mouth's landmark ratios moved at least this much between two frames (a guess: YuNet's five
+# points jitter about 0.01-0.02 of the eyes' distance; a jaw opening in speech moves them several times that)
+TALK_MOVE = 0.04
 PHONE_OUT_MAX_S = 18 * 3600  # (0.9.0) a phone "out" never heard back from counts this long at most
 _lock = threading.Lock()
 
@@ -171,6 +184,45 @@ def facing_many(app: App, within: float = 10.0) -> bool:
 def last_facing(app: App) -> float | None:
     with _lock:
         return getattr(app, "_nearby_facing_at", None)
+
+
+def _owner(app: App) -> deque:
+    d = getattr(app, "_nearby_owner", None)
+    if d is None:
+        d = deque(maxlen=600)  # (time, seen, looking, moved)
+        app._nearby_owner = d  # type: ignore[attr-defined]
+    return d
+
+
+def set_owner(app: App, seen: bool, looking: bool, moved: float | None = None, at: float | None = None) -> None:
+    """(0.9.2) One frame looked at: his face in it (recognised), looking at the camera, his mouth's change."""
+    now = time.monotonic()
+    t = now if at is None else float(at)
+    with _lock:
+        d = _owner(app)
+        d.append((t, bool(seen), bool(seen and looking), None if moved is None or not seen else float(moved)))
+        while d and now - d[0][0] > FACING_KEEP_S:
+            d.popleft()
+
+
+def owner_attending(app: App, since: float, until: float | None = None) -> tuple[bool, bool | None]:
+    """(0.9.2) (looking, talking) over the frames between since and until: looking, any frame of his face looking at the
+    camera; talking, at least two mouth changes known and one of them TALK_MOVE or more (None: fewer than two)."""
+    hi = time.monotonic() if until is None else until
+    with _lock:
+        rows = [r for r in _owner(app) if since <= r[0] <= hi]
+    looking = any(r[2] for r in rows)
+    moves = [r[3] for r in rows if r[3] is not None]
+    if len(moves) < 2:
+        return looking, None
+    return looking, any(m >= TALK_MOVE for m in moves)
+
+
+def owner_looking_now(app: App) -> bool:
+    lo = time.monotonic() - LOOK_NOW_S
+    with _lock:
+        d = _owner(app)
+        return bool(d) and d[-1][0] >= lo and d[-1][2]
 
 
 def set_phone_out(app: App, out: bool, at: float | None = None) -> None:

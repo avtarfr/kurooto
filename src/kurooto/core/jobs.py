@@ -799,7 +799,7 @@ class Jobs:
             mcp_env={ENV_JOB: jid} if guest else {**run_env(self.app.paths), ENV_JOB: jid},
             text_only=text_only,
             images=[Path(p) for p in json.loads(pics or "[]")],
-            on_process=lambda pid: self._mark(jid, proc=_process(pid)),
+            on_process=lambda pid: self._started(jid, pid, job),
             stop=stop,
             session="" if guest or sc is not None else self._conversation(jid),
         )
@@ -1092,6 +1092,15 @@ class Jobs:
         if not self.app.settings.get("jobs.receipt"):
             return ""
         return (self._read("select receipt from jobs where id=?", (jid,)) or [None])[0] or ""
+
+    def _started(self, jid: str, pid: int, job) -> None:
+        """An AI program started for this job: its pid noted; (0.9.2, a fix) automatic work's (background, or a lane
+        that isn't yours) runs niced (+10), so a spoken turn's transcriber never waits behind it."""
+        self._mark(jid, proc=_process(pid))
+        if getattr(job, "background", False) or (getattr(job, "lane", "you") or "you") != "you":
+            from kurooto.core import proc
+
+            proc.run_nicer(pid)
 
     def _mark(self, jid: str, **cols) -> None:
         """Note how a running job is doing (which AI, its program, its deadline); each note is a sign of life."""

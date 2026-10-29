@@ -74,6 +74,7 @@ More: [AI models](ai-brains.md), [Talking to Kurooto](talking-to-kurooto.md#chat
 |---|---|
 | `/voice` | what Voice is doing (speaking, listening, why not), and counts of what it heard since it started |
 | `/voice mute`, `/voice unmute` | stop and start listening and speaking (it stays muted across restarts) |
+| `/voice turns` | the last 20 stretches it heard, as numbers: the gate, the face, Voice ID, the way each went, seconds to the words and the first sound, with p50 / p90 ([Voice](voice.md)) |
 | `/voice stop` | stop speaking now |
 | `/voice say <text>` | say this aloud now |
 | `/voice id` | Voice ID: whether it knows your voice, its grade, thresholds and last test; `/voice id test` (one try at the computer), `/voice id retrain`, `/voice id undo today` or `undo all` (what it learned over time), `/voice id forget` (deletes your voice print, with buttons). Typed only, never by voice |

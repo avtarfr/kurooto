@@ -152,6 +152,23 @@ def run(
     return Result(code, (out or b"").decode("utf-8", "replace"), (err or b"").decode("utf-8", "replace"))
 
 
+BACKGROUND_NICE = 10  # (0.9.2, a fix) automatic work's programs run this much nicer: a spoken turn never waits
+
+
+def run_nicer(pid: int, by: int = BACKGROUND_NICE) -> bool:
+    """(0.9.2) Run a program Kurooto started for automatic work (not your own request) at a lower CPU priority: what it
+    starts afterwards inherits it. Never raises; False where it can't (Windows, gone, not ours)."""
+    try:
+        p = psutil.Process(int(pid))
+        if WINDOWS:
+            p.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
+        else:
+            p.nice(min(19, max(p.nice(), 0) + int(by)))
+        return True
+    except (psutil.Error, ValueError, OSError, AttributeError):
+        return False
+
+
 def pid_alive(pid: int, must_contain: str = "") -> bool:
     """Is this process still running (and, if given, is `must_contain` in its command line)?"""
     try:

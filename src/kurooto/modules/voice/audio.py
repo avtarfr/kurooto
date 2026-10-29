@@ -45,6 +45,8 @@ REOPEN_TRIES = 6  # this many tries in a row without sound and the Listener repo
 STALL_S = 3.0  # an open microphone silent this long has gone (a PipeWire source removed); real silence still flows
 QUEUE_FRAMES = 64  # about 2 s the reader may fall behind PortAudio's callback before the oldest frames are dropped
 JOIN_S = 0.5  # Listener.stop waits this long for its reader to close its own stream
+STT_THREADS = 4  # (0.9.2, a fix) the transcriber's threads (faster-whisper's own default could be every core)
+TTS_THREADS = 2  # (0.9.2, a fix) Kokoro's threads (onnxruntime's default is every core); CAM++ has 2 (speakerid.py)
 PLAY_CHUNK_S = 0.05  # written to the output this much at a time, so a stop takes effect within about 50 ms
 
 
@@ -88,7 +90,20 @@ class Kokoro:
     def __init__(self, model: Path, voices: Path, voice: str = "", rate: float = 1.0):
         from kokoro_onnx import Kokoro as K  # noqa: N814
 
-        self.k = K(str(model), str(voices))
+        self.k = None
+        if hasattr(K, "from_session"):  # (0.9.2, a fix) TTS_THREADS threads, not every core
+            try:
+                import onnxruntime as ort
+
+                opts = ort.SessionOptions()
+                opts.intra_op_num_threads = TTS_THREADS
+                opts.inter_op_num_threads = 1
+                sess = ort.InferenceSession(str(model), sess_options=opts, providers=["CPUExecutionProvider"])
+                self.k = K.from_session(sess, str(voices))
+            except Exception:
+                self.k = None
+        if self.k is None:
+            self.k = K(str(model), str(voices))
         self.voice = voice or "af_heart"
         self.rate = rate
 
@@ -551,11 +566,22 @@ class Whisper:
     def __init__(self, model_dir: Path, language: str = "", hint: str = ""):
         from faster_whisper import WhisperModel
 
-        self.m = WhisperModel(str(model_dir), device="cpu", compute_type="int8")
+        try:  # (0.9.2, a fix) a fixed number of threads, so it never fights Kokoro and CAM++ for every core
+            self.m = WhisperModel(str(model_dir), device="cpu", compute_type="int8", cpu_threads=STT_THREADS)
+        except TypeError:
+            self.m = WhisperModel(str(model_dir), device="cpu", compute_type="int8")
         self.language = language or None
         self.hint = hint.strip()
+        self.lock = threading.Lock()  # one stretch at a time (as the model's one worker does): its wait is measured
+        self.last_wait = 0.0  # (0.9.2) seconds the last call waited for another stretch to finish
 
     def text(self, pcm: bytes) -> str:
+        t0 = time.monotonic()
+        with self.lock:
+            self.last_wait = time.monotonic() - t0
+            return self._text(pcm)
+
+    def _text(self, pcm: bytes) -> str:
         np = _np()
         audio = np.frombuffer(pcm, dtype="<i2").astype("float32") / 32768.0
         kw = dict(language=self.language, beam_size=1, vad_filter=False, condition_on_previous_text=False)

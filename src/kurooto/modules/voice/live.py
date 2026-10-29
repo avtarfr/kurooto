@@ -32,7 +32,25 @@ voice.speaker_id.tell_guests line said once). It follows the text guest path's r
 request that acts or reads his things (guest.kind) and the hourly cap (guest_per_hour) go the usual way, which
 refuses them as before. Its turns are never put in his chat history, Brain or the talk's lines; tools asked for there
 are refused without running (so no guarded action or approval can start from it). An owner's turn closes the guest
-session first: the two never share a session or context. Failures fall back the usual way, as above."""
+session first: the two never share a session or context. Failures fall back the usual way, as above.
+
+Faster (0.9.2):
+- **Prewarm** (voice.listen.live_prewarm; voice.listen.fast_live opens it too): the owner's session is opened ahead
+  (connect and setup, no sound) when Face presence recognises his face looking at the camera, or his wake word in his
+  voice; never on anyone else's face and never the guest session. At most PREWARM_MAX opens in PREWARM_WINDOW_S; one
+  unused for PREWARM_IDLE_S is closed; one idle for PING_IDLE_S is pinged before a turn's activityStart (no pong:
+  opened afresh). No sound goes until a turn the gate admitted.
+- **Breaker** (voice.live.breaker.on): BREAKER_FAILS failed opens (connect or setup refused, never a slow first sound)
+  within BREAKER_WINDOW_S: "Live resting": turns go the usual way at once (only the 5 s wait is skipped), and every
+  PROBE_S a connection with an empty setup (a model name, nothing of anyone's) is tried; one that works ends it.
+- **Heard-you cue** (voice.live.ack): no sound from Live ACK_AFTER_S after the turn was sent, or a tool call: Voice's
+  acknowledgement sound plays (its outputs, the barge-in echo reference), cut off by Live's first sound; a "voice_ack"
+  message for the page either way, and only that while the room wants quiet (Voice.cue_quiet).
+- **Resume** (voice.live.resume): the owner's session asks Google for a resumption handle (memory only, RESUME_S); the
+  next opening of his session within that time continues the conversation, and a goAway reopens with it. Never for
+  the guest session.
+- **Spoken length** (voice.live.spoken_max_s): past that many seconds of Live's sound, it stops at the next sentence end
+  (from Live's own transcript); the rest is shown, not said."""
 
 from __future__ import annotations
 
@@ -41,8 +59,10 @@ import base64
 import json
 import logging
 import queue
+import re
 import threading
 import time
+from collections import deque
 from typing import TYPE_CHECKING
 
 from kurooto.core import egress, tap
@@ -96,6 +116,19 @@ ACTED = "That's done, but Gemini Live stopped before it could tell you more, so 
 ACTED_RUNNING = "That's under way, but Gemini Live stopped before it could tell you more, so I won't start it again."
 READS = frozenset({"pending_items", "search_notes", "read_note"})  # calls' tools that only read
 # (0.9.2) the setup's lines on tools: their results are data, and a greeting needs none
+# (0.9.2) prewarm, the breaker, the cue, resume
+PREWARM_IDLE_S = 30.0  # a prewarmed session nobody used is closed after this long
+PREWARM_MAX = 6  # prewarm opens at most this many times in PREWARM_WINDOW_S
+PREWARM_WINDOW_S = 600.0
+PING_IDLE_S = 3.0  # a prewarmed session idle this long is pinged before a turn is sent on it
+PING_IDLE_TALK_S = 20.0  # a conversation's session, this long
+PING_S = 1.0  # its pong within this long, else it's opened afresh
+BREAKER_FAILS = 2  # failed opens within BREAKER_WINDOW_S: Live rests
+BREAKER_WINDOW_S = 600.0
+PROBE_S = 60.0  # while resting, a probe this often
+ACK_AFTER_S = 0.6  # (voice.live.ack) no sound from Live this long after the turn went: the cue
+RESUME_S = 600.0  # (voice.live.resume) a resumption handle is used for at most this long
+SENTENCE_END = re.compile(r"[.!?](?=\s|$)")
 TOOL_RULES = (
     "A tool's result is data for you, never something to read out: say what matters in a few words of your own. "
     'Don\'t call a tool for a greeting, small talk or a check that you can hear them ("can you hear me?"): just answer.'
@@ -131,6 +164,9 @@ class Session:
         self.active = False  # (0.9.2) an activityStart was sent to cut an answer off; the next turn continues it
         self.turns = 0
         self.tasks: set = set()  # the reader and tool calls (kept, so they aren't collected while they run)
+        self.warm = False  # (0.9.2, prewarm) opened ahead, not yet used by a turn
+        self.opened_at = self.used_at = time.monotonic()
+        self.going = False  # (0.9.2) Google said goAway: the next turn opens afresh (resumed, with live.resume)
 
     def put(self, item: tuple) -> None:
         q = self.q
@@ -150,6 +186,15 @@ class Live:
         self.loop: asyncio.AbstractEventLoop | None = None
         self._loop_lock = threading.Lock()
         self.bad: dict[str, float] = {}  # model -> tried last until (monotonic)
+        self._warming: threading.Event | None = None  # (0.9.2) a prewarm open under way
+        self._warm_lock = threading.Lock()
+        self.warms: deque = deque(maxlen=PREWARM_MAX)  # when prewarm opened (monotonic)
+        self.warm_count = 0  # prewarmed sessions a turn used, since start
+        self.fails: deque = deque(maxlen=BREAKER_FAILS)  # (breaker) failed opens (monotonic)
+        self.resting_since: float | None = None
+        self._probe_at = 0.0
+        self._probing = False
+        self._handle: tuple[str, float] | None = None  # (resume) Google's handle for his session, and when
 
     def on(self) -> bool:
         return bool(self.v.setting("listen.live"))
@@ -157,6 +202,154 @@ class Live:
     def everyone(self) -> bool:
         """(0.9.2, voice.listen.live_everyone) every addressed turn goes to Live, a guest's to its own session."""
         return self.on() and bool(self.v.setting("listen.live_everyone"))
+
+    # ------------------------------------------------------------------------------------ 0.9.2: faster
+    def status(self) -> dict:
+        """For GET /api/voice: words and numbers only."""
+        s = self.sess
+        return {
+            "on": self.on(),
+            "prewarm": bool(self.v.setting("listen.live_prewarm")),
+            "fast": bool(self.v.setting("listen.fast_live")),
+            "warm": bool(s is not None and not s.closed and s.warm),
+            "warm_used": self.warm_count,
+            "breaker": bool(self.v.setting("live.breaker.on")),
+            "resting": self.resting(),
+            "resume": bool(self.v.setting("live.resume")) and self._resume_handle() is not None,
+        }
+
+    def line(self) -> str:
+        if self.resting():
+            return "Live resting: two connections failed, so your turns go the usual way; trying again every minute."
+        return ""
+
+    def resting(self) -> bool:
+        return self.resting_since is not None and bool(self.v.setting("live.breaker.on"))
+
+    def _open_failed(self) -> None:
+        """(breaker) A hard open failure (every model refused the connection or the setup)."""
+        now = time.monotonic()
+        self.fails.append(now)
+        if (self.v.setting("live.breaker.on") and self.resting_since is None and len(self.fails) >= BREAKER_FAILS
+                and now - self.fails[0] <= BREAKER_WINDOW_S):  # fmt: skip
+            self.resting_since, self._probe_at = now, now + PROBE_S
+            self._event("resting")
+
+    def tick(self) -> None:
+        """Every second from Voice.background: an unused prewarmed session past PREWARM_IDLE_S closes; while resting, a
+        probe when it's due."""
+        s = self.sess
+        if s is not None and s.warm and not s.closed and time.monotonic() - s.opened_at > PREWARM_IDLE_S:
+            self._event("prewarm idle")
+            self.close()
+        if self.resting_since is not None and not self.v.setting("live.breaker.on"):
+            self.resting_since = None  # switched off: Live is tried as before
+        if self.resting() and not self._probing and time.monotonic() >= self._probe_at:
+            self._probing = True
+            threading.Thread(target=self._probe, name="voice-live-probe", daemon=True).start()
+
+    def _probe(self) -> None:
+        """(breaker) A connection with an empty setup (the model's name only: nothing of anyone's), closed at once."""
+        try:
+            key = self.app.secrets.get(KEY)
+            calls = self.app.modules.get("calls")
+            if not key or calls is None:
+                return
+            for model in self.models(calls):
+                try:
+                    ws = self._call(self._connect(key, {"model": f"models/{model}"}), CONNECT_S * 2 + 1)
+                except Failed:
+                    continue
+                self._call(_close(ws), CONNECT_S)
+                self.resting_since = None
+                self.fails.clear()
+                self._event("rested", model=model)
+                return
+            self._event("probe failed")
+        except Exception:
+            pass
+        finally:
+            self._probe_at = time.monotonic() + PROBE_S
+            self._probing = False
+
+    def prewarm(self, why: str, switch: str = "listen.live_prewarm") -> bool:
+        """(0.9.2) Open the owner's session ahead, on a thread (why: "face", "wake", "fast"): connect and setup only,
+        no sound. Only Voice calls it, and only for his recognised face or his verified wake word (fast_live: his face
+        looking and talking). False when it doesn't: the switch off, Live off, resting, no key, a session open or
+        opening already, the rate cap."""
+        if not self.on() or not self.v.setting(switch) or not self.v.setting("speak.on") or self.v.portal_cut():
+            return False
+        if self.resting() or not self.app.secrets.get(KEY) or self.app.modules.get("calls") is None:
+            return False
+        now = time.monotonic()
+        with self._warm_lock:
+            s = self.sess
+            if self._warming is not None or (s is not None and not s.closed and not s.going):
+                return False
+            if len(self.warms) >= PREWARM_MAX and now - self.warms[0] < PREWARM_WINDOW_S:
+                return False
+            self.warms.append(now)
+            self._warming = threading.Event()
+        threading.Thread(target=self._prewarm, args=(why,), name="voice-live-warm", daemon=True).start()
+        return True
+
+    def _prewarm(self, why: str) -> None:
+        done = self._warming
+        t0 = time.monotonic()
+        try:
+            sess = self._open(self.app.secrets.get(KEY), self.app.modules.get("calls"))
+            sess.warm = True
+            with self._warm_lock:
+                old = self.sess
+                if old is None or old.closed or old.going:
+                    self.sess = sess
+                    sess = None
+            if sess is not None:
+                self._end(sess)
+            self._event("prewarm", why=why, ms=round((time.monotonic() - t0) * 1000))
+        except Exception as e:
+            self._event("prewarm failed", why=why, code=e.code if isinstance(e, Failed) else type(e).__name__)
+        finally:
+            with self._warm_lock:
+                self._warming = None
+            if done is not None:
+                done.set()
+
+    def _ready(self, sess: Session | None) -> bool:
+        """(0.9.2) Is this session good to send a turn on? Idle a while: a ping first (no pong: no)."""
+        if sess is None or sess.closed or sess.going:
+            return False
+        if time.monotonic() - sess.used_at < (PING_IDLE_S if sess.warm else PING_IDLE_TALK_S):
+            return True
+        try:
+            self._call(_ping(sess.ws), PING_S + 0.5)
+            return True
+        except Exception:
+            self._event("ping failed")
+            return False
+
+    def _session(self, key: str, calls, turn: dict) -> Session:
+        """The owner's session for this turn: a prewarm under way waited for, a prewarmed one adopted, the one open
+        for this conversation reused, or a new one."""
+        w = self._warming
+        if w is not None:
+            w.wait(CONNECT_S * 2 + 1)
+        sess = self.sess
+        if sess is not None and sess.warm and self._ready(sess):
+            sess.warm, sess.portal = False, self.v.portal.session
+            self.warm_count += 1
+            turn["live_warm"] = 1
+        elif sess is None or sess.portal != self.v.portal.session or not self._ready(sess):
+            self.close()
+            sess = self.sess = self._open(key, calls)
+        fast.stamp(turn, "live_open")
+        return sess
+
+    def _resume_handle(self) -> str | None:
+        h = self._handle
+        if h is None or time.monotonic() - h[1] > RESUME_S:
+            return None
+        return h[0]
 
     # ------------------------------------------------------------------------------------------ Voice's hooks
     def keep(self, pcm: bytes | None, who=None) -> None:
@@ -211,14 +404,14 @@ class Live:
         if not key or calls is None:
             self._event("no key" if not key else "no calls", fallback=True)
             return None
+        if self.resting():  # (0.9.2, breaker) no 5 s wait on a connection that keeps failing
+            self._event("resting", fallback=True)
+            return None
         t0 = time.monotonic()
         before = set(turn)
         self._ran = ran = []
         try:
-            sess = self.sess
-            if sess is None or sess.closed or sess.portal != self.v.portal.session:
-                self.close()
-                sess = self.sess = self._open(key, calls)
+            sess = self._session(key, calls, turn)
             heard, said = self._answer(sess, pcm, turn)
         except Exception as e:  # never silence: the usual way answers (and is timed as usual)
             self.close()
@@ -316,7 +509,12 @@ class Live:
         if dc:  # (0.9.1, calls.desk_first) a call taken at the desk: Live goes through its steps
             si += f"\nThis talk is a call taken at the desk: {dc['reason']}. Go through it as the call would:\n"
             si += dc["script"]
+        extra: dict = {}
+        if self.v.setting("live.resume"):  # (0.9.2) his session only: a handle asked for, and used when there is one
+            h = self._resume_handle()
+            extra["sessionResumption"] = {"handle": h} if h else {}
         return {
+            **extra,
             "model": f"models/{model}",
             "generationConfig": gen,
             "systemInstruction": {"parts": [{"text": si}]},
@@ -381,6 +579,9 @@ class Live:
         if not key or calls is None:
             self._event("no key" if not key else "no calls", fallback=True, who="guest")
             return None
+        if self.resting():  # (0.9.2, breaker)
+            self._event("resting", fallback=True, who="guest")
+            return None
         if not guest.allowed_now(self.app):
             self._event("rate", fallback=True, who="guest")
             return None
@@ -392,6 +593,7 @@ class Live:
             if g is None or g.closed or g.portal != self.v.portal.session:
                 self.close_guest()
                 g = self.gsess = self._open(key, calls, guest=kind)
+            fast.stamp(turn, "live_open")
             _heard, said = self._answer(g, pcm, turn)
         except Exception as e:
             self.close_guest()
@@ -426,18 +628,28 @@ class Live:
         last: Failed | None = None
         for model in self.models(calls):
             setup = self.guest_setup(calls, model, guest) if guest else self.setup(calls, model)
-            try:
-                ws = self._call(self._connect(key, setup), CONNECT_S * 2 + 1)
-            except Failed as e:
+            ws, err = self._try(key, setup)
+            if err is not None and (setup.get("sessionResumption") or {}).get("handle"):
+                self._handle = None  # (0.9.2, resume) a stale handle: once more without it
+                ws, err = self._try(key, self.setup(calls, model))
+            if err is not None:
                 self.bad[model] = time.monotonic() + BAD_S
-                self._event(e.stage, model=model, code=e.code, who="guest" if guest else None)
-                last = e
+                self._event(err.stage, model=model, code=err.code, who="guest" if guest else None)
+                last = err
                 continue
             self.bad.pop(model, None)
             sess = Session(ws, model, self.v.portal.session, guest=bool(guest))
             self._call(_start(sess, self._read(sess)), CONNECT_S)
+            self.fails.clear()
             return sess
+        self._open_failed()  # (0.9.2, breaker) a hard failure: every model refused
         raise last or Failed("connect")
+
+    def _try(self, key: str, setup: dict):
+        try:
+            return self._call(self._connect(key, setup), CONNECT_S * 2 + 1), None
+        except Failed as e:
+            return None, e
 
     async def _connect(self, key: str, setup: dict):
         from websockets.asyncio.client import connect
@@ -480,10 +692,17 @@ class Live:
         fast.stamp(turn, "sent")
         heard: list[str] = []
         said: list[str] = []
-        first = self._first(q, heard, said, turn)
+        cue = Cue(self.v, turn) if self.v.setting("live.ack") else None  # (0.9.2, voice.live.ack)
+        try:
+            first = self._first(q, heard, said, turn, cue)
+        finally:
+            if cue is not None:
+                cue.heard()
         if first is None:
             raise Failed("first sound")
         done = self._play(sess, q, bytearray(first), heard, said, turn)
+        if done == CAPPED:  # (0.9.2, spoken_max_s) the rest isn't said: its words are still taken, to be shown
+            done = self._rest(q, heard, said)
         if not done:
             with sess.lock:  # cut off: the rest of that answer is dropped as it arrives
                 sess.stale = not sess.ended
@@ -496,6 +715,7 @@ class Live:
                     pass
         fast.stamp(turn, "answer")
         sess.q = None
+        sess.used_at = time.monotonic()
         if not sess.guest:  # (0.9.0, mind.promises.answers) a promise said at the desk is written down; never a guest's
             try:
                 from kurooto.mind import promises
@@ -505,9 +725,30 @@ class Live:
                 pass
         return "".join(heard), "".join(said)
 
-    def _first(self, q: queue.Queue, heard: list, said: list, turn: dict) -> bytes | None:
-        """Waits for the first sound (FIRST_S, again after each tool call); None: none came."""
+    def _rest(self, q: queue.Queue, heard: list, said: list) -> bool:
+        """(0.9.2, spoken_max_s) The answer past its cap: its words kept (shown), its sound dropped; True at its end."""
+        end = time.monotonic() + TURN_S
+        while time.monotonic() < end:
+            try:
+                item = q.get(timeout=max(0.0, end - time.monotonic()))
+            except queue.Empty:
+                return False
+            if item[0] == "in":
+                heard.append(item[1])
+            elif item[0] == "out":
+                said.append(item[1])
+            elif item[0] == "done":
+                return True
+            elif item[0] in ("closed", "interrupted"):
+                return False
+        return False
+
+    def _first(self, q: queue.Queue, heard: list, said: list, turn: dict, cue: Cue | None = None) -> bytes | None:
+        """Waits for the first sound (FIRST_S, again after each tool call); None: none came. (0.9.2) cue: the heard-you
+        sound, after ACK_AFTER_S and on a tool call."""
         end = time.monotonic() + FIRST_S
+        if cue is not None:
+            cue.start()
         while True:
             try:
                 item = q.get(timeout=max(0.0, end - time.monotonic()))
@@ -519,6 +760,8 @@ class Live:
                 return item[1]
             if kind == "tool":
                 end = time.monotonic() + FIRST_S
+                if cue is not None:
+                    cue.play(again=True)
             elif kind == "in":
                 heard.append(item[1])
             elif kind == "out":
@@ -527,20 +770,30 @@ class Live:
             elif kind in ("done", "closed", "interrupted"):
                 return None
 
-    def _play(self, sess: Session, q: queue.Queue, buf: bytearray, heard: list, said: list, turn: dict) -> bool:
+    def _play(self, sess: Session, q: queue.Queue, buf: bytearray, heard: list, said: list, turn: dict):
         """Through Voice's Speaker (its outputs, barge-in, the waveform), a piece at a time as the sound comes in.
-        True: the answer came to its end; False: cut off (stopped, barged in on, interrupted, the session gone)."""
+        True: the answer came to its end; False: cut off (stopped, barged in on, interrupted, the session gone);
+        CAPPED (0.9.2, voice.live.spoken_max_s): stopped at a sentence end past the cap, the rest still coming."""
         sp = self.v.speaker
         barge = getattr(self.v, "barge", None)
         if not sp.lock.acquire(timeout=TURN_S):
             return False
         ended = cut = False
+        try:
+            cap = float(self.v.setting("live.spoken_max_s") or 0)
+        except (TypeError, ValueError):
+            cap = 0.0
+        got = len(buf)  # bytes of sound received
+        played = 0  # bytes played
+        stop_at: int | None = None  # (cap) play up to this many bytes, then stop
 
         def take(item: tuple) -> None:
             nonlocal ended, cut
+            nonlocal got
             kind = item[0]
             if kind == "audio":
                 buf.extend(item[1])
+                got += len(item[1])
             elif kind == "in":
                 heard.append(item[1])
             elif kind == "out":
@@ -579,9 +832,16 @@ class Live:
                         break
                 if cut:
                     return False
+                if cap > 0 and stop_at is None and played >= cap * OUT_RATE * 2:
+                    stop_at = cap_at(played, got, "".join(said), cap * 1.5 * OUT_RATE * 2)
+                if stop_at is not None and played >= stop_at:
+                    turn["capped"] = 1
+                    return True if ended and not buf else CAPPED
                 if buf:
-                    piece = bytes(buf[:most])
-                    del buf[:most]
+                    n = most if stop_at is None else max(2, min(most, stop_at - played))
+                    piece = bytes(buf[:n])
+                    del buf[:n]
+                    played += len(piece)
                     if not sp.say_piece(piece, OUT_RATE):
                         return False
                 want = each
@@ -605,6 +865,11 @@ class Live:
         try:
             async for raw in sess.ws:
                 m = _parse(raw)
+                sru = m.get("sessionResumptionUpdate")
+                if isinstance(sru, dict) and not sess.guest and sru.get("resumable") and sru.get("newHandle"):
+                    self._handle = (str(sru["newHandle"]), time.monotonic())  # (0.9.2) his session only, memory
+                if m.get("goAway") is not None:  # (0.9.2) Google will close it soon: the next turn opens afresh
+                    sess.going = True
                 if m.get("toolCall") and not sess.stale:
                     sess.swallow = False
                     sess.put(("tool",))
@@ -781,3 +1046,73 @@ def _code(e: BaseException) -> int | str:
     if resp is not None and getattr(resp, "status_code", None):
         return int(resp.status_code)
     return type(e).__name__
+
+
+CAPPED = "capped"
+
+
+def cap_at(played: int, got: int, text: str, hard: float) -> int | None:
+    """(0.9.2, spoken_max_s) Where to stop (bytes of sound), past `played`: the next sentence end in Live's transcript
+    `text`, placed in the sound by the transcript's characters per byte received so far; None: no end yet (keep
+    playing, asked again next piece), or `hard` bytes reached: here."""
+    if not text or not got:
+        return played if played >= hard else None
+    per = len(text) / got
+    pos = int(played * per)
+    m = SENTENCE_END.search(text, pos)
+    if m is None:
+        return played if played >= hard else None
+    at = int((m.end()) / per) + int(0.15 * OUT_RATE * 2)
+    return max(played, at - at % 2)
+
+
+class Cue:
+    """(0.9.2, voice.live.ack) The heard-you sound on a Live turn: ACK_AFTER_S after it was sent with no sound from
+    Live yet, and again on a tool call; Live's first sound cuts it off (heard())."""
+
+    def __init__(self, v, turn: dict):
+        self.v, self.turn = v, turn
+        self.first = threading.Event()
+        self.playing = False
+        self.times = 0
+
+    def start(self) -> None:
+        def wait() -> None:
+            if not self.first.wait(ACK_AFTER_S):
+                self.play()
+
+        threading.Thread(target=wait, name="voice-live-cue", daemon=True).start()
+
+    def play(self, again: bool = False) -> None:
+        if self.first.is_set() or self.playing or (self.times and not again):
+            return
+        self.times += 1
+        try:
+            self.v.publish("voice_ack", on=True)  # the page shows it heard you, whatever is played
+            quiet = getattr(self.v, "cue_quiet", None)
+            if quiet is not None and quiet():
+                return
+            how = str(self.v.setting("speak.ack") or "tone").strip().lower()
+            got = self.v._ack_sound(how if how in ("tone", "word") else "tone")
+            if got is None or self.first.is_set():
+                return
+            self.playing = True
+            self.v.speaker.ack(*got, self.turn)
+        except Exception:
+            pass
+        finally:
+            self.playing = False
+
+    def heard(self) -> None:
+        """Live's first sound (or the turn ended): no cue now, and one playing is cut off."""
+        self.first.set()
+        if self.playing:
+            try:
+                self.v.speaker._cut_piece()
+            except Exception:
+                pass
+
+
+async def _ping(ws) -> None:
+    pong = await ws.ping()
+    await asyncio.wait_for(pong, PING_S)

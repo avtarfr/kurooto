@@ -817,6 +817,7 @@ class Face(Module):
             nearby.set_facing(self.app, int(f.get("faces") or 0), self.close_facing(f.get("sizes") or [], size))
             looks = f.get("looks")  # (0.8.18) anyone's look, voice.listen.look_anyone
             nearby.set_look(self.app, self.looking(f.get("owner"), f.get("eyes"), size, looks))  # (0.8.17) look to talk
+            self._owner_frame(f.get("owner"), f.get("eyes"), size, f.get("mouth"))  # (0.9.2) prewarm, fast_live
             if f.get("owner") is not None:  # (0.9.0) your face in view: you're here (core/here.py, words-free)
                 here.owner_here(self.app, "face")
             self._break_signs(f.get("owner"), size)  # (0.9.0, face.breaks) looked up, stood up
@@ -854,6 +855,26 @@ class Face(Module):
                 self._push(
                     {"t": "face", "kind": "face_seen", "x": f.get("x"), "y": f.get("y"), "w": f.get("w"), "owner": True}
                 )
+
+    def _owner_frame(self, owner, eyes, size, mouth) -> None:
+        """(0.9.2, voice.listen.live_prewarm / fast_live) His face in this frame, looking at the camera, and how much
+        his mouth moved since his last frame (core/nearby.py): only while one of those switches is on. The mouth's two
+        ratios are kept for one frame, in memory, to take the change; nothing else."""
+        get = self.app.settings.get
+        if not (get("voice.listen.live_prewarm", False) or get("voice.listen.fast_live", False)):
+            self._mouth_prev = None
+            return
+        now = time.monotonic()
+        moved = None
+        if owner is not None and mouth:
+            prev = getattr(self, "_mouth_prev", None)
+            if prev is not None and now - prev[0] <= 1.5:
+                moved = abs(mouth[0] - prev[1][0]) + abs(mouth[1] - prev[1][1])
+            self._mouth_prev = (now, tuple(mouth))
+        else:
+            self._mouth_prev = None
+        looking = owner is not None and self._looks_at(owner, eyes, size, own=True)
+        nearby.set_owner(self.app, owner is not None, looking, moved, at=now)
 
     # -------------------------------------------------------------------------------------- hooks for add-ons
     def watch_people(self, cb) -> object:
