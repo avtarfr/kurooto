@@ -536,6 +536,11 @@ used none; agy and Claude Code's own file tools aren't seen, so for them "did no
 remembered items" when it was told what's [remembered](#memory-open-threads-and-whats-remembered)). `/jobs` and the
 dashboard's AI jobs page show each finished request's AI and model too. Quiet background work gets none;
 `jobs.receipt` = `false` turns it off.
+**Files from the dashboard** (0.9.0): on the dashboard's Chat page, paste a picture (Ctrl+V), drop files or pick
+them with the paperclip; they go with your next message, up to 10 at a time and 20 MB each, and your AI gets them as a
+photo or file sent on Telegram (a picture as a picture). They're kept in Kurooto's state folder (`chat-files/`),
+never in your notes. *Leaves:* the files, to the AI you picked, with that message. *Undo:* `dashboard.chat_attach` =
+`false` (Settings → Dashboard pages); delete `chat-files/` in the state folder to remove what you attached.
 **Plan line:** a text request of yours that usually takes more than 20 s on that AI (the median of your last ones at
 that effort, once there are three) gets one short line first: "Searching your notes, then answering (about 40 s with
 agy)." Guessed from what's known before the run (a file, a link, your notes mentioned, remembered items). Never on a

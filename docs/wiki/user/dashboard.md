@@ -450,6 +450,15 @@ it the page says so.
   chat exactly as a message typed in the app (the same commands and plain-English requests, the chat's own AI context
   carries), and your phones show it as yours. **reply** under a message quotes it, and a reply to a reminder or a
   check-in goes to the feature that sent it, as on Telegram.
+- **Attach pictures and files** (0.9.0): paste a picture (**Ctrl+V**, a screenshot or a copied image), drop files
+  anywhere on the page, or pick them with the paperclip beside the box. They wait above the box with a small preview,
+  their name and size; **×** takes one off. They go with your next message (or alone, with no words), up to 10 at a
+  time and 20 MB each, as Telegram allows. Your AI gets them the way it gets a photo or a file you send on Telegram:
+  told where each one is, and a picture as a picture (Claude Code and agy open it; a Gemini key or an Ollama model that
+  reads pictures gets it with the request). A picture is told by what's in it, not its name: a file called `.png`
+  that isn't a picture isn't attached. They're kept on this computer in Kurooto's state folder (`chat-files/`), never
+  in your notes, until you delete them; your phones see the message with each file's name and size, not the file.
+  `dashboard.chat_attach` turns attaching off.
 - **Live:** new messages, answers, "working" and what's waiting appear without reloading. Opening a chat marks it read
   on your computer, and a chat you read in the app shows as read here. Since 0.8.16 reading here clears the phone's
   unread badge and notification for that chat too (at once when the app is connected straight to your call line, else
@@ -462,7 +471,8 @@ in the chat, so it isn't here (an answer to it is, when it goes to the app's cha
 100 messages for 7 days.
 
 Nothing new leaves your computer: the page is behind the dashboard's key like every other page, and what you write or
-tap reaches your phones through your call line, as when you use the app. `look.chat_page` turns the page off.
+tap reaches your phones through your call line, as when you use the app. A file you attach goes to the AI you picked,
+as one sent on Telegram does. `look.chat_page` turns the page off.
 
 ### Activity, AI jobs, Schedule
 

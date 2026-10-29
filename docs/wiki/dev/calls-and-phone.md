@@ -639,7 +639,10 @@ above without a protocol of its own. `PhoneChat.take`'s message handling is `_yo
 voice, on)`; `typed(text, session, reply)` calls it for a message from the page (a fresh id; the chat must exist), so
 it's kept, pushed with `chat-say` as `from: "you"` (the phones show it like one typed on another phone) and handled
 as `Incoming(via="app")`; its `phone_chat` event carries `on: "dashboard"`. `press(mid, n)` is `_button`, `thread(sid)`
-lists one chat, `change(op, args)` runs the session and message ops (never `BEING_OPS`). `PhoneApp.answer` checks the
+lists one chat, `change(op, args)` runs the session and message ops (never `BEING_OPS`). Since 0.9.0 `typed` takes
+`files` too, `[(path, card)]` attached on the page, which `_yours` gets as `more`: the message's `file` is the first
+(what the app shows) and `files` lists them all when there are more than one (`msg.delete` drops both); `Incoming.files`
+has every path. `PhoneApp.answer` checks the
 seal and nonce, then `act(item_id, fields)` does the answer; the page calls `act` directly (behind the dashboard's
 key). `PhoneChat.live` tells the dashboard's open pages about each change (`{"t": "chat"}`; nothing goes to the call
 line for it, and nothing with `look.chat_page` off). Only what `chat.json` holds is shown: the app's and the page's

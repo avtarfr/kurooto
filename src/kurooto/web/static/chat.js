@@ -4,9 +4,12 @@
 // way as one in the app, so a question settles everywhere and the chat's AI context carries. Loaded on demand by
 // home.js (renderChat), which calls CHATPAGE.mount(body, api, opts) and hands every {t: "chat"} live message to
 // CHATPAGE.live(m). Nothing here is fetched from the internet; the links in messages open like any other link.
+// Attachments (0.9.0, dashboard.chat_attach): a picture pasted (Ctrl+V), files dropped anywhere on the page or picked
+// with the paperclip wait above the box with a small preview and × to take them off, then go up in parts with the
+// message (chat/upload, then chat/send's files) and reach the AI as a file sent from the phone does.
 "use strict";
 (function () {
-  const S = { body: null, api: null, opts: {}, list: null, sid: "main", msgs: [], reply: null, note: "", busy: false, timer: 0, readAt: "" };
+  const S = { body: null, api: null, opts: {}, list: null, sid: "main", msgs: [], reply: null, note: "", busy: false, timer: 0, readAt: "", files: [] };
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   // .cp .log undoes style.css's .log (a 180 px box): the messages fill the page, the box to write in at its foot
   const CSS = `.cp{display:grid;grid-template-columns:minmax(180px,240px) minmax(0,1fr);gap:14px;height:100%;min-height:420px}
@@ -39,6 +42,14 @@
   .cp .in .re{font-size:12px;color:var(--dim);margin-bottom:4px;display:flex;gap:8px}.cp .in .re span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .cp .in form{display:flex;gap:8px;align-items:flex-end}.cp .in textarea{flex:1;resize:none;min-height:2.4em;max-height:9em;font:inherit;padding:6px 8px;background:var(--panel);color:var(--fg);border:1px solid var(--rule,var(--line))}
   .cp .say{min-height:1.3em;font-size:12px;color:var(--dim)}.cp .say.bad{color:var(--bad)}
+  .cp .in .clip{display:flex;align-items:center;justify-content:center;padding:6px 8px;background:none;border:1px solid var(--rule,var(--line));border-radius:6px;color:var(--dim);cursor:pointer}.cp .in .clip:hover{color:var(--fg)}
+  .cp .at{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+  .cp .at .ch{display:flex;align-items:center;gap:6px;max-width:260px;padding:3px 2px 3px 3px;border:1px solid var(--rule,var(--line));border-radius:8px;background:var(--raised,var(--panel));font-size:12px}
+  .cp .at img,.cp .at .ic{width:40px;height:40px;object-fit:cover;border-radius:5px;flex:none}
+  .cp .at .ic{display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--fg) 8%,transparent);color:var(--dim);font-size:10px;text-transform:uppercase;overflow:hidden}
+  .cp .at .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cp .at button{border:0;background:none;color:var(--dim);cursor:pointer;font-size:16px;line-height:1;padding:2px 6px}.cp .at button:hover{color:var(--fg)}
+  .cp.drop .th{outline:2px dashed var(--accent);outline-offset:-2px;border-radius:8px}.cp input.pick{display:none}
   @media (max-width:720px){.cp{grid-template-columns:1fr;height:auto}.cp .ss{border-right:0;max-height:30vh}.cp .log{max-height:60vh}}`;
 
   // ------------------------------------------------------------------------------------------- helpers
@@ -55,6 +66,7 @@
     return h.replace(/https?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)]/g, (u) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`);
   }
   const session = () => ((S.list && S.list.sessions) || []).find((r) => r.id === S.sid);
+  const attachOn = () => !!(S.list && S.list.attach && S.list.attach.on);
   const say = (text, bad) => { S.note = text || ""; const el = S.body && S.body.querySelector(".cp .say"); if (el) { el.textContent = S.note; el.classList.toggle("bad", !!bad); } };
 
   // ---------------------------------------------------------------------------------------------- load
@@ -62,7 +74,7 @@
     S.body = body; S.api = api; S.opts = opts || {}; S.reply = null; S.note = "";
     try { S.sid = localStorage.getItem("kurooto.chat.session") || "main"; } catch { S.sid = "main"; }
     if (!document.getElementById("chat-css")) { const st = document.createElement("style"); st.id = "chat-css"; st.textContent = CSS; document.head.appendChild(st); }
-    body.onclick = click; body.onsubmit = submit; body.onchange = null;
+    body.onclick = click; body.onsubmit = submit; body.onchange = picked;
     body.innerHTML = '<p class="d">Loading the chat…</p>';
     load(true);
   }
@@ -120,9 +132,9 @@
     if (m.quote && !gone) h += `<div class="q">${esc((m.quote.from === "you" ? "you: " : "") + (m.quote.text || ""))}</div>`;
     if (m.title && !gone) h += `<div class="tt">${esc(m.title)}</div>`;
     h += `<div class="tx">${gone ? "deleted" : rich(m.text || "")}</div>`;
-    if (m.file && !gone) {
-      const f = m.file, label = `${esc(f.name)} <span class="d">${size(f.size)}</span>`;
-      h += `<div class="fl">file: ${f.url ? `<a href="${esc(f.url)}" target="_blank" rel="noopener noreferrer">${label}</a>` : `${label} <span class="d">(on this computer)</span>`}</div>`;
+    for (const f of gone ? [] : m.files || (m.file ? [m.file] : [])) { // (0.9.0) files: all of them, when there are more than one
+      const label = `${esc(f.name)} <span class="d">${size(f.size)}</span>`, kind = String(f.mime || "").startsWith("image/") ? "picture" : "file";
+      h += `<div class="fl">${kind}: ${f.url ? `<a href="${esc(f.url)}" target="_blank" rel="noopener noreferrer">${label}</a>` : `${label} <span class="d">(on this computer)</span>`}</div>`;
     }
     if ((m.buttons || []).length && !gone) {
       h += `<div class="bt">${m.buttons.map((b, i) => (b.url ? `<a href="${esc(b.url)}" target="_blank" rel="noopener noreferrer">${esc(b.label)}</a>` : `<button data-btn="${esc(m.id)}" data-n="${i}">${esc(b.label)}</button>`)).join("")}</div>`;
@@ -152,8 +164,8 @@
     const re = S.reply ? S.msgs.find((m) => m.id === S.reply) : null;
     S.body.innerHTML = `<div class="cp">${sessionsHtml()}<div class="th"><div class="hd"><b>${esc(s.title || "New chat")}</b><span class="d">the same chat as the phone app</span>${tools}</div>${waitingHtml()}
       <div class="log" aria-live="polite">${threadHtml()}</div>
-      <div class="in">${re ? `<div class="re"><span>replying to: ${esc((re.text || "").slice(0, 120))}</span><button data-noreply="1">cancel</button></div>` : ""}
-      <form><textarea rows="2" aria-label="Write to ${esc(S.list.name)}" placeholder="Write to ${esc(S.list.name)}: Enter sends, Shift+Enter a new line"></textarea><button class="primary" type="submit">Send</button></form><div class="say"></div></div></div></div>`;
+      <div class="in">${re ? `<div class="re"><span>replying to: ${esc((re.text || "").slice(0, 120))}</span><button data-noreply="1">cancel</button></div>` : ""}${trayHtml()}
+      <form>${attachOn() ? `<button type="button" class="clip" data-clip="1" title="Attach pictures or files (or paste a picture, or drop files on the page)" aria-label="Attach pictures or files">${CLIP}</button>` : ""}<textarea rows="2" aria-label="Write to ${esc(S.list.name)}" placeholder="Write to ${esc(S.list.name)}: Enter sends, Shift+Enter a new line"></textarea><button class="primary" type="submit">Send</button></form>${attachOn() ? '<input type="file" class="pick" multiple hidden>' : ""}<div class="say"></div></div></div></div>`;
     const log = S.body.querySelector(".cp .log");
     if (atEnd || !old) log.scrollTop = log.scrollHeight;
     const nta = S.body.querySelector(".cp textarea");
@@ -162,6 +174,18 @@
     say(S.note);
   }
 
+  // the files waiting to go with the next message: a small picture or the file's kind, its name and size, and ×
+  function trayHtml() {
+    if (!S.files.length || !attachOn()) return "";
+    const one = (f, i) => {
+      const kind = (f.name.match(/\.([a-z0-9]{1,5})$/i) || [, "file"])[1];
+      return `<span class="ch">${f.thumb ? `<img src="${esc(f.thumb)}" alt="">` : `<span class="ic">${esc(kind)}</span>`}<span class="nm" title="${esc(f.name)}">${esc(f.name)}</span><span class="d">${size(f.size)}</span><button type="button" data-unattach="${i}" title="Take it off" aria-label="Take ${esc(f.name)} off">×</button></span>`;
+    };
+    return `<div class="at" aria-label="attached">${S.files.map(one).join("")}</div>`;
+  }
+  // the paperclip (Feather's, MIT): drawn here, no picture fetched
+  const CLIP = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
   // -------------------------------------------------------------------------------------------- acting
   function keys(e) {
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); e.target.form.requestSubmit(); }
@@ -169,15 +193,87 @@
   }
   async function submit(e) {
     e.preventDefault();
-    const ta = S.body.querySelector(".cp textarea"); const text = ta.value.trim(); if (!text || S.busy) return;
+    const ta = S.body.querySelector(".cp textarea"); const text = ta.value.trim(); if ((!text && !S.files.length) || S.busy) return;
     S.busy = true; say("Sending…");
-    let r; try { r = await S.api("chat/send", { session: S.sid, text, reply: S.reply || "" }); } catch { r = { ok: false, note: "This page lost Kurooto. Is it running?" }; }
+    let r;
+    try {
+      const ids = []; // each attached file goes up first (once: a message that fails keeps them, sent already)
+      for (let i = 0; i < S.files.length; i++) ids.push(S.files[i].id || (S.files[i].id = await upload(S.files[i], i + 1, S.files.length)));
+      r = await S.api("chat/send", { session: S.sid, text, reply: S.reply || "", ...(ids.length ? { files: ids } : {}) });
+    } catch (err) { r = { ok: false, note: (err && err.refused) || "This page lost Kurooto. Is it running?" }; }
     S.busy = false;
     if (!r.ok) { say(r.note || "That didn't go.", true); return; }
-    ta.value = ""; S.reply = null; S.note = "";
+    // the box may have been drawn again meanwhile (a live message while files went up): empty the one on the page
+    for (const box of [ta, S.body.querySelector(".cp textarea")]) if (box) box.value = "";
+    S.reply = null; S.note = ""; S.files = [];
     for (const m of r.said || []) upsert(m);
     render();
   }
+  // one attached file, in parts the dashboard takes (chat/upload): its id once the last part is in
+  const b64 = (buf) => { const u = new Uint8Array(buf); let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+  async function upload(f, n, of) {
+    const A = S.list.attach, parts = Math.max(1, Math.ceil(f.size / A.part));
+    let id = "";
+    for (let p = 0; p < parts; p++) {
+      say(`Sending ${f.name}${of > 1 ? ` (${n} of ${of})` : ""}${parts > 1 ? `: ${Math.round((p / parts) * 100)}%` : "…"}`);
+      const data = b64(await f.file.slice(p * A.part, (p + 1) * A.part).arrayBuffer());
+      const r = await S.api("chat/upload", { part: p, parts, size: f.size, name: f.name, data, ...(id ? { id } : {}) });
+      if (!r || !r.ok) throw { refused: (r && r.note) || `${f.name} didn't go.` };
+      if (r.file) return r.file.id;
+      id = r.id;
+    }
+    throw { refused: `${f.name} didn't go.` };
+  }
+  // files to attach (pasted, dropped or picked), checked against the limits before anything goes
+  function add(list) {
+    if (!attachOn() || !list.length || S.busy) return;
+    const A = S.list.attach, no = [];
+    for (const file of list) {
+      const name = file.name || "pasted picture";
+      if (S.files.length >= A.count) { no.push(`at most ${A.count} files a message`); break; }
+      if (!file.size) { no.push(`${name} is empty`); continue; }
+      if (file.size > A.max) { no.push(`${name} is ${size(file.size)}; the chat takes files up to ${size(A.max)}`); continue; }
+      const f = { file, name, size: file.size, thumb: "", id: "" };
+      S.files.push(f);
+      if ((file.type || "").startsWith("image/")) thumb(f);
+    }
+    render();
+    if (no.length) say(`Not attached: ${no.join("; ")}.`, true);
+  }
+  // a picture's preview: drawn small here (the page may show data: pictures only), never the whole picture
+  async function thumb(f) {
+    try {
+      const bmp = await createImageBitmap(f.file), k = Math.min(1, 80 / Math.max(bmp.width, bmp.height));
+      const c = document.createElement("canvas"); c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
+      c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height); if (bmp.close) bmp.close();
+      f.thumb = c.toDataURL("image/jpeg", 0.8);
+      if (S.files.includes(f)) render();
+    } catch { /* one this browser can't draw (HEIC): its kind instead */ }
+  }
+  function picked(e) {
+    const t = e.target; if (!t.matches || !t.matches(".cp input.pick")) return;
+    const list = [...(t.files || [])]; t.value = ""; add(list);
+  }
+  // Ctrl+V of a picture (or files copied in a file manager) while the Chat page is open, unless another box has it
+  document.addEventListener("paste", (e) => {
+    if (!here() || !attachOn()) return;
+    const files = [...((e.clipboardData && e.clipboardData.files) || [])]; if (!files.length) return;
+    const t = e.target instanceof Element ? e.target : null;
+    if (t && !S.body.contains(t) && t.closest("input, textarea, [contenteditable]")) return;
+    if (![...e.clipboardData.types].includes("text/plain")) e.preventDefault(); // a copied web page's words still paste
+    add(files);
+  });
+  // files dropped anywhere on the page while the chat is open: attached, never opened by the browser instead
+  const dragged = (e) => e.dataTransfer && [...e.dataTransfer.types].includes("Files");
+  const dropping = (on) => { const cp = here(); if (cp) cp.classList.toggle("drop", on); };
+  document.addEventListener("dragover", (e) => { if (!here() || !attachOn() || !dragged(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = "copy"; dropping(true); });
+  document.addEventListener("dragleave", (e) => { if (!e.relatedTarget) dropping(false); });
+  document.addEventListener("drop", (e) => {
+    if (!here() || !attachOn() || !dragged(e)) return;
+    e.preventDefault(); dropping(false);
+    add([...e.dataTransfer.files]);
+  });
+
   function upsert(m) {
     if (!m || !m.id || (m.session || "main") !== S.sid) return false;
     const i = S.msgs.findIndex((x) => x.id === m.id);
@@ -191,6 +287,8 @@
     if (d.s) { if (d.s !== S.sid) { S.note = ""; await openThread(d.s); } return; }
     if (d.reply) { S.reply = d.reply; render(); return; }
     if (d.noreply) { S.reply = null; render(); return; }
+    if (d.clip) { const inp = S.body.querySelector(".cp input.pick"); if (inp) inp.click(); return; }
+    if (d.unattach) { if (!S.busy) { S.files.splice(Number(d.unattach), 1); render(); } return; }
     if (d.btn) { t.disabled = true; const r = await S.api("chat/button", { msg: d.btn, n: Number(d.n) }); say(r.note || (r.ok ? "" : "That button is out of date."), !r.ok); return; }
     if (d.ans || d.wbtn || d.dismiss) {
       const item = d.ans || d.wbtn || d.dismiss;

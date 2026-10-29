@@ -566,7 +566,7 @@ The phone app's chat on the dashboard (`look.chat_page`, on by default; Alt+H, C
 Nothing of its own is stored: it reads and acts on `modules/calls/chat.py:PhoneChat`, `sessions.py:Sessions` and
 `phone.py:PhoneApp` ([calls-and-phone.md](calls-and-phone.md#the-chat-on-the-dashboard-0814)).
 
-- `web/chat_api.py`: `GET chat` returns `{ok, on, name, sessions, working, waiting, switches}`; `sessions` is
+- `web/chat_api.py`: `GET chat` returns `{ok, on, name, sessions, working, waiting, switches, attach}`; `sessions` is
   `Sessions.listing()` with `unread` (Kurooto's undeleted messages after the session's `read` id; all of them when
   it's empty or no longer kept), `working` the sessions with an AI request running (`PhoneChat.working`), `waiting`
   `PhoneApp.inbox()["items"]` (the app's Waiting for you). `GET chat/thread?session=` returns `PhoneChat.thread(sid)`
@@ -590,7 +590,34 @@ Nothing of its own is stored: it reads and acts on `modules/calls/chat.py:PhoneC
   `m.t === "chat"` line in `connect`; the rest is `chat.js`. Text is escaped first, then only `code`, bold and https
   links are marked up. The thread's list is `.cp .log`, which also matches `style.css`'s `.log` (setup's logs, at most
   180 px): `.cp .log` sets `max-height:none; margin:0` so it fills `.cp .th` with `.in` at the foot (0.8.17).
-- Tests: `tests/unit/test_chat_page.py`.
+- Attachments (0.9.0, `dashboard.chat_attach`, on; a section of its own in Settings, "Dashboard pages"). `GET chat`
+  also carries `attach: {on, max, count, part}`. `POST chat/upload {part, parts, size, name, data}` takes one part of
+  a file in base64 (`PART` = 2 MB, so a part stays under the server's 4 MB JSON body limit), in order: part 0 gets a
+  fresh 16-hex `id`, later parts must send it and find `<state>/chat-files/.part-<id>` exactly `part * PART` long (409
+  otherwise); `size` over `FILE_MAX` (20 MB, Telegram's bot download limit) is 413 before anything is written, and
+  `parts` must be `ceil(size / PART)` with each part exactly `PART` long (the last the rest). The last part checks the
+  first bytes (`picture()`: PNG, JPEG, GIF, WebP, HEIC by their signatures), refuses (415) a file whose name has a
+  picture suffix (`openai_compat.PICTURE_TYPES`) that isn't one, gives a picture the suffix of what it is, and renames
+  the part to `<YYYY-mm-dd-HHMMSS>-<id>-<name>` (`_clean`: the last path segment, `[^\w.-]` to `-`, no leading dots,
+  80 characters). Parts left over an hour go when the next upload starts; files are owner-only and stay until the
+  user deletes them (not under `privacy.keep_days`). `chat/send`'s `files: [id]` (at most `FILES_MAX` = 10) are
+  looked up by id in that folder only (`attached()`; 404 when gone) and passed to `PhoneChat.typed(..., files)` as
+  `[(path, card)]`. With the switch off, `chat/upload` and a `chat/send` with files answer 403 `{off: true}`; text
+  still goes.
+- The folder is `core/places.py:chat_files(app)`; `read_roots` lists it while the switch is on and once it exists, so
+  Claude Code's Read rules and agy's allow-list cover it (agy's consent is asked again only of someone who attached
+  a file: `tools_once` re-asks when `wanted_rules` grow). `modules/chat.py:Chat.ask` passes the pictures among
+  `msg.files` (by suffix, which only a checked picture gets here) as `jobs.submit(images=...)` unless
+  `providers.sees` says the main AI can't read pictures (an Ollama model without vision); this holds for Telegram and
+  phone photos too, which were only named in the prompt before.
+- `chat.js`: `S.files` holds what waits ({file, name, size, thumb, id}); the tray above the box shows a thumbnail
+  drawn on a canvas from `createImageBitmap` as a `data:` JPEG (the CSP's `img-src` allows `'self'` and `data:` only,
+  so no `blob:` URLs), else the file's suffix. Paste (`document` `paste`, unless another box outside the page has the
+  focus; `preventDefault` only when the clipboard has no `text/plain`), drop (`document` `dragover`/`drop` while the
+  page is shown, so a dropped file never navigates away) and the paperclip (a hidden `input[type=file]`, `body.onchange`)
+  all go through `add()`, which checks the count and size first. `submit` uploads each file once (its `id` is kept,
+  so a send that fails doesn't upload again), then posts `chat/send` with `files`.
+- Tests: `tests/unit/test_chat_page.py`, `tests/unit/test_chat_attach.py`.
 
 ## Threaded jobs (0.8.6)
 

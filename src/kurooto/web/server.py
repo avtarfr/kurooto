@@ -61,6 +61,12 @@ register_defaults(
 )
 # Settings: each setting's guide line under it, which opens its whole entry, and a search through the entries (0.8.10)
 register_defaults("look", {"settings_guide": True})
+register_defaults(
+    "dashboard",
+    {
+        "chat_attach": True,  # the Chat page's attachments: paste, drop or pick pictures and files to send (0.9.0)
+    },
+)
 LAYOUTS = ("dense", "roomy")
 DESIGNS = ("new", "classic")
 CSP = (

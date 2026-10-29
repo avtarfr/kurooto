@@ -1263,6 +1263,7 @@ class Api:
         "brain",
         "ask",
         "look",
+        "dashboard",
         "power",
         "notes",
         "files",
@@ -1289,6 +1290,7 @@ class Api:
         "agents": "Skills in other AI programs",
         "hardware": "This computer",
         "web": "Dashboard",
+        "dashboard": "Dashboard pages",  # (0.9.0) what the dashboard's pages offer: the Chat page's attachments
         "date_offers": "Dates offered (photos, mail, shared calendars)",
         "addons": "Add-ons by link",
         "uninstall": "What Kurooto installed",

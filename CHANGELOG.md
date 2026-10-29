@@ -75,6 +75,13 @@
 - **Look to talk can centre beside the lens** (`face.camera.yaw_offset_deg`, 0). When the spot you're meant to look at
   sits beside the camera (a drawn eye next to a phone's camera), a look there counts, by the head's turn and by the
   eyes; an add-on with such a camera can set it while its camera is in use. At 0 nothing changes.
+- **Send pictures and files from the dashboard's chat** (`dashboard.chat_attach`, on). On the Chat page, paste a
+  picture (Ctrl+V), drop files anywhere on the page, or pick them with the new paperclip; they wait above the box with
+  a small preview and × to take one off, then go with your message (up to 10, 20 MB each). Your AI gets them as it
+  gets a photo or a file on Telegram, a picture as a picture; they're kept in Kurooto's state folder, never your notes.
+- **Photos sent to your AI reach it as pictures.** A photo from Telegram, the phone app or the dashboard now goes with
+  the request itself to an AI service that reads pictures (a Gemini key, an Ollama model with vision), instead of
+  only its path, which such a service couldn't open.
 
 ## 0.8.18 (2026-10-29)
 
