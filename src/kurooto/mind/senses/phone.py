@@ -179,12 +179,6 @@ def dnd_on(app: App) -> bool:
     return bool(r and r["n"] > 0)
 
 
-def moving(app: App) -> str:
-    """ "walking" or "vehicle" when the phone's last motion reading of the last 15 minutes says so, else ""."""
-    r = _last(app, "motion")
-    return str(r["target"] or r["kind"]) if r and (r["target"] or r["kind"]) in ("walking", "vehicle") else ""
-
-
 def next_alarm(app: App) -> float | None:
     """The phone's own next alarm (time.time()), from its last reading of the last day; None when unknown."""
     if not enabled(app, "alarm"):
@@ -210,7 +204,8 @@ MOVING_FRESH_S = 600  # (0.9.0) a motion bin this old or newer still says how th
 
 def moving(app: App, now: float | None = None) -> str:
     """(0.9.0, calls.mode_when_moving) "walking" or "vehicle" when the phone's newest motion bin (from the last
-    MOVING_FRESH_S) says so, else "". Read here only, to pick a call's voice mode; never told to an AI (R7)."""
+    MOVING_FRESH_S) says so, else "". Read here only, to pick a call's voice mode and as an availability hold
+    (calls.hold_moving); never told to an AI (R7)."""
     if not enabled(app, "motion"):
         return ""
     t = now or time.time()
@@ -218,7 +213,8 @@ def moving(app: App, now: float | None = None) -> str:
     if not rows:
         return ""
     last = max(rows, key=lambda r: r.get("t", 0))
-    return str(last.get("target") or "") if last.get("target") in ("walking", "vehicle") else ""
+    kind = str(last.get("target") or last.get("kind") or "")
+    return kind if kind in ("walking", "vehicle") else ""
 
 
 def today(app: App, sensor: str) -> str:
