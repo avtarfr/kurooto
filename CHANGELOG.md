@@ -2,6 +2,16 @@
 
 ## 0.9.0 (unreleased)
 
+- **Study notes from an upload, as one request** (`study.notes_workflow`, on). "Make notes from my AN2 notes from
+  functions of several variables, PDF in Downloads/Study" now runs start to end: your AI finds the scan, reads it now
+  with the handwritten reader (its own settings: the model here, or Gemini only when allowed), cuts it from that topic
+  on, leaves out what your notes already have, builds a study pack for the rest, writes deep notes as LaTeX by the
+  pack's prompt, compiles them, files the PDF and the .tex in the course's files folder with a source note linking
+  them (never the notes' top folder), and sends you the PDF, telling you how it's going. Also `/study-notes-from-upload`.
+- **Kurooto fixes its own LaTeX instead of saying it can't compile.** Every compile checks the document first
+  (unbalanced braces or environments, a package not loaded such as xcolor for a colour like blue!50!black in
+  hyperref's options, `[...]` inside an optional argument, missing `\input` files), then answers with the errors and
+  their lines; the AI fixes the source and tries again, up to three times, then tells you the error that's left.
 - **Study packs take the right chapters of a book** (a fix). A book's pages on a topic come from the chapters whose
   title or section headings name it, or that the class cites, not from the one that only says its words more often (a
   several-variables pack took the chapter on series of functions); neighbouring chapters stay together, and INDEX.md

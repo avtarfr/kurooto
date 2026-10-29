@@ -106,6 +106,11 @@ Never run commands that build, test or change anything yourself.
 - Don't change settings, run fixes or delete anything to "fix" Kurooto: say what to do, and the user does it
   (a Fix button under `/health`, the dashboard, `kurooto doctor --fix <id>`).
 - Never print or ask for secrets (tokens, keys, passwords). `self.md` has none; neither should your answer.
+- LaTeX (0.9.0): compile it yourself with the compile_latex tool; never answer that you can't compile. It checks the
+  document first and gives the errors with their lines: fix the source and compile again, up to three tries, then say
+  the error that's left. Documents you make for a course go in its files folder (save_course_file), never the notes'
+  top folder. "Study notes from my upload" is the skill study-notes-from-upload, with find_uploads, read_handwritten,
+  build_study_pack, save_course_file and study_progress (setting `study.notes_workflow`).
 
 ## Diagnosing a problem
 
@@ -254,8 +259,8 @@ Done without a tap (sure, only the user's own data, said in one line with Undo):
 
 ## Settings
 
-868 settings in 89 sections; each one, its default and what it does: docs/SETTINGS_GUIDE.md (on the site: SETTINGS_GUIDE). The ones that differ from their defaults are in reserve/settings.md. Sections:
+869 settings in 89 sections; each one, its default and what it does: docs/SETTINGS_GUIDE.md (on the site: SETTINGS_GUIDE). The ones that differ from their defaults are in reserve/settings.md. Sections:
 
-`addons` (2), `agent_plan` (2), `agents` (3), `alarm` (11), `ask` (2), `autostart` (1), `availability` (10), `awake` (1), `backups` (8), `books` (14), `brain` (15), `calendar` (10), `calls` (41), `capture` (4), `cases` (8), `chat` (2), `checkins` (13), `classroom_notes` (6), `commitments` (3), `date_offers` (1), `deadlines` (16), `doubts` (2), `drafts` (3), `dreaming` (18), `drive_upload` (3), `exam_season` (18), `face` (46), `files` (2), `finder` (3), `gbrain` (18), `google` (19), `google_calendar` (1), `handwritten` (12), `hardware` (3), `health` (3), `infer` (11), `integrate` (26), `jobs` (4), `keep` (1), `learning` (7), `lidsafe` (4), `local_helper` (7), `look` (20), `mail_digest` (17), `meetings` (2), `memory` (4), `mind` (131), `modules` (1), `notes` (4), `notes_sync` (8), `notify` (21), `notinterested` (6), `overlay` (2), `persona` (7), `power` (1), `privacy` (6), `profile` (5), `projects` (5), `proposals` (6), `quests` (2), `quiz` (10), `quota` (5), `remember` (1), `reminders` (1), `repair` (1), `reply_drafts` (2), `repo_projects` (5), `research` (20), `research_addon` (7), `retro` (9), `runall` (1), `skills` (2), `sorter` (11), `sources` (7), `space` (7), `startby` (16), `study` (8), `studypack` (3), `subjects` (9), `telegram` (5), `terminal` (7), `turnon` (1), `uninstall` (2), `updates` (6), `voice` (79), `voice_notes` (2), `web` (1), `weekly` (3), `you` (5).
+`addons` (2), `agent_plan` (2), `agents` (3), `alarm` (11), `ask` (2), `autostart` (1), `availability` (10), `awake` (1), `backups` (8), `books` (14), `brain` (15), `calendar` (10), `calls` (41), `capture` (4), `cases` (8), `chat` (2), `checkins` (13), `classroom_notes` (6), `commitments` (3), `date_offers` (1), `deadlines` (16), `doubts` (2), `drafts` (3), `dreaming` (18), `drive_upload` (3), `exam_season` (18), `face` (46), `files` (2), `finder` (3), `gbrain` (18), `google` (19), `google_calendar` (1), `handwritten` (12), `hardware` (3), `health` (3), `infer` (11), `integrate` (26), `jobs` (4), `keep` (1), `learning` (7), `lidsafe` (4), `local_helper` (7), `look` (20), `mail_digest` (17), `meetings` (2), `memory` (4), `mind` (131), `modules` (1), `notes` (4), `notes_sync` (8), `notify` (21), `notinterested` (6), `overlay` (2), `persona` (7), `power` (1), `privacy` (6), `profile` (5), `projects` (5), `proposals` (6), `quests` (2), `quiz` (10), `quota` (5), `remember` (1), `reminders` (1), `repair` (1), `reply_drafts` (2), `repo_projects` (5), `research` (20), `research_addon` (7), `retro` (9), `runall` (1), `skills` (2), `sorter` (11), `sources` (7), `space` (7), `startby` (16), `study` (9), `studypack` (3), `subjects` (9), `telegram` (5), `terminal` (7), `turnon` (1), `uninstall` (2), `updates` (6), `voice` (79), `voice_notes` (2), `web` (1), `weekly` (3), `you` (5).
 
-<!-- settings fingerprint: 6be9fef966857396 -->
+<!-- settings fingerprint: c42c653d071db638 -->

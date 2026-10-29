@@ -146,6 +146,7 @@ More: [Phone calls](calls.md), [Phone app](phone-app.md).
 | `/hint la` (with a photo, or the problem typed after it) | one hint at a time | Hint ladder |
 | `/check la` (with a file or photo; or "check this" as its caption) | gaps, unclear steps, errors and missing reasons marked, nothing rewritten | Check my draft (Research add-on) |
 | `/pack linear algebra midterm` | a revision PDF from your notes | Skills |
+| `/study-notes-from-upload an2 from functions of several variables`, or "make notes from my an2 notes from functions of several variables" | study notes from a scan you uploaded: read now, a study pack for the topics, deep notes compiled to a PDF and filed in the course's files folder | Skills (`study.notes_workflow`) |
 | `/studypack <subject> [what it's for]`, e.g. `/studypack la quiz on eigenvalues`; `/studypack prompt` (edit the prompt), `/studypack prompt reset` | a zip of a subject's materials, with a prompt for another AI sent as its own message; a topic narrows it, class material first; over 50 MB comes as a temporary Drive link | Skills |
 | `/study`, `/study week`, `/study la 50`, `/study stop` | study time; start or stop a session away from the computer | Study tracker |
 | `/study mode on`, `/study mode off` | the dashboard's [Study mode](dashboard.md#study-mode): notes, the study timer, what's due | Study tracker |

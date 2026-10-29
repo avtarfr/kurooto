@@ -661,7 +661,8 @@ def test_what_agy_may_do(home, monkeypatch, tmp_path):
         notes = os.path.abspath(app.workspace)
         assert rules[0] == ALLOW and "read_url(*)" in rules
         writes = [r[11:-1] for r in rules if r.startswith("write_file(")]
-        assert writes == [notes, str(app.paths.data / "classroom")]  # notes and course files; add-ons are off
+        # notes and course files, and (0.9.0) Kurooto's work folder for documents before they're filed; add-ons are off
+        assert writes == [notes, str(app.paths.data / "classroom"), str(places.work_folder(app))]
         cmds = {r[8:-1] for r in rules if r.startswith("command(")}
         assert {"grep", "cat", "ls", "pdftotext", "mkdir"} <= cmds
         assert not cmds & {"sed", "kurooto", "rm", "mv", "cp", "python", "python3", "bash", "sh", "curl"}

@@ -170,6 +170,13 @@ tip = "When a focus ends, Study mode ends too, instead of starting a break."
 when = "Turn it on if you use one focus session at a time."
 needs = "The Study tracker; Study mode on the dashboard."
 
+[s."study.notes_workflow"]
+tip = "\"Study notes from my upload\" as one request: read the scan, build a study pack, write, compile and file the PDF."
+what = "Your AI gets the tools for it (find_uploads, read_handwritten, build_study_pack, save_course_file, study_progress), the skill `/study-notes-from-upload`, and \"make notes from my <course> notes from <topic>\" runs it. The PDF and the .tex go to the course's files folder with a source note linking them, never the notes' top folder."
+when = "Turn it off if you don't want the AI reading scans or filing documents for you."
+cost = "What any request to your AI sends: the transcription and the pack's text. Reading the scan follows Handwritten notes' own settings."
+needs = "Skills; Handwritten notes for the reading."
+
 [s."handwritten.folder"]
 tip = "Where scans of handwritten pages land to be read."
 values = "A full folder path; empty: `handwritten-inbox` in your notes (or your files folder)."

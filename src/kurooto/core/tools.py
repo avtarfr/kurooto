@@ -11,7 +11,9 @@ sense in unattended work). Below, the ones that are always there:
 - fetch_url: a web page as text (GET only; never this computer or a private network);
 - sync_status: when each sync last ran, how it went, and when it runs next;
 - kurooto_self: what Kurooto is running here (version, AIs and models, features and their health, the last day's
-  failures) and, with part=manual, how it works (core/selfdoc.py).
+  failures) and, with part=manual, how it works (core/selfdoc.py);
+- study notes from an upload (study.notes_workflow, 0.9.0): find_uploads, read_handwritten, build_study_pack,
+  save_course_file, study_progress, and compile_latex when this build has no other (core/studyflow.py).
 Tools say whether they write (Tool.writes): text-only requests get none at all. A tool that sets an alarm, places a
 call or does anything else on core/tap.py's list says so (Tool.guarded): outside a live call it waits for your Approve.
 A request that changes files works in a scratch folder (core/scratch.py, tools_for()): its writing tools write only
@@ -681,6 +683,9 @@ def agent_tools(app: App) -> list[Tool]:
     from kurooto.core import selfdoc  # kurooto_self: what Kurooto is running, for questions about itself
 
     out = NoteTools(app).tools() + FileTools(app).tools() + sync_tools(app) + [selfdoc.tool(app)]
+    from kurooto.core import studyflow  # (0.9.0, study.notes_workflow) study notes from an upload: its tools
+
+    out += studyflow.tools(app)
     seen = {t.name for t in out}
     sources = [("ask", getattr(getattr(app, "ask", None), "agent_tools", None))]  # ask_user: a question to them
     for m in app.enabled():

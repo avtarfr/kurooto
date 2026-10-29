@@ -3095,6 +3095,20 @@ works too.
 Drive upload on. *Turn it off:* turn off Skills, or just don't use `/studypack`. The zip is kept in Kurooto's cache,
 which the [Space keeper](#space-keeper-cleaning-off-old-backups-and-leftovers) clears after 14 days.
 
+### Study notes from an upload
+One request, in plain words or as `/study-notes-from-upload`: "make notes from my AN2 notes from functions of several
+variables, PDF in Downloads/Study". Your AI finds the scan (`find_uploads`), reads it now with the handwritten reader
+(`read_handwritten`, its own settings: the model here, or Gemini only with `handwritten.cloud`), cuts it from that
+topic on, leaves out what your notes already have, builds the study pack for the rest (`build_study_pack`), writes deep
+notes as LaTeX by the pack's prompt, compiles them (`compile_latex`: a check for the usual LaTeX mistakes first, then
+it fixes its own errors, up to three tries, and tells you the one that's left with its line), files the PDF and the
+.tex in the course's files folder with a source note linking them (`save_course_file`, never the notes' top folder),
+and sends you the PDF. It tells you how it's going as it works. Needs Skills, and Handwritten notes for the reading.
+
+*Leaves:* what any request to your AI sends (the transcription, the pack's text); the reading follows Handwritten
+notes' settings. *Undo:* `study.notes_workflow` = `false` takes the tools, the skill and the request away; filed files
+and source notes stay (delete them yourself if you don't want them).
+
 ### Course notes as one PDF
 `/notes pdf la` (or the dashboard's Study pane → COURSE → **notes → pdf**): one PDF of a course's notes, its course
 page, its lecture notes in date order and the concept notes they link, each a section, with a table of contents. Your

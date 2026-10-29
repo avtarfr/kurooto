@@ -379,7 +379,9 @@ def test_agent_tools_gathers_from_features_that_are_on(app):
     base = names(app)
     notes = ["search_notes", "read_note", "list_notes", "write_note", "add_to_note", "edit_note", "tick_task"]
     always = ["read_file", "list_files", "fetch_url", "sync_status", "sync_now", "kurooto_self"]
-    assert base == notes + always + ["ask_user"]  # ask_user: core (app.ask), always there
+    study = ["find_uploads", "read_handwritten", "build_study_pack", "save_course_file", "study_progress"]  # (0.9.0)
+    study += [] if "compile_latex" not in base else ["compile_latex"]  # the thin one, without N2's (core/studyflow.py)
+    assert base == notes + always + study + ["ask_user"]  # ask_user: core (app.ask), always there
     app.modules["extra"], app.modules["broken"] = Extra(app), Broken(app)
     assert names(app) == base  # off: none of their tools
     app.settings.set("modules.enabled", ["extra", "broken"])

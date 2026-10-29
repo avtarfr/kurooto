@@ -292,6 +292,10 @@ answered. `fell` comes from `handed()` (step 8 above).
 - `sync_tools()`: `sync_status`, `sync_now`.
 - `core/selfdoc.py:tool(app)`: `kurooto_self` (read-only): this computer's `self.md`, or with `part=manual` the shipped
   manual. See [self-manual.md](self-manual.md).
+- `core/studyflow.py:tools(app)` (0.9.0, `study.notes_workflow`): `find_uploads`, `read_handwritten`,
+  `build_study_pack`, `save_course_file`, `study_progress`, and a thin `compile_latex` when N2's (`core/tools.py`,
+  `tools.latex`) isn't in the build; every compile answers through `core/latexcheck.py:compile_checked` (a self-check
+  first, the errors with their lines, three tries). See [core.md](core.md).
 - `app.ask.agent_tools()`: `ask_user`.
 - For each enabled module: `call_tools()` and `agent_tools()`, deduplicated by name; `CALL_ONLY = {"run_task",
   "pending_items"}` are never given to unattended work. Learns from its own work adds `search_history` this way.
@@ -339,8 +343,10 @@ allow-list and Claude Code's per-run permissions:
 
 - `write_roots(app)`: the notes folder (`notes_root`), the Classroom course-files folder (`course_files`, via
   `core/layout.py:file_dir`), the user's files folder if set (`files_folder`, `files.folder`), and add-ons'
-  `skills/` (`core/overlay.py:dirs(app, "skills")`).
+  `skills/` (`core/overlay.py:dirs(app, "skills")`), and (0.9.0) Kurooto's work folder (`work_folder`,
+  `<cache>/study-packs/work`), where a request drafts a document before `save_course_file` files it.
 - `read_roots(app)`: everything writable, plus `<data>/classroom`, `<state>/classroom-notes`, `<state>/mail-digest`,
+  `<cache>/study-packs` (0.9.0: the unpacked packs),
   `<state>/reserve`, the OS Documents and Downloads folders (`user_folder`, Windows known folders through
   `SHGetKnownFolderPath`, Linux XDG user dirs) and a Screenshots folder.
 - `inside(path, roots)`: resolves links on both sides before comparing.
@@ -355,7 +361,9 @@ folder, answer style, "nobody can answer follow-up questions", the tool rules (a
 scripts to look inside Kurooto), a pointer to `<state>/reserve/`, the
 profile brief (`core/aboutyou.py`), "how to help me" (`modules/remember.py:help_brief`), the persona card and the
 boundaries rule (`core/persona.py:card_text`, `rule`), the notes layout (`core/layout.py:describe`) and a line pointing
-at `kurooto_self` / `reserve/self.md` for questions about Kurooto itself; (0.9.0) the not-interested topics
+at `kurooto_self` / `reserve/self.md` for questions about Kurooto itself; (0.9.0) `core/studyflow.py:latex_line`
+(`LATEX_RULE`, when a compile tool is there: compile LaTeX yourself, fix and retry three times, never "can't compile");
+(0.9.0) the not-interested topics
 (`not_interested_part`, `notinterested.tell_ai`, after how-to-help-me); a request about Kurooto
 (`core/selfdoc.py:wanted`) also gets `self.md` itself in its context (`for_request`, at most `CONTEXT_MAX`). Chat's own
 requests also end with one register line (`core/persona.py:register_line`, marked `[Reply style]`, left out of chat

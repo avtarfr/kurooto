@@ -221,6 +221,11 @@ def headless_context(app: App, extra: str = "", lane: str = "you") -> str:
     where = layout.describe(app)  # their own notes layout and files folder, if they chose one (core/layout.py)
     if where:
         lines.append(where)
+    from kurooto.core.studyflow import latex_line  # (0.9.0) compile LaTeX yourself, fix it and retry, never "can't"
+
+    latex = latex_line(app)
+    if latex:
+        lines.append(latex)
     if extra:
         lines.append(extra)
     return "\n".join(lines)

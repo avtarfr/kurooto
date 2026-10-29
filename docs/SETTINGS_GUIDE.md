@@ -1181,6 +1181,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `study.focus_min` | `25` | Study mode's timer: minutes of focus (calls and messages wait, the time is logged). ([guide](wiki/user/settings-guide.md#studyfocusmin)) |
 | `study.idle_min` | `5` | Minutes without activity before study time stops counting. ([guide](wiki/user/settings-guide.md#studyidlemin)) |
 | `study.keywords` | `{}` | Extra words per subject that count a window for it. ([guide](wiki/user/settings-guide.md#studykeywords)) |
+| `study.notes_workflow` | `true` | "Study notes from my upload" as one request: read the scan, build a study pack, write, compile and file the PDF. ([guide](wiki/user/settings-guide.md#studynotesworkflow)) |
 | `study.research_paths` | `[]` | Words or folders whose windows count as Research time. ([guide](wiki/user/settings-guide.md#studyresearchpaths)) |
 | `study.sample_s` | `30` | Seconds between looks at the window you're working in. ([guide](wiki/user/settings-guide.md#studysamples)) |
 | `study.timer_ends_mode` | `false` | When a focus ends, Study mode ends too, instead of starting a break. ([guide](wiki/user/settings-guide.md#studytimerendsmode)) |
