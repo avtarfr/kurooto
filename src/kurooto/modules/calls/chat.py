@@ -36,6 +36,7 @@ answered sealed. Messages without `session` (older app versions) belong to "main
 from __future__ import annotations
 
 import base64
+import contextlib
 import json
 import mimetypes
 import os
@@ -87,6 +88,9 @@ OFF_NOW = "Your computer was off when you sent that, so it wasn't done. Try agai
 # (0.9.0) bedside mode opening or closing on a paired phone reaches this computer as a flag (no sensor): the event
 # phone_bedside and calls/bedside.json; what may follow it (sleep, Calm's night) has its own switches, off
 register_defaults("phone", {"bedside": {"signal": True}})
+# (0.9.1, L81) feedback buttons (Wrong, Calm's Why? and Less of this): marked "quiet", so the app shows them as small
+# text buttons after the message's own, never as its first, filled one
+QUIET_BUTTON = re.compile(r"^(?:wrong:[^:]+:x|calm:[^:]+:(?:why|less))$")
 WORKING_S = 3 * 3600  # a chat shows "working" at most this long without hearing the request ended
 
 
@@ -204,7 +208,10 @@ class PhoneChat:
                     shown.append({"label": _clip(label, 40), "url": target["url"]})
                     data.append("")
                 elif isinstance(target, str):
-                    shown.append({"label": _clip(label, 40)})
+                    b = {"label": _clip(label, 40)}
+                    if QUIET_BUTTON.match(target):  # (0.9.1) Wrong, Why?, Less of this: the app shows them quietly
+                        b["quiet"] = True
+                    shown.append(b)
                     data.append(target)
         more = (shown[BUTTONS_MAX:], data[BUTTONS_MAX:])  # (0.8.17) more than the app shows: in a follow-up
         m = {
@@ -576,6 +583,8 @@ class PhoneChat:
         self.app.events.emit("phone_chat_op", op=op[:20])
         if op == "bedside":
             return self._bedside(bool(args.get("on")), sealed, queued)
+        if op == "place_names":
+            return self._place_names(args.get("names"), sealed)
         if op in BEING_OPS:
             return self._being(op, args, sealed, queued, device)
         if op in SESSION_OPS:
@@ -593,7 +602,38 @@ class PhoneChat:
             return 200, {"ok": False, "op": "bedside"}
         jsave(self.calls.dir / "bedside.json", {"on": on, "at": time.time()})
         self.app.events.emit("phone_bedside", on=on)
+        try:  # (0.9.1, mind.sleep.follow_bedside, off) Brain's night may start with it
+            from kurooto.mind import sleep
+
+            sleep.bedside(self.app, on)
+        except Exception as e:
+            self.app.events.emit("mind_sleep_failed", error=f"bedside: {type(e).__name__}"[:60])
+        if not on:  # (0.9.1, notify.calm.night_bedside) what waited for bedside mode to close goes now
+            with contextlib.suppress(Exception):
+                self.app.calm.tick()
         return 200, {"ok": True, "op": "bedside"}
+
+    def _place_names(self, names, sealed: bool) -> tuple[int, dict]:
+        """(0.9.1, reminders.place_names) The names of the places saved on a paired phone (names only, never where
+        they are), for matching a place you name in a reminder (modules/reminders.py). Kept in calls/place-names.json
+        while the switch is on; with it off they're dropped and any kept are deleted."""
+        f = self.calls.dir / "place-names.json"
+        if not sealed:
+            return 403, {"ok": False, "op": "place_names", "note": "Only your paired Android phone can do that."}
+        s = self.app.settings
+        if not (s.get("reminders.places") and s.get("reminders.place_names")):
+            f.unlink(missing_ok=True)
+            return 200, {"ok": False, "op": "place_names"}
+        if not isinstance(names, list):
+            return 400, {"ok": False, "op": "place_names", "note": "No names in that."}
+        keep: list[str] = []
+        for n in names[:50]:
+            n = " ".join(str(n).split())[:40] if isinstance(n, str) else ""
+            if n and n.lower() not in {k.lower() for k in keep}:
+                keep.append(n)
+        jsave(f, {"names": keep, "at": time.time()})
+        self.app.events.emit("phone_place_names", n=len(keep))  # how many, never which
+        return 200, {"ok": True, "op": "place_names"}
 
     def bedside(self, max_age_h: float = 12) -> bool:
         """Is bedside mode open on a paired phone (said within max_age_h)? For what may follow it later."""

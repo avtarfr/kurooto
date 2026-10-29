@@ -512,6 +512,13 @@ when = "Switch on the ones you're happy to share; both here and on the phone mus
 cost = "Readings are sealed on the phone and travel through your call line, which can't read them."
 needs = "A paired Android phone with the sensor on in the app."
 
+[s."mind.senses.places_to_addons"]
+tip = "A fresh arrival at or leaving of a place you saved on the phone also reaches add-ons that ask for it."
+what = "Add-ons with their own use for it (dimming the room's light, say) get the place's name, its arrive or leave and the time, on this computer only. Each add-on's own switch decides whether it does anything; nothing changes until one does. The log notes the event without the name."
+when = "Turn it off to keep your places to Kurooto's own features."
+cost = "Nothing leaves this computer; the name never goes into an AI's context."
+needs = "Brain's phone places sensor (`mind.senses.phone`) and an add-on that uses it."
+
 [s."mind.skills.on"]
 tip = "Solved tasks become tested, reusable skills; each new one starts out asking first."
 when = "Turn it off if you'd rather not have Brain learn skills. `/learned` lists them."
@@ -923,6 +930,12 @@ tip = "An add-on's reading that you're asleep (a dark, quiet room, you away) sta
 what = "An add-on with its own senses (the Body add-on's desk phone) can say you're asleep. The reading is always noted; with this on, the night starts at it, up to two hours early, as with your phone's onset. A window set by hand isn't moved."
 when = "Turn it on if the add-on's room reading is a good sign you've gone to bed."
 needs = "`mind.sleep.on` and an add-on that reports it."
+
+[s."mind.sleep.follow_bedside"]
+tip = "Opening bedside mode on your phone starts Kurooto's night there; closing it is you being up."
+what = "The same as an add-on's reading (mind.sleep.follow_external): up to two hours before the usual start, never later. A window set by hand isn't moved. Only noted while this is on."
+when = "Turn it on if you open bedside mode when you go to bed."
+needs = "`mind.sleep.on`, a paired Android phone and `phone.bedside.signal`."
 
 [s."mind.presence_forecast.reachable"]
 tip = "Check-ins and calls Kurooto places by itself go by whether you're reachable: at the desk or on your phone."

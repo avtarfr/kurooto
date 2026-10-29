@@ -264,6 +264,12 @@ class Retro(Module):
             self.records()
         except Exception as e:
             self.app.events.emit("retro_failed", reason=f"records: {type(e).__name__}: {e}"[:200])
+        lm = self.app.modules.get("learning")  # (0.9.1, learning.skills_tested) a learned skill going wrong: Retire?
+        if lm is not None and self.app.is_on("learning"):
+            try:
+                lm.tell_failing()
+            except Exception as e:
+                self.app.events.emit("retro_failed", reason=f"skills: {type(e).__name__}"[:200])
         brain = providers.build(self.app, self.app.settings.get("brain.main") or "")
         if not brain or not brain.available()[0]:
             return 0
@@ -384,6 +390,7 @@ class Retro(Module):
             "settings": {k: {"means": v, "now": self.app.settings.get(k)} for k, v in self.tunable().items()},
             "how_to_help_me": help_brief(self.app, limit=2500),
             "skills": self.skills(),
+            **self._skill_records(),
             "observing": [{"what": o["what"], "until": o["until"][:10]} for o in observing],
             "observations_ended": [{"id": o["id"], "what": o["what"], "since": o["created"][:10]} for o in ended],
             "declined_recently": [r["text"] for r in state["rejected"] if r["date"] >= cutoff][-30:],
@@ -392,6 +399,29 @@ class Retro(Module):
             "today": f"{now():%A %Y-%m-%d %H:%M}",
             **self._learned_from(since),
         }
+
+    def _skill_records(self) -> dict:
+        """(0.9.1, learning.skills_tested) Both libraries of learned skills with their counts: the notes skills it
+        learned (modules/learning.py) and Brain's tested skills (mind/skills/library.py). Names and numbers only."""
+        out = []
+        lm = self.app.modules.get("learning")
+        if lm is not None and self.app.is_on("learning") and lm.setting("skills_tested"):
+            for r in lm.tested().values():
+                out.append(self._skill_row("learned notes skills", r["name"], r))
+            try:
+                from kurooto.mind.skills import library
+
+                if library.on(self.app):
+                    for slug, m in library.all_skills(self.app).items():
+                        out.append(self._skill_row("Brain's tested skills", slug, m))
+            except Exception:  # noqa: S110 (Brain's library unreadable: the notes skills alone)
+                pass
+        return {"skill_records": out[:60]} if out else {}
+
+    @staticmethod
+    def _skill_row(lib: str, name: str, r: dict) -> dict:
+        n = {k: int(r.get(k) or 0) for k in ("uses", "ok", "fail")}
+        return {"library": lib, "name": name, **n, "retired": bool(r.get("retired"))}
 
     def _learned_from(self, since: dt.datetime) -> dict:
         """(0.9.0) What you marked Wrong (retro.case_text: the request, what it did, your note; never one about health,

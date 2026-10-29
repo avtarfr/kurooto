@@ -402,6 +402,13 @@ elsewhere.
   folder made without the settings folder. Deleting a file on an SSD doesn't erase it, which is why forgetting deletes
   the key first. Python can't promise a frame is wiped from memory or never swapped to disk.
 
+- **A break after a long stretch (0.9.1, `face.desk_break`, off):** after `face.desk_break_min` (90) minutes at the
+  desk in one stretch, one message: "1 h 40 at the desk without a break. A few minutes up and away?". Once a
+  stretch; it goes through Calm and Brain's door, so it waits for a natural moment. Times only.
+- **What you said you'd do, in the greeting (0.9.1):** add `threads` to `face.greet.say` and the greeting says the
+  first open thread due today in your words ("You said you'd send the draft (by 18:00).") and how many more. Said
+  after every other part, so it's the first to go at the length limit, and never with someone else in view.
+
 ## It's not a lock
 
 A face is easy to copy: a photo or video of you on a phone will usually pass, and a sibling or lookalike can be taken

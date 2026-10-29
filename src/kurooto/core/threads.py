@@ -90,6 +90,22 @@ def open_threads(app: App) -> list[dict]:
         return []
 
 
+def due_by(app: App, edge: dt.datetime, n: int = 3) -> list[dict]:
+    """(0.9.1) Open threads with a due time before `edge`, the soonest first, at most n (each with "due_dt"). []
+    with threads off, none, or the ledger locked."""
+    if not on(app):
+        return []
+    rows = []
+    for r in open_threads(app):
+        try:
+            due = dt.datetime.fromisoformat(str(r.get("due") or "")).replace(tzinfo=None)
+        except ValueError:
+            continue
+        if due < edge and str(r.get("text") or "").strip():
+            rows.append({**r, "due_dt": due})
+    return sorted(rows, key=lambda r: r["due_dt"])[:n]
+
+
 def closed_between(app: App, lo: float, hi: float, how: str = "done") -> list[dict]:
     """Threads closed this way in [lo, hi), oldest first (the evening check-in's "what you did today")."""
     try:

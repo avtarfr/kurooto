@@ -1536,6 +1536,12 @@ the switches, the surprise check-in and its exclusions, the late-wake rule).
   reading in `mind-sleep.json` (`external[source] = {asleep, since}`) and emits `<source>_sleep {state}` (the event an
   add-on wrote itself before the hook existed). With the switch on and no hand-set window, `_external_since` gives the
   earliest held onset to `_refine`, which moves the start like the phone's `down_since` (within `EARLY_H`).
+- **Bedside mode** (0.9.1, L11, `mind.sleep.follow_bedside`, off). `sleep.bedside(app, on)` (from
+  `calls/chat.py:_bedside`) is `external_asleep(app, on, "bedside")` while the switch is on; `_external_since` counts
+  the `bedside` source under `follow_bedside` and every other source under `follow_external`.
+- **Place events for add-ons** (0.9.1, L114, `mind.senses.places_to_addons`, on). `senses/phone.place_hooks` emits
+  `phone_place` (`event` only, never the label) and, after `PLACE_HOOKS`, calls `place_event(label, event, when)` on
+  every other enabled feature that has it (add-ons included); an exception is counted as `senses_failed`.
 - **Reachable** (`mind.presence_forecast.reachable`, on, L16). `tick` keeps `rlooks` (a look = the desk look or
   `_phone_seen`: core/here.py's phone sign or the phone's screen sense within `DESK_S`, not in a class or a call),
   folded into `rcells`/`rhours` like the desk tables; never scored, never paid. `p_reach(t)`: `p_free` until the

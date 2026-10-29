@@ -796,13 +796,10 @@ def _restate(app: App, misses: list[str]) -> list[str]:
 def recent_text(app: App, since: float) -> list[tuple[str, str]]:
     """(via, text) said since then that a message may not have brought: your chat turns with Kurooto, and your
     journal and daily notes as they are in your notes folder (your own lines, not Kurooto's blocks)."""
-    from kurooto.core import layout
+    from kurooto.core import layout, nightread
     from kurooto.core.graphwrite import outside
 
-    out: list[tuple[str, str]] = []
-    for t in jload(Path(app.paths.state) / "chat" / "history.json", []) or []:
-        if isinstance(t, dict) and float(t.get("at") or 0) > since and t.get("user"):
-            out.append(("chat", str(t["user"])[:4000]))
+    out: list[tuple[str, str]] = [("chat", text[:4000]) for _at, text in nightread.said_since(app, since)]
     day = dt.date.fromtimestamp(since) if since > 0 else now().date()
     while day <= now().date():
         f = layout.path(app, "daily", date=day.isoformat())

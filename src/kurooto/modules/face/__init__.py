@@ -116,6 +116,9 @@ register_defaults("face", {"track": {"speaker": True}})
 # (0.9.0) your time at the desk, from Face presence's arrivals and departures (times only): a line in the evening
 # check-in and the weekly summary ("6 h at the desk, longest 2 h 40 unbroken"); off by default
 register_defaults("face", {"desk_time": False})
+# (0.9.1) after this long at the desk with no break (desk_break_min), one bid at Brain's door suggests a short one; a
+# message that waits for a natural moment like any other, never a check on what you did
+register_defaults("face", {"desk_break": False, "desk_break_min": 90})
 register_defaults(
     "face",
     {
@@ -149,7 +152,8 @@ register_defaults(
             "after_absent_min": 20,  # only after you've been away at least this long (minutes)
             "gap_min": 60,  # at most one greeting in this many minutes
             "per_day": 3,  # at most this many greetings a day
-            # what it says: next (today), waiting, deadline (24 h), held, answers (0.9.0: not read while you were away)
+            # what it says: next (today), waiting, deadline (24 h), held, answers (0.9.0: not read while you were away),
+            # threads (0.9.1, add it to use it: the first thing you said you'd do that's due today)
             "say": ["next", "waiting", "deadline", "answers"],
             "with_others": "skip",  # someone else in view too: skip (no greeting), short ("Welcome back." only) or full
             "talk": True,  # then open the conversation: answer without saying its name (needs Voice listening)
@@ -243,7 +247,7 @@ LICENCES = [
 EARLY = PAUSES[:3] + ("template locked",)  # no watcher is built for these
 # a session's kind -> the page's stage
 STAGES = {"enrol": "capturing", "test": "testing", "gaze": "calibrating", "look": "looking"}
-SAY_PARTS = ("next", "waiting", "deadline", "held", "answers")
+SAY_PARTS = ("next", "waiting", "deadline", "held", "answers", "threads")
 TOGGLES = {
     "greet.on": "Greet me when I sit down",
     "greet.talk": "Then listen for my answer",
@@ -1377,6 +1381,7 @@ class Face(Module):
             extra=extra,
             name="" if others or nearby.others(self.app) else persona.address(self.app),  # (0.9.0) alone in view only
             answers=self._held_answers(),
+            threads=self._threads_due(t) if "threads" in (self.setting("greet.say") or []) else (),
         )
         text = persona.template(self.app, text)  # (0.9.0, persona.templates) the avoid line, as punctuation
         v = self.app.modules["voice"]
@@ -1486,6 +1491,16 @@ class Face(Module):
             return len(self.app.calm.held())
         except Exception:
             return 0
+
+    def _threads_due(self, t: dt.datetime) -> list[tuple[str, dt.datetime]]:
+        """(0.9.1, the greeting's "threads" part) Open threads due from now to the end of today, soonest first."""
+        from kurooto.core import threads
+
+        try:
+            edge = dt.datetime.combine(t.date() + dt.timedelta(days=1), dt.time(0))
+            return [(str(r["text"]), r["due_dt"]) for r in threads.due_by(self.app, edge, 5) if r["due_dt"] >= t]
+        except Exception:
+            return []
 
     # -------------------------------------------------------------------------------------------- learning
     def learn(self, e) -> bool:
@@ -1903,6 +1918,43 @@ class Face(Module):
     # ------------------------------------------------------------------------------------------------ running
     def start(self) -> None:
         self.app.availability.blockers["face:away"] = self._away_block
+        self.every("desk_break", "every 5m", lambda p: self.desk_break())
+
+    def desk_break(self, t: dt.datetime | None = None) -> bool:
+        """(0.9.1, face.desk_break, off) You've been at the desk face.desk_break_min (90) minutes or more in one
+        stretch (desk_spans: Face presence's arrivals and departures, times only): one message suggests a short
+        break, once a stretch. It goes through Calm and Brain's door like anything Kurooto starts by itself, so it
+        waits for a natural moment; rule-made words, your own numbers. True when it was sent."""
+        from kurooto.core.clock import now
+
+        if not self.setting("desk_break") or not self.app.is_on(self.id):
+            return False
+        t = t or now()
+        spans = self.desk_spans(t - dt.timedelta(hours=12), t)
+        if not spans or spans[-1][1] < t - dt.timedelta(minutes=2):
+            return False  # not at the desk now
+        a, b = spans[-1]
+        try:
+            need = max(15.0, float(self.setting("desk_break_min") or 90))
+        except (TypeError, ValueError):
+            need = 90.0
+        mins = (b - a).total_seconds() / 60
+        key = a.isoformat(timespec="minutes")
+        if mins < need or self.greets().get("break_for") == key:
+            return False
+        g = self.greets()
+        g["break_for"] = key
+        self._write_status()
+        h, m = int(mins // 60), int(mins % 60)
+        long = f"{h} h {m:02d}" if h and m else f"{h} h" if h else f"{m} min"
+        self.app.notify(
+            f"{long} at the desk without a break. A few minutes up and away?",
+            kind="info",
+            why="face.desk_break",
+            about="time at the desk",
+        )
+        self.app.events.emit("face_desk_break", minutes=round(mins))
+        return True
 
     def shutdown(self) -> None:
         """Kurooto stopping: any enrolment or test ends (its samples dropped) and the camera closes."""

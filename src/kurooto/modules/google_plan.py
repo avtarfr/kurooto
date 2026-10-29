@@ -56,8 +56,12 @@ register_defaults(
         # (0.9.0) when a block of yours starts and you're at your desk (Face presence or the computer in use), one
         # message offers a Study mode focus for what it's for; the focus starts only on your tap
         "start_focus": True,
+        # (0.9.1) something you said you'd do by today ("I'll send the draft by 6") gets a half-hour block in your
+        # free time before it's due, never over anything already there; one line says so, with Remove
+        "thread_slot": False,
     },
 )
+THREAD_MIN, THREAD_MAX = 30, 3  # (thread_slot) a block's minutes; blocks a day, at most
 FOCUS_EVERY = "every 5m"  # (start_focus) how often it looks for a block that just started
 BUSY_KEEP_S = 120  # (0.9.0) the blocks Start-by and Revision count as busy are fetched at most this often
 GAP_MAX = dt.timedelta(minutes=45)  # a reschedule keeps the breaks between blocks, up to this long
@@ -126,6 +130,82 @@ class AgentPlan(GooglePart):
 
     def start(self):
         self.every("block_start", FOCUS_EVERY, lambda p: self.block_start())
+        self.every("thread_slots", "every 30m", lambda p: self.thread_slots())
+
+    # ------------------------------------------------------------------ (0.9.1) a slot for what you said you'd do
+    def thread_slots(self, t: dt.datetime | None = None) -> int:
+        """(agent_plan.thread_slot, off) Open threads due later today (core/threads.py) with no block yet: a
+        THREAD_MIN-minute block in the first free time before each is due, around your blocks, classes, commitments
+        and calendar events (never moving or covering one), at most THREAD_MAX a day. One line says each, with
+        Remove. How many were planned."""
+        if not self.setting("thread_slot") or not self.plan_ready():
+            return 0
+        from kurooto.core import threads
+
+        t = t or now()
+        edge = dt.datetime.combine(t.date() + dt.timedelta(days=1), dt.time(0))
+        rows = [r for r in threads.due_by(self.app, edge, 10) if r["due_dt"] > t]
+        if not rows:
+            return 0
+        st = jload(self.file, {}) or {}
+        day = t.date().isoformat()
+        done = [k for k in st.get("thread_slots") or [] if k.startswith(day)]
+        n = 0
+        for r in rows:
+            key = f"{day}|{r['id']}"
+            if key in done or len(done) >= THREAD_MAX:
+                continue
+            at = self._free_before(t, r["due_dt"], dt.timedelta(minutes=THREAD_MIN))
+            done.append(key)  # tried once a day: no fit now is no fit
+            if at is None:
+                continue
+            title = str(r["text"]).strip()[:80]
+            said = self.plan_block(at, at + dt.timedelta(minutes=THREAD_MIN), title, check=False)
+            if not said.startswith("Planned"):
+                continue
+            n += 1
+            self.app.notify(
+                f"You said you'd {title.rstrip('.')} by {r['due_dt']:%H:%M}: {THREAD_MIN} minutes for it at "
+                f"{at:%H:%M} in your Agent plan.",
+                kind="info",
+                why="agent_plan.thread_slot",
+                buttons=[[("Remove", f"apl:thread:{at:%H%M}")]],
+                about=title,
+            )
+        with Lock(self.app.paths.state, "agent-plan"):
+            st = jload(self.file, {}) or {}
+            st["thread_slots"] = done[-20:]
+            jsave(self.file, st)
+        self.app.events.emit("plan_thread_slots", planned=n)
+        return n
+
+    def _free_before(self, t: dt.datetime, due: dt.datetime, length: dt.timedelta) -> dt.datetime | None:
+        """The first start from t (to the next quarter hour) with `length` free before `due`: none of your blocks,
+        classes, commitments or calendar events in it. None when there's no such time."""
+        start = t.replace(second=0, microsecond=0) + dt.timedelta(minutes=(-t.minute) % 15 or 15)
+        busy = [(b["start"], b["end"]) for b in self.plan_blocks(t.date())] + self._busy_else(t, due)
+        while start + length <= due:
+            hit = [e for s, e in busy if s < start + length and e > start]
+            if not hit:
+                return start
+            start = max(hit)
+            start += dt.timedelta(minutes=(-start.minute) % 15)
+        return None
+
+    def _remove_thread_block(self, hhmm: str) -> str:
+        """Remove under a thread's block: that block only, if it's still Kurooto's and still there."""
+        t = now()
+        try:
+            at = t.replace(hour=int(hhmm[:2]), minute=int(hhmm[2:4]), second=0, microsecond=0)
+        except ValueError:
+            return "That block is gone."
+        cid = self.calendar_id(create=False)
+        b = next((b for b in self.plan_blocks(at.date()) if b["start"] == at and b.get("id")), None)
+        if not cid or b is None:
+            return "That block is gone already."
+        self._delete(cid, b["id"])
+        self.plan_blocks(at.date())
+        return f"Removed {b['title']} at {at:%H:%M}."
 
     def block_start(self, t: dt.datetime | None = None) -> bool:
         """(0.9.0, agent_plan.start_focus) A block that started in the last five minutes, you at your desk: one offer
@@ -782,6 +862,11 @@ class AgentPlan(GooglePart):
         that moved (0.9.0)."""
         if ref == "focus" and act == "start":
             return self._focus_answer()
+        if ref == "thread":  # (0.9.1) Remove under a thread's block
+            try:
+                return self._remove_thread_block(act)
+            except (NeedsSignIn, GoogleError) as err:
+                return f"Google Calendar didn't take it: {err}"[:300]
         if ref.startswith("mv") and act in ("remove", "keep"):
             try:
                 return self._moved_answer(ref[2:], act == "remove")

@@ -477,6 +477,11 @@ add-on's desk phone: the room dark and quiet, you away) can say you're asleep. K
 switch on, it also starts its night there, as your phone's onset does (up to two hours early). Off by default because
 it would start its quiet hours earlier than before.
 
+**Bedside mode** (`mind.sleep.follow_bedside`, off, 0.9.1). With the phone app's bedside mode signal on
+(`phone.bedside.signal`), opening bedside mode is you going to bed: the night starts then (up to two hours early,
+never later, as with an add-on's reading), and closing it is you being up. Off, the flag is only noted by the phone
+side, not here.
+
 **The desk wakes it, and ends its night** (`mind.sleep.follow_desk`, on, 0.9.0). Starting a talk at the desk wakes it
 as its name does: a look that opens a conversation, talking over it with a question or request, or a Gemini Live turn.
 And Face presence seeing you at the desk in the night's last hour and a half, while it's awake or you've woken it, is

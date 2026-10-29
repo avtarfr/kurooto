@@ -26,11 +26,11 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 
 - [You and how it talks to you](#you-and-how-it-talks-to-you): 12 settings
 - [Your AI](#your-ai): 37 settings
-- [Messages and where they reach you](#messages-and-where-they-reach-you): 40 settings
+- [Messages and where they reach you](#messages-and-where-they-reach-you): 41 settings
 - [When it may interrupt you](#when-it-may-interrupt-you): 14 settings
 - [Phone calls and the call line](#phone-calls-and-the-call-line): 47 settings
 - [Morning alarm](#morning-alarm): 13 settings
-- [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 45 settings
+- [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 49 settings
 - [Check-ins, journal and the week](#check-ins-journal-and-the-week): 21 settings
 - [Classes and timetable](#classes-and-timetable): 19 settings
 - [Calendar](#calendar): 11 settings
@@ -39,10 +39,10 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Notes, files and sync](#notes-files-and-sync): 30 settings
 - [Notes brain (GBrain)](#notes-brain-gbrain): 19 settings
 - [Concept graph](#concept-graph): 27 settings
-- [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 53 settings
+- [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 54 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
-- [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 66 settings
-- [Brain](#brain): 157 settings
+- [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 68 settings
+- [Brain](#brain): 159 settings
 - [Voice and voice notes](#voice-and-voice-notes): 91 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
@@ -50,7 +50,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Dashboard and terminal](#dashboard-and-terminal): 33 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 28 settings
-- [Face presence](#face-presence): 51 settings
+- [Face presence](#face-presence): 53 settings
 
 ## You and how it talks to you
 
@@ -713,6 +713,16 @@ on your chat. On a call the AI gets four tools for it.
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off if these words should go to your AI instead.
 - **Depends on:** `notify.calm.on`.
+
+### `notify.calm.night_bedside`
+
+With bedside mode open on your phone at the evening bundle's time, the bundle waits until it closes.
+
+You're in bed already: what waited today comes when bedside mode closes (usually the morning).
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if the evening bundle reaches you in bed.
+- **Depends on:** A paired Android phone and `phone.bedside.signal`.
 
 ### `notify.calm.lighter_after`
 
@@ -1888,6 +1898,37 @@ Once a week, when your real pace says a different share of free time goes to dea
 - **When to change it:** Turn it off if the numbers aren't useful to you.
 - **Depends on:** Start-by dates and Brain's plans.
 
+### `startby.learn_from_model`
+
+A deadline's hours, and the study push's offered time, go first into the hours you usually work on its subject.
+
+From a feature that knows when you work on what (an add-on's reading, such as "works on Topology at night"). Only the
+order the free hours are used in changes: the free time and the sizes don't.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if your start-by dates and study times should follow your habits.
+- **Depends on:** Start-by dates and an add-on that reports the hours.
+
+### `startby.learned_line`
+
+"Time to start" says how long the subject's last deadlines of the kind really took, with a button to use it.
+
+From the study tracker: sessions tied to each done deadline, else the subject's time between its start-by date and when
+it was done (when nothing else of the subject was due then). Shown only for a size it guessed, when it's well off. The
+size changes only on your tap.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if the line isn't useful.
+- **Depends on:** Start-by dates, the Study tracker, and two done deadlines of the kind in the subject.
+
+### `startby.learned_estimates`
+
+Use that learned time by itself in place of the guessed size (never a size you set).
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on once the learned times look right to you.
+- **Depends on:** `startby.learned_line`'s data: the Study tracker and two done deadlines of the kind.
+
 ### `startby.min_gap_min`
 
 Gaps between classes and events shorter than this (minutes) don't count as free time.
@@ -1996,6 +2037,20 @@ Location reminders: "remind me when I reach the library to …".
 - **Costs and what leaves this computer:** Where your places are never leaves the phone; the computer and call line only
   see their names.
 - **Depends on:** Reminders and the Android app, with places saved in it.
+
+### `reminders.place_names`
+
+The phone app shares the names of the places you saved, so "the lib" finds "Library".
+
+Names only, never where they are: sealed on the phone and kept here (calls/place-names.json) for matching a place you
+name in a reminder. One clear match is used; otherwise your words go to the phone as before. Turning it off deletes the
+names here, and the phone stops sending them.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you name places loosely in reminders.
+- **Costs and what leaves this computer:** The names travel sealed through your call line, which can't read them;
+  they're never told to an AI.
+- **Depends on:** `reminders.places` and the Android app 0.9.1 or later with places saved.
 
 ### `reminders.addon_buttons`
 
@@ -4492,6 +4547,18 @@ When a block of yours starts and you're at your desk, one message offers a Study
 - **When to change it:** Turn it off if you don't want the offer. The focus starts only when you tap Start.
 - **Depends on:** The Agent plan calendar and the Study tracker.
 
+### `agent_plan.thread_slot`
+
+Something you said you'd do by today ("I'll send the draft by 6") gets a half-hour block in your free time before it's
+due.
+
+Only in free time: never over your blocks, classes, commitments or calendar events, at most three a day. One line says
+each, with Remove.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you'd like time set aside for what you promise in passing.
+- **Depends on:** The Agent plan calendar and open threads (`memory.threads`).
+
 ### `drive_upload.big_files`
 
 A file too big for Telegram (over 50 MB) comes as a Drive link instead of failing.
@@ -5099,6 +5166,17 @@ Days an untouched open thread waits before it closes by itself.
 - **When to change it:** Raise it if your tasks run long.
 - **Depends on:** `memory.threads`.
 
+### `memory.night_read`
+
+One read of your chat's recent turns, shared by the nightly readers (what you set up in passing, what you said you'd do,
+search).
+
+Each still reads only what's new to it and does what it did; the file is just parsed once while it's unchanged. Kept in
+memory only.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off only if a nightly reader seems to miss something.
+
 ### `remember.offer_settings`
 
 A line you ask it to remember with a time rule ("I hate calls before 8") offers the setting that does it, with Set it /
@@ -5168,6 +5246,18 @@ The nightly look back keeps facts you stated in your chats and calls in your how
 - **When to change it:** Turn it off to keep only what you tell it with Remember.
 - **Costs and what leaves this computer:** The day's requests go to the AI the look back uses.
 - **Depends on:** Learns from its own work and the Nightly look back.
+
+### `learning.skills_tested`
+
+Each skill it learns keeps two test cases from the request it came from, and counts how its uses go.
+
+Like Brain's tested skills: a use counts as wrong when the answer gave up or you corrected it. One going wrong more than
+right after three uses is shown in /learned and once at night, with Retire (Undo puts it back). Nothing is held back or
+retired by itself.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you don't want the counts.
+- **Depends on:** Learns from its own work, with Skills.
 
 ### `learning.remember_max`
 
@@ -6261,6 +6351,19 @@ Each of your phone's sensors, off until you switch it on (here and in the phone 
   can't read them.
 - **Depends on:** A paired Android phone with the sensor on in the app.
 
+### `mind.senses.places_to_addons`
+
+A fresh arrival at or leaving of a place you saved on the phone also reaches add-ons that ask for it.
+
+Add-ons with their own use for it (dimming the room's light, say) get the place's name, its arrive or leave and the
+time, on this computer only. Each add-on's own switch decides whether it does anything; nothing changes until one does.
+The log notes the event without the name.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep your places to Kurooto's own features.
+- **Costs and what leaves this computer:** Nothing leaves this computer; the name never goes into an AI's context.
+- **Depends on:** Brain's phone places sensor (`mind.senses.phone`) and an add-on that uses it.
+
 ### `mind.skills.on`
 
 Solved tasks become tested, reusable skills; each new one starts out asking first.
@@ -6962,6 +7065,17 @@ this on, the night starts at it, up to two hours early, as with your phone's ons
 - **Values:** On or off. **Default:** off.
 - **When to change it:** Turn it on if the add-on's room reading is a good sign you've gone to bed.
 - **Depends on:** `mind.sleep.on` and an add-on that reports it.
+
+### `mind.sleep.follow_bedside`
+
+Opening bedside mode on your phone starts Kurooto's night there; closing it is you being up.
+
+The same as an add-on's reading (mind.sleep.follow_external): up to two hours before the usual start, never later. A
+window set by hand isn't moved. Only noted while this is on.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you open bedside mode when you go to bed.
+- **Depends on:** `mind.sleep.on`, a paired Android phone and `phone.bedside.signal`.
 
 ### `mind.presence_forecast.reachable`
 
@@ -9310,6 +9424,25 @@ never as a judgement or to check what you said you did.
 - **Costs and what leaves this computer:** Those two numbers go where the check-in and the weekly summary go (your AI
   reads the call's script).
 - **Depends on:** Face presence.
+
+### `face.desk_break`
+
+After a long stretch at the desk with no break, one message suggests a short one.
+
+From Face presence's arrivals and departures (times only), once a stretch. It goes through Calm and Brain's door like
+anything Kurooto starts by itself, so it waits for a natural moment. Your own numbers, never a check on what you did.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you forget to get up.
+- **Depends on:** Face presence.
+
+### `face.desk_break_min`
+
+Minutes at the desk in one stretch before the break suggestion (at least 15).
+
+- **Values:** A whole number. **Default:** `90`.
+- **When to change it:** Lower it for more frequent breaks.
+- **Depends on:** `face.desk_break`.
 
 ### `face.track.on`
 

@@ -123,6 +123,23 @@ tip = "\"Time to start\" and the Sunday summary say Brain's chance of missing a 
 when = "Turn it off if the numbers aren't useful to you."
 needs = "Start-by dates and Brain's plans."
 
+[s."startby.learn_from_model"]
+tip = "A deadline's hours, and the study push's offered time, go first into the hours you usually work on its subject."
+what = "From a feature that knows when you work on what (an add-on's reading, such as \"works on Topology at night\"). Only the order the free hours are used in changes: the free time and the sizes don't."
+when = "Turn it on if your start-by dates and study times should follow your habits."
+needs = "Start-by dates and an add-on that reports the hours."
+
+[s."startby.learned_line"]
+tip = "\"Time to start\" says how long the subject's last deadlines of the kind really took, with a button to use it."
+what = "From the study tracker: sessions tied to each done deadline, else the subject's time between its start-by date and when it was done (when nothing else of the subject was due then). Shown only for a size it guessed, when it's well off. The size changes only on your tap."
+when = "Turn it off if the line isn't useful."
+needs = "Start-by dates, the Study tracker, and two done deadlines of the kind in the subject."
+
+[s."startby.learned_estimates"]
+tip = "Use that learned time by itself in place of the guessed size (never a size you set)."
+when = "Turn it on once the learned times look right to you."
+needs = "`startby.learned_line`'s data: the Study tracker and two done deadlines of the kind."
+
 [s."startby.min_gap_min"]
 tip = "Gaps between classes and events shorter than this (minutes) don't count as free time."
 when = "Lower it if you do get work done in short gaps."
@@ -189,6 +206,13 @@ tip = "Location reminders: \"remind me when I reach the library to …\"."
 when = "Turn it on to use places you saved in the Android app."
 cost = "Where your places are never leaves the phone; the computer and call line only see their names."
 needs = "Reminders and the Android app, with places saved in it."
+
+[s."reminders.place_names"]
+tip = "The phone app shares the names of the places you saved, so \"the lib\" finds \"Library\"."
+what = "Names only, never where they are: sealed on the phone and kept here (calls/place-names.json) for matching a place you name in a reminder. One clear match is used; otherwise your words go to the phone as before. Turning it off deletes the names here, and the phone stops sending them."
+when = "Turn it on if you name places loosely in reminders."
+cost = "The names travel sealed through your call line, which can't read them; they're never told to an AI."
+needs = "`reminders.places` and the Android app 0.9.1 or later with places saved."
 
 [s."reminders.addon_buttons"]
 tip = "Let an add-on put its own buttons under a reminder as it fires (for example Order on Zepto under \"buy milk\")."

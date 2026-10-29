@@ -312,6 +312,13 @@ and the other list couldn't be reached).
 - If you edited the skill since, Undo leaves it alone and says where the earlier version is.
 - A fact is taken out of your how-to-help-me note, unless you changed that line.
 
+**Learned skills, tested and counted (0.9.1, `learning.skills_tested`, on).** Each skill it learns keeps two test
+cases from the request it came from (as Brain's tested skills do) and counts its uses: a use is wrong when the answer
+gave up ("I couldn't ...") or you corrected it (or tapped Wrong). `/learned` shows the counts; one that went wrong
+more often than right after three uses gets a line there and, once, at night, with **Retire**: its file leaves your
+skills folder (kept here) and **Undo** puts it back. Nothing is held back or retired by itself. The nightly look
+back also sees both libraries' counts.
+
 **Rules it keeps.**
 - Only your own requests are looked at, not background work (digests, routines, the concept graph). At most five a
   day are looked at as possible skills.

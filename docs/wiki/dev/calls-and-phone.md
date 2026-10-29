@@ -1044,8 +1044,10 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   (0.9.0, L11) `onCreate` / `onDestroy` (finishing) send `Chat.signal(c, "bedside", on)`: op `bedside` `{on}` through
   `/chat`, quiet (no toast); `PhoneChat._bedside` takes it only sealed and not `queued` (stale) with
   `phone.bedside.signal` on, keeps `calls/bedside.json` `{on, at}` and emits `phone_bedside`; `PhoneChat.bedside()`
-  reads it (12 h at most). Its consumers (sleep onset `mind.sleep.follow_bedside`, Calm's night `calm.night.bedside`)
-  aren't built: they wait for L10's external-asleep hook. Chat and the main screen go through
+  reads it (12 h at most). (0.9.1) Its consumers: `mind/sleep.bedside(app, on)` (`mind.sleep.follow_bedside`, off:
+  `external_asleep(..., "bedside")`, counted by `_external_since` under that switch, not `follow_external`) and
+  `Calm._bedside_hold()` (`notify.calm.night_bedside`, off: `tick` keeps `bundle_held` instead of bundling while it's
+  open at `evening_at`, and bundles when it closes; `_bedside` calls `calm.tick()` on close). Chat and the main screen go through
   `requestDismissKeyguard` (8+). `/upcoming` (device key) answers `{calls: [{at, reason, alarm}] from the pushed
   schedule (next day, at most 8), waiting, computer, assistant}`; read every 5 minutes. Window brightness and colours
   by the hour come from `Dock` (pure Java, `test/DockTest.java`); a tap sets 0.3 for 15 s; `FLAG_KEEP_SCREEN_ON` while
@@ -1321,6 +1323,23 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     hard-coded colour, so dark mode and Material You keep working.
 - CI: `ci.yml` job `android` (vectors, debug build, `NewApi`/`InlinedApi` lint as errors);
   `android-emulator.yml` runs `smoke.sh` on API 23 to 35.
+
+- (0.9.1, L60, `reminders.place_names`, off) The sessions message's `switches` carry `place_names` (with
+  `reminders.places`) and `phone_busy` (`calls.phone_busy` or `voice.listen.phone_call`): what the phone may send.
+  `Chat.setSessions` runs `Places.shareNames` on `IO` when `place_names` is on (else `forgetSent`), and `addPlace` /
+  `removePlace` do too: `Places.names()` (≤ 50) go as op `place_names` `{names}` via `Chat.quietOp` only when
+  `PlaceRules.namesSig` changed since the last one the computer took. `PhoneChat._place_names` (sealed only; off:
+  deletes `calls/place-names.json`) keeps ≤ 50 unique names ≤ 40 chars and emits `phone_place_names` with a count.
+  `Reminders.place_names()` reads them (off: deletes the file) and `at_place` sends `saved_place(said, names)`'s match
+  (same key, else the only one whose words start with the words said, else the only `difflib` match at 0.8) as the
+  title. Never in an AI's context.
+- (0.9.1, L87) `OtherCall.watch` (from `ListenService.onCreate`): `AudioManager.addOnModeChangedListener` on 31+, a
+  60 s look at `getMode()` before; `CallRules.otherCall(mode, CallActivity.live || showing)` (modes 2-6, not
+  Kurooto's own call) changes send `Chat.busy(c, CallRules.busyUntil(...))` (now + `BUSY_MS` 3 h, or 0) as the `busy`
+  field to `PhoneChat._busy`, only with the `phone_busy` switch. Never a number or an app.
+- (0.9.1, L81) `PhoneChat.say` marks a button `"quiet": true` when its data matches `QUIET_BUTTON` (`wrong:<id>:x`,
+  `calm:<id>:why|less`); `ChatButton.quiet` and `ChatThread.Buttons` show those last as `TextButton`s (each keeps its
+  number), so the first filled button is always the message's own.
 
 ## Tests
 

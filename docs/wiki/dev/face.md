@@ -273,7 +273,14 @@ of the frame. Never an event, never kept. `face_seen` is unchanged (owner only, 
 `face_back` with `face_left` from the event log (a stretch open at `lo` starts there, one still going ends now);
 `desk_line(lo, hi, when)` says the total and the longest (under 15 min: ""); `weekly_lines()` gives the week's for the
 weekly summary, and `checkins._desk_line(day)` the check-in day's for the evening message and call (a step that says
-it once, never as a judgement). The break bid at Brain's door (L22's third part) waits for L18 (Face -> mind/breaks).
+it once, never as a judgement). (0.9.1) The break bid: `Face.desk_break(t)` (job `face:desk_break`, every 5 min;
+`face.desk_break`, off; `face.desk_break_min`, 90, at least 15): the newest `desk_spans` stretch still going (ended
+within 2 min) at least that long, once per stretch (`greets()["break_for"]`), one `app.notify(why="face.desk_break")`
+through Calm and Brain's door; event `face_desk_break` with the minutes.
+
+**The greeting's threads part** (0.9.1, L45): `greet.compose(..., threads=[(text, due)])` adds `threads` after every
+built-in part (before add-ons' lines) when `"threads"` is in `face.greet.say` and nobody else is in view (even with
+`full`); `Face._threads_due(t)` reads `core/threads.due_by` to the end of today.
 
 **The being's eye** (`static/being.js`, `ATT`/`attend()`): with `faces` fresh (< 2 s) it looks at one face and moves
 to another (picked at random, weighted 0.4 + m) every 3-8 s, after 0.7 s to someone new, after 1 s to a face whose

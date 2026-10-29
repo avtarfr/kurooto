@@ -510,6 +510,21 @@ share of your free time, one offer: "Your pace says about 8.0 h a day of work, o
 dates count 40% of your free time for deadlines; use 60% instead?" with **Yes** and **No**. Yes changes it, with
 **Undo**. Never a share you set yourself; after No or Undo, not for a month.
 
+**What the kind really took** (`startby.learned_line`, on, 0.9.1). With two or more done deadlines of the same kind
+in a subject in the last four months, "Time to start" for a size it guessed says what they really took when that's
+well off: "Your last 2 problem sets in Organic Chemistry took about 5.5 h of study each.", with **Use 5.5 h**. The
+time is the study tracker's: sessions tied to each deadline, else the subject's time from its start-by date to when
+it was done (only when nothing else of the subject was due then). The size changes only on your tap;
+`startby.learned_estimates` (off) uses it by itself in place of the guess (never a size you set).
+
+**The hours you usually work on it** (`startby.learn_from_model`, off, 0.9.1). When a feature knows when you work on
+what (an add-on's reading, "works on Topology at night"), a deadline's hours and the study push's offered time go
+first into those hours. Only the order the free hours are used in changes.
+
+**Your phone's place names** (`reminders.place_names`, off, 0.9.1). The phone app shares the names of the places you
+saved, so "remind me when I reach the lib to return the book" goes to the phone as "Library" (one clear match only;
+otherwise your words go as before). Names only, never told to an AI. See [Phone app](phone-app.md).
+
 **The forecast picks the hours** (`mind.presence_forecast.plan`, off, 0.9.0). With [Brain's presence
 forecast](mind.md#when-youll-be-free-0816) and this on, a deadline's hours go first into the hours you're likeliest at
 your desk and free, and the study push offers the likeliest stretch. No hour is taken away. With too few messages to
@@ -553,6 +568,10 @@ On calls the brief has "time to start", and the AI has `start_by`, `set_work_siz
 | `startby.count_study` | on | "Time to start" says the study counted for it, with Count it (0.9.0) |
 | `startby.miss_risk` | on | "Time to start" and the Sunday summary say Brain's chance of missing it (0.9.0) |
 | `startby.learn_share` | off | a weekly offer to change `startby.share` from your pace (0.9.0) |
+| `startby.learned_line` | on | "Time to start" says what the subject's last deadlines of the kind took, with Use (0.9.1) |
+| `startby.learned_estimates` | off | that learned time replaces a guessed size by itself (0.9.1) |
+| `startby.learn_from_model` | off | the hours you usually work on a subject come first (0.9.1) |
+| `reminders.place_names` | off | the phone's place names, for matching a place you name (0.9.1) |
 
 **What leaves your computer.** Nothing.
 

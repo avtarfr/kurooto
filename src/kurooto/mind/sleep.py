@@ -42,6 +42,8 @@ Public, for the other parts and add-ons:
     external_asleep(app, asleep, source)  (0.9.0) an add-on's reading that you're asleep or awake again: always noted;
                                        it moves the night's start with mind.sleep.follow_external on (off)
     body_asleep(app, asleep)           the same, with source "body" (the name an add-on already probes)
+    bedside(app, on)                   (0.9.1) bedside mode opened or closed on the phone: source "bedside", noted
+                                       and used only with mind.sleep.follow_bedside on (off)
 
 State: `<state>/mind-sleep.json` (until when it's woken, when you got up, what waits, the last state, wakes a day).
 Numbers and reason ids only, besides the waiting messages themselves; on this computer only.
@@ -85,6 +87,9 @@ register_defaults(
             # (0.9.0) an add-on's own reading that you're asleep (a dark, quiet room, you away) moves its night's start
             # as your phone's does; off: the reading is only noted
             "follow_external": False,
+            # (0.9.1) bedside mode opening on your phone (phone.bedside.signal) is you going to sleep, the same way:
+            # it moves the night's start (never later, never more than the phone's onset may); closing it is awake
+            "follow_bedside": False,
         }
     },
 )
@@ -337,11 +342,24 @@ def body_asleep(app: App, asleep: bool) -> None:
     external_asleep(app, asleep, "body")
 
 
+def bedside(app: App, on: bool) -> None:
+    """(0.9.1, mind.sleep.follow_bedside, off) Bedside mode opened (asleep since now) or closed (awake) on the paired
+    phone (modules/calls/chat.py): external_asleep with source "bedside", only while the switch is on."""
+    if app.settings.get("mind.sleep.follow_bedside"):
+        external_asleep(app, on, "bedside")
+
+
 def _external_since(app: App, st: dict) -> float | None:
-    """(follow_external) The earliest onset an add-on reports and still holds, or None (the switch off, or none)."""
-    if not app.settings.get("mind.sleep.follow_external") or app.settings.get("mind.sleep.window"):
+    """(follow_external, follow_bedside) The earliest onset an add-on (or, 0.9.1, bedside mode) reports and still
+    holds, or None (the switches off, or none)."""
+    if app.settings.get("mind.sleep.window"):
         return None
-    got = [float(v["since"]) for v in (st.get("external") or {}).values() if v.get("asleep") and v.get("since")]
+    ext, bed = app.settings.get("mind.sleep.follow_external"), app.settings.get("mind.sleep.follow_bedside")
+    got = [
+        float(v["since"])
+        for k, v in (st.get("external") or {}).items()
+        if v.get("asleep") and v.get("since") and (bed if k == "bedside" else ext)
+    ]
     return min(got) if got else None
 
 

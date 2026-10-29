@@ -52,6 +52,9 @@ PLACE_FRESH_S = 1800  # (0.9.0) a place's arrive or leave older than this is his
 register_defaults(
     "mind", {"senses": {"phone": {s: False for s in SENSORS}}}
 )  # each phone sensor, off until you switch it on
+# (0.9.1) a fresh arrival at or leaving of a place you saved also reaches add-ons that ask for it (place_event): the
+# label stays on this computer; nothing happens until an add-on's own switch uses it
+register_defaults("mind", {"senses": {"places_to_addons": True}})
 
 
 def enabled(app: App, sensor: str) -> bool:
@@ -146,13 +149,19 @@ PLACE_HOOKS = ("study", "subjects", "exam_season")  # features that may offer so
 def place_hooks(app: App, event: str, label: str, ts: float) -> None:
     """(0.9.0) A fresh arrival at or leaving of a place you saved, to the features that use it, each behind its own
     switch (study.places, subjects.attend_by_place, exam_season.debrief_at_desk): an offer you tap, never a
-    record of where you were. The label stays on this computer and never goes into an AI's context."""
+    record of where you were. The label stays on this computer and never goes into an AI's context.
+
+    (0.9.1, L114, mind.senses.places_to_addons) then to every other enabled feature with the same hook, add-ons
+    included: `place_event(label: str, event: "arrive" | "leave", when: datetime)`, called on this thread (keep it
+    short; an exception is caught and counted). The event "phone_place" carries the event only, never the label."""
     if event not in ("arrive", "leave") or not label or abs(time.time() - ts) > PLACE_FRESH_S:
         return
     import datetime as dt
 
     t = dt.datetime.fromtimestamp(ts)
-    for mid in PLACE_HOOKS:
+    app.events.emit("phone_place", event=event)  # (0.9.1, L114) the event only, never the label
+    others = [] if not app.settings.get("mind.senses.places_to_addons") else [m.id for m in app.enabled()]
+    for mid in [*PLACE_HOOKS, *(x for x in others if x not in PLACE_HOOKS)]:
         m = app.modules.get(mid)
         if m is None or not app.is_on(mid) or not hasattr(m, "place_event"):
             continue

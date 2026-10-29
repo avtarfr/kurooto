@@ -63,6 +63,8 @@ Optional hooks, found by `getattr`/`hasattr` where they are used:
 | `doctor_checks() -> [(name, ok, detail)]` | `diagnostics.py:more_checks` | extra doctor rows |
 | `tunable` | `modules/retro.py` | settings the nightly look back may propose to change |
 | `classify_intent(text, intents)` | `core/overlay.py:classify` | add-ons only: pick an intent before the built-in patterns |
+| `place_event(label, event, when)` | `mind/senses/phone.py:place_hooks` | (0.9.0 built-ins; 0.9.1 every enabled feature, add-ons included, with `mind.senses.places_to_addons`) a fresh arrive / leave of a place saved on the phone: its name, `"arrive"` or `"leave"`, a naive local `datetime`. On the senses' thread: keep it short |
+| `work_hours(subject, title) -> {hour: 0-1}` | `modules/startby.py:StartBy.habit_hours` | (0.9.1, `startby.learn_from_model`) the hours of the day the user usually works on that subject (slug, deadline title); the strongest per hour wins, junk is dropped |
 
 Data classes (`modules/base.py`):
 
@@ -778,6 +780,17 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `weekly.people` (on) adds `core/meetings.py:week_line` (people from project notes only; see core.md, Meetings).
 - **quests** (`modules/quests.py`): one onboarding quest a day for a week, judged from the event log.
 
+  0.9.1: `habit_hours(subject, title)` (`startby.learn_from_model`, off) collects every enabled feature's
+  `work_hours(subject, title)` ({hour: 0-1}, max per hour, clipped); `compute` passes `allocate(..., habits={id:
+  hours})`, which ranks (`_allocate_ranked`) by `rank(t)` (or 0) + `HABIT_W * hours[t.hour]` per item; `study_push.slot
+  (app, minutes, t, subject, title)` adds the same to its ranking. `took_h(i, it)`: a done deadline's hours
+  (`study_session_end` with its id, else the subject's `study.totals` from its `told` start-by date, or a week before,
+  to `done_at`, refused when another of the subject was due then); `learned_h(subject, kind)`: the middle of the last
+  `LEARN_LOOK_DAYS` (120) days' (at least `LEARN_MIN_DONE` = 2), to the half hour, memo 5 min; `learned_note(r)`
+  (`startby.learned_line`, on): a line and `("Use N h", "sby:<id>:<N>")` in `_tell` for a guessed size `LEARN_OFF`
+  (30%) or 0.5 h off; `startby.learned_estimates` (off) makes `_whole_size` use it for a guessed size. Tests:
+  `tests/unit/test_v091_core_links.py`.
+
 ### Study
 
 - **subjects** (`modules/subjects.py`): subjects, timetable, holidays, exam periods, the term note
@@ -1042,6 +1055,12 @@ model. An HTTP 401 from an API drops the access token and tries once more with a
 Then-action `google.draft` (an AI-written `/draft`) is registered in `start()`, so one finishing after a restart
 arrives. 0.9.0: `busy(t0, until)` is the planned-block ledger for Start-by and Revision; `reschedule` steps each block past `_busy_else()` (classes, commitments, timed calendar events); `deadline_changed(id, "moved")` (from `Deadlines._changed`) renames the deadline's blocks ahead "(moved to …)" (delete and plan again) and asks `apl:mv<id>:remove|keep` (`moved` in `agent-plan.json`; Remove keeps `/blocks undo`); `block_start()` (job `agent_plan:block_start`, every 5 min, `agent_plan.start_focus`) offers `apl:focus:start` when a remembered block started in the last 5 minutes and `presence_forecast.at_desk` is true; `running_block()` feeds `Calls.plan_block_hold` (`agent_plan.holds_calls`, off: `_held_call` and check-ins' `_held`, Kurooto's own calls only). Tests: `tests/unit/test_plan_reschedule_busy.py`, `tests/unit/test_deadline_moves.py`.
 
+0.9.1 (L45, `agent_plan.thread_slot`, off): `thread_slots(t)` (job `agent_plan:thread_slots`, every 30 min) takes
+`core/threads.due_by` up to the end of today (due still ahead), and for each not tried today (`thread_slots` in
+`agent-plan.json`, `THREAD_MAX` 3 a day) `_free_before(t, due, 30 min)`: the first quarter-hour start clear of
+`plan_blocks(today)` and `_busy_else`; `plan_block(..., check=False)`, one line (Calm `agent_plan.thread_slot`) with
+`apl:thread:<HHMM>` (Remove: `_remove_thread_block`, that block only). Tests: `tests/unit/test_v091_core_links.py`.
+
 ### Computer
 
   0.9.0 call briefs (both off): `MailDigest._done` keeps the answer's last "Needs you:" line in
@@ -1252,6 +1271,18 @@ arrives. 0.9.0: `busy(t0, until)` is the planned-block ledger for Start-by and R
   `fn(app) -> {name: folder}`. `start_help()` refuses a project not switched on, one already busy
   (`scratch.busy`), then `scratch.create(...)` (a worktree for a repository) and `proposals.submit(...)` at
   `projects.effort`. The rest is core: [architecture.md](architecture.md#scratch-folders-and-proposals).
+
+  - (0.9.1, L128, `learning.skills_tested`, on) `_tested_new(name, payload)` keeps `<state>/learning/tested/<name>.json`
+    for a new learned skill: two cases in Brain's library form (`{"inputs": {"request"}, "expect"}`: `not_contains`
+    `FAILED_WORDS`, and `contains` three words of the source answer), `uses`/`ok`/`fail`, `jobs` (last 20 job ids).
+    `_tested_use(name, jid, answer)` (from `_finished`, `then` `skills.done`/`skills.latex`) counts a use, checked with
+    `mind/skills/library.check_expect` against the request-independent cases (and its own when the request is the
+    source's); `_tested_wrong(name, jid)` (from `corrected`, so a reply, "no, ..." or Wrong) turns that use wrong.
+    `failing()`: `FAILING_USES` (3)+ uses, more wrong than right, the file still there. `/learned` adds
+    `tested_lines()` and a line with `lrn:<name>:retire` per failing one; `tell_failing()` (run by Retro's rules
+    part each night) says each once (Calm `learning.skill_failing`). `retire_skill(name)` only for `learned: true`
+    files: before-copy, file removed, change kind `retire`; `undo` writes it back. Nothing gates creation or retires
+    by itself. Retro's context gets `skill_records` (both libraries: names and counts).
 
 Helpers that aren't modules: `modules/text.py` (time parsing, `too_complex`, `tidy`), `modules/daily.py` (the daily
 note, `run_skill`, `morning_view`), `modules/termnote.py`, `modules/recurring.py`, `modules/coursepack.py`,

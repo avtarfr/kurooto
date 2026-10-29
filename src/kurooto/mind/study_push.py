@@ -172,8 +172,11 @@ def next_concepts(app: App, subject: str) -> list[str]:
         return []
 
 
-def slot(app: App, minutes: int, t: dt.datetime | None = None) -> dt.datetime | None:
-    """The first free stretch today long enough (Start-by's free time when it's on), else the next whole hour."""
+def slot(
+    app: App, minutes: int, t: dt.datetime | None = None, subject: str = "", title: str = ""
+) -> dt.datetime | None:
+    """The first free stretch today long enough (Start-by's free time when it's on), else the next whole hour.
+    (0.9.1, startby.learn_from_model) the hours you usually work on `subject` rank first among them."""
     t = t or now()
     end = dt.datetime.combine(t.date(), LATEST)
     earliest = t + dt.timedelta(minutes=30)
@@ -181,6 +184,12 @@ def slot(app: App, minutes: int, t: dt.datetime | None = None) -> dt.datetime | 
     if sb is not None:
         try:
             rank = sb.rank() if hasattr(sb, "rank") else None  # 0.9.0: mind.presence_forecast.plan
+            habit = sb.habit_hours(subject, title) if subject and hasattr(sb, "habit_hours") else {}
+            if habit:
+                from kurooto.modules.startby import HABIT_W
+
+                base = rank
+                rank = lambda s, base=base: (base(s) if base else 0.0) + HABIT_W * habit.get(s.hour, 0.0)  # noqa: E731
             fits, need = [], dt.timedelta(minutes=minutes)
             for a, b in sb.slots(t, end):
                 start = max(a, earliest)
@@ -235,7 +244,7 @@ def push(app: App, payload: dict | None = None) -> str | None:
         if r is None:
             return None
         minutes = max(5, min(180, _setting(app, "minutes", 25)))
-        at = slot(app, minutes)
+        at = slot(app, minutes, subject=r.get("subject") or "", title=r.get("title") or "")
         text = line(app, r, at, minutes)
         jsave(
             app.paths.state / FILE,

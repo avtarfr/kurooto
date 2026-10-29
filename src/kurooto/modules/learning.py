@@ -55,8 +55,14 @@ register_defaults(
         "skill_min_steps": 5,  # tool uses a request needs before it's looked at as a possible skill
         "remember_max": 3,  # facts kept a night, at most
         "brain": "",  # the AI that looks at finished work ("": the concept graph's second-look AI, else your main one)
+        # (0.9.1) each skill it learns keeps two test cases from the request it came from and counts its uses, like
+        # Brain's tested skills; one that keeps going wrong is shown in /learned and once at night with Retire. Never
+        # held back, never retired by itself
+        "skills_tested": True,
     },
 )
+FAILED_WORDS = ["I couldn't", "I can't", "I wasn't able", "failed to"]  # (skills_tested) an answer that gave up
+FAILING_USES = 3  # (skills_tested) at least this many uses, more wrong than right: shown as going wrong
 
 PARTS = {
     "search": "Search past requests, calls and chats (/history)",
@@ -290,8 +296,10 @@ class History:
     def _chats(self, con) -> int:
         since = float(self._mark(con, "chat", "0") or 0)
         n = 0
-        for t in jload(self.app.paths.state / "chat" / "history.json", []) or []:
-            at = float(t.get("at") or 0) if isinstance(t, dict) else 0
+        from kurooto.core import nightread
+
+        for t in nightread.turns(self.app):  # (0.9.1) the one read shared with infer and fold
+            at = float(t.get("at") or 0)
             if at <= since:
                 continue
             since = max(since, at)
@@ -472,6 +480,7 @@ class Learning(Module):
                     st = self._state()
                     st["last_skill"] = {"name": name, "job": job.id, "at": time.time()}
                     self._save_state(st)
+                self._tested_use(name, job.id, str(result.text or ""))
             return
         if then or job.lane != "you" or not self.setting("skills") or not self.app.is_on("skills"):
             return
@@ -573,6 +582,7 @@ class Learning(Module):
             self.app.events.emit("learning_skill_skipped", why="exists")
             return
         cid = self._record("skill", name=s.name, file=str(f), after=_sha(body), created=True, job=payload.get("job"))
+        self._tested_new(s.name, payload)
         self.app.events.emit("learning_skill_learned", name=s.name)
         self.app.notify(
             f"Learned a skill: /{s.name}, from {self._when(payload)}. /skills {s.name} to see it.",
@@ -690,6 +700,7 @@ class Learning(Module):
             st = self._state()
             st.pop("last_skill", None)  # one correction per answer
             self._save_state(st)
+        self._tested_wrong(s.name, jid)
         self.app.events.emit("learning_correction", name=s.name, replied=replied)
         return out
 
@@ -806,7 +817,19 @@ class Learning(Module):
                 return "That change is too old to undo here."
             if c.get("undone"):
                 return "Undone already."
-            if c["kind"] == "remember":
+            if c["kind"] == "retire":  # (0.9.1) the retired skill goes back as it was
+                f = Path(c["file"])
+                if f.exists():
+                    return f"/{c['name']} is back already."
+                f.parent.mkdir(parents=True, exist_ok=True)
+                write_note_file(f, Path(c["before"]).read_text(encoding="utf-8"), create=True)
+                r = jload(self._tested_file(c["name"]), None)
+                if isinstance(r, dict):
+                    r.pop("retired", None)
+                    r.pop("told", None)
+                    jsave(self._tested_file(c["name"]), r)
+                said, ok = f"/{c['name']} is back.", True
+            elif c["kind"] == "remember":
                 ok = remove_line(self.app, c["line"])
                 said = (
                     "Taken out of your how-to-help-me note."
@@ -841,7 +864,172 @@ class Learning(Module):
         return said
 
     def callbacks(self):
-        return {"lrn": lambda ref, act: self.undo(ref) if act == "undo" else "unknown button"}
+        def button(ref: str, act: str) -> str:
+            if act == "undo":
+                return self.undo(ref)
+            if act == "retire":  # (0.9.1, skills_tested) Retire under a learned skill that keeps going wrong
+                return self.retire_skill(ref)
+            return "unknown button"
+
+        return {"lrn": button}
+
+    # ------------------------------------------------------------- (0.9.1) learned skills, tested and counted
+    def _tested_file(self, name: str) -> Path:
+        return self.dir / "tested" / f"{re.sub(r'[^a-z0-9-]', '', name.lower())[:40] or 'skill'}.json"
+
+    def tested(self) -> dict[str, dict]:
+        """(learning.skills_tested) Each learned skill's record: {name: {cases, uses, ok, fail, created, ...}}."""
+        d = self.dir / "tested"
+        out = {}
+        for f in sorted(d.glob("*.json")) if d.is_dir() else []:
+            r = jload(f, None)
+            if isinstance(r, dict) and r.get("name"):
+                out[r["name"]] = r
+        return out
+
+    def _tested_new(self, name: str, payload: dict) -> None:
+        """A skill just learned: two regression cases from the request it came from, the way Brain's library keeps
+        them (mind/skills/library.py: inputs and an expectation). The answer then had these words; an answer should
+        never give up. Information only: nothing waits on them."""
+        if not self.setting("skills_tested"):
+            return
+        job = self.app.jobs.get(payload.get("job") or "") if payload.get("job") else None
+        request = asked(getattr(job, "prompt", "") or "")[:1000] if job else str(payload.get("title") or "")
+        answer = str(getattr(job, "result", "") or getattr(job, "text", "") or "") if job else ""
+        common = {"the", "and", "for", "you", "your", "with", "that", "this", "are", "was", "from", "have", "has"}
+        words = [w for w in re.findall(r"[A-Za-z][A-Za-z0-9-]{3,}", answer) if w.lower() not in common]
+        seen: list[str] = []
+        for w in words:
+            if w.lower() not in {x.lower() for x in seen}:
+                seen.append(w)
+        cases = [
+            {"inputs": {"request": request}, "expect": {"not_contains": FAILED_WORDS}},
+            {"inputs": {"request": request}, "expect": {"contains": seen[:3]} if seen else {"regex": r"\S"}},
+        ]
+        f = self._tested_file(name)
+        f.parent.mkdir(parents=True, exist_ok=True)
+        jsave(f, {"name": name, "cases": cases, "uses": 0, "ok": 0, "fail": 0, "created": time.time(), "jobs": {}})
+
+    def _tested_use(self, name: str, jid: str, answer: str) -> None:
+        """A learned skill answered: a use, checked against its cases that hold for any request (the not_contains
+        ones; the request-specific ones only when the request was its own). Counted; nothing else changes."""
+        if not self.setting("skills_tested"):
+            return
+        from kurooto.mind.skills.library import check_expect
+
+        with self._lock:
+            f = self._tested_file(name)
+            r = jload(f, None)
+            if not isinstance(r, dict) or jid in (r.get("jobs") or {}):
+                return
+            job = self.app.jobs.get(jid)
+            request = asked(getattr(job, "prompt", "") or "")[:1000] if job else ""
+            why = []
+            for c in r.get("cases") or []:
+                own = (c.get("inputs") or {}).get("request") == request and request
+                if own or set(c.get("expect") or {}) == {"not_contains"}:
+                    why += check_expect(answer, c.get("expect") or {})
+            ok = not why
+            r["uses"] = int(r.get("uses") or 0) + 1
+            r["ok" if ok else "fail"] = int(r.get("ok" if ok else "fail") or 0) + 1
+            r["last_used"] = time.time()
+            r["jobs"] = dict(list({**(r.get("jobs") or {}), jid: "ok" if ok else "fail"}.items())[-20:])
+            if why:
+                r["last_why"] = "; ".join(why)[:200]
+            jsave(f, r)
+
+    def _tested_wrong(self, name: str, jid: str) -> None:
+        """You corrected (or marked Wrong) a learned skill's answer: that use counts as wrong."""
+        if not self.setting("skills_tested") or not jid:
+            return
+        with self._lock:
+            f = self._tested_file(name)
+            r = jload(f, None)
+            if not isinstance(r, dict) or (r.get("jobs") or {}).get(jid) != "ok":
+                return
+            r["jobs"][jid] = "fail"
+            r["ok"] = max(0, int(r.get("ok") or 0) - 1)
+            r["fail"] = int(r.get("fail") or 0) + 1
+            r["last_why"] = "you corrected it"
+            jsave(f, r)
+
+    def failing(self) -> list[dict]:
+        """Learned skills going wrong more than right after FAILING_USES uses, still in your skills folder."""
+        if not self.setting("skills_tested"):
+            return []
+        from kurooto.modules.skills import load_skill
+
+        out = []
+        for name, r in self.tested().items():
+            if r.get("retired") or int(r.get("uses") or 0) < FAILING_USES:
+                continue
+            if int(r.get("fail") or 0) > int(r.get("ok") or 0) and load_skill(self.app, name) is not None:
+                out.append(r)
+        return out
+
+    def tested_lines(self) -> list[str]:
+        """/learned's lines on how the learned skills are doing (uses, right, wrong)."""
+        rows = [r for r in self.tested().values() if not r.get("retired")]
+        if not self.setting("skills_tested") or not rows:
+            return []
+        out = ["How the skills it learned are doing (2 test cases each, from the request each came from):"]
+        for r in sorted(rows, key=lambda r: r["name"]):
+            n = int(r.get("uses") or 0)
+            how = f"used {n}, {r.get('ok', 0)} fine, {r.get('fail', 0)} wrong" if n else "not used yet"
+            out.append(f"- /{r['name']}: {how}")
+        return out
+
+    def tell_failing(self) -> int:
+        """Once a night (the look back's rules part, modules/retro.py): each learned skill newly going wrong, one
+        line with Retire. Never retired without your tap."""
+        n = 0
+        for r in self.failing():
+            if r.get("told"):
+                continue
+            self.app.notify(
+                f"/{r['name']}, a skill it learned, went wrong in {r.get('fail', 0)} of its {r.get('uses', 0)} uses "
+                f"({r.get('last_why') or 'corrected'}). Retire it? Undo brings it back.",
+                kind="info",
+                why="learning.skill_failing",
+                buttons=[[("Retire", f"lrn:{r['name']}:retire")]],
+                about=r["name"],
+            )
+            with self._lock:
+                f = self._tested_file(r["name"])
+                cur = jload(f, None) or r
+                cur["told"] = time.time()
+                jsave(f, cur)
+            n += 1
+        return n
+
+    def retire_skill(self, name: str) -> str:
+        """Retire a learned skill (a tap): its file leaves your skills folder, kept here, with an Undo that puts it
+        back as it was. Only a skill Kurooto learned (learned: true), never one you wrote or one that ships."""
+        from kurooto.modules.skills import load_skill
+
+        s = load_skill(self.app, name)
+        r = jload(self._tested_file(name), None)
+        if s is None or not s.path or not isinstance(r, dict):
+            return f"There's no learned skill /{name} to retire."
+        f = Path(s.path)
+        try:
+            text = f.read_text(encoding="utf-8")
+        except OSError:
+            return f"/{name}'s file is gone already."
+        if not re.search(r"(?m)^learned:\s*true\s*$", text):
+            return f"/{name} isn't one it learned, so it stays."
+        before = self._keep_before(name, text)
+        f.unlink()
+        with contextlib.suppress(OSError):
+            f.parent.rmdir()
+        r.update(retired=True, retired_at=time.time())
+        jsave(self._tested_file(name), r)
+        cid = self._record("retire", name=name, file=str(f), before=before, after="")
+        self.app.events.emit("learning_skill_retired", name=name)
+        self.app.notify(
+            f"Retired /{name}.", kind="result", why="asked", buttons=[[("Undo", f"lrn:{cid}:undo")]], about=name
+        )
+        return f"Retired /{name}."
 
     # ---------------------------------------------------------------------------------- commands and tools
     def commands(self):
@@ -885,6 +1073,13 @@ class Learning(Module):
                 return "Running and retiring learned skills is Brain's (Features → Brain)."
             return brain.learned_cmd(msg, arg)
         skills = skill_library.listing(self.app) if mind.on(self.app) else ""
+        tested = "\n".join(self.tested_lines())  # (0.9.1, skills_tested) the learned skills' counts
+        skills = "\n\n".join(x for x in (tested, skills) if x)
+        for r in self.failing():  # each going wrong: a line with Retire (never retired by itself)
+            msg.reply(
+                f"/{r['name']} went wrong in {r.get('fail', 0)} of its {r.get('uses', 0)} uses.",
+                buttons=[[("Retire", f"lrn:{r['name']}:retire")]],
+            )
         items = [c for c in self.changes() if not c.get("undone")][-10:]
         if not items:
             nothing = "Nothing learned lately. It learns from requests that take many steps and from your corrections."
@@ -896,6 +1091,7 @@ class Learning(Module):
                 "lesson": f"a lesson for /{c.get('name')}: {c.get('lesson', '')}",
                 "rewrite": f"a rewritten step of /{c.get('name')}",
                 "remember": f"kept: {str(c.get('line', '')).rsplit(' (', 1)[0]}",
+                "retire": f"retired /{c.get('name')}",
             }.get(c["kind"], c["kind"])
             msg.reply(f"{c['at'][:16].replace('T', ' ')}: {what}", buttons=[[("Undo", f"lrn:{c['id']}:undo")]])
         return skills or None

@@ -10,6 +10,9 @@ in "awaiting" mode, so "what's on today?" or "yes" goes to your AI without its n
     answers   (0.9.0) how many answers weren't read aloud while you were away (face.away.hold_desktop, or
               voice.speak.stop_when_gone): "One answer came while you were away; say yes to hear it." A yes right
               after is read here, by Voice (Voice.read_held), not sent to the AI. Counts only, never what they say
+    threads   (0.9.1, not in the default list) the first open thread due today, in your words: "You said you'd send
+              the draft (by 18:00)." and how many more. Said after every other part, so the length limit drops it
+              first; only with nobody else in view, even with full
     ending    "Want to go through them?" when something waits and the conversation will open
 
 Your name (0.9.0, persona.templates): with "what to call you" on your persona card, the opening carries it ("Welcome
@@ -38,7 +41,7 @@ if TYPE_CHECKING:
     from kurooto.app import App
 
 MAX_CHARS = 220
-PARTS = ("next", "waiting", "deadline", "held", "answers")
+PARTS = ("next", "waiting", "deadline", "held", "answers", "threads")
 NUMBERS = {1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six", 7: "Seven", 8: "Eight", 9: "Nine"}
 
 
@@ -73,6 +76,7 @@ def compose(
     name: str = "",
     extra: list[tuple[str, str]] | tuple = (),
     answers: int = 0,
+    threads: list[tuple[str, dt.datetime]] | tuple = (),
 ) -> tuple[str, list[str]]:
     """The greeting's text and the names of the parts said (the event carries the names, never the text). name: what
     to call you, said only with nobody else in view and not counted toward MAX_CHARS."""
@@ -106,6 +110,12 @@ def compose(
         elif p == "answers" and answers:  # (0.9.0) last, so the trim drops it before the parts that came before it
             came = f"{plural(answers, 'answer', 'answers').capitalize()} came while you were away"
             said.append((p, f"{came}; say yes to hear {'it' if answers == 1 else 'them'}." if talk else f"{came}."))
+    if "threads" in (parts or ()) and threads and not others:  # (0.9.1) after every built-in part: dropped first
+        what, due = threads[0]
+        what = what.strip().rstrip(".")[:80]
+        more = " One more is due today too." if len(threads) == 2 else ""
+        more = f" {number(len(threads) - 1)} more are due today too." if len(threads) > 2 else more
+        said.append(("threads", f"You said you'd {what} (by {due:%H:%M}).{more}"))
     for p, line in extra:  # (0.9.0) add-ons' lines last: the first to go at the limit
         if line.strip():
             said.append((p, line.strip()))

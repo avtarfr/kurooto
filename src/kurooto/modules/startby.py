@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import datetime as dt
 import re
+import time
 
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
@@ -67,8 +68,18 @@ register_defaults(
         "learn_share": False,
         # (0.9.0) "Time to start" and the Sunday summary say Brain's chance of missing a deadline (Brain's plans)
         "miss_risk": True,
+        # (0.9.1) a deadline's hours, and the study push's time, go first into the hours you usually work on its
+        # subject (an add-on's reading, e.g. "works on Topology at night"); the free time itself is never changed
+        "learn_from_model": False,
+        # (0.9.1) "Time to start" says how long the subject's last deadlines of the kind really took (the study
+        # tracker's time between their start-by and done), with a button to use it; the size changes only on a tap
+        "learned_line": True,
+        # (0.9.1) a size it guessed is replaced by that learned time by itself (never a size you set)
+        "learned_estimates": False,
     },
 )
+HABIT_W = 1.0  # (learn_from_model) how much an hour you usually work on it counts, beside the presence forecast's 0-1
+LEARN_MIN_DONE, LEARN_LOOK_DAYS, LEARN_OFF = 2, 120, 0.3  # (learned_line) deadlines needed, look back, how far off
 DAY_H = 5  # "a day" of work, for sizes given in days
 WEEK_H = 25
 TASK_SIZES = [(1, "An hour"), (3, "An evening"), (5, "A day"), (12, "2-3 days"), (25, "A week")]
@@ -214,15 +225,19 @@ def allocate(
     share: float,
     pieces: dict | None = None,
     rank=None,
+    habits: dict | None = None,
 ) -> dict[str, tuple[dt.datetime | None, float]]:
     """As late as possible: latest due first, each item's hours (items: {"id", "due", "hours"}) go into the latest
     free time before its due time that a later one hasn't taken; `share` (0-1) of each free hour counts. Returns
     {id: (where its work starts, or None if no time at all; the hours that didn't fit)}. `pieces`, when given, gets
     where each item's hours went: {id: [(from, to, hours of work), ...]}. `rank` (0.9.0, a time -> a score, the
-    presence forecast's): the free hours with the higher score are taken first, later ones first among equals."""
+    presence forecast's): the free hours with the higher score are taken first, later ones first among equals.
+    `habits` (0.9.1, startby.learn_from_model): {id: {hour of the day: 0-1}}, the hours you usually work on that one,
+    added (HABIT_W) to its own ranking."""
     share = min(1.0, max(0.01, share))
-    if rank is not None:
-        return _allocate_ranked(items, by_hour(slots), share, pieces, rank)
+    habits = {k: v for k, v in (habits or {}).items() if v}
+    if rank is not None or habits:
+        return _allocate_ranked(items, by_hour(slots), share, pieces, rank, habits)
     free = [[s, e] for s, e in sorted(slots)]
     out: dict[str, tuple[dt.datetime | None, float]] = {}
     for it in sorted(items, key=lambda x: x["due"], reverse=True):
@@ -247,13 +262,18 @@ def allocate(
     return out
 
 
-def _allocate_ranked(items, slots, share, pieces, rank) -> dict[str, tuple[dt.datetime | None, float]]:
+def _allocate_ranked(items, slots, share, pieces, rank, habits=None) -> dict[str, tuple[dt.datetime | None, float]]:
     """allocate() with the free hours taken best-ranked first (each item still only before its due time)."""
     free = [[s, e] for s, e in slots]
     out: dict[str, tuple[dt.datetime | None, float]] = {}
     for it in sorted(items, key=lambda x: x["due"], reverse=True):
         need, first, extra = float(it["hours"]), None, []
-        for k in sorted(range(len(free)), key=lambda k: (-rank(free[k][0]), -free[k][0].timestamp())):
+        mine = (habits or {}).get(it["id"]) or {}
+
+        def score(t: dt.datetime, mine=mine) -> float:
+            return (rank(t) if rank is not None else 0.0) + HABIT_W * float(mine.get(t.hour, 0.0))
+
+        for k in sorted(range(len(free)), key=lambda k: (-score(free[k][0]), -free[k][0].timestamp())):
             if need <= 1e-6:
                 break
             s, e = free[k]
@@ -432,12 +452,98 @@ class StartBy(Module):
             by = (self.setting("exam_by_subject") or {}).get(it["subject"])
             if by:
                 return float(by), kind, False
+        if self.setting("learned_estimates") and it.get("subject"):  # (0.9.1) what this kind really took
+            got = self.learned_h(it["subject"], kind)
+            if got:
+                return got[0], kind, True
         sizes = self.setting("sizes") or {}
         try:
             h = float(sizes.get(kind, sizes.get("other", 2)))
         except (TypeError, ValueError):
             h = 2.0
         return max(0.25, h), kind, True
+
+    # ------------------------------------------------------------- (0.9.1) what a kind of deadline really took
+    def took_h(self, i: str, it: dict) -> float | None:
+        """Hours the study tracker counted for a done deadline: sessions tied to it (Study push's Start, the plan's
+        focus); else its subject's whole time (timed, typed and seen on screen: modules/study.py) from its start-by
+        date (else a week before) to the day it was done, when no other deadline of the subject was due then.
+        None when it can't tell."""
+        study = self._on("study")
+        try:
+            done = dt.datetime.fromisoformat(str(it.get("done_at") or "")).replace(tzinfo=None)
+        except ValueError:
+            return None
+        if study is None or not it.get("subject"):
+            return None
+        told = (self._state().get("told") or {}).get(i)
+        start = dt.datetime.fromisoformat(told) if told else done - dt.timedelta(days=7)
+        exact = 0.0
+        for e in self.app.events.tail(5000, kinds={"study_session_end"}):
+            if e.get("deadline") == i:
+                try:
+                    exact += float(e.get("minutes") or 0) / 60
+                except (TypeError, ValueError):
+                    continue
+        if exact > 0:
+            return exact
+        for j, other in self._dl().items().items():
+            if j == i or other.get("subject") != it["subject"]:
+                continue
+            due = str(other.get("due") or "")
+            if start.isoformat() <= due <= (done + dt.timedelta(days=1)).isoformat():
+                return None  # two in the subject at once: which got the time can't be told
+        days = (done.date() - start.date()).days + 1
+        try:
+            secs = float(study.totals(max(1, days), last=done.date()).get(it["subject"], 0))
+        except Exception:
+            return None
+        return secs / 3600 if secs > 0 else None
+
+    def learned_h(self, subject: str, kind: str) -> tuple[float, int] | None:
+        """(startby.learned_line / learned_estimates) The middle of what the subject's last done deadlines of this
+        kind took (took_h), with how many: at least LEARN_MIN_DONE done in the last LEARN_LOOK_DAYS. Kept a few
+        minutes (one read for a whole plan). None when there aren't enough."""
+        key = (subject, kind)
+        memo = getattr(self, "_learned_memo", None) or {}
+        if key in memo and time.monotonic() - memo[key][0] < 300:
+            return memo[key][1]
+        since = (now() - dt.timedelta(days=LEARN_LOOK_DAYS)).isoformat()
+        got = []
+        for i, it in self._dl().items().items():
+            if it.get("status") != "done" or it.get("subject") != subject or str(it.get("done_at") or "") < since:
+                continue
+            if kind_of(it.get("title") or "", it.get("kind", "task")) != kind:
+                continue
+            h = self.took_h(i, it)
+            if h and h >= 0.25:
+                got.append(h)
+        got.sort()
+        out = None
+        if len(got) >= LEARN_MIN_DONE:
+            mid = got[len(got) // 2] if len(got) % 2 else (got[len(got) // 2 - 1] + got[len(got) // 2]) / 2
+            out = (max(0.5, round(mid * 2) / 2), len(got))
+        memo[key] = (time.monotonic(), out)
+        self._learned_memo = memo
+        return out
+
+    def learned_note(self, r: dict) -> tuple[str, tuple[str, str]] | None:
+        """(startby.learned_line) A line and a button when the subject's past deadlines of this kind took a different
+        time from the size used now (LEARN_OFF or more apart), for a size it guessed; else None."""
+        if not self.setting("learned_line") or not r.get("guessed") or not r.get("subject"):
+            return None
+        got = self.learned_h(r["subject"], r["kind"])
+        if not got or abs(got[0] - r["hours"]) < max(0.5, LEARN_OFF * r["hours"]):
+            return None
+        h, n = got
+        what = {"exam": "exams", "quiz": "quizzes", "report": "reports", "problem_set": "problem sets"}.get(
+            r["kind"], "deadlines like it"
+        )
+        name = self._dl().subject_name(r["subject"]) if hasattr(self._dl(), "subject_name") else r["subject"]
+        return (
+            f"Your last {n} {what} in {name} took about {h:g} h of study each.",
+            (f"Use {h:g} h", f"sby:{r['id']}:{h:g}"),
+        )
 
     def _events(self, t0: dt.datetime, until: dt.datetime) -> list[tuple[dt.datetime, dt.datetime]]:
         """Your calendar's timed events (all-day ones don't take time), as local times."""
@@ -514,6 +620,29 @@ class StartBy(Module):
 
         return p
 
+    def habit_hours(self, subject: str, title: str = "") -> dict[int, float]:
+        """(0.9.1, startby.learn_from_model, off) The hours of the day you usually work on this subject, {hour: 0-1},
+        from any feature that knows (an add-on's `work_hours(subject, title)`: Brain's model rows like "works on
+        Topology at night" turned into hours by the add-on that wrote them). The strongest reading per hour wins;
+        a feature that fails or answers nonsense adds nothing. {} with the switch off."""
+        if not self.setting("learn_from_model"):
+            return {}
+        out: dict[int, float] = {}
+        for m in self.app.enabled():
+            fn = getattr(m, "work_hours", None)
+            if not callable(fn) or m.id == self.id:
+                continue
+            try:
+                got = fn(str(subject or ""), str(title or ""))
+            except Exception as e:
+                self.app.events.emit("startby_habit_failed", module=m.id, error=type(e).__name__)
+                continue
+            for h, w in (got or {}).items() if isinstance(got, dict) else ():
+                if isinstance(h, int) and not isinstance(h, bool) and 0 <= h <= 23 and isinstance(w, (int, float)):
+                    if not isinstance(w, bool) and w == w:
+                        out[h] = max(out.get(h, 0.0), min(1.0, max(0.0, float(w))))
+        return {h: w for h, w in out.items() if w > 0}
+
     def _rows(self, t0: dt.datetime, days: float, st: dict) -> list[dict]:
         """Open deadlines due between t0 and `days` ahead, with their sizes."""
         skip = matcher(self.app)
@@ -555,7 +684,8 @@ class StartBy(Module):
                 began = dt.datetime.combine(r["since"], dt.time(0))
                 left *= max(0.0, min(1.0, (r["due"] - t0) / (r["due"] - began))) if r["due"] > began else 0
             work.append({"id": r["id"], "due": r["due"], "hours": left})
-        fits = allocate(work, slots, self._share(), pieces, rank=self.rank())
+        habits = {r["id"]: self.habit_hours(r.get("subject") or "", r["title"]) for r in rows}
+        fits = allocate(work, slots, self._share(), pieces, rank=self.rank(), habits=habits)
         for r, w in zip(rows, work, strict=True):
             first, short = fits[r["id"]]
             r["start"] = first.date() if first else t0.date()
@@ -890,6 +1020,10 @@ class StartBy(Module):
             left = max(0.25, round((r["hours"] - done) * 2) / 2)
             text += f" You've put about {hours(done)} h into it already; about {hours(left)} h left if that counts."
             buttons = [[("Count it", f"sby:{r['id']}:{left:g}")], *buttons]
+        learned = self.learned_note(r)
+        if learned:  # 0.9.1 (startby.learned_line): what this kind really took, a tap to use it
+            text += f" {learned[0]}"
+            buttons = [[learned[1]], *buttons]
         risk = self.miss_risk(r["id"])
         if risk >= RISK_SAY:  # 0.9.0 (startby.miss_risk): Brain's plans, at your real pace
             text += f" At your usual pace there's about a {round(risk * 100)}% chance of missing it."

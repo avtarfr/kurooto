@@ -10,7 +10,13 @@ leaves the phone; this computer only knows their names.
 
 An add-on's buttons (0.9.0, reminders.addon_buttons): a feature's reminder_buttons(what) -> [(label, callback data)]
 adds a row of its own under +10 min / +1 h when a reminder fires (at most 2 buttons, each answered by that feature's
-own callbacks); the snooze row is always there and first. A tap is the user's; nothing starts by itself."""
+own callbacks); the snooze row is always there and first. A tap is the user's; nothing starts by itself.
+
+The phone's place names (0.9.1, reminders.place_names, off): the Android app sends the names of the places saved on
+it (names only, sealed, never where they are; modules/calls/chat.py's "place_names" op, kept in
+calls/place-names.json), and a place you name is matched to one of them before it goes to the phone: "the lib" ->
+"Library", "chem lab" -> "Chemistry lab". One clear match only; otherwise your words go as before. The names are used
+here only, never told to an AI."""
 
 from __future__ import annotations
 
@@ -43,8 +49,12 @@ register_defaults(
         "addon_buttons": True,
         # (0.9.0) during a Study mode focus, your reminders wait for its break (a reset or pause brings them at once)
         "wait_for_break": False,
+        # (0.9.1) the phone app shares the names of the places you saved (names only, sealed, never where they are),
+        # so "the lib" finds "Library"; used here for matching only, never told to an AI
+        "place_names": False,
     },
 )
+PLACE_NAMES_MAX = 50  # (place_names) names kept from the phone, at most
 PLACE = re.compile(
     r"^\s*remind me\s+(?P<when>whenever|every time|when|once|as soon as|(?:the )?next time)\s+"
     r"(?:i|i'm|i am)\s+(?P<verb>reach|arrive at|arrive in|get back to|get to|am at|at|get back(?=\s+home\b)"
@@ -60,6 +70,43 @@ def tidy_what(text: str) -> str:
     "- call mum", "to call mum", "about the exam" all give "call mum" / "the exam"."""
     what = JOIN.sub("", re.sub(r"\s+", " ", text).strip())
     return what.strip(" ,.;:-–—")
+
+
+def place_key(name: str) -> str:
+    """A place's name as it's matched (the phone's PlaceRules.key): "The Library " and "library" are the same."""
+    s = re.sub(r"\s+", " ", str(name or "").strip().lower())
+    s = re.sub(r"^(?:the|my|our) ", "", s)
+    return re.sub(r"[.!?,;:]+$", "", s).strip()
+
+
+def saved_place(said: str, names: list[str]) -> str | None:
+    """(0.9.1, reminders.place_names) The one saved place `said` means, or None: the same name, else the only one
+    whose words start with the words said ("lib" -> "Library", "chem lab" -> "Chemistry lab"), else the only close
+    spelling. Two that fit equally: None (your words go as they are)."""
+    import difflib
+
+    k = place_key(said)
+    if not k:
+        return None
+    keyed = {}
+    for n in names:
+        if place_key(n):
+            keyed.setdefault(place_key(n), n)
+    if k in keyed:
+        return keyed[k]
+    words = k.split()
+
+    def starts(key: str) -> bool:
+        kw = key.split()
+        return len(kw) >= len(words) and all(a.startswith(b) for a, b in zip(kw, words, strict=False))
+
+    hits = [n for key, n in keyed.items() if len(k) >= 2 and starts(key)]
+    if len(hits) == 1:
+        return hits[0]
+    if hits:
+        return None
+    close = difflib.get_close_matches(k, list(keyed), n=2, cutoff=0.8)
+    return keyed[close[0]] if len(close) == 1 else None
 
 
 class Reminders(Module):
@@ -255,15 +302,31 @@ class Reminders(Module):
         calls = self.app.modules.get("calls")
         if calls is None or not self.app.is_on("calls") or not calls.ready()[0]:
             return "Location reminders work through the Android app: set up Phone calls and pair the phone first."
+        names = self.place_names()
+        saved = saved_place(place, names) if names else None  # (0.9.1, place_names) "the lib" -> "Library"
+        place = saved or place
         sent = calls.phone.send(Message(what, title=place, kind="place_every" if every else "place"))
         if not sent:
             return "That didn't reach the phone app. Try again in a moment."
         self.app.events.emit("reminder_place", every=every)
         how = "every time you reach" if every else "when you reach"
+        if saved:
+            return f"Sent to your phone: {how} {place} (saved there), it reminds you: {what}."
         return (
             f"Sent to your phone: {how} {place}, it reminds you: {what}. If {place} isn't saved in the app yet, "
             "save it there once you're at it (Places → Save where you are now)."
         )
+
+    def place_names(self) -> list[str]:
+        """(0.9.1, reminders.place_names) The names of the places saved on the phone, as it last sent them; [] while
+        the switch is off or none came. Never told to an AI."""
+        f = self.app.paths.state / "calls" / "place-names.json"
+        if not self.setting("places") or not self.setting("place_names"):
+            f.unlink(missing_ok=True)  # turned off: the names the phone sent go too
+            return []
+        got = jload(f, {}) or {}
+        names = got.get("names") if isinstance(got, dict) else None
+        return [str(n) for n in names if isinstance(n, str)][:PLACE_NAMES_MAX] if isinstance(names, list) else []
 
     # ------------------------------------------------------------------------------- plain English
     def intents(self):

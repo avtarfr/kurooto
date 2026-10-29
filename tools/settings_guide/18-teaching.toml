@@ -92,6 +92,11 @@ tip = "Days an untouched open thread waits before it closes by itself."
 when = "Raise it if your tasks run long."
 needs = "`memory.threads`."
 
+[s."memory.night_read"]
+tip = "One read of your chat's recent turns, shared by the nightly readers (what you set up in passing, what you said you'd do, search)."
+what = "Each still reads only what's new to it and does what it did; the file is just parsed once while it's unchanged. Kept in memory only."
+when = "Turn it off only if a nightly reader seems to miss something."
+
 [s."remember.offer_settings"]
 tip = "A line you ask it to remember with a time rule (\"I hate calls before 8\") offers the setting that does it, with Set it / No."
 when = "Turn it off if you only want the line kept in your note."
@@ -136,6 +141,12 @@ tip = "The nightly look back keeps facts you stated in your chats and calls in y
 when = "Turn it off to keep only what you tell it with Remember."
 cost = "The day's requests go to the AI the look back uses."
 needs = "Learns from its own work and the Nightly look back."
+
+[s."learning.skills_tested"]
+tip = "Each skill it learns keeps two test cases from the request it came from, and counts how its uses go."
+what = "Like Brain's tested skills: a use counts as wrong when the answer gave up or you corrected it. One going wrong more than right after three uses is shown in /learned and once at night, with Retire (Undo puts it back). Nothing is held back or retired by itself."
+when = "Turn it off if you don't want the counts."
+needs = "Learns from its own work, with Skills."
 
 [s."learning.remember_max"]
 tip = "The most facts kept in a night."

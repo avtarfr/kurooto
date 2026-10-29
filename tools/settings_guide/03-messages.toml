@@ -88,6 +88,12 @@ what = "The same as the Why? and Less of this buttons, the evening bundle and /c
 when = "Turn it off if these words should go to your AI instead."
 needs = "`notify.calm.on`."
 
+[s."notify.calm.night_bedside"]
+tip = "With bedside mode open on your phone at the evening bundle's time, the bundle waits until it closes."
+what = "You're in bed already: what waited today comes when bedside mode closes (usually the morning)."
+when = "Turn it on if the evening bundle reaches you in bed."
+needs = "A paired Android phone and `phone.bedside.signal`."
+
 [s."notify.calm.lighter_after"]
 tip = "After an exam or a heavy day, the next day's limit is halved."
 when = "Turn it off if you'd rather have the same flow every day."

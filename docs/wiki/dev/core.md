@@ -622,6 +622,9 @@ depend on it, list it in that check's `events` in `core/health_checks.py`.
   Dreaming tunes (`core/policy.py`): `habituate` (kind → N: `Calm.ignored(why, t)`, the `streak()` of answerable
   records left unanswered, at least `IGNORED_H = 3` hours old, reaching N holds it as `held="habit"`) and `windows`
   (kind → `"HH:MM-HH:MM"`, `inside()`; outside it `held="window"`). Both are checked in `Calm._wait` after `fewer`.
+- (0.9.1, `notify.calm.night_bedside`, off) With bedside mode open on the phone (`PhoneChat.bedside()`) at the
+  bundle's time, `tick` keeps `bundle_held` in its state and bundles once it closes (`calls/chat.py:_bedside` calls
+  `tick()`).
 - The first `held="budget"` of a day calls `Calm._tell_limit`: one exempt message (`why="calm.limit"`, not counted;
   `calm.json` `limit_told` keeps it to once a day; skipped when the limit is 0) with buttons
   `calm:<YYYY-MM-DD>:flow|raise|fine` (`Calm._limit_button`). `flow` sets `calm.json` `flow_day` (`Calm.flowing()`:
@@ -984,6 +987,14 @@ taps), written by `memory:nightly` for yesterday at noon (`write_day_row`, repla
 
 **Threads** (`core/threads.py`). Rows of kind `thread`, sub `open` | `done` | `dropped` | `expired`; payload `text`,
 `via` (chat, call, study, deadline), `key` (a started task's: `study:<slug>`, `deadline:<id>`), `due`, `closed_at`.
+
+(0.9.1) `due_by(app, edge, n)`: open threads with a due time before `edge`, soonest first, each with `due_dt` (the
+greeting's `threads` part, `agent_plan.thread_slot`).
+
+**One read of the chat's turns** (0.9.1, L94, `core/nightread.py`, `memory.night_read`, on). `turns(app)` parses
+`chat/history.json` once per (mtime, size) and hands the same list to `core/infer.recent_text` (via `said_since`),
+`modules/fold.said` and `modules/learning.History._chats`; each keeps its own marks, schedule and output.
+`nightread.reads` counts parses and shared reads. Off: each reads the file, as before.
 
 - Open: `observe(app, text, via)` (called by `App.handle` after `infer.observe`, and by `from_call()` from
   `Calls.save_transcript` with the user's lines) matches `INTENT` per sentence, skips questions, "remind me", `NOT_TASK`

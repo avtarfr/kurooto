@@ -273,6 +273,12 @@ tip = "When a block of yours starts and you're at your desk, one message offers 
 when = "Turn it off if you don't want the offer. The focus starts only when you tap Start."
 needs = "The Agent plan calendar and the Study tracker."
 
+[s."agent_plan.thread_slot"]
+tip = "Something you said you'd do by today (\"I'll send the draft by 6\") gets a half-hour block in your free time before it's due."
+what = "Only in free time: never over your blocks, classes, commitments or calendar events, at most three a day. One line says each, with Remove."
+when = "Turn it on if you'd like time set aside for what you promise in passing."
+needs = "The Agent plan calendar and open threads (`memory.threads`)."
+
 [s."drive_upload.big_files"]
 tip = "A file too big for Telegram (over 50 MB) comes as a Drive link instead of failing."
 when = "Turn it off to have big files refused rather than uploaded."

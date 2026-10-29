@@ -87,6 +87,9 @@ register_defaults(
             # 0.9.0: say it in plain words, on a call or at the desk: "why did you send that?", "less of this",
             # "stop the after-class questions", "send me what's waiting", "how many today?" (each change has Undo)
             "talk": True,
+            # (0.9.1) bedside mode open on your phone at the evening bundle's time (you're in bed): the bundle waits
+            # until bedside mode closes, then comes
+            "night_bedside": False,
         }
     },
 )
@@ -727,6 +730,20 @@ REASONS: dict[str, Reason] = {
             stop=to(False, "no focus offers when a block starts"),
             feature="agent_plan",
         ),
+        R(  # (0.9.1)
+            "learning.skill_failing",
+            "a skill it learned went wrong more often than right (Retire, with Undo)",
+            setting="learning.skills_tested",
+            stop=to(False, "learned skills aren't counted or shown as going wrong"),
+            feature="learning",
+        ),
+        R(  # (0.9.1)
+            "agent_plan.thread_slot",
+            "a half-hour block put in your free time for something you said you'd do today",
+            setting="agent_plan.thread_slot",
+            stop=to(False, "no more blocks for what you said you'd do"),
+            feature="agent_plan",
+        ),
         R(
             "startby.share",
             "a share of free time for deadlines, from your pace",
@@ -938,6 +955,13 @@ REASONS: dict[str, Reason] = {
             stop=to(False, "No more greetings"),
             later=False,
             counted=False,
+            feature="face",
+        ),
+        R(  # (0.9.1)
+            "face.desk_break",
+            "a long stretch at the desk without a break (Face presence's times only)",
+            setting="face.desk_break",
+            stop=to(False, "no more break suggestions"),
             feature="face",
         ),
         R(
@@ -1568,12 +1592,34 @@ class Calm:
         st = jload(self.state_file, {}) or {}
         out: dict = {}
         if t >= self.evening_at(t.date()) and st.get("bundle_day") != t.date().isoformat():
+            if self._bedside_hold():  # (0.9.1, night_bedside) in bed already: it waits for bedside mode to close
+                if st.get("bundle_held") != t.date().isoformat():
+                    st["bundle_held"] = t.date().isoformat()
+                    jsave(self.state_file, st)
+                    self.app.events.emit("calm_bundle_held", why="bedside")
+                return out
             st["bundle_day"] = t.date().isoformat()
+            st.pop("bundle_held", None)
             jsave(self.state_file, st)
             out["bundled"] = self.bundle()
             out["suggested"] = self.monthly()
             self.prune()
+        elif st.get("bundle_held") and not self._bedside_hold():  # (0.9.1) bedside mode closed: last night's comes
+            st.pop("bundle_held", None)
+            jsave(self.state_file, st)
+            out["bundled"] = self.bundle()
         return out
+
+    def _bedside_hold(self) -> bool:
+        """(0.9.1, notify.calm.night_bedside, off) Bedside mode is open on the paired phone (phone.bedside.signal,
+        said within 12 hours): the evening bundle waits."""
+        if not self.s("night_bedside", False):
+            return False
+        calls = self.app.modules.get("calls")
+        try:
+            return bool(calls is not None and self.app.is_on("calls") and calls.chat.bedside())
+        except Exception:
+            return False
 
     def held(self) -> list[dict]:
         with self._db() as db:

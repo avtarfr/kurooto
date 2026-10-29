@@ -44,6 +44,9 @@ for, the setting that controls it, and what it was about (the deadline, the clas
   now; "how many messages today?" answers like /calm. Your features' own requests go first, so "stop the reminder"
   still means what it did.
 
+- **In bed already** (0.9.1, `notify.calm.night_bedside`, off): with bedside mode open on your phone at the evening
+  bundle's time, the bundle waits and comes when bedside mode closes.
+
 The phone app, the desktop and calls get the plain message, without these buttons.
 
 **The daily limit.** At most **6 messages and 1 call a day** come by themselves (`notify.calm.messages`,
@@ -249,6 +252,7 @@ No Stop; only Another time. When sent as urgent they always come.
 | a reminder a day before something on your deadline list is due (Done / Not mine / Snooze 3 h) | Deadlines | `deadlines.ping_h` | no more day-ahead reminders; the last few hours' ones still come | | yes | |
 | a moved deadline's plan blocks: Remove or Keep (0.9.0) | Agent plan calendar | | yes | | yes | |
 | a block of yours starts: a focus for it? (0.9.0, at your desk) | Agent plan calendar | `agent_plan.start_focus` | yes | | yes | |
+| a half-hour block for something you said you'd do today, with Remove (0.9.1) | Agent plan calendar | `agent_plan.thread_slot` | yes | | yes | |
 | a share of free time from your pace (0.9.0, weekly) | Start-by dates | `startby.learn_share` | yes | | yes | |
 | "on paper?", pause or resume in a focus (0.9.0) | Study tracker | `study.face` | yes | | | |
 | at a saved place: start a study session? (0.9.0) | Study tracker | `study.places` | yes | | yes | |
@@ -288,6 +292,7 @@ No Stop; only Another time. When sent as urgent they always come.
 | "Haven't heard from you in two days. All good? Nothing's urgent." (I'm fine / Busy, quiet for a week) | Your rhythm | `availability.absence_days` | no more of these | | | |
 | "You usually wake around 16:30; set an alarm?" (Set / Not tonight) | Morning alarm | `alarm.suggest` | no more alarm suggestions | | | |
 | "While you were away, Face presence saw someone else at your desk at 14:10." (0.9.0, off by default) | Face presence | `face.away.report_others` | no more of these | | yes | |
+| "1 h 40 at the desk without a break. A few minutes up and away?" (0.9.1, off by default) | Face presence | `face.desk_break` | no more break suggestions | | yes | |
 | "You're up already: skip the 07:00 alarm?" (Skip it / Keep it) | Morning alarm | `alarm.skip_if_up` | no more of these | | | |
 | "You've told me to stop 3 times lately when I spoke up by myself (...). Stop these?" (Stop these / Keep them) | Calm | `notify.calm.voice_stops` | no more of these offers | | | |
 | "It's 02:00 and your alarm is at 07:00: a short night ... Ring at 09:30 instead?" (Ring at / Keep it) | Morning alarm | `alarm.sleep_aware` | no more of these | | | |
@@ -318,6 +323,7 @@ No Stop; only Another time. When sent as urgent they always come.
 | a routine the look back saw in your records (Add / No) | Nightly look back | `retro.routines` | no more | | yes | yes |
 | a data fix the look back was sure of (two copies of one deadline), with Undo | Nightly look back | `retro.fixes` | no more | | yes | |
 | a skill learned or improved from a request that took many steps | Learns from its own work | `learning.skills` | no more learned skills | one a day | yes | |
+| a skill it learned went wrong more often than right: Retire? (0.9.1, once) | Learns from its own work | `learning.skills_tested` | yes | | yes | |
 | a lesson a skill took from your correction | Learns from its own work | `learning.corrections` | no more lessons | | yes | |
 | facts from your chats and calls kept in your how-to-help-me note | Learns from its own work | `learning.remember` | nothing kept by itself | | yes | |
 | "Still true?" about a line in your how-to-help-me note that hasn't come up in a while (at most two a week) | Remember | `remember.recheck_days` | no more (0) | | yes | yes |

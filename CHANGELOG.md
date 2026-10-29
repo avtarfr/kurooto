@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.9.1 (unreleased)
+
+- **"The lib" finds "Library"** (`reminders.place_names`, off). The phone app can share the names of the places you
+  saved (names only, sealed, never where they are), so a location reminder goes to the phone under the place's own
+  name. Never told to an AI; turning it off deletes the names on the computer.
+- **What a kind of deadline really took** (`startby.learned_line`, on; `startby.learned_estimates`, off). With two or
+  more done in a subject, "Time to start" says what that kind of deadline took by the study tracker, with a button to
+  use it; turned on, the learned time replaces the guess by itself (never a size you set).
+- **The hours you usually work on it come first** (`startby.learn_from_model`, off): when an add-on knows when you work
+  on a subject, start-by dates and the study push's time use those hours first.
+- **What you said you'd do, at the desk and in the plan.** The greeting can say the first open thread due today (add
+  `threads` to `face.greet.say`), and `agent_plan.thread_slot` (off) gives it a half-hour block in free time, with
+  Remove.
+- **Bedside mode for the night** (each off): `mind.sleep.follow_bedside` starts Kurooto's night when you open bedside
+  mode on the phone, and `notify.calm.night_bedside` keeps the evening bundle until bedside mode closes.
+- **A break after a long stretch at the desk** (`face.desk_break`, off): one message after 90 minutes in one stretch,
+  through Calm and Brain's door.
+- **Learned skills are tested and counted** (`learning.skills_tested`, on). Each keeps two test cases from its request
+  and counts how its uses go; one that keeps going wrong is shown in `/learned` and once at night with Retire (Undo
+  brings it back). Never retired by itself. The nightly look back sees both libraries' counts.
+- **The phone app tells your computer when it's in another call** (L87's phone side, only when `calls.phone_busy` or
+  `voice.listen.phone_call` is on): a time only, never who or which app.
+- **Wrong, Why? and Less of this are quiet in the app**: small text buttons after a message's own, never its first.
+- **For add-ons:** a place you arrive at or leave reaches an add-on's `place_event` (`mind.senses.places_to_addons`,
+  on; the add-on's own switch decides), and `work_hours(subject, title)` tells Start-by when you work on what. The
+  nightly readers share one read of the chat's turns (`memory.night_read`, on); nothing they do changes.
+
 ## 0.9.0 (2026-10-29)
 
 - **Handwritten notes say what's already in your notes** (`handwritten.overlap`, on; `handwritten.overlap_courses`

@@ -581,6 +581,11 @@ map; 150 m around it). The computer sends only the place's name and the text; th
 you when you arrive, with the computer off too. Needs Phone calls set up and the Android app. *Undo:* Turn off in
 Places (the app stops watching); `reminders.places` back to `false`.
 
+**Your phone's place names** (0.9.1, `reminders.place_names`, off): the app sends your computer the names of the
+places you saved (names only, sealed), so "the lib" goes to the phone as "Library" (one clear match only). Never told
+to an AI. *Undo:* `reminders.place_names` back to `false`: the names are deleted on the computer and the app stops
+sending them.
+
 ### Check-ins
 At times you choose, Kurooto asks how the day is going: the **evening** check-in (default 22:00, the day in review),
 an optional **night** one (goodnight, near bedtime) and an optional **midday** one. Reply to the message and it goes
@@ -869,6 +874,13 @@ time.
 
 `/startby` lists the deadlines of the next five weeks (`startby.horizon_days`) with their start-by dates and sizes,
 and the sizes to tap; "when should I start the lab report?" answers for one.
+
+**What the kind really took (0.9.1).** With two or more done deadlines of a kind in a subject, "Time to start" for a
+guessed size says what they really took by the study tracker ("Your last 2 problem sets in Organic Chemistry took
+about 5.5 h of study each.") with **Use 5.5 h** (`startby.learned_line`, on); `startby.learned_estimates` (off) uses
+it by itself for a guessed size. `startby.learn_from_model` (off): the hours you usually work on a subject (from an
+add-on that knows) are used first for its deadlines and the study push's time. *Undo:* those settings back; a size you
+tapped stays until you tap another.
 
 *Settings* (`startby.*`): `sizes` (hours: `problem_set` 3, `report` 12, `quiz` 2, `exam` 10, `other` 2),
 `exam_by_subject` (hours per subject, e.g. `{"linear-algebra": 25}`), `window` (`09:00-22:00`; an end before the
@@ -1482,6 +1494,12 @@ keeps what it learned.
 *Leaves:* nothing to build the index. When the AI searches it, the passages it finds go to that AI with the request;
 learning a skill sends the request, its answer and steps, and a lesson your correction and the skill, to the
 second-look AI; picking up facts sends the day's requests to the AI the look back uses.
+
+**Tested and counted (0.9.1, `learning.skills_tested`, on).** Each learned skill keeps two test cases from its
+request and counts its uses (wrong: the answer gave up, or you corrected it or tapped Wrong). `/learned` shows the
+counts; one that went wrong more often than right after three uses gets **Retire** there and once at night. Retire
+moves its file out of your skills folder (kept in the state folder); *Undo:* the Undo under "Retired" (or in
+`/learned`) puts it back. Nothing is retired by itself.
 
 ### Commitments
 
@@ -2254,6 +2272,10 @@ never approves, unlocks or allows anything. Details: [the user guide](wiki/user/
   someone else in view (`face.greet.with_others`).
 - **Optional:** noticing you left (`face.away.on`) to hold desktop pop-ups and calls; learning slowly from confident
   sightings (`face.learn.on`, with Undo).
+- **A break after a long stretch** (0.9.1, `face.desk_break`, off): after `face.desk_break_min` (90) minutes at the
+  desk in one stretch, one message suggests a short break, once a stretch, through Calm. *Undo:* turn it off.
+- **What you said you'd do** (0.9.1): `threads` in `face.greet.say` adds the first open thread due today to the
+  greeting, last, never with someone else in view. *Undo:* take it out of the list.
 - **Add this look** (0.9.0, `face.looks.on`, on): "unsure" with your hair up or a hat? The Face page's Add this look,
   `/face add-look [label]` or `kurooto face add-look [label]` takes about 10 seconds of you at the camera (enrolment's
   checks, only frames at least "unsure" against your enrolment) and adds up to 10 samples as a labelled look of their
@@ -2779,6 +2801,10 @@ reminder (`agent_plan.remind_min`; 0 for none).
   `/blocks undo`.
 - Hide or delete the calendar in Google Calendar any time; Kurooto makes a new one the next time it plans something.
 - To see the blocks in Kurooto's own Calendar feature too, add the Agent plan calendar's private iCal link there.
+
+- **Time for what you said you'd do** (0.9.1, `agent_plan.thread_slot`, off): an open thread due today ("I'll send
+  the draft by 6") gets a 30-minute block in free time before it's due, around everything already there, at most
+  three a day, said in one line with **Remove**. *Undo:* Remove, or `agent_plan.thread_slot` back to `false`.
 
 *Turn it off:* Features → Agent plan calendar → Turn off (the calendar stays in Google Calendar until you delete it).
 With [several accounts](#several-google-accounts), the calendar lives on the one you choose on its card (`/google use

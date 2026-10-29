@@ -548,6 +548,11 @@ on, when a block starts and you're at your desk (Face presence or the computer i
 Topology report starts now. Start a 25-minute focus for it?" with **Start 25 min**. Away from your desk: nothing, and
 nothing is noted.
 
+**Time for what you said you'd do** (`agent_plan.thread_slot`, off, 0.9.1). Something you said you'd do by today
+("I'll send the draft by 6", an [open thread](teaching-kurooto.md) with a due time) gets a 30-minute block in your
+free time before it's due: never over your blocks, classes, commitments or calendar events, at most three a day,
+tried once a day each. One line says it, with **Remove**.
+
 **Calls wait for your blocks** (`agent_plan.holds_calls`, off, 0.9.0). Turned on, a call Kurooto places by itself (a
 check-in, a nudge) during a block waits until it ends. Calls you asked for and alarms still ring.
 
@@ -564,6 +569,7 @@ brief.
 | `agent_plan.remind_min` | `5` | Google's pop-up reminder before each block; 0 for none |
 | `agent_plan.name` | `Agent plan` | the calendar's name |
 | `agent_plan.start_focus` | on | a block starting with you at the desk offers a Study mode focus (0.9.0) |
+| `agent_plan.thread_slot` | off | a half-hour block for an open thread due today, in free time (0.9.1) |
 | `agent_plan.holds_calls` | off | Kurooto's own calls wait for the end of a running block (0.9.0) |
 
 **Limits and edge cases.** A block must end after it starts, be at most 12 hours long, and fall between now and a month

@@ -131,7 +131,13 @@ def test_session_ops(chat):
     code, out, _ = send(chat, op="sync")
     assert out["kind"] == "sessions" and out["sessions"][0]["id"] == "main"
     assert {"name": "help", "help": "what I can do"} in out["commands"]
-    assert out["switches"] == {"chat_sessions": True, "chat_files_inline": True, "chat_edit": True}
+    assert out["switches"] == {
+        "chat_sessions": True,
+        "chat_files_inline": True,
+        "chat_edit": True,
+        "place_names": False,
+        "phone_busy": False,
+    }  # fmt: skip (0.9.1: what the phone may send)
     # refusals
     no = send(chat, op="session.delete", args={"session": "main"})[1]
     assert no["note"] == "Kurooto's own chat can't be deleted."

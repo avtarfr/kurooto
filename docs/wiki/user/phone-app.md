@@ -239,6 +239,22 @@ the alarm volume, as always); after the call you're back at the clock. Keep the 
 sensor, nothing else): it notes that the phone is at your bedside (`phone.bedside.signal` on the computer, on). One
 sent while your computer was off is dropped when it comes back. Nothing on the computer acts on it yet by default.
 
+**What may follow it (0.9.1, each off).** On your computer, `mind.sleep.follow_bedside` makes opening bedside mode
+the start of Kurooto's night (closing it is you being up), and `notify.calm.night_bedside` keeps the evening bundle
+waiting while bedside mode is open at its time: it comes when bedside mode closes.
+
+**Your places' names, when your computer asks (0.9.1).** With `reminders.place_names` on (off by default), the app
+sends your computer the names of the places you saved (names only, sealed, never where they are), and again whenever
+you save or remove one. A reminder for "the lib" then goes to the phone as "Library". Turn it off there and the
+names are deleted on the computer; the app stops sending them.
+
+**On another call (0.9.1).** When your computer uses it (`calls.phone_busy` or `voice.listen.phone_call`, both off),
+the app tells it when the phone is in another call (a phone call, WhatsApp, Meet) and when that ends: a time only,
+never who or which app. Kurooto's own call on the phone doesn't count.
+
+**Wrong, Why? and Less of this (0.9.1)** come as small text buttons after a message's own buttons, never as its
+first, filled one.
+
 What's coming is read from your call line every 5 minutes: the calls your computer has booked for the next day,
 so it works with the computer asleep. Reminders, deadlines and classes aren't on it (see
 [What it can't do yet](what-it-cant-do-yet.md#android)). Nothing new leaves your computer for it.

@@ -70,6 +70,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `agent_plan.name` | `"Agent plan"` | The name of Kurooto's own calendar for the time blocks it plans with you. ([guide](wiki/user/settings-guide.md#agentplanname)) |
 | `agent_plan.remind_min` | `5` | Minutes before each planned block for Google's pop-up reminder; 0: none. ([guide](wiki/user/settings-guide.md#agentplanremindmin)) |
 | `agent_plan.start_focus` | `true` | When a block of yours starts and you're at your desk, one message offers a Study mode focus for it. ([guide](wiki/user/settings-guide.md#agentplanstartfocus)) |
+| `agent_plan.thread_slot` | `false` | Something you said you'd do by today ("I'll send the draft by 6") gets a half-hour block in your free time before it's due. ([guide](wiki/user/settings-guide.md#agentplanthreadslot)) |
 
 ### `agents`
 
@@ -453,6 +454,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `face.camera.height` | `480` | The picture height asked of the camera. ([guide](wiki/user/settings-guide.md#facecameraheight)) |
 | `face.camera.width` | `640` | The picture width asked of the camera (it may give another). ([guide](wiki/user/settings-guide.md#facecamerawidth)) |
 | `face.camera.yaw_offset_deg` | `0.0` | How far beside the camera's lens the spot you look at sits, in degrees (+: to your right); look to talk centres there. ([guide](wiki/user/settings-guide.md#facecamerayawoffsetdeg)) |
+| `face.desk_break` | `false` | After a long stretch at the desk with no break, one message suggests a short one. ([guide](wiki/user/settings-guide.md#facedeskbreak)) |
+| `face.desk_break_min` | `90` | Minutes at the desk in one stretch before the break suggestion (at least 15). ([guide](wiki/user/settings-guide.md#facedeskbreakmin)) |
 | `face.desk_time` | `false` | Your time at the desk, from when Face presence saw you arrive and leave, in the evening check-in and the weekly summary. ([guide](wiki/user/settings-guide.md#facedesktime)) |
 | `face.greet.addons` | `false` | An add-on may add one short line of its own to the desk greeting. ([guide](wiki/user/settings-guide.md#facegreetaddons)) |
 | `face.greet.after_absent_min` | `20` | Greet you only after you've been away at least this long, in minutes. ([guide](wiki/user/settings-guide.md#facegreetafterabsentmin)) |
@@ -677,6 +680,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `learning.search` | `true` | A search index of past requests, calls and chats on this computer: `/history`, and the AI's search_history. ([guide](wiki/user/settings-guide.md#learningsearch)) |
 | `learning.skill_min_steps` | `5` | How many tool uses a request needs before it's considered for a new skill. ([guide](wiki/user/settings-guide.md#learningskillminsteps)) |
 | `learning.skills` | `true` | A request that took many steps can become a skill, or improve the one that does it. ([guide](wiki/user/settings-guide.md#learningskills)) |
+| `learning.skills_tested` | `true` | Each skill it learns keeps two test cases from the request it came from, and counts how its uses go. ([guide](wiki/user/settings-guide.md#learningskillstested)) |
 
 ### `lidsafe`
 
@@ -765,6 +769,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 |---|---|---|
 | `memory.budget_tokens` | `600` | At most about this much of what's remembered goes with one reply or call (about 4 characters a token). ([guide](wiki/user/settings-guide.md#memorybudgettokens)) |
 | `memory.day_rows` | `false` | Each night, one line about the day in the memory ledger: time at the desk, what you studied, classes you skipped. ([guide](wiki/user/settings-guide.md#memorydayrows)) |
+| `memory.night_read` | `true` | One read of your chat's recent turns, shared by the nightly readers (what you set up in passing, what you said you'd do, search). ([guide](wiki/user/settings-guide.md#memorynightread)) |
 | `memory.recall` | `true` | Replies and calls are told the few remembered items your message refers to ("as we said on the call"). ([guide](wiki/user/settings-guide.md#memoryrecall)) |
 | `memory.thread_days` | `7` | Days an untouched open thread waits before it closes by itself. ([guide](wiki/user/settings-guide.md#memorythreaddays)) |
 | `memory.threads` | `true` | What you say you'll do, and tasks you start, become open threads ("did I finish that thing?"). ([guide](wiki/user/settings-guide.md#memorythreads)) |
@@ -875,10 +880,12 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.senses.activity` | `false` | The activity stream: the app in front, hashed window titles, saves and commits (never keystrokes, the screen or URLs). ([guide](wiki/user/settings-guide.md#mindsensesactivity)) |
 | `mind.senses.intero` | `true` | Its own machine's state every minute: temperatures, memory, battery, disk, AI limits. ([guide](wiki/user/settings-guide.md#mindsensesintero)) |
 | `mind.senses.phone` | `"(computed)"` | Each of your phone's sensors, off until you switch it on (here and in the phone app). ([guide](wiki/user/settings-guide.md#mindsensesphone)) |
+| `mind.senses.places_to_addons` | `true` | A fresh arrival at or leaving of a place you saved on the phone also reaches add-ons that ask for it. ([guide](wiki/user/settings-guide.md#mindsensesplacestoaddons)) |
 | `mind.skills.from_demos` | `false` | Also offer skills from what you do over and over (asked once). ([guide](wiki/user/settings-guide.md#mindskillsfromdemos)) |
 | `mind.skills.on` | `true` | Solved tasks become tested, reusable skills; each new one starts out asking first. ([guide](wiki/user/settings-guide.md#mindskillson)) |
 | `mind.sleep.desk_after_min` | `15` | With desk_holds: how many minutes after you leave the desk its sleep starts. ([guide](wiki/user/settings-guide.md#mindsleepdeskaftermin)) |
 | `mind.sleep.desk_holds` | `true` | While you're at this computer, Kurooto doesn't fall asleep: its night starts after you leave. ([guide](wiki/user/settings-guide.md#mindsleepdeskholds)) |
+| `mind.sleep.follow_bedside` | `false` | Opening bedside mode on your phone starts Kurooto's night there; closing it is you being up. ([guide](wiki/user/settings-guide.md#mindsleepfollowbedside)) |
 | `mind.sleep.follow_desk` | `true` | Starting a talk at the desk wakes Kurooto, and you at the desk near the night's end is you being up. ([guide](wiki/user/settings-guide.md#mindsleepfollowdesk)) |
 | `mind.sleep.follow_external` | `false` | An add-on's reading that you're asleep (a dark, quiet room, you away) starts Kurooto's night there. ([guide](wiki/user/settings-guide.md#mindsleepfollowexternal)) |
 | `mind.sleep.follow_owner` | `true` | Its sleep follows yours: bedtime to the alarm, refined by your phone (screen off, dark, charging; first use). ([guide](wiki/user/settings-guide.md#mindsleepfollowowner)) |
@@ -970,6 +977,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `notify.calm.lighter_after` | `true` | After an exam or a heavy day, the next day's limit is halved. ([guide](wiki/user/settings-guide.md#notifycalmlighterafter)) |
 | `notify.calm.messages` | `6` | How many messages a day may come by themselves; the rest wait for the evening bundle. ([guide](wiki/user/settings-guide.md#notifycalmmessages)) |
 | `notify.calm.monthly` | `true` | Once a month, it names a kind of question you hardly ever answer and offers to turn it off. ([guide](wiki/user/settings-guide.md#notifycalmmonthly)) |
+| `notify.calm.night_bedside` | `false` | With bedside mode open on your phone at the evening bundle's time, the bundle waits until it closes. ([guide](wiki/user/settings-guide.md#notifycalmnightbedside)) |
 | `notify.calm.on` | `true` | Calm: each message Kurooto sends by itself says why, has Why? and Less of this, and there's a daily limit. ([guide](wiki/user/settings-guide.md#notifycalmon)) |
 | `notify.calm.recheck` | `"rewrite"` | A message that waited says what changed meanwhile when it goes out ("done 14:10", "class skipped"). ([guide](wiki/user/settings-guide.md#notifycalmrecheck)) |
 | `notify.calm.stopped` | `[]` | Kinds of message you stopped with Less of this → Stop. ([guide](wiki/user/settings-guide.md#notifycalmstopped)) |
@@ -1131,6 +1139,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | Setting | Default | What it does |
 |---|---|---|
 | `reminders.addon_buttons` | `true` | Let an add-on put its own buttons under a reminder as it fires (for example Order on Zepto under "buy milk"). ([guide](wiki/user/settings-guide.md#remindersaddonbuttons)) |
+| `reminders.place_names` | `false` | The phone app shares the names of the places you saved, so "the lib" finds "Library". ([guide](wiki/user/settings-guide.md#remindersplacenames)) |
 | `reminders.places` | `false` | Location reminders: "remind me when I reach the library to …". ([guide](wiki/user/settings-guide.md#remindersplaces)) |
 | `reminders.wait_for_break` | `false` | During a Study mode focus, your reminders wait for its break; a pause or reset brings them at once. ([guide](wiki/user/settings-guide.md#reminderswaitforbreak)) |
 
@@ -1278,8 +1287,11 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `startby.crunch_weeks` | `4` | Weeks the Sunday summary looks ahead for crunch weeks (more work due than free time); 0: none. ([guide](wiki/user/settings-guide.md#startbycrunchweeks)) |
 | `startby.exam_by_subject` | `{}` | Hours to prepare for a subject's exams, where it differs from the usual. ([guide](wiki/user/settings-guide.md#startbyexambysubject)) |
 | `startby.horizon_days` | `35` | Deadlines due this far ahead (in days) get a start-by date. ([guide](wiki/user/settings-guide.md#startbyhorizondays)) |
+| `startby.learn_from_model` | `false` | A deadline's hours, and the study push's offered time, go first into the hours you usually work on its subject. ([guide](wiki/user/settings-guide.md#startbylearnfrommodel)) |
 | `startby.learn_share` | `false` | Once a week, when your real pace says a different share of free time goes to deadlines, an offer to use it. ([guide](wiki/user/settings-guide.md#startbylearnshare)) |
 | `startby.learn_window` | `true` | Once a week, move the window to when you're actually up, with one line and Undo. ([guide](wiki/user/settings-guide.md#startbylearnwindow)) |
+| `startby.learned_estimates` | `false` | Use that learned time by itself in place of the guessed size (never a size you set). ([guide](wiki/user/settings-guide.md#startbylearnedestimates)) |
+| `startby.learned_line` | `true` | "Time to start" says how long the subject's last deadlines of the kind really took, with a button to use it. ([guide](wiki/user/settings-guide.md#startbylearnedline)) |
 | `startby.min_gap_min` | `30` | Gaps between classes and events shorter than this (minutes) don't count as free time. ([guide](wiki/user/settings-guide.md#startbymingapmin)) |
 | `startby.miss_risk` | `true` | "Time to start" and the Sunday summary say Brain's chance of missing a deadline at your usual pace. ([guide](wiki/user/settings-guide.md#startbymissrisk)) |
 | `startby.negotiate` | `true` | A deadline that keeps slipping gets a reshaped plan once a day instead of the same reminder again. ([guide](wiki/user/settings-guide.md#startbynegotiate)) |

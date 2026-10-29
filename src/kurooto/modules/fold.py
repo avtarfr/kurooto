@@ -167,8 +167,10 @@ def said(app: App, st: dict) -> list[tuple[str, str, float]]:
     out: list[tuple[str, str, float]] = []
     lo = _since(st, "chat")  # your chats with Kurooto (your own turns)
     top = lo
-    for t in jload(Path(app.paths.state) / "chat" / "history.json", []) or []:
-        at = float(t.get("at") or 0) if isinstance(t, dict) else 0
+    from kurooto.core import nightread
+
+    for t in nightread.turns(app):  # (0.9.1) the one read shared with infer and the history index
+        at = float(t.get("at") or 0)
         if at > lo:
             top = max(top, at)
             out += [("chat", s, at) for s in _sentences(str(t.get("user") or "")[:2000])]

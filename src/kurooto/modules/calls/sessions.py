@@ -113,6 +113,9 @@ class Sessions:
         if commands:
             out["commands"] = self.commands()
         out["switches"] = {k: bool(self.calls.setting(k)) for k in ("chat_sessions", "chat_files_inline", "chat_edit")}
+        s = self.app.settings  # (0.9.1) what the phone may send: its place names (L60), its other calls (L87)
+        out["switches"]["place_names"] = bool(s.get("reminders.places") and s.get("reminders.place_names"))
+        out["switches"]["phone_busy"] = bool(s.get("calls.phone_busy") or s.get("voice.listen.phone_call"))
         return out
 
     def push(self, quiet: bool = False) -> bool:
