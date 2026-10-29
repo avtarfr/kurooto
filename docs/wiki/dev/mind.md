@@ -1461,3 +1461,41 @@ the switches, the surprise check-in and its exclusions, the late-wake rule).
 - **Skipped class hours** (`mind.read.skipped_classes`, on): `class_skip_h`, the hours of that day's classes in
   `Subjects.skipped(day)` (only the owner's own `/skip` or `skip_class`, R11), added to `read.SIGNALS` with
   direction +1. A constant zero is harmless: `robust_z` is 0 when the scale is 0.
+
+## 0.9.0: the senses joined to sleep, the forecast, breaks and the alarm
+
+- **owner_here** (`core/here.py`, L8). `here.owner_here(app, via)` for `via` in `face` (Face's "view" with the owner's
+  face), `voice` (`Voice._here`: any owner verdict from `voiceid.check`, in `hear()` and `barge_turn`), `dashboard`
+  (`actions.act` with `via == "dashboard"`), `phone` (`here.on_event` from `Mind._mirror` for `phone_chat_op`,
+  `phone_button`, `phone_answered`, `phone_today_act`). Switches `presence.owner_here.<via>` (on). In memory on
+  `app._owner_here` ({via: [last seen, last logged]}); the event `owner_here {via[, back]}` at most every
+  `EVENT_GAP_S` (300 s) per via, at once with `back=True` when a voice or dashboard sign ended Face's away
+  (`Face.here()` -> `Watcher.here()`: `away` off, `emit("back")`, never "arrived"; `here_at` joins `present_at` in
+  `_check_away`, so away counts again from it, while `present_at`, `returning` and the greeting are untouched).
+  Readers: `signals.ACTIVE` (wake_min, sleep_min); `presence_forecast.at_desk` (`here.last(app, desk=True)` within
+  `DESK_S`; the phone never); `sleep.on_event` (`HERE_WAKES`: dashboard and phone wake it while resting; face and voice
+  are `mind.sleep.follow_desk`'s); `breaks.on_event` (`back=True` -> "back").
+- **The desk and sleep** (`mind.sleep.follow_desk`, on, L9). `sleep.DESK_WAKES`: `voice_portal` open with why
+  "looked at" (gate.LOOKED), `voice_barge` with outcome "turn", `voice_live` stage "answered" wake it while resting
+  (`_desk_wake`). `sleep.desk_up(app)` from the minute's `tick`: inside the window's last `UP_MIN` (90) minutes, not
+  "asleep" (the latch holds), `Face.desk_seen_at()` within `DESK_UP_S` (120 s) -> `up(app, "you're at the desk")`.
+  `desk_holds` is untouched.
+- **An add-on's sleep reading** (L10, a fix plus `mind.sleep.follow_external`, off). `sleep.external_asleep(app,
+  asleep, source)` (and `body_asleep(app, asleep)`, the name an add-on already probes with getattr) always notes the
+  reading in `mind-sleep.json` (`external[source] = {asleep, since}`) and emits `<source>_sleep {state}` (the event an
+  add-on wrote itself before the hook existed). With the switch on and no hand-set window, `_external_since` gives the
+  earliest held onset to `_refine`, which moves the start like the phone's `down_since` (within `EARLY_H`).
+- **Reachable** (`mind.presence_forecast.reachable`, on, L16). `tick` keeps `rlooks` (a look = the desk look or
+  `_phone_seen`: core/here.py's phone sign or the phone's screen sense within `DESK_S`, not in a class or a call),
+  folded into `rcells`/`rhours` like the desk tables; never scored, never paid. `p_reach(t)`: `p_free` until the
+  hour-of-week cell has `MIN_LOOKS` hours, then the same Beta average, never below `p_free`. `prefer(..., reach=True)`
+  (checkins `_presence`, calls `_presence_later`) uses it; `reachable_now` makes a call ring now. Switch off: `prefer`
+  is 0.8.18's exactly.
+- **Busy times** (L17). `presence_forecast.busy_from(app, name, fn)`: an add-on's `fn(app) -> [(weekday, hour)]`
+  (times only; never logged, never in an event or a request). `busy_hint(app)` (`busy_hint`, on) for `line()` and
+  Start-by's `_tell`; with `visitors` (off) `p_free` multiplies by `BUSY_CUT` (0.6) there, never to `BLOCKED_P`. The
+  Curiosity side (calling `busy_from`) is the add-on's own.
+- **Face breaks** (`face.breaks`, on, L18): `breaks.FACE_EVENTS` (face_left -> left, face_looked -> looked,
+  face_stood -> stood), from Face presence (docs/wiki/dev/face.md, "Breaks for Brain").
+- **Last night** (L14): `sleep.state()`'s latch also keeps `night = {at, until}` (the onset when it first went to
+  sleep, kept for the night); `sleep.last_night(app)` gives it for a day, for the alarm's short-night line.

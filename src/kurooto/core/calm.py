@@ -75,6 +75,9 @@ register_defaults(
             "fewer": {},  # kind -> at most this many a day; more wait for the evening (Less of this → Fewer)
             "habituate": {},  # kind -> after this many in a row unanswered, they wait for the evening until you answer
             "windows": {},  # kind -> "10:00-18:00": outside these hours they wait for the evening bundle
+            # (0.9.0) "stop" said over what Kurooto said aloud by itself is noted for that kind; after a few, one
+            # message offers to stop that kind (applied only on your tap, with Undo)
+            "voice_stops": True,
         }
     },
 )
@@ -87,6 +90,8 @@ SUGGEST_RATIO = 0.2  # ...and you answered at most this share of them
 SUGGEST_AGAIN_DAYS = 90  # "No" keeps that kind out of the suggestion this long
 DEADLINE_H = 12  # a deadline closer than this always comes
 BUNDLE_CHARS = 3800  # one Telegram message
+STOPS_PROPOSE = 3  # (voice_stops) told to stop this many times over one kind of spoken line ...
+STOPS_DAYS = 14  # ... within this many days: the offer to stop that kind (at most once in this many days)
 IGNORED_H = 3  # a message you could answer counts as ignored once it's this many hours old and still unanswered
 
 EXEMPT = {
@@ -567,6 +572,20 @@ REASONS: dict[str, Reason] = {
             stop=to(False, "no more alarm suggestions"),
             later=False,
         ),
+        R(  # (0.9.0)
+            "alarm.skip_if_up",
+            "you were up before the alarm: skip the ring?",
+            setting="alarm.skip_if_up",
+            stop=to(False, "no more of these (the alarm always rings as set)"),
+            later=False,
+        ),
+        R(  # (0.9.0)
+            "alarm.sleep_aware",
+            "up late with a short night ahead: a later ring offered (set only if you tap it)",
+            setting="alarm.sleep_aware",
+            stop=to(False, "no more of these"),
+            later=False,
+        ),
         R(
             "startby.negotiate",
             "a reshaped plan for a slipping deadline, instead of the same reminder again",
@@ -777,6 +796,22 @@ REASONS: dict[str, Reason] = {
             setting="face.away.report_others",
             stop=to(False, "No more of these"),
             feature="face",
+        ),
+        R(  # (0.9.0) Voice, voice.speak.what "all": checked with speak_ok, never counted against the daily limit
+            "voice.read_all",
+            "an answer read aloud at the desk that you asked for elsewhere (voice.speak.what is all)",
+            setting="voice.speak.what",
+            stop=to("voice", "only answers to what you say aloud are read"),
+            later=False,
+            counted=False,
+            feature="voice",
+        ),
+        R(  # (0.9.0)
+            "calm.voice_stops",
+            "you told it to stop a few times when it spoke up by itself: stop that kind?",
+            setting="notify.calm.voice_stops",
+            stop=to(False, "no more of these offers"),
+            later=False,
         ),
         R("calls.rang_offline", "a call your call line placed while this computer was off"),
         R("calls.held", "a call that waits for a better time"),
@@ -1253,6 +1288,52 @@ class Calm:
         except Exception as e:
             self.app.events.emit("calm_failed", error=f"spoken: {type(e).__name__}: {e}"[:200])
             return True
+
+    def voice_stop(self, why: str) -> bool:
+        """(0.9.0, notify.calm.voice_stops) You told it off aloud ("stop", "shut up") over something it said by itself
+        (`why`: face.greet, voice.read_all, an add-on's line): one counted mark (kind 'spoken', state 'told_off'), never
+        the words. It applies nothing itself; after STOPS_PROPOSE marks of one kind in STOPS_DAYS days, one message
+        offers to stop that kind (calm:<why>:apply, Undo kept; :no keeps them), at most once in STOPS_DAYS days. True
+        when it offered."""
+        if not self.on() or not self.s("voice_stops", True) or not why or why == ASKED:
+            return False
+        try:
+            t = now()
+            r = self.reason(why)
+            self._insert(
+                {
+                    "id": "s" + uuid.uuid4().hex[:10], "ts": t.timestamp(), "day": t.date().isoformat(), "why": why,
+                    "setting": (r.setting if r else "") or "", "feature": r.owner if r else why.split(".")[0],
+                    "about": "", "kind": "spoken", "text": "", "buttons": "[]", "budgeted": 0, "state": "told_off",
+                    "held": "",
+                }
+            )  # fmt: skip
+            self.app.events.emit("calm_told_off", why=why)
+            since = t.timestamp() - STOPS_DAYS * 86400
+            with self._db() as db:
+                n = db.execute(
+                    "select count(*) from sent where why=? and kind='spoken' and state='told_off' and ts>=?",
+                    (why, since),
+                ).fetchone()[0]
+            if n < STOPS_PROPOSE or r is None or r.stop is None or why in (self.s("stopped") or []):
+                return False
+            with self._lock:
+                st = jload(self.state_file, {}) or {}
+                asked = st.setdefault("voice_stops", {})
+                if float(asked.get(why) or 0) >= since:
+                    return False
+                asked[why] = t.timestamp()
+                jsave(self.state_file, st)
+            self.app.notify(
+                f"You've told me to stop {n} times lately when I spoke up by myself ({r.what}). Stop these?",
+                kind="question",
+                why="calm.voice_stops",
+                buttons=[[("Stop these", f"calm:{why}:apply"), ("Keep them", f"calm:{why}:no")]],
+            )
+            return True
+        except Exception as e:
+            self.app.events.emit("calm_failed", error=f"told off: {type(e).__name__}"[:200])
+            return False
 
     def hold(self, text: str, why: str | None, held: str = "calls", **kw) -> None:
         """Straight into the evening bundle (a call that wasn't placed; held "workspace": a message that kept losing at

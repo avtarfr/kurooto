@@ -272,6 +272,9 @@ No Stop; only Another time. When sent as urgent they always come.
 | "Haven't heard from you in two days. All good? Nothing's urgent." (I'm fine / Busy, quiet for a week) | Your rhythm | `availability.absence_days` | no more of these | | | |
 | "You usually wake around 16:30; set an alarm?" (Set / Not tonight) | Morning alarm | `alarm.suggest` | no more alarm suggestions | | | |
 | "While you were away, Face presence saw someone else at your desk at 14:10." (0.9.0, off by default) | Face presence | `face.away.report_others` | no more of these | | yes | |
+| "You're up already: skip the 07:00 alarm?" (Skip it / Keep it) | Morning alarm | `alarm.skip_if_up` | no more of these | | | |
+| "You've told me to stop 3 times lately when I spoke up by myself (...). Stop these?" (Stop these / Keep them) | Calm | `notify.calm.voice_stops` | no more of these offers | | | |
+| "It's 02:00 and your alarm is at 07:00: a short night ... Ring at 09:30 instead?" (Ring at / Keep it) | Morning alarm | `alarm.sleep_aware` | no more of these | | | |
 
 ### Google
 

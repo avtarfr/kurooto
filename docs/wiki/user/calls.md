@@ -430,6 +430,17 @@ to the morning already comes at the end of the night hours.
 morning: "You usually wake around 16:30; set an alarm?" with **Set 16:30** and **Not tonight**. At most once a day, and
 it never sets one by itself.
 
+**Up before the alarm?** (`alarm.skip_if_up`, on, 0.9.0). In the hour before the alarm, if you're already up (Face
+presence sees you at the desk, or you've used the dashboard, the phone app or talked to it in the last ten minutes):
+"You're up already: skip the 07:00 alarm?" with **Skip it** and **Keep it**, once per alarm. It never skips by itself:
+with no answer, the alarm rings as set.
+
+**A short night ahead?** (`alarm.sleep_aware`, on, 0.9.0). Still up with less than six hours left before the alarm,
+and a free morning after it (your timetable's first class, with Classes on): "It's 02:00 and your alarm is at 07:00: a
+short night. Your first class is at 11:00. Ring at 09:30 instead?" The alarm moves only if you tap it. After a short
+night (Brain's sleep saw when it fell asleep), the wake-up call keeps it gentle and brief; it's told "a short night",
+never when you slept.
+
 **Your day, drafted.** With Chat on, 20 minutes before the alarm (`alarm.prep_min`) the AI drafts today's plan into
 today's daily note under "## Plan for today (draft …)": classes, what's due, a top 3, suggested blocks, questions for
 you (the `morning-prep` skill). It runs once a day and never holds up your own requests.
@@ -470,6 +481,8 @@ awake until then." The hold ends by itself, even if Kurooto stops; the screen ca
 | `alarm.notes` | `true` | The wake-up call goes into the daily note. |
 | `alarm.keep_awake` | `false` | Keep the computer awake until the alarm. |
 | `alarm.suggest` | `true` | Before your usual bedtime with no alarm set, suggest your usual time once. |
+| `alarm.skip_if_up` | `true` | Up before the alarm: ask once whether to skip it (it rings unless you tap Skip). |
+| `alarm.sleep_aware` | `true` | Up late before a free morning: offer a later ring once; a short night makes the call brief. |
 | `availability.learn_night` | `true` | Move the night hours to when you're usually quiet (with Undo; never ones you set). |
 | `availability.learn_morning` | `true` | The check-in day, the morning message and "Time to start" follow them. |
 | `availability.night` | `{"enabled": true, "from": "23:30", "to": "07:00", "alarm_only": false}` | The fixed night hours; `enabled` false: no night at all; `alarm_only` true: only bedtime to the alarm holds calls. |

@@ -472,4 +472,8 @@ def act(app: App, name: str, args: dict | None = None, via: str = "dashboard") -
         app.events.emit("action_failed", action=name, error=f"{type(e).__name__}: {e}"[:200])
         return {"ok": False, "message": f"That failed: {type(e).__name__}: {e}"[:300]}
     app.events.emit("action", name=name, via=via)
+    if via == "dashboard":  # (0.9.0) you used the dashboard: you're at the desk (core/here.py, words-free)
+        from kurooto.core import here
+
+        here.owner_here(app, "dashboard")
     return {"ok": True, **out}

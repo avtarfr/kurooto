@@ -234,7 +234,8 @@ When you arrive, Kurooto says, in about three sentences, through your speakers:
 
 ("Morning." the first time a day before noon.) What it mentions is `face.greet.say`: what's next today, how many
 questions and approvals wait (never what they say), one deadline due within 24 hours, and how many messages wait for
-the evening (`held`, off by default). It's made by rules on your computer: no AI request, and it's never sent to
+the evening (`held`, off by default), and (0.9.0, `answers`, on) how many answers weren't read aloud while you were
+away: "One answer came while you were away; say yes to hear it.", and a yes reads it. It's made by rules on your computer: no AI request, and it's never sent to
 Telegram or your phone. With "what to call you" on your [persona card](teaching-kurooto.md#your-persona-card)
 (0.9.0, `persona.templates`), it starts "Welcome back, Sam." while you're alone in view; the name never pushes a part
 out of the greeting. When you answer it, your AI is told what it had just said (0.9.0, `face.greet.tell_ai`, on), so
@@ -263,7 +264,9 @@ in front of someone else unless you chose `full`.
 
 Off by default: turn on `face.away.on` (or "Notice when I leave" on the card). With no sign of you for 5 minutes
 (`face.away.after_min`) while the camera looks, or with the screen locked that long, Kurooto notes that you've left;
-you're back when it recognises you or someone types. Two more switches use it:
+you're back when it recognises you or someone types (0.9.0: or Voice ID hears your voice, or you use the dashboard,
+`presence.owner_here.voice` and `.dashboard`; that never counts as arriving, so it doesn't greet you). Two more
+switches use it:
 
 - `face.away.hold_desktop`: desktop pop-ups wait until you're back (at most 20), and answers aren't read aloud to an
   empty room (they're on the dashboard).
@@ -280,6 +283,11 @@ you're back when it recognises you or someone types. Two more switches use it:
   (and how many faces), and once you're back sends one message: "While you were away, Face presence saw someone else
   at your desk at 14:10 and 14:25 (2 faces)." Times and counts only, in memory, then forgotten: never a picture, never
   who, never to your AI. Unsure faces (maybe you) don't count. It only knows about times the camera was looking.
+
+**Natural breaks for Brain** (`face.breaks`, on, 0.9.0). With Brain's door holding a message until a natural break
+(`mind.workspace.breaks`), Face presence gives it three more: you leaving (with `face.away.on`), you looking up at the
+camera for a second, and you standing up (your face well below its usual size at the desk). Only the kind and the time
+are kept, never anything about your face. Off: only the add-ons' senses and "you came back" count.
 
 ## Learning over time
 

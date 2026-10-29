@@ -101,6 +101,7 @@ REPLY = re.compile(r"^(yes|yeah|yep|yup|no|nope|okay|ok|sure|please|go ahead|do 
 TOLD_S = 10.0  # within this long of the conversation opening, or of Kurooto speaking
 TOLD_OFF = "told off"
 LOOKED = "looked at"  # (0.8.17) rule 5b, and the reason the portal opened (voice.listen.look_to_talk)
+TAPPED = "tapped"  # (0.9.0) rule 5b for a tap on a device (Portal.tapped, voice.listen.tap_to_talk)
 _FILL = r"(?:no|oh|ok|okay|sorry|please|hey|um|uh|just|ugh|dude|bro|man)"
 _TOLD = re.compile(
     rf"^(?:{_FILL}\s+)*(?:"
@@ -163,6 +164,7 @@ class Context:
     looked: bool = False  # (0.8.17) a look opened the portal (0.8.18: anyone's, look_anyone); nothing said to it since
     look_anyone: bool = False  # (0.8.18) voice.listen.look_anyone: a guest's look stands in for the call too
     look_company: bool = False  # (0.8.18) voice.listen.look_in_company: with others here, look + its name any way
+    tapped: bool = False  # (0.9.0) a tap opened the portal (Portal.tapped); nothing said to it since
 
     def unconfirmed(self) -> bool:
         """The speaker may not be the owner talking to it: the careful calls apply."""
@@ -321,6 +323,8 @@ class Gate:
             named = ctx.look_company and (call.where in ("first", "last") or asks(call.rest))  # (0.8.18) misheard too
             if not (careful or ctx.conversation) or asks(text) or named:
                 return Decision(ADDRESSED, 0.9, LOOKED, *n)
+        if ctx.tapped and (h.voices or 0) < 2:  # (0.9.0) a tap stands in for its name, as a look does
+            return Decision(ADDRESSED, 0.9, TAPPED, *n)
         if (h.voices or 0) >= 2:
             return Decision(CHATTER, 0.8, "several voices, none to it", *n)
         it_asked = ctx.last_reply.rstrip().endswith("?")

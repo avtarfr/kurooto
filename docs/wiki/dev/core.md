@@ -338,6 +338,7 @@ Recurring (key → when; setting that controls it):
 | `updates:phone_app` | every 6h (and `updates:phone_app:start` 2 min after a start) | | `update/service.py:Updates.start` |
 | `alarm:plan` | every 30m | | `modules/alarm.py` |
 | `alarm:suggest` | every 30m | `alarm.suggest` | `modules/alarm.py` |
+| `alarm:up_ask` | every 5m | `alarm.skip_if_up`, `alarm.sleep_aware` | `modules/alarm.py` |
 | `backups:run`, `backups:catchup` | daily 03:30; hourly | `backups.when` | `modules/backups.py` |
 | `books:read` | daily 01:00 | `books.at` | `modules/books.py` |
 | `calendar:refresh` | every 15m | `calendar.refresh` | `modules/calendar.py` |

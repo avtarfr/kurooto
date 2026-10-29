@@ -630,6 +630,14 @@ class StartBy(Module):
                 f"Time to start: {what}. It's {size_text(r['hours'])} of work ({why}); started today it fits around "
                 "your classes and other deadlines."
             )
+        try:  # (0.9.0, mind.presence_forecast.busy_hint) an add-on's usual busy times, as a hint only
+            from kurooto.mind import presence_forecast as pf
+
+            hint = pf.busy_hint(self.app) if pf.on(self.app) else ""
+        except Exception:
+            hint = ""
+        if hint:
+            text += f" {hint}"
         self.app.notify(
             text + " (An estimate. Wrong size? Tap the right one.)",
             kind="deadline",

@@ -25,6 +25,7 @@ import time
 from pathlib import Path
 
 from kurooto import mind
+from kurooto.core import here
 from kurooto.core.config import register_defaults
 from kurooto.core.events import subscribe
 from kurooto.core.state import jload, jsave
@@ -276,6 +277,7 @@ class Mind(Module):
         if mlog.mirrored(kind) and mind.on(self.app):
             mind.connect(self.app).report(kind, rec)
         breaks.on_event(self.app, rec)  # 0.8.14: a session ending or you coming back is a natural break
+        here.on_event(self.app, rec)  # (0.9.0) you used the phone app: owner_here via phone (core/here.py)
         if kind in sleep.EVENTS:  # you waking it, or getting up (mind/sleep.py)
             sleep.on_event(self.app, rec)
 

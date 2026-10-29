@@ -9,6 +9,8 @@ already sees of your day and handed to the scorekeeper as plain facts (`signal`)
     reply_band        how fast you answered a check-in, banded 0-4 (under 2 min, 10, 60, 240, longer); never used for
     reward (I-3)
     deadline_moves    deadlines you moved
+    (0.9.0) owner_here (core/here.py: Face presence, Voice ID, the dashboard, the phone app) counts as a sign of life
+    too, so an hour of talking at the desk or ticking deadlines on the board isn't missed
     tone_mean         the day's tone, from mind/tone.py (-1 stretched ... +1 upbeat), when that's on
     load_*            what the calendar asked that day: deadlines due within 72 h (weighted: exam 3, other 1, and
     plain count),
@@ -52,7 +54,7 @@ ACTIVE = frozenset(
     {
         "checkin_answered", "capture_answered", "button_tapped", "call_answered", "phone_answered", "revision_answered",
         "exam_eve_answered", "study_session_start", "study_session_end", "deadline_done", "deadline_moved",
-        "message_in",
+        "message_in", "owner_here",
     }
 )  # fmt: skip
 BANDS_MIN = (2, 10, 60, 240)  # minutes: under 2 is band 0 ... 240 and more is band 4

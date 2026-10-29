@@ -196,3 +196,8 @@ needs = "Telegram or the phone app (where a button can be tapped)."
 tip = "When a short request could mean either of two things, ask which with both as buttons."
 when = "Turn it off if you'd rather it went to your AI than asked."
 cost = "Nothing: rules on this computer."
+
+[s."notify.calm.voice_stops"]
+tip = "\"Stop\" said over something Kurooto said aloud by itself is noted; after a few, it offers to stop that kind."
+what = "Each stop over a greeting, an answer read aloud from elsewhere or an add-on's line is a mark for that kind (never your words). Three in two weeks bring one message asking whether to stop them; only your tap does, with Undo."
+when = "Turn it off to have stops only stop it there and then."

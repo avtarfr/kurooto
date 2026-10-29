@@ -797,3 +797,58 @@ tip = "The read counts the hours of classes you said you'd skip that day."
 what = "Only from your own /skip or a call's skip_class, never guessed from where you are."
 when = "Turn it off if skipped classes shouldn't count toward how your days read."
 needs = "`mind.read.on` and Subjects."
+
+[parent."presence.owner_here"]
+tip = "Words-free signs you're here (your face, your voice, the dashboard, the phone app), each with its own switch."
+
+[s."presence.owner_here.face"]
+tip = "Face presence seeing your face counts as you being here (Brain's sense of your day, the forecast)."
+what = "One words-free sign, owner_here (core/here.py), with the via only: your first and last sign of life of the day, and at your desk for the presence forecast. At most one event every 5 minutes; the time is kept in memory."
+when = "Turn it off to keep your face out of Brain's sense of your day (Face presence itself is unchanged)."
+needs = "Face presence on and enrolled."
+
+[s."presence.owner_here.voice"]
+tip = "Voice ID calling a voice yours, even talk not to Kurooto, counts as you at the desk."
+what = "It also ends Face presence's \"you've stepped away\" (never as an arrival: no greeting), so talking from out of the camera's view isn't being away. Only the fact goes anywhere: never a word or the voice."
+when = "Turn it off if talking near the computer shouldn't count as being at it."
+needs = "Voice listening with Voice ID on and enrolled."
+
+[s."presence.owner_here.dashboard"]
+tip = "Using the dashboard (buttons, Ctrl+K, journal, capture, Study mode) counts as you at the desk."
+what = "Your first and last sign of life of the day, at your desk for the forecast, it ends Face presence's away (no greeting), and while Kurooto sleeps it wakes it, as a tap does."
+when = "Turn it off if the dashboard is used by someone else, or from elsewhere."
+
+[s."presence.owner_here.phone"]
+tip = "Using the phone app (chat, buttons, answers, Today) counts as you being around, not at the desk."
+what = "Your first and last sign of life of the day, and while Kurooto sleeps it wakes it, as a tap does. It never counts as at the desk. These fire with every phone sense off."
+when = "Turn it off to keep phone app use out of Brain's sense of your day."
+needs = "Brain on (the phone signs are read through it)."
+
+[s."mind.sleep.follow_desk"]
+tip = "Starting a talk at the desk wakes Kurooto, and you at the desk near the night's end is you being up."
+what = "A look that opens a conversation, talking over it with a question or request, or a Gemini Live turn wakes it as its name does. Face presence seeing you at the desk in the night's last 90 minutes, while it's awake or woken, ends its night, and what waited for the morning goes out. Asleep, the latch holds: sitting down doesn't wake it."
+when = "Turn it off to have only its name, /wake, a message, a tap or a call wake it, and only the alarm, \"I'm up\" or your phone end its night."
+needs = "`mind.sleep.on`; Voice listening and Face presence for the parts that need them."
+
+[s."mind.sleep.follow_external"]
+tip = "An add-on's reading that you're asleep (a dark, quiet room, you away) starts Kurooto's night there."
+what = "An add-on with its own senses (the Body add-on's desk phone) can say you're asleep. The reading is always noted; with this on, the night starts at it, up to two hours early, as with your phone's onset. A window set by hand isn't moved."
+when = "Turn it on if the add-on's room reading is a good sign you've gone to bed."
+needs = "`mind.sleep.on` and an add-on that reports it."
+
+[s."mind.presence_forecast.reachable"]
+tip = "Check-ins and calls Kurooto places by itself go by whether you're reachable: at the desk or on your phone."
+what = "A second estimate beside at-the-desk, learned the same way from the phone app's use (and the phone's screen sense, if on). It's never lower than the desk one, and equals it until an hour of the week has been seen; it isn't scored. A call rings now while you're on your phone. What's said aloud keeps the desk estimate."
+when = "Turn it off to have check-ins and calls go by the desk estimate alone, as in 0.8.18."
+needs = "`mind.presence_forecast.prefer`."
+
+[s."mind.presence_forecast.busy_hint"]
+tip = "An add-on's usual busy hours (times only) show as a hint on /mind and Start-by messages."
+what = "For example \"Tue and Thu evenings are usually busy.\" Nothing shows until an add-on gives busy times; never who or why."
+when = "Turn it off to hide the hint."
+
+[s."mind.presence_forecast.visitors"]
+tip = "An add-on's usual busy hours also lower the forecast there a little (never a block)."
+what = "The chance you're free in those hours is cut by 40%, so a check-in or a call Kurooto places by itself may move to a nearby likelier hour. Times only, never who; nothing goes into a log or to an AI."
+when = "Turn it on if those evenings really are bad times for Kurooto's own check-ins and calls."
+needs = "`mind.presence_forecast.on`, and an add-on that gives busy times."

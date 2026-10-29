@@ -830,6 +830,43 @@ No Linux-only call without a guard: with `voice.audio.backend` `auto` (0.8.16) L
 macOS wheels; Linux uses the system's libportaudio) or `pw-record`/`parec` on Linux; `microphone()` asks sounddevice,
 then `pactl` on Linux, else "can't tell". Subprocesses it starts are its own children, stopped by their exact pid.
 
+## 0.9.0 links (desk Voice)
+
+- **Read-all and Calm** (L138, a fix). `_job_done`'s read-all path (`voice.speak.what` all; quiet requests, which are
+  the talk box's and Voice's own, never reach it) asks `calm.speak_ok("voice.read_all")` first; the reason is
+  `counted=False`, its Stop sets `voice.speak.what` to `voice`. `spoken_why` keeps the Calm reason of what is being
+  said by itself ("" for an answer, `face.greet`, `voice.read_all`, `say(unprompted=True, why=...)`, default
+  `voice.unprompted`).
+- **Told off over its own line** (L80, `notify.calm.voice_stops`). `_told_off` notes `just_spoke` (speaking, or
+  within `TOLD_SPOKE_S` of it) before stopping; with a `spoken_why`, `_mark_stop` calls `Calm.voice_stop(why)` (a
+  'spoken'/'told_off' row; at `STOPS_PROPOSE` (3) in `STOPS_DAYS` (14) one offer, `calm:<why>:apply|no`, once per
+  `STOPS_DAYS`) and records `decide("spoken:<why>")` + `decision_outcome` "less" for Brain. The add-on side (L106,
+  tunables scored by these) is the add-on's.
+- **Two voices** (L139, `voice.listen.count_voices`, off). `_count_voices(h, who)` before `decide`: `Heard.voices = 2`
+  when `nearby.facing_most` (the most close-and-facing faces in one frame of the stretch) is 2+ and the verdict is
+  `guest`. Gate rule 6 and the look rule (`voices < 2`) then apply; an owner verdict never sets it.
+- **A tap** (L103, `voice.listen.tap_to_talk`). `Voice.tapped()` -> `Portal.tapped()` (why `gate.TAPPED`,
+  `tapped_open`, `Context.tapped`), gate rule 5b's twin (`ctx.tapped and voices < 2` -> ADDRESSED "tapped"),
+  `TAPPED` in `FACE_FREE`; `mind/sleep.NAME_WHYS` counts it as a wake. The Body add-on calls it (its own
+  `body.face.tap_talk`); a tap while speaking stays its stop there.
+- **Answers held while away** (L47, L48). `held_answers` (memory, 10): `_job_done`'s away branch keeps a readable
+  answer; `Speaker._speak` checks `Voice.gone()` (`voice.speak.stop_when_gone`, off, `app.away_from_desk()`) before
+  each piece after the first and keeps the unread rest. Face's greeting part `answers` (`greet.compose(answers=n)`,
+  counts only, after `held` so the 220-character trim drops it first; no "Want to go through them?" with it).
+  `read_held(text)`: while the portal is open by the greeting that offered them, a yes (`READ_IT`) is answered from
+  `held_answers` in `ask_brain`, never sent to the AI.
+- **After a talk** (L37, `voice.listen.after_talk`, on). `_talk` (memory, `TALK_MAX`): `_talk_line` in `ask_brain`
+  for owner (or no Voice ID) turns, Live's too, and the answers (who = `app.name`); guests return earlier. On close
+  (`_portal_changed`) a thread runs `after_talk(lines)` when one is yours: `Calls.save_transcript({lines, purpose "a
+  talk at the desk", layer "desk"})` with Phone calls on (the transcript, `gists.note_call`, `threads.from_call`;
+  `review.review` is skipped for a desk talk with no tool log), else `threads.from_call` alone; then one line under
+  "## Desk talks" of the day's note (`add_to_section`, `write_note_file`): the time and the count of your turns, no
+  words. Doubts' "I have a doubt..." already reaches its intent through `app.handle` for desk turns (Live's are L36's).
+- **Spoken lines into Chat** (N1, `voice.mirror_to_chat`, on). `greet()` and `say(unprompted=True)` call `mirror()`:
+  `calls.chat.say(text, title="Said aloud at your desk")` (the app's and the dashboard's Chat, never Telegram) and
+  `_unasked` for `unasked_line()`, which `modules/chat.py` puts before the next typed (non-voice) turn's prompt within
+  `UNASKED_S`, once. Answers to your turns aren't mirrored (they're in Chat already).
+
 ## Not verified
 
 0.8.16 (sound streams and threads): unit tests with a fake PortAudio and fake child processes only. The crash's cause

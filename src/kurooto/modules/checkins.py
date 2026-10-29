@@ -226,7 +226,7 @@ class Checkins(Module):
                 continue
             was = self.at(day, c["time"])
             skip = ("asleep",) if name == "night" else ()
-            to = pf.prefer(self.app, was, earliest=now(), latest=end, skip=skip)
+            to = pf.prefer(self.app, was, earliest=now(), latest=end, skip=skip, reach=True)  # (0.9.0) to your phone
             if to != was and self.day_of(to) == day:
                 plan[name] = {**c, "time": f"{to:%H:%M}", "presence": c.get("presence") or c["time"]}
                 self.app.events.emit("checkin_presence_moved", name=name, minutes=int((to - was).total_seconds() // 60))

@@ -62,3 +62,15 @@ cost = "Battery and power overnight."
 tip = "Before your usual bedtime with no alarm set, one message offering your usual wake-up time."
 when = "Turn it off if you don't use an alarm every night. It never sets one by itself."
 cost = "At most one Telegram message a day."
+
+[s."alarm.skip_if_up"]
+tip = "Up before the alarm: one question, skip the ring? It rings as set unless you tap Skip."
+what = "In the hour before the alarm, when Face presence sees you at the desk, or you used the dashboard, the phone app or talked to it in the last ten minutes. Once per alarm."
+when = "Turn it off if you'd rather the alarm just rings."
+cost = "At most one message per alarm."
+
+[s."alarm.sleep_aware"]
+tip = "Up late before a free morning: one offer of a later ring; after a short night the wake-up call keeps it brief."
+what = "With less than six hours left before the alarm and you still up, a later time about 7.5 hours from now, at least an hour before your first class (needs Classes). It moves the alarm only if you tap it. The wake-up call is told \"a short night\" (Brain's sleep saw it), never when you slept."
+when = "Turn it off if you don't want late-night alarm offers."
+cost = "At most one message per alarm."

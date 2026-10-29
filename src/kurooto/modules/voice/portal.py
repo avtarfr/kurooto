@@ -21,6 +21,9 @@ last recognised turn counts from when Kurooto finished answering it, so carry fo
 silently (no "Yes?") and with `looked` set until something is said to it: the gate then takes the next words as if its
 name came first (gate rule 5b). Voice keeps it open while he keeps looking, and closes it when he looks away before
 anything was said (Voice.look_tick).
+
+0.9.0: tapped() is the same for a tap on a device an add-on watches (the Body face), with why "tapped" and no face
+needed; it closes after close_s like any opening.
 """
 
 from __future__ import annotations
@@ -29,7 +32,7 @@ import time
 from collections import deque
 from collections.abc import Callable
 
-from kurooto.modules.voice.gate import LOOKED, Context, Decision, Heard
+from kurooto.modules.voice.gate import LOOKED, TAPPED, Context, Decision, Heard
 
 GUEST_NOTICE = "You can chat with me, but only my owner's voice can make me do things."
 UNSURE_NOTICE = "I couldn't tell it was you, so I'm only chatting: say it again closer to the microphone, or type it."
@@ -79,6 +82,7 @@ class Portal:
         self._chatter_at: float | None = None  # speech that wasn't to it, last heard (a time only)
         self.looked = False  # (0.8.17) opened by the owner looking at it, nothing said to it since
         self.turns = 0  # (0.9.0) turns answered since it opened (a greeting's outcome: answered or not)
+        self.tapped_open = False  # (0.9.0) opened by a tap on a device (tapped()), nothing said to it since
 
     # ---------------------------------------------------------------------------------------------- state
     def context(self) -> Context:
@@ -96,6 +100,7 @@ class Portal:
             answered=self.open and self.answered,
             since_open_s=None if not self.open or self.opened_at is None else now - self.opened_at,
             looked=self.open and self.looked,
+            tapped=self.open and self.tapped_open,
         )
 
     def state(self, state: str, why: str = "") -> None:
@@ -108,13 +113,13 @@ class Portal:
             self.opened_why, self.opened_at = why, self.clock()
             self.opener = self.last_who = ""
             self.answered = False
-            self.looked = False
+            self.looked = self.tapped_open = False
             self.turns = 0  # kept after it closes, so on_change can read how the conversation went
         self.open = is_open
         if not is_open:
             self.awaiting = False
             self.answered = False
-            self.looked = False
+            self.looked = self.tapped_open = False
             if self._close_s_before is not None:
                 self.close_s, self._close_s_before = self._close_s_before, None
         if self.on_change:
@@ -169,6 +174,18 @@ class Portal:
         self.state("addressed", LOOKED)
         return True
 
+    def tapped(self) -> bool:
+        """(0.9.0) A tap on a device (an add-on's: the Body face) opens it as its name alone would, silently: the next
+        words count without the name (gate rule 5b, why TAPPED), with no face needed (Voice's FACE_FREE). Voice ID's
+        rules for others still apply to what's said. False when it was open already."""
+        if self.open:
+            return False
+        self._set(True, TAPPED)
+        self.tapped_open = True
+        self.last = self.clock()
+        self.state("addressed", TAPPED)
+        return True
+
     def tick(self) -> None:
         """Called every second or so: close_s of nothing said to it closes it."""
         hold = max(self.close_s, self.follow_s) if self.answered else self.close_s
@@ -203,7 +220,7 @@ class Portal:
             self._set(True, d.why)
             self.opener = who.decision if who is not None else ""
         self.last_who = who.decision if who is not None else ""
-        self.answered = self.looked = False
+        self.answered = self.looked = self.tapped_open = False
         self.last = self.clock()
         if who is not None and who.decision == "owner":
             self.last_owner_at, self.last_owner_session = self.clock(), self.session
