@@ -1993,6 +1993,10 @@ features and notes are changed and read through the same checks as the dashboard
 *Undo:* Settings → calls → `chat_sessions`, `chat_files_inline`, `chat_edit` to `false` (each stops at once; your
 chats come back when it's on again); delete a chat to forget what was said in it.
 
+**What a call went over (0.9.1).** Held messages and open questions about what a call or a desk talk went over are
+marked "talked through on your 17:00 call" (sent with them; the Waiting page has Settled). `calls.settle_messages`
+(off) closes them instead; approvals never. *Undo:* turn it off.
+
 **The Desk chat (0.9.1, `calls.chat_desk`, on).** What you say at the desk (aloud, a Live talk, the board's talk box)
 and Kurooto's answers land in one chat named Desk, on the dashboard's Chat page and the phone app, without a
 notification; your turns only, never a guest's. An answer to a talk-box request comes there even after you closed the

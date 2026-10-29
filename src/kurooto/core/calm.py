@@ -296,9 +296,10 @@ def still(app: App, m) -> str:
         ws = str(getattr(m, "ws_item", None) or "")
         if not ws and getattr(m, "map_kind", None) == "deadline" and getattr(m, "map_ref", None):
             ws = f"deadline:{m.map_ref}"
+        talked = str(getattr(m, "talked", "") or "")
         head, _, ref = ws.partition(":")
         if not ref:
-            return ""
+            return f"talked through {talked}" if talked else ""
         if head in ("deadline", "quiz"):
             dl = app.modules.get("deadlines") if app.is_on("deadlines") else None
             it = (dl.items() if dl is not None else {}).get(ref)
@@ -318,10 +319,13 @@ def still(app: App, m) -> str:
             was = getattr(m, "due", None)
             if due is not None and was and str(was) != str(it["due"]):
                 return f"moved to {due:%a %H:%M}"
-            return ""
+            return f"talked through {talked}" if talked else ""
         if head == "class":
             sj = app.modules.get("subjects") if app.is_on("subjects") else None
-            return "class skipped" if sj is not None and ref in sj.skipped() else ""
+            if sj is not None and ref in sj.skipped():
+                return "class skipped"
+        if talked:  # (0.9.1) a call or a desk talk went over it (Calm.talked)
+            return f"talked through {talked}"
     except Exception as e:  # can't tell: it goes as it was
         app.events.emit("calm_failed", error=f"still: {type(e).__name__}"[:60])
     return ""
@@ -1340,6 +1344,7 @@ class Calm:
             try:
                 body = json.loads(rec.get("msg") or "{}")
                 m = Message(**{k: v for k, v in body.items() if k in Message.__dataclass_fields__})
+                m.talked = body.get("talked") or ""  # type: ignore[attr-defined]  # (0.9.1) Calm.talked, for recheck
             except (ValueError, TypeError):
                 m = Message(rec.get("text") or "", kind=rec.get("kind") or "info")
             m2 = recheck(self.app, m)  # (0.9.0) what changed meanwhile, said with it
@@ -1580,6 +1585,45 @@ class Calm:
             rows = db.execute("select * from sent where state='held' order by ts, rowid").fetchall()
         return [dict(r) for r in rows]
 
+    def talked(self, items: set[str], said: str, settle: bool = False, words: str = "") -> int:
+        """(0.9.1, L29) A call or a talk at the desk went over these items (ws_item "deadline:<id>", "class:<slug>"...):
+        each held message about one is marked "talked through <said>" (said: "on your 17:00 call"), which recheck adds
+        to it when it goes out and the Waiting page shows with Settled; words: your own lines, where what a message is
+        about ("Linear Algebra") said counts too. settle (calls.settle_messages): those held messages are settled
+        instead, as if dealt with. How many."""
+        words = " ".join(words.lower().split())
+        if not items and not words:
+            return 0
+        n = 0
+        for rec in self.held():
+            try:
+                body = json.loads(rec.get("msg") or "{}")
+            except ValueError:
+                continue
+            ws = str(body.get("ws_item") or "")
+            if not ws and body.get("map_kind") == "deadline" and body.get("map_ref"):
+                ws = f"deadline:{body['map_ref']}"
+            about = " ".join(str(rec.get("about") or "").lower().split())
+            named = len(about) >= 4 and about in words  # what it's about, said in your own words on the call
+            if ws not in items and str(rec.get("item") or "") not in items and not named:
+                continue
+            with self._db() as db:
+                if settle:
+                    db.execute("update sent set state='settled', msg=null where id=?", (rec["id"],))
+                else:
+                    body["talked"] = said
+                    db.execute("update sent set msg=? where id=?", (json.dumps(body, ensure_ascii=False), rec["id"]))
+            n += 1
+        if n:
+            self.app.events.emit("calm_talked", items=n, settled=settle)
+        return n
+
+    def settle(self, rid: str) -> bool:
+        """(0.9.1) Settled on the Waiting page: a held message that was talked through doesn't go out."""
+        with self._db() as db:
+            cur = db.execute("update sent set state='settled', msg=null where id=? and state='held'", (rid,))
+            return cur.rowcount > 0
+
     def held_rows(self) -> list[dict]:
         """(0.9.1) What waits, for the dashboard's Waiting page and the being's held count (the same list Today counts):
         each held message's id, title, full text, why it waits in words, and when; a question answered meanwhile is
@@ -1605,6 +1649,7 @@ class Calm:
                     "at": float(rec.get("ts") or 0),
                     "map_kind": rec.get("map_kind") or "",
                     "map_ref": rec.get("map_ref") or "",
+                    "talked": str(body.get("talked") or ""),
                 }
             )
         return out
@@ -1625,6 +1670,7 @@ class Calm:
             try:
                 body = json.loads(rec.get("msg") or "{}")
                 m = Message(**{k: v for k, v in body.items() if k in Message.__dataclass_fields__})
+                m.talked = body.get("talked") or ""  # type: ignore[attr-defined]  # (0.9.1) Calm.talked, for recheck
             except (ValueError, TypeError):
                 m = Message(rec.get("text") or "", kind=rec.get("kind") or "info")
             m2 = recheck(self.app, m)  # (0.9.0) what changed since it waited: said with it, or left out ("drop")

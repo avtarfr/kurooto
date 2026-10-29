@@ -902,11 +902,14 @@ async function renderWaiting(body) {
   const counts = [w.questions ? `${w.questions} open question${w.questions === 1 ? "" : "s"} (/q)` : "", w.proposals ? `${w.proposals} proposal${w.proposals === 1 ? "" : "s"} waiting for your tap` : ""].filter(Boolean).join(" · ");
   const cardHtml = !card ? "" : `<h4>While you were away</h4>${(card.popups || []).map((p) => `<p><b>${esc(p.title)}</b>: ${esc(p.text)}</p>`).join("")}${(card.answers || []).map((a) => `<p><b>${esc(a.asked)}</b> <span class="d">(talk box, ${when(a.at)})</span><br>${esc(a.answer)}</p>`).join("")}<button class="primary" data-wait="away">${card.shown || !(card.popups || []).length ? "Clear" : "Send now"}</button>`;
   body.innerHTML = `<p class="d">What waits for you. Nothing here is sent anywhere until you press Send now.${counts ? ` ${counts}.` : ""}</p>${cardHtml}
-    <h4>Held messages</h4>${held.length ? `${held.map((r) => `<p><b>${esc(r.title || "Message")}</b> <span class="d">(${when(r.at)}, ${esc(r.waits)})</span><br>${esc(r.text)}</p>`).join("")}<button class="primary" data-wait="send">Send now</button>` : '<p class="d">Nothing is held.</p>'}<p class="d" id="wait-said"></p>`;
+    ${(w.talked || []).length ? `<h4>Questions you went over</h4>${w.talked.map((q) => `<p>${esc(q.text)} <span class="d">(talked through ${esc(q.talked)})</span> <button data-settle="question" data-id="${esc(q.id)}">Settled</button></p>`).join("")}` : ""}
+    <h4>Held messages</h4>${held.length ? `${held.map((r) => `<p><b>${esc(r.title || "Message")}</b> <span class="d">(${when(r.at)}, ${esc(r.waits)}${r.talked ? `; talked through ${esc(r.talked)}` : ""})</span><br>${esc(r.text)}${r.talked ? ` <button data-settle="held" data-id="${esc(r.id)}">Settled</button>` : ""}</p>`).join("")}<button class="primary" data-wait="send">Send now</button>` : '<p class="d">Nothing is held.</p>'}<p class="d" id="wait-said"></p>`;
   body.onclick = async (e) => {
-    const b = e.target.closest("[data-wait]"); if (!b) return;
+    const st = e.target.closest("[data-settle]");
+    const b = st || e.target.closest("[data-wait]"); if (!b) return;
     b.disabled = true;
-    const r = await api(b.dataset.wait === "send" ? "waiting/send" : "waiting/away", {}).catch(() => null);
+    const r = st ? await api("waiting/settle", { kind: st.dataset.settle, id: st.dataset.id }).catch(() => null)
+      : await api(b.dataset.wait === "send" ? "waiting/send" : "waiting/away", {}).catch(() => null);
     const said = $("#wait-said"); if (said) said.textContent = (r && r.message) || "That didn't work.";
     setTimeout(() => renderWaiting(body), 1200);
   };

@@ -114,6 +114,7 @@
 "calls.review_brain": "Which AI does the look back after a call; empty is your main one.",
 "calls.review_effort": "How hard the look back after a call thinks.",
 "calls.ring_s": "Seconds a call rings before it counts as missed (a wake-up call rings 5 minutes).",
+"calls.settle_messages": "After a call or a desk talk went over something, its held messages and open questions are closed, not just marked.",
 "calls.tell_senses": "A call's brief says whether Face presence and Voice ID are on, and when you were last at the desk.",
 "calls.text_model": "The Gemini model that answers turn-by-turn calls (here, or on your call line while the computer is off).",
 "calls.threads_live": "A call can close one of your open threads while it's on, when you say it's done.",

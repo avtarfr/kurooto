@@ -230,6 +230,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `calls.review_brain` | `""` | Which AI does the look back after a call; empty is your main one. ([guide](wiki/user/settings-guide.md#callsreviewbrain)) |
 | `calls.review_effort` | `"high"` | How hard the look back after a call thinks. ([guide](wiki/user/settings-guide.md#callsrevieweffort)) |
 | `calls.ring_s` | `60` | Seconds a call rings before it counts as missed (a wake-up call rings 5 minutes). ([guide](wiki/user/settings-guide.md#callsrings)) |
+| `calls.settle_messages` | `false` | After a call or a desk talk went over something, its held messages and open questions are closed, not just marked. ([guide](wiki/user/settings-guide.md#callssettlemessages)) |
 | `calls.tell_senses` | `true` | A call's brief says whether Face presence and Voice ID are on, and when you were last at the desk. ([guide](wiki/user/settings-guide.md#callstellsenses)) |
 | `calls.text_model` | `"gemini-flash-latest"` | The Gemini model that answers turn-by-turn calls (here, or on your call line while the computer is off). ([guide](wiki/user/settings-guide.md#callstextmodel)) |
 | `calls.threads_live` | `true` | A call can close one of your open threads while it's on, when you say it's done. ([guide](wiki/user/settings-guide.md#callsthreadslive)) |

@@ -267,6 +267,11 @@ when = "Turn it off if you'd rather not see those on the phone."
 cost = "Sealed for each phone, with the rest of Today."
 needs = "`calls.today`."
 
+[s."calls.settle_messages"]
+tip = "After a call or a desk talk went over something, its held messages and open questions are closed, not just marked."
+what = "Off, they're only marked \"talked through on your 17:00 call\" (with notify.calm.recheck) and the Waiting page has Settled for each. On, they're settled at once. Approvals never: they wait for your tap."
+when = "Turn it on if a call usually covers what was waiting."
+
 [s."calls.today_plan"]
 tip = "The phone app's Today also shows the first lines of today's plan, what to start, and the hours studied."
 what = "The plan's first lines from your daily note (with what a call changed since it was drafted), Start-by's and revision's rows."

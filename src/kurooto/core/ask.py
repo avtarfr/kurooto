@@ -233,6 +233,30 @@ class Ask:
                 out.append(q)
         return out
 
+    def talked(self, items: set[str], said: str, settle: bool = False, words: str = "") -> int:
+        """(0.9.1, L29) A call or a desk talk went over these items: each open question about one (its item or
+        ws_item, or what it's about said in your words) is marked "talked through <said>" (/q and the Waiting page
+        show it, with Settled), or with settle (calls.settle_messages) closed as no longer needed. Never an approval:
+        those wait for your tap. How many."""
+        words = " ".join(words.lower().split())
+        n = 0
+        for q in self.pending(kind="question"):
+            about = " ".join(str(q.get("about") or "").lower().split())
+            hit = {str(q.get("item") or ""), str(q.get("ws_item") or "")} & (items - {""})
+            if not hit and not (len(about) >= 4 and about in words):
+                continue
+            if settle:
+                self.expire(q["id"])
+            else:
+                with Lock(self.app.paths.state, "ask"):
+                    cur = self.get(q["id"])
+                    if not cur or cur.get("status") not in OPEN:
+                        continue
+                    cur["talked"] = said
+                    self._save(cur)
+            n += 1
+        return n
+
     def recent(self, since: dt.datetime | None = None, source: str | None = None) -> list[dict]:
         """Questions settled (answered or expired) since a time, oldest first; default the last 24 hours."""
         since = _local(since) if since else now() - dt.timedelta(days=1)
@@ -245,7 +269,7 @@ class Ask:
 
     def public(self, q: dict) -> dict:
         """What the API, calls and the phone see of a question."""
-        keys = "id text kind choices source title status answer via created answered expires".split()
+        keys = "id text kind choices source title status answer via created answered expires talked".split()
         return {k: q.get(k) for k in keys}
 
     # ------------------------------------------------------------------------------------------ answers
@@ -469,6 +493,7 @@ class Ask:
             when = _when(q, "created")
             head = f"{self.label(q)} ({when:%a %H:%M})" if when else self.label(q)
             later = " Kept for later." if q["status"] == "later" else ""
+            later += f" Talked through {q['talked']}." if q.get("talked") else ""  # (0.9.1)
             mid = msg.reply(f"{head}: {q['text']}\n\nReply to answer.{later}", buttons=self.buttons(q))
             tg = self.app.modules.get("telegram")
             if mid is not None and msg.via == "telegram" and tg:

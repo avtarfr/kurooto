@@ -279,6 +279,15 @@ transcripts, events and answers until the computer takes them (`Calls.take_queue
   `pending_items` result through `_mark_raised`, which marks an open question listed earlier in the same call
   (`_raised[since]`, cleared by `save_transcript`) `raised_this_call`. `Ask.call_brief` adds `asked_on` ("Wednesday
   (yesterday)") to a question created on an earlier day, and `answer_question`'s hint says to name that day.
+- (0.9.1, L29) `save_transcript` calls `review.settle_covered(calls, lines, used, layer)`: `review.covered()` turns the
+  tool log into items (`deadline:<id>` for a deadline tool with an `id`, `class:<slug>` for `skip_class` /
+  `attend_class`), and the user's own lines are the `words`. `Calm.talked(items, said, settle, words)` marks held rows
+  whose `ws_item` (or `deadline:<map_ref>`, or the row's `item`) is one of them, or whose `about` (4+ letters) is in the
+  words: `msg.talked = "on your 17:00 call"` ("at your desk (HH:MM)" for `layer == "desk"`). Release and the bundle set
+  `m.talked` from the stored body, and `calm.still()` returns "talked through ..." when nothing else changed, so
+  `recheck` adds it. `Ask.talked` marks open questions (never `kind == "approval"`) the same way (`q["talked"]`, shown
+  by `/q` and `public()`). With `calls.settle_messages` both settle instead (`state='settled'`, `ask.expire`). Only with
+  `notify.calm.recheck` or `calls.settle_messages` on. The Waiting page's Settled is `POST waiting/settle {kind, id}`.
 - (0.9.1) The wake-up call: `Alarm.done_lately()` (deadlines `done` with `done_at` in the last 36 h) goes into
   `script()` ("Already done, so never a to-do now"), the morning-prep request and the morning skill's request;
   both skills say a done deadline is never a to-do even where a note lists it. `Checkins.deferred_steps` names the

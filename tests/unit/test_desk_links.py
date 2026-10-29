@@ -154,3 +154,59 @@ def test_summary_only_replaces_the_storm_and_send_now_shows_them(away):
     assert waiting.show_away(app) == "Showed 2 pop-ups."
     assert [t for _, t in shown[1:]] == ["Call the lab at 15:00.", "Problem set 4 is due tomorrow."]
     assert waiting.view(app)["card"] is None
+
+
+# --------------------------------------------------------------------------------------------- L29
+def _call_with(env, tools, lines):
+    c = env.calls
+    c.tool_log["s9"] = tools
+    return c.save_transcript({"since": "s9", "lines": lines, "purpose": "Evening debrief"})
+
+
+def test_what_a_call_went_over_is_marked_talked_through_never_closed(chat):  # noqa: F811
+    from kurooto.core import waiting
+
+    app = chat.app
+    app.calm.hold("Problem set 4 is due tomorrow at 9.", "deadlines.soon", ws_item="deadline:d1", about="Problem set 4")
+    app.calm.hold("Organic Chemistry has a quiz on Friday.", "deadlines.soon", about="Organic Chemistry quiz")
+    qid = app.ask.ask("How was Linear Algebra?", source="capture", about="Linear Algebra", item="linear-algebra")
+    aid = app.ask.approval("Send the draft to the lab?", about="Linear Algebra")
+    lines = [
+        {"who": "Kurooto", "text": "How did today go?"},
+        {"who": "Sam", "text": "Fine. Linear Algebra was on eigenvalues."},
+    ]
+    _call_with(chat, [{"name": "deadline_progress", "args": str({"id": "d1", "done": "2", "total": "4"})}], lines)
+    rows = waiting.view(app)["held"]
+    assert [r["talked"].startswith("on your ") for r in rows] == [True, False]
+    assert app.ask.get(qid)["talked"].startswith("on your ") and app.ask.get(qid)["status"] == "open"
+    assert "talked" not in app.ask.get(aid)  # never an approval
+    assert [q["id"] for q in waiting.view(app)["talked"]] == [qid]
+    from kurooto.core.calm import still
+    from kurooto.core.notify import Message
+
+    m = Message("x", ws_item="deadline:d9")
+    m.talked = "on your 17:00 call"
+    assert still(app, m) == ""  # no such deadline: nothing it can tell
+    m = Message("x")
+    m.talked = "on your 17:00 call"
+    assert still(app, m) == "talked through on your 17:00 call"
+    assert waiting.settle(app, "held", rows[0]["id"]) == "Settled."
+    assert waiting.settle(app, "question", qid) == "Settled." and app.ask.get(qid)["status"] == "expired"
+    assert waiting.settle(app, "question", aid) == "That's not an open question."
+
+
+def test_calls_settle_messages_closes_them_instead(chat):  # noqa: F811
+    app = chat.app
+    app.settings.set("calls.settle_messages", True)
+    app.calm.hold("Problem set 4 is due tomorrow at 9.", "deadlines.soon", ws_item="deadline:d1")
+    qid = app.ask.ask("How was Linear Algebra?", source="capture", ws_item="class:linear-algebra")
+    aid = app.ask.approval("Skip Linear Algebra's quiz?", ws_item="class:linear-algebra")
+    app.settings.set("subjects.list", [{"name": "Linear Algebra", "slug": "linear-algebra", "aliases": ["la"]}])
+    chat.on("subjects")
+    tools = [
+        {"name": "deadline_progress", "args": str({"id": "d1"})},
+        {"name": "skip_class", "args": str({"subjects": ["la"]})},
+    ]
+    _call_with(chat, tools, [{"who": "Sam", "text": "skipping la"}])
+    assert app.calm.held_rows() == []
+    assert app.ask.get(qid)["status"] == "expired" and app.ask.get(aid)["status"] == "open"

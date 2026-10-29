@@ -123,6 +123,9 @@ register_defaults(
         # (0.9.0) a call Kurooto places by itself while your phone says you're walking or in a vehicle uses the phone's
         # own speech (voice mode "phone") instead of Live; never holds it. Needs Brain's phone motion sense on
         "mode_when_moving": False,
+        # (0.9.1) after a call or a desk talk went over something, the held messages and open questions about it are
+        # settled (closed) instead of only marked "talked through on your 17:00 call". Never approvals
+        "settle_messages": False,
     },
 )
 
@@ -1590,6 +1593,10 @@ class Calls(Module):
         from kurooto.mind import tone
 
         tone.from_call(self.app, lines)  # (0.9.0, mind.tone.calls) the day's tone counts your call lines too, locally
+        try:  # (0.9.1, L29) what the call went over: held messages and open questions about it say so (or settle)
+            review.settle_covered(self, lines, used, str(b.get("layer") or ""))
+        except Exception as e:
+            self.app.events.emit("calls_settle_failed", error=type(e).__name__)
         try:  # (0.9.0, calls.after_infer) never in the way of keeping the transcript
             self._after_infer(lines)
         except Exception as e:

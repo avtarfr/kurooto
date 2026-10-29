@@ -6,6 +6,8 @@
 - The "while you were away" card (face.away.summary, modules/face): the pop-ups held while you were away and the talk
   box's answers that came meanwhile; its Send now shows the held pop-ups (Face.show_away).
 - How many proposals wait for your tap and open questions (counts only; their own pages answer them).
+- (0.9.1, L29) Held messages and open questions a call or a desk talk went over ("talked through on your 17:00 call"),
+  each with Settled.
 
 Everything here is read on this computer and shown only on the dashboard; nothing is sent anywhere.
 """
@@ -47,10 +49,28 @@ def view(app: App) -> dict:
     except Exception:
         pass
     try:
-        out["questions"] = len(app.ask.pending())
+        pend = app.ask.pending()
+        out["questions"] = len(pend)
+        out["talked"] = [  # (0.9.1, L29) open questions a call went over, with Settled
+            {"id": q["id"], "text": str(q.get("text") or "")[:600], "talked": q["talked"]}
+            for q in pend
+            if q.get("talked") and q.get("kind") == "question"
+        ]
     except Exception:
         pass
     return out
+
+
+def settle(app: App, kind: str, rid: str) -> str:
+    """(0.9.1, L29) Settled on the Waiting page: a held message or an open question that a call went over is done
+    with (never an approval)."""
+    if kind == "question":
+        q = app.ask.get(rid)
+        if not q or q.get("kind") != "question":
+            return "That's not an open question."
+        return "Settled." if app.ask.expire(rid) else "It was dealt with already."
+    calm = getattr(app, "calm", None)
+    return "Settled." if calm is not None and calm.settle(rid) else "It went out or was dealt with already."
 
 
 def send_held(app: App) -> str:

@@ -192,6 +192,11 @@ meanwhile.
   says back which classes it skipped; "I'm going to LA after all" undoes it (0.9.1, `attend_class`).
 - **One question, once** (0.9.1). A question you've answered, even unclearly, isn't asked again in the same call; a
   question from an earlier day says which ("How was Wednesday's Linear Algebra?").
+- **What a call went over** (0.9.1). Held messages and open questions about something the call talked through (a
+  deadline it moved or updated, a class it skipped, or what they're about said in your own words) are marked "talked
+  through on your 17:00 call" (with `notify.calm.recheck`): the line goes with them when they're sent, and the
+  dashboard's Waiting page has **Settled** for each. `calls.settle_messages` (off) closes them instead. A talk at the
+  desk counts too. Approvals never: they wait for your tap.
 - **Done is done** (0.9.1). A deadline you ticked off in the last day and a half is never brought up as a to-do on
   the wake-up call, even if the plan drafted before it (or a note) still lists it.
 - **Open questions and approvals come first.** Every call starts with what needs you (`pending_items`): open

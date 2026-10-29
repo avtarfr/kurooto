@@ -28,7 +28,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Your AI](#your-ai): 37 settings
 - [Messages and where they reach you](#messages-and-where-they-reach-you): 40 settings
 - [When it may interrupt you](#when-it-may-interrupt-you): 14 settings
-- [Phone calls and the call line](#phone-calls-and-the-call-line): 49 settings
+- [Phone calls and the call line](#phone-calls-and-the-call-line): 50 settings
 - [Morning alarm](#morning-alarm): 13 settings
 - [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 45 settings
 - [Check-ins, journal and the week](#check-ins-journal-and-the-week): 21 settings
@@ -1551,6 +1551,16 @@ Counts and a word only. Tapping the held line sends today's held messages now.
 - **When to change it:** Turn it off if you'd rather not see those on the phone.
 - **Costs and what leaves this computer:** Sealed for each phone, with the rest of Today.
 - **Depends on:** `calls.today`.
+
+### `calls.settle_messages`
+
+After a call or a desk talk went over something, its held messages and open questions are closed, not just marked.
+
+Off, they're only marked "talked through on your 17:00 call" (with notify.calm.recheck) and the Waiting page has Settled
+for each. On, they're settled at once. Approvals never: they wait for your tap.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if a call usually covers what was waiting.
 
 ### `calls.today_plan`
 
