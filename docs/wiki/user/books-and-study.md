@@ -8,6 +8,7 @@ pages written out as notes; your drafts checked before you hand them in, and a c
 - [The source mix](#the-source-mix)
 - [Study tracker](#study-tracker)
 - [Study packs](#study-packs)
+- [Study notes from an upload](#study-notes-from-an-upload)
 - [Handwritten notes](#handwritten-notes)
 - [Check my draft](#check-my-draft)
 - [Course notes as one PDF](#course-notes-as-one-pdf)
@@ -262,10 +263,23 @@ only listed in `INDEX.md`; name a topic to get their pages. A book
 Books hasn't read yet can't be cut to its pages, so it stays out too. The AI can do the same when you ask in plain
 words ("send me everything on thermodynamics for my POTA quiz").
 
-Which pages of a book go in, in order: first the readings your class material cites, then whole chapters and sections
-whose titles name the topic (from the book's own bookmarks), then other pages that mention it, those mentioning it most
-first. Lecture files Books hasn't read are judged by Classroom's text of them, and a file that's both in Classroom and
-in your books folder goes in once.
+Which pages of a book go in, in order: first the readings your class material cites, then the chapters the topic is
+in, then other pages that mention it, those mentioning it most first. Lecture files Books hasn't read are judged by
+Classroom's text of them, and a file that's both in Classroom and in your books folder goes in once.
+
+**Which chapters (0.9.0).** A chapter counts as the topic's place by its headings, not by how often its words come up:
+its title naming a topic counts most, then a section heading in it naming one, and the class material citing it; how
+often the words appear only breaks ties. (A pack on functions of several variables once took the chapter on series of
+functions, which says "function" and "differentiation" on every page, instead of the chapter titled for it.) The
+chapters come from the book's bookmarks, else its "Chapter 9" headings, else its numbered headings (9.1, 9.2 …); a
+running head in capitals ("FUNCTIONS OF SEVERAL VARIABLES 213") counts as a heading. Every chapter scoring at least
+half the best one's is taken, neighbouring chapters together; a chapter whose title names the topic (or that the class
+cites) goes in whole. Pages that mention the topic outside those chapters stay out, unless they're about a topic none
+of the chosen chapters names. `INDEX.md` has a **Chapters taken from the books, and why** list: each chapter taken
+("chapter 9 (Functions of Several Variables), pages 204-246 (whole): its title names ...; its headings name ...; 25
+mentions"), a chapter passed over that mentions the topic more ("not chapter 7 ...: 61 mentions, but no title,
+heading or citation puts the topic there"), and how many other pages were left out. A book that shows no chapters is
+picked by its words, as before.
 
 **What the class cites (0.8.13).** Kurooto reads citations in your class material in these forms:
 
@@ -342,6 +356,41 @@ how many notes and files went in.
 [Space keeper](updates-and-backups.md) clears after 14 days.
 
 **Turn it off.** Turn off Skills, or just don't use `/studypack`.
+
+## Study notes from an upload
+
+**What it does (0.9.0).** One request does what took an evening by hand: "make notes from my AN2 notes from functions
+of several variables to the end, give me a PDF in Downloads/Study". Your AI follows the `study-notes-from-upload`
+skill, step by step, with Kurooto's tools, and tells you how it's going ("reading page 7 of 13", "compiling, try 2 of
+3"):
+
+1. **finds** the upload (`find_uploads`: new scans and PDFs in the handwritten folder, your notes, your files folder
+   and Downloads, by course and how recent);
+2. **reads** it now (`read_handwritten`: the [handwritten reader](#handwritten-notes) on that one file, with its own
+   settings: the model on this computer, or Gemini only when `handwritten.cloud` allows; it doesn't wait for the
+   night, and a long PDF comes back with how far it got while it carries on);
+3. **cuts** it to the part you asked for ("from <topic> to the end": the heading closest to the topic);
+4. **leaves out** what your notes already have (the "already in" marks handwritten notes get, else a search of your
+   notes for each topic);
+5. **builds the study pack** for the topics that are left (`build_study_pack`: the [study pack](#study-packs) above,
+   unpacked where the AI can read it, with its PROMPT.md: your own prompt when you made one);
+6. **writes** deep notes by that prompt, as LaTeX, in Kurooto's own work folder;
+7. **compiles** them (`compile_latex`, shell escape off), checking the LaTeX first and fixing its own mistakes (a
+   package not loaded, `[...]` inside an optional argument) up to three tries, then telling you the error that's left
+   with its line;
+8. **files** the PDF and the .tex in the course's files folder (`save_course_file`: `files.folder/<course>`, or the
+   layout's place inside your notes, never the notes' top folder) with a short source note in the course's notes
+   folder (`sources/<course>/` in the Zettelkasten layout) linking them, and a copy in a folder you named;
+9. **sends** you the PDF, with three lines on what it covers and what it left out, and a short list of doubts.
+
+**Turn it on.** On by default (`study.notes_workflow`); it needs Skills on, and Handwritten notes on for step 2. Ask
+in plain words, or `/study-notes-from-upload an2, the latest scan, from functions of several variables`.
+
+**What leaves your computer.** What any request to your AI sends: the transcription and the pack's text go to the AI
+you picked. Reading the scan follows Handwritten notes' own settings. Nothing goes to anyone else.
+
+**Turn it off.** `study.notes_workflow` off: the tools, the skill and the plain-words request go at once. The LaTeX
+check stays part of compiling.
 
 ## Handwritten notes
 

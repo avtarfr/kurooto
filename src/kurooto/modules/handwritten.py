@@ -199,7 +199,7 @@ class Handwritten(Module):
         if total - used < need:
             raise Waiting(f"the graphics card is busy ({used} of {total} MiB in use)")
 
-    def _gemini(self, data: bytes, mime: str) -> str:
+    def _gemini(self, data: bytes, mime: str, prompt: str = PROMPT) -> str:
         key = self.app.secrets.get("gemini.api_key")
         if not key:
             raise RuntimeError("no Gemini key")
@@ -212,7 +212,7 @@ class Handwritten(Module):
                 {
                     "parts": [
                         {"inline_data": {"mime_type": mime, "data": base64.b64encode(data).decode()}},
-                        {"text": PROMPT},
+                        {"text": prompt},
                     ]
                 }
             ],
@@ -251,8 +251,9 @@ class Handwritten(Module):
     def _cloud_ok(self) -> bool:
         return bool(self.setting("cloud") and self.app.secrets.get("gemini.api_key"))
 
-    def write_out(self, f: Path) -> str:
-        """A photo (by the model here, or Gemini), or a whole PDF by Gemini: Markdown starting with a '# ' title."""
+    def write_out(self, f: Path, prompt: str = PROMPT) -> str:
+        """A photo (by the model here, or Gemini), or a whole PDF by Gemini: Markdown starting with a '# ' title.
+        prompt: what Gemini is asked (core/studyflow.py asks for a "## Page N" line before each page of a PDF)."""
         mime = KINDS[f.suffix.lower()]
         data = f.read_bytes()
         local = self.local_model()
@@ -270,7 +271,7 @@ class Handwritten(Module):
             )
         if len(data) > 18 * 1024 * 1024:
             raise RuntimeError("over 18 MB; split it into smaller files")
-        return self._gemini(data, mime)
+        return self._gemini(data, mime, prompt)
 
     # ---------------------------------------------------------------------------- PDFs, page by page
     def pdf_tools(self) -> dict[str, str | None]:

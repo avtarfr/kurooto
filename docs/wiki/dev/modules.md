@@ -895,13 +895,18 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `study-packs/`, which `_sendable()` allows); `left_out_line()` counts `left_out` by reason (`studypack.OVER_ZIP`,
   `OVER_FILE`, else a book's page cap). Drive ready but `big_files` off and something left out for size: an
   `app.ask` question (hook `skills.pack_drive`, registered in `__init__`) whose yes rebuilds with `limit=None` and sends
-  with `to="drive"` (0.8.13).
+  with `to="drive"` (0.8.13). (0.9.0) A SKILL.md's `switch:` header names a setting that hides the skill when off
+  (`Skill.switch`, filtered at the end of `all_skills()`); the shipped `study-notes-from-upload` uses
+  `study.notes_workflow`, and the `study_notes` intent (`core/studyflow.py:intent_match`) runs it for "make notes from
+  my <course> notes from <topic>".
 - **books** and **integrate**: see [concept-graph.md](concept-graph.md). Since 0.5.19 `integrate` also reads the
   Classroom files `classroom_notes` files (`ClassroomNotes._to_graph` → `Integrate.take_classroom`) and, with
   `"handwritten"` in `integrate.sources`, linked handwritten notes (`Linker.to_graph` → `Integrate.take_handwritten`),
   in one queue with the books: [concept-graph.md](concept-graph.md#sources-beyond-books-0519).
 - **handwritten** (`modules/handwritten.py`): transcribes PDFs and photos from an inbox folder (local vision model or
-  Gemini) into Markdown; `stop()` cancels its `handwritten:scan` job and halts a scan in progress. Then `modules/handwritten_links.py` (`Linker`, `hw.linker`) links the note like any other:
+  Gemini) into Markdown; `stop()` cancels its `handwritten:scan` job and halts a scan in progress. `write_out(f,
+  prompt)` / `_gemini(..., prompt)` take the prompt (0.9.0: `core/studyflow.py:read_handwritten` reads one file now,
+  asking Gemini for `## Page N` lines, under the same `handwritten` lock as the scan). Then `modules/handwritten_links.py` (`Linker`, `hw.linker`) links the note like any other:
   `_file` calls `linker.submit(note, src)`, which works out when the pages were written (`written_times`: the PDF's
   CreationDate/ModDate, a stamp in the scan's name, the file's mtime) and the class by time (`class_for`: during a
   class ±10 min, else the last class that ended earlier that day, via `subjects.classes_on`), gets candidates from

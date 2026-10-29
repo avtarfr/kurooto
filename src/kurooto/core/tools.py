@@ -17,6 +17,8 @@ sense in unattended work). Below, the ones that are always there:
   Brain's read, tone or sense readings;
 - compile_latex (tools.latex, 0.9.0): a .tex file to a PDF with shell escape off, so an agent that may not run
   pdflatex itself still gets its PDF; the PDF goes to the files folder, never into the notes when one is set.
+- study notes from an upload (study.notes_workflow, 0.9.0): find_uploads, read_handwritten, build_study_pack,
+  save_course_file, study_progress, and compile_latex when this build has no other (core/studyflow.py).
 Tools say whether they write (Tool.writes): text-only requests get none at all. A tool that sets an alarm, places a
 call or does anything else on core/tap.py's list says so (Tool.guarded): outside a live call it waits for your Approve.
 A request that changes files works in a scratch folder (core/scratch.py, tools_for()): its writing tools write only
@@ -692,8 +694,7 @@ def sync_tools(app: App) -> list[Tool]:
 
 
 # --------------------------------------------------------------------------------------------------- LaTeX
-LATEX_TIMEOUT = 300  # seconds for one compile (Tectonic's first run fetches packages: skills.compile_tex)
-LATEX_COPY_MAX = (500, 50 * 2**20)  # files and bytes of the source's folder copied to compile in (its \input, figures)
+LATEX_TIMEOUT = 300  # seconds for one compile (core/latexcheck.py has its own, the one used)
 
 
 def latex_dest(app: App, tex: Path) -> Path:
@@ -703,7 +704,7 @@ def latex_dest(app: App, tex: Path) -> Path:
     from kurooto.core import layout
 
     files = places.files_folder(app)
-    own = [r for r in (files, places.course_files(app)) if r is not None]
+    own = [r for r in (files, places.course_files(app), places.work_folder(app)) if r is not None]
     if places.inside(tex, own):
         return tex.parent
     if files is None and places.inside(tex, places.write_roots(app)):
@@ -711,56 +712,12 @@ def latex_dest(app: App, tex: Path) -> Path:
     return layout.file_dir(app, "latex")
 
 
-def _latex_workdir(tex: Path, tmp: Path) -> Path:
-    """A copy to compile in, so the engine's leftovers never land in your folders: the source's folder when it's
-    small (its \\input files and figures come along), else the .tex alone. Hidden files stay behind."""
-    src, n, size = tex.parent, 0, 0
-    files = []
-    for f in src.rglob("*"):
-        rel = f.relative_to(src)
-        if any(part.startswith(".") for part in rel.parts) or not f.is_file() or f.is_symlink():
-            continue
-        n, size = n + 1, size + f.stat().st_size
-        if n > LATEX_COPY_MAX[0] or size > LATEX_COPY_MAX[1]:
-            files = []
-            break
-        files.append(rel)
-    work = tmp / "src"
-    for rel in files or [Path(tex.name)]:
-        (work / rel).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src / rel, work / rel)
-    return work / tex.name
-
-
 def compile_latex(app: App, path: str) -> str:
-    """compile_latex's answer: where the PDF went, or the first errors from the log."""
-    from kurooto.modules import skills
+    """compile_latex's answer: where the PDF went, or the errors with their lines to fix and try again (the self-check,
+    the compile and the tries count: core/latexcheck.py:compile_checked, 0.9.0)."""
+    from kurooto.core import latexcheck
 
-    raw = str(path or "").strip().removeprefix("file://")
-    if not raw:
-        return "compile_latex needs the .tex file's path."
-    tex = Path(os.path.expanduser(raw))
-    if not tex.is_absolute():
-        tex = Path(app.workspace) / tex
-    if tex.suffix.lower() != ".tex" or not tex.is_file():
-        return f"There's no .tex file at {raw}."
-    if not places.inside(tex, places.read_roots(app)):
-        return "That file is outside the folders I may read."
-    tex = tex.resolve()
-    if not skills.pdf_engine(app):
-        return "There's no LaTeX on this computer (TeX Live, MiKTeX or Tectonic); ask them to install one."
-    dest = latex_dest(app, tex)
-    with tempfile.TemporaryDirectory(prefix="kurooto-tex-") as tmp:
-        work = _latex_workdir(tex, Path(tmp))
-        ok, err = skills.compile_tex(app, work, timeout=LATEX_TIMEOUT)
-        if not ok:
-            app.events.emit("latex_compile_failed", error=(err.splitlines() or ["failed"])[0][:200])
-            return f"It didn't compile. The first errors:\n{err}"
-        dest.mkdir(parents=True, exist_ok=True)
-        pdf = dest / (tex.stem + ".pdf")
-        shutil.copyfile(work.with_suffix(".pdf"), pdf)
-    app.events.emit("latex_compiled", beside=dest == tex.parent)
-    return f"Compiled: {pdf}"
+    return latexcheck.compile_checked(app, path, dest=latex_dest)
 
 
 def latex_tools(app: App) -> list[Tool]:
@@ -769,9 +726,9 @@ def latex_tools(app: App) -> list[Tool]:
     return [
         Tool(
             "compile_latex",
-            "Compile a LaTeX .tex file to a PDF (latexmk or pdflatex, shell escape off). The PDF goes beside the "
-            "source when it's in their files folder, else into the files folder; the answer gives the PDF's path, "
-            "or the first errors to fix.",
+            "Compile a LaTeX .tex file to a PDF (latexmk or pdflatex, shell escape off), after a self-check for the "
+            "usual mistakes. The PDF goes beside the source when it's in their files folder, else into the files "
+            "folder; the answer gives the PDF's path, or the errors with their lines: fix them and call it again.",
             lambda a: compile_latex(app, a.get("path")),
             {"path": arg("the .tex file's full path, or its path in the notes folder")},
             ("path",),
@@ -798,9 +755,10 @@ def agent_tools(app: App) -> list[Tool]:
     from kurooto.core import selfdoc  # kurooto_self: what Kurooto is running, for questions about itself
 
     out = NoteTools(app).tools() + FileTools(app).tools() + sync_tools(app) + [selfdoc.tool(app)] + latex_tools(app)
+    from kurooto.core import studyflow  # (0.9.0, study.notes_workflow) study notes from an upload: its tools
     from kurooto.core.rightnow import now_tools  # kurooto_now (face.tools)
 
-    out += now_tools(app)
+    out += now_tools(app) + studyflow.tools(app)
     seen = {t.name for t in out}
     sources = [("ask", getattr(getattr(app, "ask", None), "agent_tools", None))]  # ask_user: a question to them
     for m in app.enabled():

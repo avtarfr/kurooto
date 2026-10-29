@@ -142,6 +142,13 @@ def _stem(word: str) -> str:
     return w if len(w) <= 5 else w[: max(5, len(w) - 3)]
 
 
+# between a phrase's words: a space or a hyphen, and up to two small words topics_of() dropped ("functions several
+# variables" finds "Functions of Several Variables", a chapter's title)
+JOIN = r"[\s-]+(?:(?:of|the|a|an|in|on|for|to|with|and)[\s-]+){0,2}"
+# pattern() -> (topic, its regex) each, for choosing a book's chapters by topic (choose_chapters)
+_PARTS: dict[str, list[tuple[str, re.Pattern]]] = {}
+
+
 def pattern(topics: list[str]) -> re.Pattern | None:
     """One regex for every topic: each word by its stem ("thermodynamics" finds "thermodynamic", "radiation" finds
     "radiative"), a phrase's words in order."""
@@ -149,8 +156,19 @@ def pattern(topics: list[str]) -> re.Pattern | None:
     for t in topics:
         words = re.findall(r"[a-z][a-z'-]*", t.lower())
         if words:
-            alts.append(r"\b" + r"[\s-]+".join(re.escape(_stem(w)) + r"\w*" for w in words))
-    return re.compile("|".join(alts), re.I) if alts else None
+            alts.append((t.strip(), r"\b" + JOIN.join(re.escape(_stem(w)) + r"\w*" for w in words)))
+    if not alts:
+        return None
+    rx = re.compile("|".join(a for _, a in alts), re.I)
+    if len(_PARTS) > 200:
+        _PARTS.clear()
+    _PARTS[rx.pattern] = [(t, re.compile(a, re.I)) for t, a in alts]
+    return rx
+
+
+def parts(rx: re.Pattern) -> list[re.Pattern]:
+    """The topics in a pattern(), (name, regex) each; the pattern itself when it wasn't made there."""
+    return _PARTS.get(rx.pattern) or [("the topic", rx)]
 
 
 def hits(rx: re.Pattern | None, text: str) -> int:
@@ -889,6 +907,200 @@ def cited_pages(books: list[Source], cited: list[Cite]) -> CitedPlan:
     return plan
 
 
+# ---------------------------------------------------------------- which chapters of a book a topic is in (0.9.0)
+# A heading-like line in a page's text: a Markdown heading, a line in capitals (a section title, or the running head
+# that names the chapter on every page: "FUNCTIONS OF SEVERAL VARIABLES 213")
+HEAD_LINE = re.compile(
+    r"(?m)^[ \t]*(?:\d{1,4}[ \t]+)?(#{1,6}[ \t]+\S.*|[A-Z][A-Z0-9 ,.:;'()&-]{5,}[A-Z)])(?:[ \t]+\d{1,4})?[ \t]*$"
+)
+BACK_MATTER = re.compile(r"(?im)^[ \t]*(?:index|bibliography|references|appendix\b.*|list of symbols)[ \t]*$")
+NAMED, HEADED, CITED = 10, 4, 15  # what a chapter's title naming a topic, a heading in it, a citation of it are worth
+MAX_DENSITY = 5.0  # mentions per page count at most this much: scattered words never outweigh a heading
+
+
+def _num_of(title: str) -> str:
+    m = re.match(r"\s*(?:chapter\s+)?(\d{1,2}|" + "|".join(NUMBER_WORDS[1:]) + r")\b", title, re.I)
+    if not m:
+        return ""
+    x = m[1].lower()
+    return str(NUMBER_WORDS.index(x)) if x in NUMBER_WORDS else x
+
+
+def _head_lines(text: str) -> list[str]:
+    """A page's heading-like lines: Markdown headings, lines in capitals, numbered headings' first words."""
+    out = [m[1].lstrip("#").strip() for m in HEAD_LINE.finditer(text)]
+    for m in SEC_HEAD.finditer(text):
+        out.append(" ".join(text[m.start() :].split("\n", 1)[0].split()[:7]))
+    return out
+
+
+def _title_on(text: str, num: str) -> str:
+    """A chapter's title from its first page: the first heading-like line that isn't only its number."""
+    word = NUMBER_WORDS[int(num)] if num.isdigit() and int(num) < len(NUMBER_WORDS) else num
+    for m in HEAD_LINE.finditer(text[:600]):
+        h = m[1].lstrip("#").strip()
+        rest = re.sub(rf"(?i)^(?:chapter\s+)?(?:{re.escape(num)}|{word})\b[.:]?\s*", "", h).strip() if num else h
+        if rest and not rest.isdigit():
+            return rest[:80]
+    return ""
+
+
+@dataclass(eq=False)
+class Chapter:
+    """One chapter of a book, with what speaks for it as the topic's place."""
+
+    num: str  # "9", or "" when its title has no number
+    title: str
+    first: int
+    last: int
+    heads: list[str] = field(default_factory=list)  # its sections' titles (bookmarks under it, heading lines)
+    named: list[str] = field(default_factory=list)  # topics its title names
+    headed: list[str] = field(default_factory=list)  # other topics a heading in it names
+    cited: bool = False  # the class material cites pages in it
+    mentions: int = 0  # the topic's words in its text
+    score: float = 0.0
+
+    @property
+    def name(self) -> str:
+        return f"chapter {self.num}" + (f" ({self.title})" if self.title else "") if self.num else self.title
+
+    @property
+    def whole(self) -> bool:
+        """Taken whole: its title names the topic, the class cites it, or headings in it name two topics."""
+        return bool(self.named) or self.cited or len(self.headed) >= 2
+
+
+def chapters(s: Source, texts: list[str] | None = None) -> list[Chapter]:
+    """A book's chapters, in order: from Books' bookmarks (the top level), else its "Chapter 9" headings, else its
+    numbered headings (9.1, 9.2 … start chapter 9). Each with the heading lines of its pages. [] when it has none."""
+    texts = s.page_texts() if texts is None else texts
+    n = len(texts)
+    marks = []
+    for c in s.chapters:
+        try:
+            marks.append((int(c[0]), str(c[1]), int(c[2]), int(c[3])))
+        except (TypeError, ValueError, IndexError):
+            continue
+    out: list[Chapter] = []
+    if marks:
+        top = min(m[0] for m in marks)
+        tops = sorted((m for m in marks if m[0] == top and 1 <= m[2] <= n), key=lambda m: m[2])
+        if len(tops) >= 2:
+            for _lvl, title, first, last in tops:
+                last = max(first, min(last, n))
+                subs = [m[1] for m in marks if m[0] > top and first <= m[2] <= last]
+                out.append(Chapter(_num_of(title), title.strip(), first, last, subs))
+    if not out:
+        b = _Book(s, texts)
+        starts: list[tuple[int, str]] = []
+        for p, x in b.chapter_heads:
+            if all(x != y for _, y in starts) and (not starts or p > starts[-1][0]):
+                starts.append((p, x))
+        derived = len(starts) < 2
+        if derived:  # no "Chapter 9" headings: where each chapter's numbered headings begin (two at least)
+            count: dict[str, int] = {}
+            for _p, _pos, num in b.heads:
+                count[num.split(".")[0]] = count.get(num.split(".")[0], 0) + 1
+            starts = []
+            for p, _pos, num in b.heads:
+                major = num.split(".")[0]
+                if not major.isdigit() or count[major] < 2 or (starts and int(major) <= int(starts[-1][1])):
+                    continue  # an appendix, a lone cross-reference, a number from earlier
+                starts.append((p, major))
+        if len(starts) < 2:
+            return []
+        for i, (p, x) in enumerate(starts):
+            last = starts[i + 1][0] - 1 if i + 1 < len(starts) else n
+            if derived and i + 1 == len(starts):  # the last one: to its last heading and a little after
+                last = min(n, max((q for q, _pos, num in b.heads if num.split(".")[0] == x), default=p) + 10)
+            out.append(Chapter(x, _title_on(texts[p - 1], x), p, max(p, last)))
+    for c in out:
+        end = next((p for p in range(c.first + 1, c.last + 1) if BACK_MATTER.search(texts[p - 1][:200])), None)
+        c.last = end - 1 if end else c.last  # the index or bibliography after the last chapter isn't part of it
+        for p in range(c.first, c.last + 1):
+            c.heads += _head_lines(texts[p - 1])
+        c.heads = list(dict.fromkeys(h for h in c.heads if h))
+    return out
+
+
+@dataclass
+class ChapterChoice:
+    """The chapters a topic's pages come from, and why (a line each for INDEX.md)."""
+
+    chosen: list[Chapter] = field(default_factory=list)  # the best one's run of neighbours first
+    covered: set[str] = field(default_factory=set)  # topics the chosen chapters' titles or headings name
+    passed: list[Chapter] = field(default_factory=list)  # not taken, though they mention the topic more
+
+    def spans(self) -> set[int]:
+        return {p for c in self.chosen for p in range(c.first, c.last + 1)}
+
+    def lines(self) -> list[str]:
+        out = []
+        for c in self.chosen:
+            why = []
+            if c.named:
+                why.append("its title names " + ", ".join(c.named))
+            if c.headed:
+                why.append("its headings name " + ", ".join(c.headed))
+            if c.cited:
+                why.append("the class material cites it")
+            why.append(f"{c.mentions} mentions")
+            how = "whole" if c.whole else "its pages on the topic"
+            out.append(f"{c.name}, pages {c.first}-{c.last} ({how}): " + "; ".join(why))
+        for c in self.passed:
+            but = (
+                "but fewer of the topics are in its title and headings"
+                if c.named or c.headed or c.cited
+                else "but no title, heading or citation puts the topic there"
+            )
+            out.append(f"not {c.name}, pages {c.first}-{c.last}: {c.mentions} mentions, {but}")
+        return out
+
+
+def choose_chapters(
+    s: Source, texts: list[str], rx: re.Pattern, cited: set[int] | None = None, within: set[int] | None = None
+) -> ChapterChoice:
+    """The chapters a topic is in. Headings count far more than scattered words (a chapter whose title or section
+    headings name a topic, or that the class cites, beats one that only mentions its words more often: Rudin's
+    "Functions of Several Variables" over "Sequences and Series of Functions"), and neighbouring chapters are kept
+    together. Every chapter scoring at least half the best one's is taken. Empty when the book shows no chapters or
+    nothing names the topic in a heading (then the pages are picked by their words, as before)."""
+    chs = chapters(s, texts)
+    if not chs:
+        return ChapterChoice()
+    cited = cited or set()
+    for c in chs:
+        span = set(range(c.first, c.last + 1))
+        if within is not None and not span & within:
+            continue  # a book the syllabus cites: only its cited chapters
+        for name, p in parts(rx):
+            if hits(p, c.title):
+                c.named.append(name)
+            elif any(hits(p, h) for h in c.heads):
+                c.headed.append(name)
+        c.cited = bool(span & cited)
+        c.mentions = sum(hits(rx, texts[p - 1]) for p in span)
+        c.score = NAMED * len(c.named) + HEADED * len(c.headed) + CITED * c.cited
+        c.score += min(MAX_DENSITY, c.mentions / len(span))
+    ev = [c for c in chs if c.named or c.headed or c.cited]
+    if not ev:
+        return ChapterChoice()
+    best = max(ev, key=lambda c: c.score)
+    taken = {i for i, c in enumerate(chs) if c in ev and c.score >= best.score / 2}
+    b = chs.index(best)
+    run = {b}
+    for step in (-1, 1):
+        i = b + step
+        while i in taken:
+            run.add(i)
+            i += step
+    chosen = [chs[i] for i in sorted(run)] + sorted((chs[i] for i in taken - run), key=lambda c: -c.score)
+    covered = {t for c in chosen for t in c.named + c.headed}
+    most = max(c.mentions for c in chosen)
+    passed = sorted((c for c in chs if c not in chosen and c.mentions > most), key=lambda c: -c.mentions)[:2]
+    return ChapterChoice(chosen, covered, passed)
+
+
 def book_tiers(
     s: Source,
     rx: re.Pattern | None,
@@ -896,11 +1108,14 @@ def book_tiers(
     tier0: list[int] | None = None,
     within: set[int] | None = None,
     scattered: bool = True,
+    why: list[str] | None = None,
 ) -> list[list[int]]:
-    """A book's pages in three tiers, most wanted first: [what class material cites from it, its chapters or sections
-    whose title names the topic (whole, from Books' bookmarks), other pages that name it twice or in a heading (with a
-    page either side), those naming it most first]. within: the topic's pages only from these (a book the syllabus
-    cites: its cited chapters). scattered=False: no third tier."""
+    """A book's pages in three tiers, most wanted first: [what class material cites from it, the chapters the topic is
+    in (choose_chapters: by their titles, section headings and the class's citations, whole when the title names it)
+    and the bookmarked sections whose title names it, other pages that name it twice or in a heading (with a page
+    either side), those naming it most first]. Once chapters are chosen, other pages come from outside them only for
+    a topic none of them names. within: the topic's pages only from these (a book the syllabus cites: its cited
+    chapters). scattered=False: no third tier. why: gets a line per chapter taken (or passed over) for INDEX.md."""
     texts = s.page_texts()
     n = len(texts)
     if tier0 is None:
@@ -908,9 +1123,15 @@ def book_tiers(
     tier0 = [p for p in dict.fromkeys(tier0) if 1 <= p <= n]
     if rx is None:
         return [tier0, [], []]
+    choice = choose_chapters(s, texts, rx, set(tier0) | (within or set()), within)
+    spans = choice.spans()
     seen = set(tier0)
     covered: list[tuple[int, int]] = []
     tier1: list[int] = []
+    for c in choice.chosen:  # the chosen chapters, whole, the best one's neighbours first (0.9.0)
+        if c.whole:
+            covered.append((c.first, c.last))
+            tier1 += [p for p in range(c.first, c.last + 1) if p not in seen]
     for _lvl, title, first, last, *_ in sorted(s.chapters, key=lambda c: c[0]):  # chapters before their sections
         try:
             first, last = int(first), int(last)
@@ -918,18 +1139,29 @@ def book_tiers(
             continue
         if not hits(rx, str(title)) or any(a <= first and last <= b for a, b in covered):
             continue
+        if spans and not (spans & set(range(first, last + 1))):  # a bookmark outside the chosen chapters
+            continue
         covered.append((first, last))
         tier1 += [p for p in range(max(1, first), min(n, last) + 1) if p not in seen]
     tier1 = [p for p in dict.fromkeys(tier1) if within is None or p in within]
     seen |= set(tier1)
     keep: set[int] = set()
+    left = 0
+    uncovered = [p for name, p in parts(rx) if name not in choice.covered]
     for i, t in enumerate(texts, 1) if scattered else ():
         if hits(rx, t) >= 2 or hits(rx, " ".join(re.findall(r"(?m)^#+ .*$|^[A-Z0-9 .:-]{6,}$", t))):
+            if spans and i not in spans and not any(hits(p, t) for p in uncovered):
+                left += i not in seen  # a mention outside the chosen chapters, of a topic they name
+                continue
             keep |= {i - 1, i, i + 1}
     tier2 = sorted(
         (p for p in keep if 1 <= p <= n and p not in seen and (within is None or p in within)),
         key=lambda p: -hits(rx, texts[p - 1]),
     )
+    if why is not None:
+        why += choice.lines()
+        if left:
+            why.append(f"{left} other pages that mention it, outside these chapters, left out")
     return [tier0, tier1, tier2]
 
 
@@ -946,16 +1178,25 @@ def book_share(
     cap: int = 0,
     plan: CitedPlan | None = None,
     scattered: bool = True,
+    why: dict[int, list[str]] | None = None,
 ) -> dict[int, tuple[list[int], int, int]]:
     """Each book's pages, tier by tier across the books. cap (studypack.cited_pages): what class material cites goes in
     whole first, up to cap pages for all the books, past MAX_PACK_BOOK_PAGES; then the chapters named for the topic and
     an even share of the other pages fill what's left of MAX_PACK_BOOK_PAGES (what a short book doesn't need going to
     the longer ones). A book the syllabus cites gives its other pages only from the chapters it cites. cap 0: cited
     pages share MAX_PACK_BOOK_PAGES with the rest (before 0.8.13). {id(book): (pages, how many on the topic didn't
-    fit, how many of those were cited)}."""
+    fit, how many of those were cited)}. why: gets each book's chapter lines (book_tiers) for INDEX.md."""
     plan = plan if plan is not None else cited_pages(books, cited or [])
     tiers = {
-        id(s): book_tiers(s, rx, [], plan.pages.get(id(s), []), plan.within.get(id(s)), scattered)
+        id(s): book_tiers(
+            s,
+            rx,
+            [],
+            plan.pages.get(id(s), []),
+            plan.within.get(id(s)),
+            scattered,
+            why.setdefault(id(s), []) if why is not None else None,
+        )
         for s in books
         if s.page_texts()
     }
@@ -1205,7 +1446,9 @@ def build(
         # chapters named for it, and only when the class cites nothing that could be found)
         book_rx = rank if wide and not plan.found else rx
         use_books = bool(book_rx) or bool(cap and plan.found)
-        share = book_share(books, book_rx, cited, cap, plan, scattered=not wide) if use_books else {}
+        chosen: dict[int, list[str]] = {}  # each book's chapters taken, and why (0.9.0)
+        share = book_share(books, book_rx, cited, cap, plan, scattered=not wide, why=chosen) if use_books else {}
+        chapter_lines: list[str] = []
         for s in srcs:
             where = "class" if s.is_class else "books"
             texts = s.page_texts() if (rx or use_books) else []
@@ -1239,6 +1482,7 @@ def build(
                 z.writestr(a, data)
                 total += len(data)
                 index["books"].append(f"- {a}: pages {ranges(pages)} of {s.pages}")
+                chapter_lines += [f"- {s.title}: {x}" for x in chosen.get(id(s), [])]
                 continue
             if not s.is_class:  # a whole book would flood the other AI's context: never in, only its pages above
                 why = "not read by Books yet, so its pages can't be picked" if rx or use_books else "name a topic"
@@ -1268,6 +1512,8 @@ def build(
         text = [head + "\n"]
         for part, title in (("class", "Class material (first)"), ("books", "Books"), ("notes", "Your notes")):
             text += ["", f"## {title}\n", *(index[part] or ["(none)"])]
+        if chapter_lines:  # which chapters each book gave for the topic, and why (0.9.0)
+            text += ["", "## Chapters taken from the books, and why\n", *chapter_lines]
         if cited:
             text += ["", "## Readings the class cites\n", *(plan.lines or ["- (no book in Books matches them)"])]
             if not use_books and not cap:

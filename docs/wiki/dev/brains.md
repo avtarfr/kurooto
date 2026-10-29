@@ -302,14 +302,20 @@ answered. `fell` comes from `handed()` (step 8 above).
   (`mind/plans.view`), `brain_free_time` (`free_words`: "Likely free from 16:00" from `presence_forecast.next_free`,
   never its chance), `brain_precedents` (`precedents.listing`). Nothing reads the read, mood, tone or the forecast of
   him (I-11, I-14).
-- `latex_tools()` (0.9.0, `tools.latex`): `compile_latex(path)`. The source must be inside `places.read_roots`;
-  `_latex_workdir` copies its folder (at most `LATEX_COPY_MAX` files/bytes, hidden files left out; else the `.tex`
-  alone) into a temp dir and `modules/skills.py:compile_tex` compiles there (Tectonic `--untrusted`, else `latexmk -norc
-  -no-shell-escape` or `pdflatex` twice, `openin_any`/`openout_any` paranoid, `LATEX_TIMEOUT`). Only the PDF is copied
-  out, to `latex_dest`: beside the source inside `files.folder` or `places.course_files`; else `layout.file_dir("latex")`
-  (the files folder's inbox), except that with no files folder a source in a write root keeps its PDF beside it.
+- `latex_tools()` (0.9.0, `tools.latex`): `compile_latex(path)` answers through `core/latexcheck.py:compile_checked`
+  (N2b): the source must be inside `places.read_roots`; a self-check for the usual mistakes runs first (its findings
+  come back with the result); the source's folder is copied into a temp dir and `modules/skills.py:compile_tex`
+  compiles there (Tectonic `--untrusted`, else `latexmk -norc -no-shell-escape` or `pdflatex` twice,
+  `openin_any`/`openout_any` paranoid, `latexcheck.LATEX_TIMEOUT`). A failure returns the log's errors with their
+  lines and says to fix and call again, counted per file up to `MAX_TRIES` (3); after the last, the AI reports the
+  error that's left instead of saying it can't compile. Only the PDF is copied out, to `latex_dest`: beside the source
+  inside `files.folder`, `places.course_files` or `places.work_folder`; else `layout.file_dir("latex")` (the files
+  folder's inbox), except that with no files folder a source in a write root keeps its PDF beside it.
   `latex_rule()` adds a line to the AI's context (`providers/context.py`) when `files.folder` is set: documents it makes
-  go there, not in the notes. Events `latex_compiled` (beside), `latex_compile_failed` (the first error line).
+  go there, not in the notes; `studyflow.latex_line()` adds the compile-fix-retry line. Events `latex_compiled`
+  (findings), `latex_compile_failed` (tries, the first error line).
+- `core/studyflow.py:tools(app)` (0.9.0, `study.notes_workflow`): `find_uploads`, `read_handwritten`,
+  `build_study_pack`, `save_course_file`, `study_progress` (the compile is `compile_latex` above). See [core.md](core.md).
 - `app.ask.agent_tools()`: `ask_user`.
 - For each enabled module: `call_tools()` and `agent_tools()`, deduplicated by name; `CALL_ONLY = {"run_task",
   "pending_items"}` are never given to unattended work. Learns from its own work adds `search_history` this way.
@@ -357,8 +363,10 @@ allow-list and Claude Code's per-run permissions:
 
 - `write_roots(app)`: the notes folder (`notes_root`), the Classroom course-files folder (`course_files`, via
   `core/layout.py:file_dir`), the user's files folder if set (`files_folder`, `files.folder`), and add-ons'
-  `skills/` (`core/overlay.py:dirs(app, "skills")`).
+  `skills/` (`core/overlay.py:dirs(app, "skills")`), and (0.9.0) Kurooto's work folder (`work_folder`,
+  `<cache>/study-packs/work`), where a request drafts a document before `save_course_file` files it.
 - `read_roots(app)`: everything writable, plus `<data>/classroom`, `<state>/classroom-notes`, `<state>/mail-digest`,
+  `<cache>/study-packs` (0.9.0: the unpacked packs),
   `<state>/reserve`, the OS Documents and Downloads folders (`user_folder`, Windows known folders through
   `SHGetKnownFolderPath`, Linux XDG user dirs) and a Screenshots folder.
 - `inside(path, roots)`: resolves links on both sides before comparing.
@@ -373,7 +381,9 @@ folder, answer style, "nobody can answer follow-up questions", the tool rules (a
 scripts to look inside Kurooto), a pointer to `<state>/reserve/`, the
 profile brief (`core/aboutyou.py`), "how to help me" (`modules/remember.py:help_brief`), the persona card and the
 boundaries rule (`core/persona.py:card_text`, `rule`), the notes layout (`core/layout.py:describe`) and a line pointing
-at `kurooto_self` / `reserve/self.md` for questions about Kurooto itself; (0.9.0) the not-interested topics
+at `kurooto_self` / `reserve/self.md` for questions about Kurooto itself; (0.9.0) `core/studyflow.py:latex_line`
+(`LATEX_RULE`, when a compile tool is there: compile LaTeX yourself, fix and retry three times, never "can't compile");
+(0.9.0) the not-interested topics
 (`not_interested_part`, `notinterested.tell_ai`, after how-to-help-me); a request about Kurooto
 (`core/selfdoc.py:wanted`) also gets `self.md` itself in its context (`for_request`, at most `CONTEXT_MAX`). Chat's own
 requests also end with one register line (`core/persona.py:register_line`, marked `[Reply style]`, left out of chat

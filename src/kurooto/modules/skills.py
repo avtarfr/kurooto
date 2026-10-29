@@ -122,6 +122,7 @@ class Skill:
     path: str = ""
     internal: bool = False  # used by a feature, never typed: hidden from /skills and /<name>
     output: str = ""  # "latex": the answer is a LaTeX document, saved and compiled to a PDF
+    switch: str = ""  # a setting that turns this skill off (0.9.0: study.notes_workflow); "" none
 
 
 def parse(text: str) -> tuple[dict, str]:
@@ -165,6 +166,7 @@ def make(text: str, name: str, source: str, path: str = "") -> Skill | None:
         path=path,
         internal=truthy(meta.get("internal")),
         output=(meta.get("output") or "").strip().lower(),
+        switch=(meta.get("switch") or "").strip(),
     )
 
 
@@ -238,7 +240,7 @@ def all_skills(app: App) -> dict[str, Skill]:
                 s = make(f.read_text(encoding="utf-8", errors="replace"), d.name, "yours", str(f))
                 if s:
                     out[s.name] = s
-    return out
+    return {k: s for k, s in out.items() if not s.switch or app.settings.get(s.switch)}  # a switched-off one: gone
 
 
 def load_skill(app: App, name: str) -> Skill | None:
@@ -1028,6 +1030,21 @@ class Skills(Module):
             self.run("add-to-notes", slots["args"], reply_to=msg.message_id)
             return "Filing it into your notes…"
 
+        def study_notes(text: str):  # (0.9.0, study.notes_workflow) core/studyflow.py
+            from kurooto.core import studyflow
+
+            got = studyflow.intent_match(self.app, text)
+            return got if got and load_skill(self.app, studyflow.SKILL) else None
+
+        def run_study_notes(msg: Incoming, slots: dict) -> str:
+            from kurooto.core import studyflow
+
+            self.run(studyflow.SKILL, slots["text"], reply_to=msg.message_id)
+            return (
+                "Working on it: finding the upload, reading it, then the pack, the notes and the PDF. I'll say how it "
+                "goes."
+            )
+
         return [
             Intent(
                 "routine",
@@ -1042,6 +1059,13 @@ class Skills(Module):
                 link,
                 file_link,
                 examples=("https://arxiv.org/abs/2401.00001",),
+            ),
+            Intent(
+                "study_notes",
+                "study notes from an upload: read it, build a study pack, write and compile the notes, file the PDF",
+                study_notes,
+                run_study_notes,
+                examples=("make notes from my real analysis notes from functions of several variables",),
             ),
         ]
 

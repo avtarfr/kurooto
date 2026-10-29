@@ -121,6 +121,12 @@ def _attached(app: App) -> list[Path]:
     return [d] if app.settings.get("dashboard.chat_attach") is not False and d.is_dir() else []
 
 
+def work_folder(app: App) -> Path:
+    """Kurooto's own folder where a request writes a document before it's filed (core/studyflow.py, 0.9.0): the AI may
+    fix its LaTeX there freely (no proposal: it isn't your notes), and save_course_file files the result."""
+    return Path(os.path.abspath(Path(app.paths.cache) / "study-packs" / "work"))
+
+
 def write_roots(app: App, scratch: Path | None = None) -> list[Path]:
     """Every folder the AI may write in, absolute, without repeats. A change request (core/scratch.py) may write in
     its scratch folder and nowhere else: then that's the one folder."""
@@ -133,6 +139,7 @@ def write_roots(app: App, scratch: Path | None = None) -> list[Path]:
         notes_root(app),
         course_files(app),
         *([f] if (f := files_folder(app)) else []),
+        work_folder(app),  # documents a request makes before they're filed (core/studyflow.py, 0.9.0)
         *overlay.dirs(app, "skills", linked=False),  # an add-on by link's files stay as you agreed to them
     ]
     return list(dict.fromkeys(Path(os.path.abspath(p)) for p in roots))
@@ -147,6 +154,7 @@ def read_roots(app: App, extra: list[Path] | tuple = ()) -> list[Path]:
         app.paths.data / "classroom",  # older ones, from before files.folder was set
         app.paths.state / "classroom-notes",  # Classroom batches for the AI
         app.paths.state / "mail-digest",  # mail batches for the digest (google_mail)
+        Path(app.paths.cache) / "study-packs",  # study packs, unpacked for the AI (core/studyflow.py, 0.9.0)
         app.paths.state
         / "reserve",  # Markdown copies of alarms, deadlines, settings, what an AI may do (core/reserve.py)
         user_folder("documents"),

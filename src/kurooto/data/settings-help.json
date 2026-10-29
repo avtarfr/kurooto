@@ -910,6 +910,7 @@
 "study.focus_min": "Study mode's timer: minutes of focus (calls and messages wait, the time is logged).",
 "study.idle_min": "Minutes without activity before study time stops counting.",
 "study.keywords": "Extra words per subject that count a window for it.",
+"study.notes_workflow": "\"Study notes from my upload\" as one request: read the scan, build a study pack, write, compile and file the PDF.",
 "study.places": "Arriving at a place you saved in the phone app offers a study session there; leaving ends one that offer started.",
 "study.places_labels": "The places (their names in the phone app) where an arrival offers a session; empty: any you saved.",
 "study.research_paths": "Words or folders whose windows count as Research time.",

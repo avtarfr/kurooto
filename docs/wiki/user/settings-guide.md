@@ -35,7 +35,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Classes and timetable](#classes-and-timetable): 19 settings
 - [Calendar](#calendar): 11 settings
 - [Quiz and exams](#quiz-and-exams): 45 settings
-- [Books, study time and handwritten notes](#books-study-time-and-handwritten-notes): 49 settings
+- [Books, study time and handwritten notes](#books-study-time-and-handwritten-notes): 50 settings
 - [Notes, files and sync](#notes-files-and-sync): 30 settings
 - [Notes brain (GBrain)](#notes-brain-gbrain): 19 settings
 - [Concept graph](#concept-graph): 27 settings
@@ -3255,6 +3255,20 @@ The places (their names in the phone app) where an arrival offers a session; emp
 - **Values:** A list of names, e.g. library, lab. **Default:** none.
 - **When to change it:** Set it so home doesn't offer a session.
 - **Depends on:** study.places.
+
+### `study.notes_workflow`
+
+"Study notes from my upload" as one request: read the scan, build a study pack, write, compile and file the PDF.
+
+Your AI gets the tools for it (find_uploads, read_handwritten, build_study_pack, save_course_file, study_progress), the
+skill `/study-notes-from-upload`, and "make notes from my <course> notes from <topic>" runs it. The PDF and the .tex go
+to the course's files folder with a source note linking them, never the notes' top folder.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you don't want the AI reading scans or filing documents for you.
+- **Costs and what leaves this computer:** What any request to your AI sends: the transcription and the pack's text.
+  Reading the scan follows Handwritten notes' own settings.
+- **Depends on:** Skills; Handwritten notes for the reading.
 
 ### `handwritten.folder`
 

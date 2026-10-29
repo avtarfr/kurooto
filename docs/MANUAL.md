@@ -3103,6 +3103,9 @@ works too.
   only within the chapters it's cited in. `INDEX.md` lists every citation and the pages it became, or why not ("not
   found in the book's text"). A whole syllabus pasted as the aim goes by the citations, not its words. A note that
   belongs to another subject (its folder, or `course:` or tags in its header) doesn't come in on the topic's words.
+- **The right chapters (0.9.0).** A book's pages on the topic come from the chapters whose title or section headings
+  name it, or that the class cites, not from the chapter that only says its words most often; neighbouring chapters
+  are kept together, and `INDEX.md` says which chapters were taken and why (and which one was passed over).
 - **What comes to Telegram:** the zip, then the prompt as its own message, ready to copy (it's in the zip too).
 - **Size:** Telegram takes up to 50 MB. With [Drive upload](#drive-upload) on, nothing is left out: a bigger pack comes
   as a temporary Drive link (`drive_upload.temp_days`). Without it, the zip is kept under 50 MB (notes first, then
@@ -3112,6 +3115,20 @@ works too.
 *Leaves:* nothing by itself; you choose which AI to upload the zip to. A pack over 50 MB goes to your own Drive with
 Drive upload on. *Turn it off:* turn off Skills, or just don't use `/studypack`. The zip is kept in Kurooto's cache,
 which the [Space keeper](#space-keeper-cleaning-off-old-backups-and-leftovers) clears after 14 days.
+
+### Study notes from an upload
+One request, in plain words or as `/study-notes-from-upload`: "make notes from my AN2 notes from functions of several
+variables, PDF in Downloads/Study". Your AI finds the scan (`find_uploads`), reads it now with the handwritten reader
+(`read_handwritten`, its own settings: the model here, or Gemini only with `handwritten.cloud`), cuts it from that
+topic on, leaves out what your notes already have, builds the study pack for the rest (`build_study_pack`), writes deep
+notes as LaTeX by the pack's prompt, compiles them (`compile_latex`: a check for the usual LaTeX mistakes first, then
+it fixes its own errors, up to three tries, and tells you the one that's left with its line), files the PDF and the
+.tex in the course's files folder with a source note linking them (`save_course_file`, never the notes' top folder),
+and sends you the PDF. It tells you how it's going as it works. Needs Skills, and Handwritten notes for the reading.
+
+*Leaves:* what any request to your AI sends (the transcription, the pack's text); the reading follows Handwritten
+notes' settings. *Undo:* `study.notes_workflow` = `false` takes the tools, the skill and the request away; filed files
+and source notes stay (delete them yourself if you don't want them).
 
 ### Course notes as one PDF
 `/notes pdf la` (or the dashboard's Study pane → COURSE → **notes → pdf**): one PDF of a course's notes, its course
