@@ -242,6 +242,10 @@ at once when it hears you, and then:
 - **Anything else** ("mm", "okay", a cough, a word to someone else): it wasn't for it, so it carries on, saying the
   sentence it was cut in from its start (0.8.17; before, it stopped for good and the rest of the answer went unsaid).
   If it can't tell within about 12 seconds, it stops.
+- **When it was your voice** (0.9.4, `voice.listen.barge_owner_stops`, on): it never carries on. Over a phone or a
+  loud speaker what's left of its echo can garble your "stop", so words it can't make out stop it too; the
+  conversation stays open, so just say what you wanted, and with `voice.speak.ack` it plays the tone (`tone`) or says
+  "Yes?" (`word`). Someone else, or a cut-in noticed only because it was loud, still makes it carry on.
 
 It never takes its own voice coming back through the room for you. It counts as you cutting in when:
 

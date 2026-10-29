@@ -33,7 +33,7 @@ with listening a second switch. User page: [../user/voice.md](../user/voice.md).
 | `modules/voice/aec.py` | (0.9.3) echo cancelling (`voice.listen.aec`): `load()`/`available()` (libspeexdsp through ctypes, typed, once per process), `resample()` (speex's resampler, q5), `Canceller` (speex MDF + its residual echo suppressor, `SUB` blocks; `latency` one block with the suppressor), `Aec` (`reference()`, `cut()`, `process()`, the clock map, delay tracking, `status()`, `cancelling()`), `estimate()` (coarse, envelopes) and `fine()` (waveform, two passes) |
 | `tests/fakes/echo.py` | (0.9.3) `speechlike()` (a made-up voice), `phone_path()`, `Desk` (pieces played through a delay with jitter, gain, a thin speaker and reflections, the near end, late bursty frames on a fake clock), `erle()` |
 | `tests/unit/test_voice_aec.py` | (0.9.3) ERLE on a gapless reply and on sentences each with their own jitter, CPU per frame, pass-through, cut; barge-in fires on the owner over a cancelled echo (Voice ID faked by his share of the stretch) and never on the echo alone; the switch, the missing library, the reference and seed through `Speaker._play`, the listener order; and the 0.9.3 judge and unsure-voice fixes |
-| `tests/unit/test_voice_barge.py` | (0.8.13) barge-in with synthetic voices, a fake clock, VAD and transcriber: own echo never stops it, the owner's voice does, told off, listen, loudness, the switch, an output's stop |
+| `tests/unit/test_voice_barge.py` | (0.8.13) barge-in with synthetic voices, a fake clock, VAD and transcriber: own echo never stops it, the owner's voice does, told off, listen, loudness, the switch, an output's stop; (0.9.4) the owner's garbled cut-in stops and listens (the tone, silent with the ack off, resumes with the switch off), a loud non-owner's resumes, an early verdict of the owner stops it |
 
 ## Echo cancelling (`aec.py`, 0.9.3)
 
@@ -252,6 +252,18 @@ thinking: the old drop. Nothing else in the listener changes.
   carries, as any turn); anything else -> `Portal.listen_on("barged in", who)` (open, `answered`, `last` and
   `spoke_at` now, so the follow window and `tick()` hold it for `follow_s`). Event `voice_barge {how, outcome}`
   (`voice`/`loud`; `told off`/`turn`/`listen`), never words. `status()["barge_in"] = {on, since_start}`.
+- **The owner's cut-in stops (0.9.4, `voice.listen.barge_owner_stops`, on).** `Voice._barge_who(pcm, speech_s, how)`
+  is the verdict (`how["who"]` when made already; `how == "voice"` -> owner; else `VoiceID.check(adapt=False)`; None
+  with Voice ID off) and `_owner_cut(who)` is "owner and the switch on". In `barge_turn()` an owner cut-in that is
+  neither told off nor `asks()` is `stop()`, `Portal.listen_on("barged in", "owner")` and `_barge_ack()` (outcome
+  `stopped`; no face: `stop()` instead of `release()`). `_barge_ack()` plays `fast.BARGE_ACK_WORD` ("Yes?") for
+  `speak.ack "word"`, the tone for `"tone"`, nothing for `"off"`, after `ACK_WAIT_S` through `Speaker.ack()` (free
+  speaker only). `_barge_early()` (an answer still being said on the hearing thread) settles the hold the same way:
+  told off or asks -> stop; else with the switch on it takes the verdict once, stops for the owner, releases
+  otherwise, and hands it on in `how["who"]` so `barge_turn` doesn't check again. `stop()` ends a Live answer as any
+  cut-off (`say_piece` returns False; `Live._play` marks it stale and sends the interrupting activity). The cut-in's
+  words are written out from the echo-cancelled sound already: `Listener` runs `aec.process()` on every frame before
+  `Barge.feed()`, so the stretch (and its pre-roll) is the cleaned audio; what garbled them was the residual.
 - **Cancelled (0.9.3).** `Barge.cancelled()` reads `Voice.aec.cancelling()` (running, not holding a new piece back,
   its median-block ERLE at least `aec.CONVERGED_DB`). Then `feed()` learns the residual's share from every frame while it
   plays outside a stretch (`_res`, not only VAD speech: the residual is mostly under the VAD), `gain(True)` is its

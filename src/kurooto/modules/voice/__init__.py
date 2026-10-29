@@ -176,6 +176,10 @@ register_defaults(
             "told_off": True,  # "stop", "not you", "never mind" right after it opened or spoke: it stops and closes
             "learn_nightly": True,  # learn at night from turns that went well or were told off (numbers only)
             "barge_in": True,  # talk over Kurooto to stop it: your voice (Voice ID) or louder than its own echo
+            # (0.9.4) a cut-in known to be your voice (the voice check, or Voice ID's verdict on it) never resumes:
+            # it stops, and words it can't make out leave the conversation open for your next ones (off: it carries
+            # on after anything that isn't "stop", a question or a request, as before)
+            "barge_owner_stops": True,
             # (0.9.3) echo cancelling: its own voice taken out of the microphone's sound (before barge-in, the VAD and
             # Voice ID hear it), with what it plays as the reference; needs the speexdsp library on this computer.
             # auto: on while it plays on an add-on's output (a phone that also hears); on: this computer's speakers
@@ -618,6 +622,11 @@ class Speaker:
 
     def holding(self) -> bool:
         return self.busy or time.monotonic() < self.until
+
+
+def _speech_s(flags: bytes, seconds: float) -> float:
+    """Seconds of speech in a stretch from its per-frame flags (all of it when there are none)."""
+    return sum(1 for f in flags if f) * 512 / 16000 if flags else seconds
 
 
 def _seed(out) -> float | None:
@@ -1990,17 +1999,57 @@ class Voice(Module):
         except Exception as e:
             self.app.events.emit("voice_failed", part="told off", error=f"{type(e).__name__}"[:100])
 
+    def _barge_who(self, pcm: bytes, speech_s: float, how: dict):
+        """Voice ID's verdict on a cut-in, or None (Voice ID off): checked by the voice already -> the owner; else a
+        check that never adapts (its own voice may be in it). One made early (_barge_early) travels in how["who"]."""
+        if "who" in how:
+            return how["who"]
+        if not self.voiceid.on():
+            return None
+        from kurooto.modules.voice import barge as barge_mod
+        from kurooto.modules.voice.speakerid import OWNER, Verdict
+
+        if how.get("how") == barge_mod.VOICE:
+            return Verdict(OWNER, barge_mod.OWN_WHY, how.get("score"), speech_s)
+        return self.voiceid.check(pcm, speech_s, adapt=False)
+
+    def _owner_cut(self, who) -> bool:
+        """(0.9.4, voice.listen.barge_owner_stops) The cut-in is known to be the owner's voice: it never resumes."""
+        return who is not None and who.decision == "owner" and bool(self.setting("listen.barge_owner_stops"))
+
+    def _barge_ack(self) -> None:
+        """(0.9.4) Stopped for the owner's words it couldn't make out: "Yes?" (speak.ack "word") or the tone ("tone"),
+        once the speaker is free; off: silent."""
+        how = str(self.setting("speak.ack") or "off").strip().lower()
+        if how not in ("tone", "word") or not self._speaks() or self.portal_cut():
+            return
+        if self.listener is None or not self.listener.running():
+            return
+
+        def play() -> None:
+            try:
+                self._ack_sleep(fast.ACK_WAIT_S)
+                got = self._ack_sound(how, fast.BARGE_ACK_WORD)
+                if got is not None and not self.portal_cut():
+                    self.speaker.ack(*got)
+            except Exception as e:
+                self.app.events.emit("voice_failed", part="acknowledgement", error=f"{type(e).__name__}"[:100])
+
+        threading.Thread(target=play, name="voice-ack", daemon=True).start()
+
     def barge_turn(self, pcm: bytes, flags: bytes, how: dict, ended_at: float | None = None) -> str | None:
         """(barge.py) A stretch that talked over Kurooto; it has already stopped speaking. Written out here, then: a
         told-off phrase -> the told-off path (no reply); a question or a request -> it stops, and a new turn in the
         same conversation (the chat's context carries); anything else -> it carries on from the cut piece
-        (Speaker.release, 0.8.17), the conversation open for voice.listen.follow_s. Returns the reply when there was
-        one. An event with how and what came of it, never words."""
+        (Speaker.release, 0.8.17), the conversation open for voice.listen.follow_s. (0.9.4, barge_owner_stops) A
+        cut-in known to be the owner's voice never carries on: anything else stops it ("stopped"), the conversation
+        open for his next words, with "Yes?" or the tone per speak.ack. Returns the reply when there was one. An event
+        with how and what came of it, never words."""
         if self.blocked() or not self.app.is_on(self.id):
             self.speaker.stop()
             return None
         seconds = len(pcm) / 32000
-        speech_s = sum(1 for f in flags if f) * 512 / 16000 if flags else seconds
+        speech_s = _speech_s(flags, seconds)
         h = Heard(speech=True, seconds=seconds, speech_s=speech_s, ended_at=ended_at)
         turn = {"end": ended_at if ended_at is not None else time.monotonic()}
         h.text = str(how["text"]) if "text" in how else self._write_out(pcm)  # (0.9.2) written out already
@@ -2014,21 +2063,14 @@ class Voice(Module):
             self._told_off(h, pcm)
         else:
             said = g.matcher.uncall(h.text).strip()
-            who = None
-            vid = self.voiceid
-            if vid.on():
-                from kurooto.modules.voice import barge as barge_mod
-                from kurooto.modules.voice.speakerid import OWNER, Verdict
-
-                if how.get("how") == barge_mod.VOICE:  # checked against its own voice already: you
-                    who = Verdict(OWNER, barge_mod.OWN_WHY, how.get("score"), speech_s)
-                else:  # never learned from: its own voice may be in it
-                    who = vid.check(pcm, speech_s, adapt=False)
+            who = self._barge_who(pcm, speech_s, how)
+            if who is not None:
                 self._here(who)
+            mine = self._owner_cut(who)
             d = self._timed_face_check(h, Decision(ADDRESSED, 0.9, "barged in"), turn) if said and asks(said) else None
             if d is not None and not d.addressed:  # (need_face) nobody in front of it: chatter, it carries on
                 outcome = "no face"
-                self.speaker.release()
+                self.speaker.stop() if mine else self.speaker.release()
                 self.heard[CHATTER] = self.heard.get(CHATTER, 0) + 1
                 h.text = ""
                 self.portal.take(h, d)
@@ -2041,6 +2083,12 @@ class Voice(Module):
                                  who=who.word)  # fmt: skip
                 self.live.keep(pcm, who)
                 reply = self._take(h, Decision(ADDRESSED, 0.9, "barged in"), said, who, turn)
+            elif mine:  # (0.9.4) his voice, words it can't make out (echo left in them): stopped, his next words taken
+                outcome = "stopped"
+                self.speaker.stop()
+                h.text = ""
+                self.portal.listen_on("barged in", who.decision)
+                self._barge_ack()
             else:  # not "stop", not a question or a request ("mm", a cough): it says the cut sentence again, on
                 outcome = "resumed" if self.speaker.held() else "listen"
                 self.speaker.release()
@@ -2292,16 +2340,16 @@ class Voice(Module):
         except Exception as e:
             self.app.events.emit("voice_failed", part="acknowledgement", error=f"{type(e).__name__}"[:100])
 
-    def _ack_sound(self, how: str) -> tuple[bytes, int] | None:
+    def _ack_sound(self, how: str, word: str = fast.ACK_WORD) -> tuple[bytes, int] | None:
         """The tone (made here), or the word as this voice says it (made once per voice and speed, kept in memory);
-        the tone when the voice can't."""
+        the tone when the voice can't. word: (0.9.4) barge_owner_stops says "Yes?" instead of "Hmm."."""
         if how == "word":
             tts, _why = self.tts()
             if tts is not None:
-                key = ("word", *self._tts_key)
+                key = ("word", *self._tts_key) if word == fast.ACK_WORD else ("word", word, *self._tts_key)
                 if key not in self._ack_sounds:
                     try:
-                        self._ack_sounds[key] = tts.synth(fast.ACK_WORD)
+                        self._ack_sounds[key] = tts.synth(word)
                     except Exception:
                         self._ack_sounds[key] = None
                 if self._ack_sounds[key] is not None:
@@ -3036,6 +3084,12 @@ class Voice(Module):
             said = self.gate().matcher.uncall(text).strip()
             if (self.setting("listen.told_off") and told_off(text, self.gate().matcher)) or (said and asks(said)):
                 self.speaker.stop()
+            elif (
+                self.setting("listen.barge_owner_stops")
+                and (who := self._barge_who(pcm, _speech_s(flags, seconds), barge)) is not None
+            ):
+                barge = {**barge, "who": who}  # (0.9.4) checked once: barge_turn takes this verdict
+                self.speaker.stop() if self._owner_cut(who) else self.speaker.release()
             else:
                 self.speaker.release()
         except Exception as e:

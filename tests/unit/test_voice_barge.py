@@ -55,6 +55,9 @@ class Rig:
         real, hold = v.speaker.stop, v.speaker.hold
         v.speaker.stop = lambda: (self.stops.append(1), real())[1]
         v.speaker.hold = lambda: (self.stops.append(1), hold())[1]
+        self.acks = []  # (0.9.4) "Yes?" or the tone after an owner's cut-in it couldn't make out: never played here
+        v.speaker.ack = lambda pcm_, sr, turn=None: self.acks.append(sr) or True
+        v._ack_sleep = lambda s: None
         v.listener = SimpleNamespace(running=lambda: True, stop=lambda: None, error="")
         monkeypatch.setattr(v, "tts", lambda: (OwnTts(), ""))
         self.stt = Stt()
@@ -189,7 +192,7 @@ def test_anything_else_stops_it_and_listens(vrig):
     r.stt.said = "hmm I was thinking about Saturday"
     assert v._work_one(*item) is None
     assert v.portal.send.got == []  # a statement: not sent
-    assert v.portal.open and v.portal.answered and barges(v)[-1]["outcome"] == "listen"
+    assert v.portal.open and v.portal.answered and barges(v)[-1]["outcome"] == "stopped"  # (0.9.4) his voice
     assert hear(v, "I think Saturday works better") == "Sure."  # the conversation goes on without its name
     assert v.portal.send.got == [("I think Saturday works better", "owner")]
 
@@ -334,9 +337,10 @@ def test_an_output_on_another_device_is_stopped_by_its_stop_event(vrig, monkeypa
 
 def test_a_cut_in_that_isnt_for_it_resumes_from_the_cut_sentence(vrig):
     """(0.8.17) "mm", a cough, someone else: it said the cut sentence again from its start and went on, where it used
-    to stop for good and leave the answer half said."""
+    to stop for good and leave the answer half said. (0.9.4) The owner's voice: only with barge_owner_stops off."""
     r = vrig
     v = r.v
+    v.app.settings.set("voice.listen.barge_owner_stops", False)
     v.app.settings.set("voice.speak.join_sentences", False)
     v.speaker.player = Speakers()
     cut = threading.Event()
@@ -474,9 +478,109 @@ def test_talking_over_an_answer_settles_the_hold_without_the_hearing_thread(vrig
     assert len(r.stt.calls) == calls  # written out once
     v.speaker.busy = True
     r.stt.said = "mm hmm"
+    v.app.settings.set("voice.listen.barge_owner_stops", False)  # (0.9.4) on, his voice never carries on
     v._heard_audio(sound, False, 1.0, b"\x01" * 31, {"how": barge_mod.VOICE})
     for _ in range(200):
         if not v._work.empty():
             break
         time.sleep(0.01)
     assert released == [1] and len(r.queued()) == 1
+
+
+# ------------------------------------------------------------------------- 0.9.4: the owner's cut-in stops it
+def test_the_owner_s_cut_in_garbled_by_echo_stops_it_and_keeps_listening(vrig):
+    """Seen at a desk with echo cancelling: "stop" said at normal volume was heard as his voice (how "voice") but
+    written out garbled by what was left of the echo, so it matched nothing and the speech carried on. His voice now
+    never resumes: it stops, the conversation stays open for his next words, and the tone says it heard him."""
+    r = vrig
+    v = r.v
+    v.app.settings.set("voice.listen.follow_s", 20)
+    r.playing()
+    r.echo(1.0)
+    r.quiet(0.8)
+    v.speaker.busy = True  # it's speaking: the hold can be set
+    r.feed(bytes(pcm(1, 9, seconds=1.0, level=3000, pre_s=0).pcm), 0.9)
+    assert v.speaker.held()
+    r.quiet(0.8)
+    (item,) = r.queued()
+    assert item[4]["how"] == barge_mod.VOICE
+    r.stt.said = "sop the ah"
+    assert v._work_one(*item) is None
+    v.speaker.busy = False
+    assert v.speaker._cancel.is_set()  # stopped, not released
+    assert barges(v)[-1]["outcome"] == "stopped" and v.portal.send.got == []
+    assert v.portal.open and v.portal.answered
+    for _ in range(200):
+        if r.acks:
+            break
+        time.sleep(0.01)
+    assert r.acks  # speak.ack "tone" (the default): the tone once the speaker is free
+    assert hear(v, "I meant stop for now") == "Sure."  # his next words are taken without its name
+    assert "sop" not in str(barges(v))
+
+
+def test_the_owner_s_cut_in_is_silent_with_the_ack_off_and_resumes_with_the_switch_off(vrig):
+    r = vrig
+    v = r.v
+    v.app.settings.set("voice.speak.ack", "off")
+    v.speaker.busy = True
+    v.speaker.hold()
+    r.stt.said = "sop the ah"
+    sound = bytes(pcm(1, 9, seconds=1.0, level=3000, pre_s=0).pcm)
+    v.barge_turn(sound, b"\x01" * 31, {"how": barge_mod.VOICE, "score": 0.8})
+    time.sleep(0.05)
+    assert barges(v)[-1]["outcome"] == "stopped" and r.acks == []
+    v.app.settings.set("voice.listen.barge_owner_stops", False)
+    v.speaker._cancel.clear()
+    v.speaker.hold()
+    v.barge_turn(sound, b"\x01" * 31, {"how": barge_mod.VOICE, "score": 0.8})
+    assert barges(v)[-1]["outcome"] == "resumed" and not v.speaker._cancel.is_set()
+    v.speaker.busy = False
+
+
+def test_a_loud_cut_in_that_isnt_the_owner_still_resumes(vrig, monkeypatch):
+    """Not confirmed as him (the loudness path, Voice ID says someone else): today's behaviour, it carries on."""
+    r = vrig
+    v = r.v
+    r.playing()
+    r.echo(1.0)
+    r.quiet(0.8)
+    v.speaker.busy = True
+    r.stt.said = "uh that one over there"
+    r.feed(bytes(pcm(5, 1, seconds=1.0, level=12000, pre_s=0).pcm), 0.9)  # another voice, clearly louder
+    assert v.speaker.held()
+    r.quiet(0.8)
+    (item,) = r.queued()
+    assert item[4]["how"] == barge_mod.LOUD
+    assert v._work_one(*item) is None
+    v.speaker.busy = False
+    assert barges(v)[-1]["outcome"] == "resumed" and not v.speaker._cancel.is_set() and r.acks == []
+    assert v.portal.send.got == []
+
+
+def test_a_loud_cut_in_voice_id_calls_the_owner_stops_it_early(vrig, monkeypatch):
+    """The early settling (an answer still being said on the hearing thread): the loudness path, but Voice ID's
+    verdict on it is the owner: it stops there, and barge_turn takes that verdict without checking again."""
+    from kurooto.modules.voice.speakerid import Verdict
+
+    r = vrig
+    v = r.v
+    checks = []
+    monkeypatch.setattr(v.voiceid, "check", lambda *a, **k: checks.append(1) or Verdict("owner", "your voice", 0.8))
+    stopped, released = [], []
+    monkeypatch.setattr(v.speaker, "stop", lambda: stopped.append(1))
+    monkeypatch.setattr(v.speaker, "release", lambda: released.append(1))
+    v.speaker.busy = True
+    r.b.sync = False
+    r.stt.said = "sop the ah"
+    v._heard_audio(bytes(pcm(1, 9, seconds=1.0, level=3000, pre_s=0).pcm), False, 1.0, b"\x01" * 31,
+                   {"how": barge_mod.LOUD})  # fmt: skip
+    for _ in range(200):
+        if not v._work.empty():
+            break
+        time.sleep(0.01)
+    (item,) = r.queued()
+    assert stopped == [1] and released == [] and item[4]["who"].decision == "owner"
+    v.speaker.busy = False
+    v._work_one(*item)
+    assert checks == [1] and barges(v)[-1]["outcome"] == "stopped"

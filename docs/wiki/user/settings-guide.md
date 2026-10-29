@@ -43,7 +43,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 68 settings
 - [Brain](#brain): 160 settings
-- [Voice and voice notes](#voice-and-voice-notes): 116 settings
+- [Voice and voice notes](#voice-and-voice-notes): 117 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 12 settings
@@ -7754,6 +7754,21 @@ sound stays in memory as for any stretch, and the event says only how it was not
 - **Values:** `true` (default), `false` (the microphone is dropped while it speaks, as before; /voice stop still stops
   it). **Default:** on.
 - **When to change it:** Turn it off if Kurooto stops for the TV or other people talking loudly near it while it speaks.
+
+### `voice.listen.barge_owner_stops`
+
+When it's your voice that cut in, Kurooto stops for good, even if it couldn't make out the words.
+
+(0.9.4) With voice.listen.barge_in: a cut-in known to be you (the voice check, or Voice ID's verdict on what cut in)
+never makes it carry on. "Stop" still stops it and a question or a request is still the next turn; anything else (words
+it couldn't make out, often because what's left of its own echo garbles them) stops it too, with the conversation left
+open so your next words are taken without its name, and the tone or "Yes?" (voice.speak.ack "tone" or "word"; nothing
+with "off"). Someone else, or a cut-in noticed only by loudness without Voice ID saying it's you, carries on from the
+cut sentence as before.
+
+- **Values:** `true` (default), `false` (anything that isn't "stop", a question or a request makes it carry on, as in
+  0.9.3). **Default:** on.
+- **When to change it:** Turn it off if it stops when you only meant "mm" or "okay" while it was talking.
 
 ### `voice.listen.aec`
 

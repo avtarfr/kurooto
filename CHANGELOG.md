@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.4 (unreleased)
+
+- **When it's your voice that cut in, it stops** (`voice.listen.barge_owner_stops`, on). A cut-in Voice ID knows is
+  you (the barge-in voice check, or its verdict on a loud cut-in) never makes Kurooto carry on: "stop" and a question
+  or a request work as before, and words it couldn't make out (often garbled by what's left of its echo over a phone)
+  stop it too, with the conversation left open for your next words and the tone or "Yes?" per `voice.speak.ack`. A
+  Gemini Live answer is cut off at Google's end as for any stop. Someone else, or a cut-in noticed only by loudness,
+  carries on from the cut sentence as before.
+
 ## 0.9.3 (2026-10-29)
 
 - **Echo cancelling** (`voice.listen.aec`, auto: on while Kurooto plays on an add-on's output that also hears; `"on"`

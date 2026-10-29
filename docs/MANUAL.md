@@ -2236,6 +2236,8 @@ that. Packages go into Kurooto's own folder, never your system.
 - **Cutting in** (`voice.listen.barge_in`, on): talk over it while it speaks. Your voice (Voice ID, checked against
   its own voice print, made once in memory) or speech clearly louder than its own echo stops it at once; "stop" just
   stops it, a question or a request is the next turn, anything else and it listens. Its own echo never stops it.
+  When the voice was yours, it never carries on (0.9.4, `voice.listen.barge_owner_stops`, on): words it couldn't
+  make out stop it too and it waits for your next words; *Undo:* turn it off.
 - **Speed** (0.8.16): a soft note the moment your turn goes to your AI (`voice.speak.ack`: `tone`, `word`, `off`);
   the answer spoken a sentence at a time as your AI writes it, when it can stream (`voice.speak.stream`); plain chat
   to a quicker AI if you choose (`voice.listen.fast_brain`: `same` by default, `local`, `fastest`); the engines and

@@ -112,6 +112,7 @@ def line(med: dict) -> str:
 # ------------------------------------------------------------------------------------------- acknowledgement
 ACK_RATE = 24000
 ACK_WORD = "Hmm."
+BARGE_ACK_WORD = "Yes?"  # (0.9.4, voice.listen.barge_owner_stops) stopped for your words it couldn't make out
 ACK_WAIT_S = 0.25  # an answer that comes this soon (a plain-English request done here) needs no acknowledgement
 
 

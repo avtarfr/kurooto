@@ -993,6 +993,7 @@
 "voice.listen.auto_gain": "Hearing follows the room: speech must stand above its noise, and a quiet voice is evened up.",
 "voice.listen.auto_gain_snr_db": "How far above the room's noise speech must be to count, in dB.",
 "voice.listen.barge_in": "Talk over Kurooto while it speaks to stop it: \"stop\", a new question, or anything you want to say.",
+"voice.listen.barge_owner_stops": "When it's your voice that cut in, Kurooto stops for good, even if it couldn't make out the words.",
 "voice.listen.calls": "Keep listening while you're on a phone call (off: listening pauses during calls).",
 "voice.listen.careful_name": "When someone else may be talking, its name wakes Kurooto only said first, as a call (\"Kurooto, what's ...\").",
 "voice.listen.chatter_s": "Speech here that wasn't to Kurooto (any voice) this many seconds ago makes it careful with its name.",

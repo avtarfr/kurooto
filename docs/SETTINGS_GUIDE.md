@@ -1425,6 +1425,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.auto_gain` | `true` | Hearing follows the room: speech must stand above its noise, and a quiet voice is evened up. ([guide](wiki/user/settings-guide.md#voicelistenautogain)) |
 | `voice.listen.auto_gain_snr_db` | `6` | How far above the room's noise speech must be to count, in dB. ([guide](wiki/user/settings-guide.md#voicelistenautogainsnrdb)) |
 | `voice.listen.barge_in` | `true` | Talk over Kurooto while it speaks to stop it: "stop", a new question, or anything you want to say. ([guide](wiki/user/settings-guide.md#voicelistenbargein)) |
+| `voice.listen.barge_owner_stops` | `true` | When it's your voice that cut in, Kurooto stops for good, even if it couldn't make out the words. ([guide](wiki/user/settings-guide.md#voicelistenbargeownerstops)) |
 | `voice.listen.calls` | `false` | Keep listening while you're on a phone call (off: listening pauses during calls). ([guide](wiki/user/settings-guide.md#voicelistencalls)) |
 | `voice.listen.careful_name` | `true` | When someone else may be talking, its name wakes Kurooto only said first, as a call ("Kurooto, what's ..."). ([guide](wiki/user/settings-guide.md#voicelistencarefulname)) |
 | `voice.listen.chatter_s` | `60` | Speech here that wasn't to Kurooto (any voice) this many seconds ago makes it careful with its name. ([guide](wiki/user/settings-guide.md#voicelistenchatters)) |

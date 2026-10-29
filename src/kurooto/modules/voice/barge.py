@@ -17,7 +17,9 @@ When a check passes, Kurooto goes quiet at once (Speaker.hold(): this computer's
 stop event for the piece playing); the rest of the stretch is still taken, and the whole of it then goes to
 Voice.barge_turn(): told off -> stop (the told-off path), a question or a request -> stop, and a new turn in the same
 conversation, anything else ("mm", a cough, no face) -> Speaker.release(): it says the cut piece again from its start
-and goes on (0.8.17; the conversation stays open for voice.listen.follow_s).
+and goes on (0.8.17; the conversation stays open for voice.listen.follow_s). (0.9.4, voice.listen.barge_owner_stops)
+When the cut-in is known to be the owner's voice it never carries on: anything else stops it too, the conversation
+open for his next words.
 
 Played elsewhere (0.9.2, a fix): when the answer plays on an add-on's output (a phone that also hears for Kurooto),
 its echo comes back later (the sound goes over the network, then the microphone's sound back), so the expected echo

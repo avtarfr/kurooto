@@ -718,3 +718,27 @@ def test_a_stop_reaches_every_piece_handed_ahead(voice):
         sp.drain(5)
         sp.busy = False
     assert len(out.calls) == 2 and all(c[3] for c in out.calls)  # both told to stop
+
+
+def test_the_owner_s_garbled_cut_in_cancels_a_live_answer(lv, monkeypatch):
+    """(0.9.4, voice.listen.barge_owner_stops) His voice cut in and the words came out garbled: the Live answer is
+    cut off (Google interrupted too), never resumed."""
+    from kurooto.modules.voice import barge as barge_mod
+
+    srv = lv.fake("slow")
+    lv.out.block_s = 3.0
+    monkeypatch.setattr(lv, "_write_out", lambda pcm: "sop the ah")
+
+    def cut_in():
+        lv.speaker.hold()
+        lv._barge_early(SOUND, False, 1.0, b"\x01" * 31, {"how": barge_mod.VOICE, "score": 0.8})
+
+    threading.Timer(0.3, cut_in).start()
+    say(lv)
+    for _ in range(100):
+        if srv.starts == 2:
+            break
+        time.sleep(0.02)
+    assert srv.starts == 2 and lv.live.sess.active  # cut off: the turn's own activity, then the interruption
+    assert lv.speaker._cancel.is_set()
+    lv.out.block_s = 0
