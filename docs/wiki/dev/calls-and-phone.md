@@ -271,6 +271,24 @@ transcripts, events and answers until the computer takes them (`Calls.take_queue
   "all"). `skip_class` takes `subject` (one, as before) or `subjects` (a list, `["all"]` for every class today,
   `subjects.ALL_TODAY`) and has a hint telling Live to use one call; `skip_commitment` takes `name` or `names` the same
   way. Before, "I skipped all classes" made Live call `skip_class` seven times in two seconds, each its own line.
+  (0.9.1) `attend_class` (`Subjects._tool_attend`, offline `queue`, in `RESHAPES`) is its undo: the same arguments,
+  `["all"]` = every class skipped today; it emits `class_attend` as `/attend` does. A class that wasn't skipped
+  answers "No change: ..." (so `_reshaped` leaves it alone). `skip_class`'s hint: only a class they name or clearly
+  mean; "today's class" said in answer to a question about class X is X; say back what the result names.
+- (0.9.1) The same question twice: `config_template` says to ask each question once a call; `Calls.run_tool` passes a
+  `pending_items` result through `_mark_raised`, which marks an open question listed earlier in the same call
+  (`_raised[since]`, cleared by `save_transcript`) `raised_this_call`. `Ask.call_brief` adds `asked_on` ("Wednesday
+  (yesterday)") to a question created on an earlier day, and `answer_question`'s hint says to name that day.
+- (0.9.1) The wake-up call: `Alarm.done_lately()` (deadlines `done` with `done_at` in the last 36 h) goes into
+  `script()` ("Already done, so never a to-do now"), the morning-prep request and the morning skill's request;
+  both skills say a done deadline is never a to-do even where a note lists it. `Checkins.deferred_steps` names the
+  day and leaves a class whose Capture question is still open (`_open_capture`) to that question; `take_deferred`
+  hands the journal skill the whole transcript with the rule that only the journal answer and that day's classes
+  belong (`journal_ask`), and the no-AI fallback keeps only `checkins.journal_answer(lines)`: the user's lines after
+  the first assistant turn naming the journal, up to the next assistant turn. Study logs go only to classes still in
+  `logs_due` after the call. Capture's `_hook`: a short answer matching `capture.NOT_THERE` (`not_there()`, at most
+  160 characters, no files) calls `Capture.missed`: `set_skip` for that day, status `skipped`, `subjects.catch_up`,
+  no class-log entry and no study-log job.
 - What needs attention: `Calls.pending` merges every enabled module's `call_brief()` with `app.ask.call_brief()` and
   `core/assembler.py:call_brief()` (`open_threads`, `earlier`: the last day's gists, within `memory.budget_tokens`).
   (0.9.0, `calls.context_brief`) The `pending_items` tool calls `pending(context=True)`, which adds `about_them`:

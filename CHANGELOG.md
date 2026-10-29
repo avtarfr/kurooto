@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.1 (unreleased)
+
+- **A skip on a call can be undone** (a fix). "I'm going to Organic Chemistry after all" on a call puts the class back
+  on (`attend_class`, the same as `/attend`). The call skips only a class you name or clearly mean ("today's class",
+  said about a class it just asked about, is that class) and says back which ones it skipped.
+- **The wake-up call's questions about yesterday say "yesterday"** (a fix). A check-in moved to the wake-up call asks
+  "anything for Wednesday's journal? What did Wednesday's Linear Algebra cover?", and an after-class question from
+  an earlier day says its day, so "today's class" isn't taken for it. Only your answer to the journal question and what
+  you said about that day's classes go into that day's journal; the new day's planning stays out of it.
+- **"I didn't go" in answer to "How was ...?"** (a fix) marks the class missed for that day, with no class-log entry
+  and no study log (it used to write a lecture note saying "Did not attend").
+- **Done deadlines stay off the morning plan** (a fix): one ticked off in the last day and a half is never brought up
+  as a to-do on the wake-up call, even when the plan drafted before it or a note still lists it.
+- **One question, once a call** (a fix): an answered question, even an unclear answer, isn't asked again in the same
+  call.
+
 ## 0.9.0 (2026-10-29)
 
 - **Handwritten notes say what's already in your notes** (`handwritten.overlap`, on; `handwritten.overlap_courses`

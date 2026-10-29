@@ -111,6 +111,24 @@ def _span(seconds: float) -> str:
     return f"{m} min" if m < 60 else f"{m / 60:.1f} h"
 
 
+def journal_answer(app, lines: list[dict]) -> str:
+    """(0.9.1) Their answer(s) right after the journal question on a call ("anything for the journal of Wednesday?"):
+    their lines from the first turn of ours that mentions the journal up to our next turn. "" if it wasn't asked or
+    got no answer. The rest of the call (the new day's planning) isn't that day's journal."""
+    ai, out, after = app.name, [], False
+    for x in lines:
+        text = str(x.get("text") or "").strip()
+        if not text:
+            continue
+        if x.get("who") == ai:
+            if out:
+                break
+            after = after or bool(re.search(r"\bjournal\b", text, re.I))
+        elif after:
+            out.append(text)
+    return "\n".join(out)
+
+
 def _name_in(low: str) -> str:
     if re.search(r"midday|afternoon|lunch|noon", low):
         return "midday"
@@ -590,16 +608,38 @@ class Checkins(Module):
         return d if fresh else None
 
     def deferred_steps(self) -> str:
-        """For the wake-up call: last night's check-in, first."""
+        """For the wake-up call: last night's check-in, first. Its questions name the day ("Wednesday's Organic
+        Chemistry"), so an answer about today's classes isn't taken for them (0.9.1); a class whose after-class
+        question is still open is asked once, through that question."""
         d = self.deferred()
         if not d:
             return ""
         day = dt.date.fromisoformat(d["day"])
-        logs = f" Then what {', '.join(d['classes'])} covered (for the study logs)." if d.get("classes") else ""
+        open_q = self._open_capture(day)
+        own = [c for c in d.get("classes") or [] if c not in open_q]
+        logs = f" Then what {day:%A}'s {', '.join(own)} covered (for the study logs)." if own else ""
+        if open_q:
+            logs += (
+                f" The after-class questions in open_questions for {', '.join(open_q)} are {day:%A}'s: ask each once, "
+                f"saying it's {day:%A}'s class, and save the answer with answer_question."
+            )
         return (
             f"Last night's {d['name']} check-in was moved to this call. Before planning the day, ask: anything for "
-            f"the journal of {day:%A}?{logs} Then go on with today."
+            f"the journal of {day:%A}?{logs} These are about {day:%A}, not today: say so when you ask. Then go on "
+            "with today."
         )
+
+    def _open_capture(self, day: dt.date) -> list[str]:
+        """The classes of a day whose after-class question (Capture) is still open: the call asks it, not twice."""
+        cap = self.app.modules.get("capture")
+        if cap is None or not self.app.is_on("capture"):
+            return []
+        names = []
+        for q in self.app.ask.pending(source="capture"):
+            p = q.get("hook_payload") or {}
+            if p.get("day") == day.isoformat() and p.get("name"):
+                names.append(str(p["name"]))
+        return list(dict.fromkeys(names))
 
     def take_deferred(self, lines: list[dict]) -> bool:
         """After the wake-up call: last night's part goes into that day's journal (and study logs)."""
@@ -612,7 +652,23 @@ class Checkins(Module):
         self._status(d["name"], day, "answered")
         said = daily.their_words(self.app, lines)
         if said and self.setting("journal"):
-            self._notes(d["name"], day, lines, said, classes=d.get("classes") or [], when="on my wake-up call")
+            # (0.9.1) only what was said about that day: the call also planned today, which isn't that day's journal
+            due = set(self.logs_due(day))  # a class answered on the call through its question is logged already
+            self._notes(
+                d["name"],
+                day,
+                lines,
+                journal_answer(self.app, lines),
+                classes=[c for c in d.get("classes") or [] if c in due],
+                when="on my wake-up call",
+                journal_ask=(
+                    f"About {day.isoformat()} ({day:%A}): last night's {d['name']} check-in, taken on my wake-up call "
+                    f"the next morning. The call's transcript is below. Only my answer to the journal question and "
+                    f"what I said about {day:%A}'s classes belong in {day:%A}'s journal; leave out the planning of "
+                    f"the new day (classes I'm skipping today, today's plan, the alarm, check-in times), and don't "
+                    f"link today's things.\n\n{daily.transcript(self.app, lines)}"
+                ),
+            )
         return True
 
     def _deferred_message(self, p: dict) -> None:
@@ -886,7 +942,18 @@ class Checkins(Module):
         classes = self.logs_due(d) if name in ("evening", "night") else []
         self._notes(name, d, lines, said, classes=classes)
 
-    def _notes(self, name: str, d: dt.date, lines: list[dict], said: str, classes: list[str], when: str = "") -> None:
+    def _notes(
+        self,
+        name: str,
+        d: dt.date,
+        lines: list[dict],
+        said: str,
+        classes: list[str],
+        when: str = "",
+        journal_ask: str = "",
+    ) -> None:
+        """The journal (and study logs) from a check-in call. `said` is what goes in as it is when there's no AI (or
+        it fails); `journal_ask` replaces the journal skill's request (the deferred check-in's, 0.9.1)."""
         day = d.isoformat()
         payload = {"name": name, "day": day, "said": said}
         on = when or f"on my {name} check-in call"
@@ -894,7 +961,7 @@ class Checkins(Module):
             jid = daily.run_skill(
                 self.app,
                 "journal",
-                f"About {day}, {on}, in my words:\n{said}",
+                journal_ask or f"About {day}, {on}, in my words:\n{said}",
                 title=f"Journal from your {name} call",
                 then="checkins.notes_done",
                 then_payload=payload,
@@ -905,8 +972,9 @@ class Checkins(Module):
                     daily.run_skill(
                         self.app,
                         "study-log",
-                        f"Classes on {day}: {', '.join(classes)}. What I said about them {on} (log only what I "
-                        f"said; leave out a class I didn't talk about):\n\n{daily.transcript(self.app, lines)}",
+                        f"Classes on {day} ({d:%A}): {', '.join(classes)}. What I said about them {on} (log only "
+                        f"what I said about that day's class; leave out a class I didn't talk about or say I didn't "
+                        f"attend):\n\n{daily.transcript(self.app, lines)}",
                         title=f"Study logs from your {name} call",
                         lane="bg",
                     )
@@ -916,6 +984,8 @@ class Checkins(Module):
         self._journal_raw(payload)
 
     def _journal_raw(self, p: dict) -> None:
+        if not str(p.get("said") or "").strip():
+            return  # (0.9.1) the deferred check-in's journal question got no answer: nothing of the call goes in
         heading = f"{p['name'].title()} check-in, by call ({now():%H:%M})"
         daily.append(self.app, heading, p["said"], dt.date.fromisoformat(p["day"]))
 

@@ -492,10 +492,22 @@ class Ask:
                     "question": q["text"][:400],
                     **({"choices": q["choices"]} if q["choices"] else {}),
                     **({"kept_for_this_call": True} if q["status"] == "later" else {}),
+                    **self._asked_on(q),
                 }
                 for q in items[:10]
             ]
         }
+
+    @staticmethod
+    def _asked_on(q: dict) -> dict:
+        """(0.9.1) A question from an earlier day says which ("asked_on": "Wednesday"): "How was Organic
+        Chemistry?" on Thursday's call is Wednesday's class, and "today's class" in answer isn't."""
+        made = _when(q, "created")
+        if made is None or made.date() >= now().date():
+            return {}
+        day = made.date()
+        name = "yesterday" if day == now().date() - dt.timedelta(days=1) else f"{day:%A %d %b}"
+        return {"asked_on": f"{day:%A} ({name})" if name == "yesterday" else name}
 
     def call_tools(self) -> list:
         from kurooto.modules.calls.tools import Tool, arg
@@ -510,7 +522,9 @@ class Ask:
                 ("id", "answer"),
                 offline="queue",
                 hint="Ask the open_questions from pending_items naturally, one at a time, and save each answer with "
-                "answer_question (approvals with answer_approval). Never answer one for them.",
+                "answer_question (approvals with answer_approval). Never answer one for them. One with asked_on is "
+                'about that day: say so ("How was Wednesday\'s Linear Algebra?"). Ask each one once a call: once '
+                "they've answered, even unclearly, save what they said (or \"later\") and don't ask it again.",
             ),
             Tool(
                 "answer_approval",

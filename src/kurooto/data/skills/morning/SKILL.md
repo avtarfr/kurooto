@@ -20,7 +20,9 @@ Morning planning. What they said: $ARGUMENTS
    - **Before each class**: one line per class, linking the last lecture note;
    - **If there's time**: smaller tasks.
 
-   If they say their energy is low, plan fewer and smaller blocks (don't write their energy level down).
+   If they say their energy is low, plan fewer and smaller blocks (don't write their energy level down). A
+   deadline marked done ("Already done" above, or the deadline tools) is never a to-do here, even if the draft
+   lists it.
 4. **Apply their answers with the tools you have**: classes they're skipping today (skip_class), when they want the
    check-in call (change_checkin), reminders at fixed times (add_reminder), and the time blocks in their calendar
    (plan_block), if those tools exist.

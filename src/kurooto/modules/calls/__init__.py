@@ -139,6 +139,7 @@ RESHAPES = {
     "add_deadline": "a deadline added",
     "remove_deadline": "a deadline removed",
     "skip_class": "a class skipped",
+    "attend_class": "a skipped class back on",
     "skip_commitment": "a commitment skipped",
     "reschedule_day": "the day's plan rescheduled",
     "plan_block": "a block planned",
@@ -213,6 +214,9 @@ class Calls(Module):
         # each call's tool uses, by the call's "since" ("" when the call page didn't say), for the look back after it
         # (review.py); two calls at once, or work queued while the computer was off, each keep their own
         self.tool_log: dict[str, list[dict]] = {}
+        # (0.9.1) the open questions each call's pending_items has listed, by the call's "since": listed again in the
+        # same call, they say they were raised already, so the call doesn't ask the same thing twice
+        self._raised: dict[str, set[str]] = {}
         # the transcripts already kept (a hash of each), so the same end of a call sent twice is kept once (0.8.17: the
         # call page also sends it as the page closes, and the app hangs up a call its screen was closed on)
         self._kept: list[str] = []
@@ -705,6 +709,8 @@ class Calls(Module):
             keep.used(keep.tool_owner(name), "tool")
         try:
             out = tool.run(args or {})
+            if name == "pending_items":
+                out = self._mark_raised(out, str(since or ""))
             from kurooto.mind import act  # (0.9.0, mind.act.record_asked) a change you asked for on the call
 
             act.record_asked(self.app, tool, args or {}, "call")
@@ -717,6 +723,19 @@ class Calls(Module):
         for old in list(self.tool_log)[:-10]:  # calls that never sent a transcript don't pile up
             self.tool_log.pop(old, None)
         return out
+
+    def _mark_raised(self, out, since: str):
+        """(0.9.1) An open question this call's pending_items listed before is marked raised_this_call: asked once
+        already (answered or not), it isn't asked again in the same call."""
+        if not isinstance(out, dict) or not since:
+            return out
+        seen = self._raised.setdefault(since, set())
+        rows = out.get("open_questions") or []
+        marked = [{**q, "raised_this_call": True} if q.get("id") in seen else q for q in rows]
+        seen.update(str(q.get("id")) for q in rows if q.get("id"))
+        for old in list(self._raised)[:-10]:  # calls that never ended here don't pile up
+            self._raised.pop(old, None)
+        return {**out, "open_questions": marked} if rows else out
 
     def _reshaped(self, name: str, out):
         """(0.9.0) After a tool that changes the day (RESHAPES), its result ends with one short line: what the call
@@ -1555,6 +1574,7 @@ class Calls(Module):
         except Exception:
             pass
         used = self.tool_log.pop(str(b.get("since") or ""), [])
+        self._raised.pop(str(b.get("since") or ""), None)
         from kurooto.core import gists
 
         gists.note_call(f, purpose, used)  # what it did, for its gist when the transcript is forgotten
@@ -1672,6 +1692,9 @@ class Calls(Module):
             *[t.hint for t in tools if t.hint],
             "Never say you did something (planned, moved, removed, set, sent) unless a tool's result in this call says "
             "it was done; if no tool can do it, say so.",
+            "Ask each question once a call: once they've answered it, even unclearly, don't ask it again (an open "
+            "question marked raised_this_call was raised already); if the answer was unclear, ask one short "
+            "follow-up about what they said instead.",
             "If something needs a screen or their computer, say so. Don't read out email contents or other people's "
             "details.",
         ]

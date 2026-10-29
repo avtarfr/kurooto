@@ -620,7 +620,9 @@ into your journal (`journal/YYYY-MM-DD.md` in your notes folder).
   evening one asks tomorrow's priority and the wake-up time.
 - **Too tired?** Say so on the call, or tap **Tomorrow morning** (on the missed-call message; for the night check-in
   also on the ringing call's message and in `/checkins`): the rest moves to your wake-up call, which starts with it
-  before planning the day. With no alarm set, it's asked by message in the morning.
+  before planning the day, naming the day ("Wednesday's journal", "Wednesday's Linear Algebra"). Only your answer to
+  the journal question and what you said about that day's classes go into that day's journal (0.9.1). With no alarm
+  set, it's asked by message in the morning.
 - **Afterwards**, with Chat on, the AI writes your journal entry from what you said (your words, not its own) and a
   study log for each class you talked about. Without Chat, what you said goes into the journal as it is.
 - **"Call me back in an hour"** on a check-in call moves that check-in (the same call, with the same steps), never a
@@ -885,7 +887,8 @@ off; crunch weeks: `startby.crunch_weeks` = 0; reshaped plans: `startby.negotiat
 ### Subjects and timetable
 Your courses with short names (`/subject add Linear Algebra (la, linalg)`) and your timetable (`/class mon 09:00-09:55
 la`). Kurooto never calls you during a class (or in the 5 minutes before it, `subjects.margin_min`). `/classes today`,
-`/skip la` or "skipping LA today" (not going: calls aren't held for it), `/attend la` (undo). Attendance and standing is
+`/skip la` or "skipping LA today" (not going: calls aren't held for it), `/attend la` (undo; on a call, "I'm going to
+LA after all": `attend_class`, 0.9.1). Attendance and standing is
 gone from 0.5.8: `/skip` no longer warns about attendance. "not going to LA on Friday" and "skipping stats tomorrow"
 mark that day. Other features use the subjects: after-class notes, the quiz, the study tracker.
 
@@ -1373,7 +1376,9 @@ A couple of minutes after each class in your timetable ends, Kurooto asks what w
 or two, photos of the board or slides, files or a voice note (reply to the question, or answer in the phone app or on
 a call). It goes into that subject's `class-log.md`; photos and files are moved next to it (`<subject>/files/`) and
 linked. With Chat on, the AI also writes a study log for the class (a lecture note in the subject's folder, linked from
-the day's note). **Nothing new** ends it; **Later** keeps the question for your evening check-in call. No questions
+the day's note). **Nothing new** ends it; **Later** keeps the question for your evening check-in call. "I didn't
+go" ("I did not attend lab", "skipped it") marks the class missed for that day, with no class-log entry and no study
+log (0.9.1). No questions
 for classes you skip, on holidays, in exam periods or after the term ends (see `/term`). Needs Subjects with a
 timetable.
 
@@ -2097,7 +2102,9 @@ Needs Phone calls.
 - **The wake-up call** knows the time and your time zone, plans from now (a late wake-up isn't asked about classes
   that are over), goes through that plan, asks which classes still to come you're skipping and when to call you today (the
   evening check-in, and a midday one if you want), and afterwards, with Chat on, settles "## Plan for today" in the
-  daily note from what you said.
+  daily note from what you said. A deadline you ticked off in the last day and a half is never a to-do in it, even
+  when the draft or a note still lists it (0.9.1). A class skipped by mistake on the call: "I'm going to it after
+  all" (`attend_class`).
 - **The morning page:** at the alarm, if this computer is awake, it opens the morning page in your browser (today's
   plan, classes, calendar, what's due, check-ins). It's also at `http://127.0.0.1:8770/morning`.
 - **Keep this computer awake until the alarm** (`alarm.keep_awake`, off until you turn it on): from 12 hours before
