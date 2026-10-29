@@ -128,7 +128,7 @@ when = "Lower it to one for just a morning greeting."
 
 [s."face.greet.say"]
 tip = "What the greeting tells you: what's next today, what's waiting, deadlines in 24 h, what was held while you were away."
-what = "Parts: next, waiting, deadline, held, and (0.9.0) answers: how many answers weren't read aloud while you were away (a yes right after reads them)."
+what = "Parts: next, waiting, deadline, held, and (0.9.0) answers: how many answers weren't read aloud while you were away (a yes right after reads them). (0.9.1) missed_call, never on by default: a check-in call that went unanswered today; a yes takes it here, at the desk."
 when = "Trim it to what you want to hear first when you sit down."
 
 [s."face.greet.tell_ai"]

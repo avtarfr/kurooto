@@ -28,7 +28,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Your AI](#your-ai): 37 settings
 - [Messages and where they reach you](#messages-and-where-they-reach-you): 40 settings
 - [When it may interrupt you](#when-it-may-interrupt-you): 14 settings
-- [Phone calls and the call line](#phone-calls-and-the-call-line): 50 settings
+- [Phone calls and the call line](#phone-calls-and-the-call-line): 52 settings
 - [Morning alarm](#morning-alarm): 13 settings
 - [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 45 settings
 - [Check-ins, journal and the week](#check-ins-journal-and-the-week): 21 settings
@@ -1561,6 +1561,26 @@ for each. On, they're settled at once. Approvals never: they wait for your tap.
 
 - **Values:** On or off. **Default:** off.
 - **When to change it:** Turn it on if a call usually covers what was waiting.
+
+### `calls.desk_first`
+
+A call Kurooto places by itself is offered at your desk first when you're there alone; the phone still rings after a
+wait.
+
+Never the alarm or a call you asked for just now. It asks aloud "shall we do it here?"; a yes takes it at the desk (Live
+if voice.listen.live is on, else Voice's own way), and its words go where the call's would (a check-in's journal). No or
+silence: the phone rings, as before.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you're often at the computer when check-in calls come.
+- **Depends on:** Voice speaking and listening, and Face presence seeing you at the desk.
+
+### `calls.desk_first_s`
+
+How long the desk offer waits for your yes before the phone rings (seconds, at least 10).
+
+- **Values:** A whole number. **Default:** `30`.
+- **When to change it:** Raise it if you need longer to answer; lower it if the phone should ring sooner.
 
 ### `calls.today_plan`
 
@@ -9289,7 +9309,8 @@ A daily cap on greetings.
 What the greeting tells you: what's next today, what's waiting, deadlines in 24 h, what was held while you were away.
 
 Parts: next, waiting, deadline, held, and (0.9.0) answers: how many answers weren't read aloud while you were away (a
-yes right after reads them).
+yes right after reads them). (0.9.1) missed_call, never on by default: a check-in call that went unanswered today; a yes
+takes it here, at the desk.
 
 - **Values:** A list, typed as JSON. **Default:** `["next", "waiting", "deadline", "answers"]`.
 - **When to change it:** Trim it to what you want to hear first when you sit down.

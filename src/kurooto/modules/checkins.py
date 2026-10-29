@@ -994,6 +994,14 @@ class Checkins(Module):
         if not result.ok:
             self._journal_raw(payload)
 
+    def waited(self, day: dt.date | None = None) -> str | None:
+        """(0.9.1, L35) A check-in by call that went unanswered today (missed, declined or held: it came as a message)
+        and isn't answered yet: its name, for the desk greeting's offer. None otherwise."""
+        if not self._by_call():
+            return None
+        plan = self.today(day)
+        return next((n for n in NAMES if (plan.get(n) or {}).get("status") == "asked"), None)
+
     def call_brief(self) -> dict:
         plan = self.today()
         rows = [f"{n} {c.get('time') or '-'} ({c['status']})" for n, c in plan.items()]

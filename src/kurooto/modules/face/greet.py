@@ -73,6 +73,7 @@ def compose(
     name: str = "",
     extra: list[tuple[str, str]] | tuple = (),
     answers: int = 0,
+    missed: str = "",
 ) -> tuple[str, list[str]]:
     """The greeting's text and the names of the parts said (the event carries the names, never the text). name: what
     to call you, said only with nobody else in view and not counted toward MAX_CHARS."""
@@ -106,18 +107,23 @@ def compose(
         elif p == "answers" and answers:  # (0.9.0) last, so the trim drops it before the parts that came before it
             came = f"{plural(answers, 'answer', 'answers').capitalize()} came while you were away"
             said.append((p, f"{came}; say yes to hear {'it' if answers == 1 else 'them'}." if talk else f"{came}."))
+        elif p == "missed_call" and missed and talk and not any(x == "answers" for x, _ in said):
+            # (0.9.1) a check-in call that waited for you: a yes takes it here (Voice.offer_checkin)
+            said.append((p, f"Your {missed} check-in waited; say yes to do it here."))
     for p, line in extra:  # (0.9.0) add-ons' lines last: the first to go at the limit
         if line.strip():
             said.append((p, line.strip()))
     # (0.9.0) with held answers offered, the yes is theirs: no second question
-    waits = any(p in ("waiting", "held") for p, _ in said) and not any(p == "answers" for p, _ in said)
+    waits = any(p in ("waiting", "held") for p, _ in said) and not any(p in ("answers", "missed_call") for p, _ in said)
     ending = " Want to go through them?" if waits and talk else ""
     while said:
         text = " ".join([named, *[t for _, t in said]]) + ending
         if len(text) - name_len <= MAX_CHARS:
             return text, [p for p, _ in said]
         said.pop()  # the last part goes first
-        waits = any(p in ("waiting", "held") for p, _ in said) and not any(p == "answers" for p, _ in said)
+        waits = any(p in ("waiting", "held") for p, _ in said) and not any(
+            p in ("answers", "missed_call") for p, _ in said
+        )
         ending = " Want to go through them?" if waits and talk else ""
     return named, []
 

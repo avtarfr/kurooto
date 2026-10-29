@@ -192,6 +192,11 @@ meanwhile.
   says back which classes it skipped; "I'm going to LA after all" undoes it (0.9.1, `attend_class`).
 - **One question, once** (0.9.1). A question you've answered, even unclearly, isn't asked again in the same call; a
   question from an earlier day says which ("How was Wednesday's Linear Algebra?").
+- **At the desk first** (0.9.1, `calls.desk_first`, off). A call Kurooto places by itself (a check-in, a reminder; never
+  the alarm or one you just asked for) is offered aloud at your desk first when Face presence has you there alone:
+  "Evening debrief. Shall we do it here?" Say yes and it goes on at the desk (Live if `voice.listen.live` is on, else
+  Voice's own way), its words written into your journal as a call's would be. No, or nothing within
+  `calls.desk_first_s` (30 s): your phone rings, as before.
 - **What a call went over** (0.9.1). Held messages and open questions about something the call talked through (a
   deadline it moved or updated, a class it skipped, or what they're about said in your own words) are marked "talked
   through on your 17:00 call" (with `notify.calm.recheck`): the line goes with them when they're sent, and the

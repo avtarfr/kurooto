@@ -272,6 +272,16 @@ tip = "After a call or a desk talk went over something, its held messages and op
 what = "Off, they're only marked \"talked through on your 17:00 call\" (with notify.calm.recheck) and the Waiting page has Settled for each. On, they're settled at once. Approvals never: they wait for your tap."
 when = "Turn it on if a call usually covers what was waiting."
 
+[s."calls.desk_first"]
+tip = "A call Kurooto places by itself is offered at your desk first when you're there alone; the phone still rings after a wait."
+what = "Never the alarm or a call you asked for just now. It asks aloud \"shall we do it here?\"; a yes takes it at the desk (Live if voice.listen.live is on, else Voice's own way), and its words go where the call's would (a check-in's journal). No or silence: the phone rings, as before."
+when = "Turn it on if you're often at the computer when check-in calls come."
+needs = "Voice speaking and listening, and Face presence seeing you at the desk."
+
+[s."calls.desk_first_s"]
+tip = "How long the desk offer waits for your yes before the phone rings (seconds, at least 10)."
+when = "Raise it if you need longer to answer; lower it if the phone should ring sooner."
+
 [s."calls.today_plan"]
 tip = "The phone app's Today also shows the first lines of today's plan, what to start, and the hours studied."
 what = "The plan's first lines from your daily note (with what a call changed since it was drafted), Start-by's and revision's rows."

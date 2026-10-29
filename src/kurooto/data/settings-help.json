@@ -96,6 +96,8 @@
 "calls.chat_sessions": "Separate chats in the phone app, each its own conversation whose context carries over.",
 "calls.chat_titles": "How a new chat gets its title: its first words, or a short title from your AI.",
 "calls.context_brief": "Calls and desk Live talks hear what every AI request is told: your profile's brief, how to help you, topics you skip.",
+"calls.desk_first": "A call Kurooto places by itself is offered at your desk first when you're there alone; the phone still rings after a wait.",
+"calls.desk_first_s": "How long the desk offer waits for your yes before the phone rings (seconds, at least 10).",
 "calls.hold_moving": "Calls Kurooto places by itself wait while your phone says you're walking or in a vehicle.",
 "calls.later_min": "Minutes until it calls back after you tap Later on a ringing call.",
 "calls.lessons_everywhere": "Each lesson from the look back after a call is also a dated line in your how-to-help-me note, so every AI request follows it.",

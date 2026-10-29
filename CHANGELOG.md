@@ -22,6 +22,9 @@
   and on the "while you were away" card, never on Telegram.
 - **The Waiting page** (`look.being_held_link`, on; Alt+W): click the being's held count to read every held message in
   full, with Send now.
+- **Calls at the desk first** (`calls.desk_first`, off): a call Kurooto places by itself is offered aloud at your desk
+  when you're there alone; yes takes it there, no or silence rings the phone as before. Never the alarm. Add
+  `missed_call` to `face.greet.say` and the desk greeting offers a check-in call you missed today.
 - **What a call went over** (`calls.settle_messages`, off): held messages and open questions about what a call or a
   desk talk went over say "talked through on your 17:00 call", with Settled on the Waiting page; the switch closes
   them instead. Never approvals.

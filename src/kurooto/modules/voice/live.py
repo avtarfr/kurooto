@@ -247,6 +247,10 @@ class Live:
             about = ""
         if about:
             si += "\n" + about
+        dc = getattr(self.v, "desk_calling", None)
+        if dc:  # (0.9.1, calls.desk_first) a call taken at the desk: Live goes through its steps
+            si += f"\nThis talk is a call taken at the desk: {dc['reason']}. Go through it as the call would:\n"
+            si += dc["script"]
         return {
             "model": f"models/{model}",
             "generationConfig": gen,

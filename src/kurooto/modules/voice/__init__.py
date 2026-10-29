@@ -273,6 +273,7 @@ SAID_YES = re.compile(r"^(?:yes|yeah|yep|sure|ok(?:ay)?|right|go ahead|do it|ple
 SAID_NO = re.compile(r"^(?:no|nope|nah|don'?t|not now|cancel|stop)\b", re.I)
 SAID_DONE = re.compile(r"^(?:done|ok(?:ay)?|got it|thanks|thank you|yes|yeah|will do|on it|did it)\b", re.I)
 SPOKEN_WAIT_S = 8.0  # (0.9.1) a spoken answer is waited for this long after the question
+CHECKIN_OFFER_S = 120  # (0.9.1, L35) a yes this soon after the greeting's offer of the waited check-in takes it
 READ_IT = re.compile(  # (0.9.0) a yes to the greeting's offer of the answers held while you were away
     r"^\s*(?:yes|yeah|yep|sure|ok(?:ay)?|go ahead|please|read (?:it|them)(?: out)?)(?:[\s,]+please)?[\s.!]*$", re.I
 )
@@ -572,6 +573,10 @@ class Voice(Module):
         self.held_answers: deque = deque(maxlen=10)  # (0.9.0) answers not read while you were away (memory only)
         self._unasked: tuple[float, str] | None = None  # (0.9.0, mirror_to_chat) its last unasked line, for Chat
         self._talk: list[dict] = []  # (0.9.0, after_talk) this conversation's text lines, yours and its (memory only)
+        # (0.9.1, calls.desk_first) a call taken at the desk: since, reason, script; and (L35) the check-in the
+        # greeting offered, with when
+        self.desk_calling: dict | None = None
+        self._checkin_offer: tuple[str, float] | None = None
 
     # ------------------------------------------------------------------------------------------- the parts
     def wants(self) -> list[str]:
@@ -751,6 +756,13 @@ class Voice(Module):
                 if face is not None and hasattr(face, "greet_closed"):
                     face.greet_closed(self.portal.turns > 0)
             talk, self._talk = self._talk, []
+            dc, self.desk_calling = self.desk_calling, None
+            if dc is not None:  # (0.9.1) a call taken at the desk: its lines go where the call's would (its journal)
+                calls = self.app.modules.get("calls")
+                if calls is not None and hasattr(calls, "desk_done"):
+                    threading.Thread(target=calls.desk_done, args=(dc["since"], talk, dc["reason"]),
+                                     name="voice-desk-call", daemon=True).start()  # fmt: skip
+                return
             if talk and self.setting("listen.after_talk"):  # (0.9.0) a talk at the desk, as a call's end has
                 threading.Thread(target=self.after_talk, args=(talk,), name="voice-after-talk", daemon=True).start()
 
@@ -1514,6 +1526,7 @@ class Voice(Module):
             held = self.read_held(text)
             if held is not None:
                 return held
+            self._take_checkin_offer(text)  # (0.9.1) "yes" to the waited check-in: this turn starts it, here
         if who is not None and who.decision == "owner":  # (voice.listen.live) Gemini Live answers it aloud, or None
             said = self.live.turn(text, turn)
             if said is not None:
@@ -1523,7 +1536,7 @@ class Voice(Module):
                 return said
         replies: list[str] = []
         msg = Incoming(
-            text=text,
+            text=self.desk_call_line(text) if who is None or who.decision == "owner" else text,
             via="voice",
             voice=True,
             respond=lambda t, buttons=None: replies.append(str(t)),
@@ -2046,6 +2059,50 @@ class Voice(Module):
         except Exception as e:
             self.app.events.emit("voice_failed", part="message aloud", error=f"{type(e).__name__}"[:100])
 
+    # --------------------------------------------------------------- a call taken at the desk (0.9.1, L34)
+    def desk_call(self, since: str, reason: str, script: str) -> bool:
+        """(calls.desk_first) You said yes to taking a call here: the conversation opens with its first words, and
+        until it closes each of your turns goes to your AI with the call's steps (Live, if voice.listen.live is on,
+        answers with its own call setup). When it closes, its lines go to Calls.desk_done. True when it opened."""
+        self.desk_calling = {"since": since, "reason": reason, "script": script[:4000]}
+        opening = "OK, here then."
+        ok, _ = self.say(opening, wait=True)
+        blocked = self.blocked()
+        if not ok or blocked:
+            self.desk_calling = None
+            calls = self.app.modules.get("calls")
+            if calls is not None and hasattr(calls, "_desk_fallback"):
+                calls._desk_state(since, "taken", "desk")
+                calls._desk_fallback({"since": since})  # the phone after all
+            return False
+        self._talk_line(self.app.name, opening)
+        self.portal.invite(opening, float(self.setting("listen.follow_s") or 20))
+        return True
+
+    def offer_checkin(self, name: str) -> None:
+        """(0.9.1, L35) The greeting just offered the check-in that waited: a yes said within CHECKIN_OFFER_S takes it
+        here."""
+        self._checkin_offer = (name, time.monotonic())
+
+    def _take_checkin_offer(self, text: str) -> bool:
+        off, self._checkin_offer = self._checkin_offer, None
+        if off is None or time.monotonic() - off[1] > CHECKIN_OFFER_S or not SAID_YES.match((text or "").strip()):
+            return False
+        calls = self.app.modules.get("calls")
+        got = calls.desk_checkin(off[0]) if calls is not None and self.app.is_on("calls") else None
+        if not got:
+            return False
+        self.desk_calling = {"since": got[0], "reason": got[1], "script": got[2][:4000]}
+        return True
+
+    def desk_call_line(self, text: str) -> str:
+        """The turn as your AI gets it during a call at the desk: the call's steps first, then what you said."""
+        dc = self.desk_calling
+        if not dc:
+            return text
+        return (f"[A call taken at the desk: {dc['reason']}. Go through it as the call would, one question at a time, "
+                f"briefly, as spoken words. Its steps:\n{dc['script']}]\n\nThey said: {text}")  # fmt: skip
+
     def _desk_chat(self, said: str, answer: str, how: str = "spoken") -> None:
         """(0.9.1, calls.chat_desk) Your turn at the desk and its answer, into the phone app's and the dashboard's
         "Desk" chat. Only your own turns reach here (a guest's returned before). Never raises."""
@@ -2060,7 +2117,7 @@ class Voice(Module):
     def _talk_line(self, who: str, text: str) -> None:
         """(after_talk) One text line of this conversation, in memory until it closes (at most TALK_MAX lines)."""
         text = (text or "").strip()
-        if text and self.setting("listen.after_talk") and len(self._talk) < TALK_MAX:
+        if text and (self.setting("listen.after_talk") or self.desk_calling) and len(self._talk) < TALK_MAX:
             self._talk.append({"who": who, "text": text[:4000]})
 
     def after_talk(self, lines: list[dict]) -> None:

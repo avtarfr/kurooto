@@ -279,6 +279,22 @@ transcripts, events and answers until the computer takes them (`Calls.take_queue
   `pending_items` result through `_mark_raised`, which marks an open question listed earlier in the same call
   (`_raised[since]`, cleared by `save_transcript`) `raised_this_call`. `Ask.call_brief` adds `asked_on` ("Wednesday
   (yesterday)") to a question created on an earlier day, and `answer_question`'s hint says to name that day.
+- (0.9.1, L34, `calls.desk_first`, off) `ring(..., desk=True)`: an automatic, non-alarm call goes to `_desk_first` when
+  `desk_free()` (switch, Voice and Face on, `notifier.at_desk()`, not `Voice.others_here()`, not muted, no open
+  portal) returns Voice: a rings.json row with state `desk`, `calls.desk_fallback` booked `desk_first_s` ahead, and
+  `_desk_ask` on a thread (`Voice.spoken_yes`, owner-only with Voice ID on). It returns `"desk-<since>"` (truthy, so
+  `checkins._call` sets "calling" and its unstick as for a ring). Yes: state `taken`, fallback cancelled,
+  `call_outcome("answered")`, `Voice.desk_call(since, reason, desk_script(key))`. No: the fallback at once; silence:
+  at `desk_first_s`. `_desk_fallback` rings only from state `desk` (-> `phone`) with `desk=False`; `_realert` passes
+  `desk=False`. `Voice.desk_call` opens the portal; while `desk_calling` is set, owner turns go to the AI through
+  `desk_call_line` (the call's steps first) and Live's setup gets them too; `_talk_line` keeps lines whatever
+  `after_talk` says, and on the portal's close `Calls.desk_done(since, lines, reason)` -> `save_transcript` with that
+  since, so the owning feature's `call_transcript` writes the journal. No Android "Answer here" card yet.
+- (0.9.1, L35, `face.greet.say` part `missed_call`, never default) `Checkins.waited()`: today's by-call check-in in
+  status "asked". `greet.compose(missed=...)` adds "Your <name> check-in waited; say yes to do it here." (not with
+  `answers`, and it stops the "Want to go through them?" ending). After a talk greeting, `Voice.offer_checkin(name)`;
+  a `SAID_YES` within `CHECKIN_OFFER_S` in `ask_brain` -> `Calls.desk_checkin(name)` (a `taken` ring, answered, the
+  check-in message retracted) and `desk_calling`, so that same turn starts the check-in.
 - (0.9.1, L29) `save_transcript` calls `review.settle_covered(calls, lines, used, layer)`: `review.covered()` turns the
   tool log into items (`deadline:<id>` for a deadline tool with an `id`, `class:<slug>` for `skip_class` /
   `attend_class`), and the user's own lines are the `words`. `Calm.talked(items, said, settle, words)` marks held rows

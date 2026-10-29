@@ -239,7 +239,9 @@ When you arrive, Kurooto says, in about three sentences, through your speakers:
 ("Morning." the first time a day before noon.) What it mentions is `face.greet.say`: what's next today, how many
 questions and approvals wait (never what they say), one deadline due within 24 hours, and how many messages wait for
 the evening (`held`, off by default), and (0.9.0, `answers`, on) how many answers weren't read aloud while you were
-away: "One answer came while you were away; say yes to hear it.", and a yes reads it. It's made by rules on your computer: no AI request, and it's never sent to
+away: "One answer came while you were away; say yes to hear it.", and a yes reads it. (0.9.1, `missed_call`, add it
+to `face.greet.say` to use it) A check-in call that went unanswered today: "Your evening check-in waited; say yes to do
+it here.", and a yes takes it at the desk, written into your journal as the call would have been. It's made by rules on your computer: no AI request, and it's never sent to
 Telegram or your phone. With "what to call you" on your [persona card](teaching-kurooto.md#your-persona-card)
 (0.9.0, `persona.templates`), it starts "Welcome back, Sam." while you're alone in view; the name never pushes a part
 out of the greeting. When you answer it, your AI is told what it had just said (0.9.0, `face.greet.tell_ai`, on), so

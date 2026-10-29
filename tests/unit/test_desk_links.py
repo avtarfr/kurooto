@@ -299,3 +299,99 @@ def test_a_reminder_said_aloud_and_done_takes_its_copies_down(desk_voice, monkey
         "Call the lab.\n\nDone · Snooze", kind="reminder", map_kind="reminder", map_ref="r1", why="reminders.own"
     )
     assert v.said == ["Reminder: Call the lab."] and gone == [("reminder", "r1")]
+
+
+# --------------------------------------------------------------------------------------------- L34, L35
+class DeskVoice:
+    """Stands in for Voice at the desk: its answer to "shall we do it here?" and the calls it took."""
+
+    def __init__(self, yes):
+        self.yes, self.calls = yes, []
+        self.voiceid = type("V", (), {"on": staticmethod(lambda: False)})()
+
+    def spoken_yes(self, prompt, timeout_s=8.0, why="", need_owner=True):
+        self.asked = prompt
+        return self.yes
+
+    def desk_call(self, since, reason, script):
+        self.calls.append((since, reason, script))
+        return True
+
+
+@pytest.fixture
+def desk(phone, monkeypatch):  # noqa: F811
+    import kurooto.modules.calls as cmod
+
+    class Now:
+        def __init__(self, target, args=(), **kw):
+            self.target, self.args = target, args
+
+        def start(self):
+            self.target(*self.args)
+
+    monkeypatch.setattr(cmod.threading, "Thread", Now)
+    return phone
+
+
+def rings_of(env):
+    return [kw for op, kw in env.ops if op == "ring"]
+
+
+def test_desk_first_is_off_by_default_and_the_phone_rings(desk):
+    c = desk.calls
+    assert c.setting("desk_first") is False and c.desk_free() is None
+    desk.app.settings.set("calls.desk_first", True)
+    assert c.desk_free() is None  # Voice and Face presence off: nobody to offer it to
+    assert c.ring("Evening debrief", key="fakeq:evening", why="checkins.call") and len(rings_of(desk)) == 1
+
+
+def test_a_yes_at_the_desk_takes_the_call_here_and_the_phone_never_rings(desk, monkeypatch):
+    c, v = desk.calls, DeskVoice(True)
+    desk.app.settings.set("calls.desk_first", True)
+    monkeypatch.setattr(c, "desk_free", lambda: v)
+    out = c.ring("Evening debrief", key="fakeq:evening", why="checkins.call")
+    since = out.removeprefix("desk-")
+    assert out.startswith("desk-") and rings_of(desk) == [] and "Shall we do it here?" in v.asked
+    assert v.calls[0][:2] == (since, "Evening debrief")
+    assert jload(c.dir / "rings.json", {})[since]["state"] == "taken"
+    assert not desk.app.scheduler.get(f"calls:desk:{since}")
+    c._desk_fallback({"since": since})  # too late: it was taken
+    assert rings_of(desk) == []
+
+
+@pytest.mark.parametrize("answer,rings_now", [(None, 0), (False, 1)])
+def test_no_answer_or_no_rings_the_phone(desk, monkeypatch, answer, rings_now):
+    c = desk.calls
+    desk.app.settings.set("calls.desk_first", True)
+    monkeypatch.setattr(c, "desk_free", lambda: DeskVoice(answer))
+    since = c.ring("A reminder call", key="fakeq:r", why="reminders.call").removeprefix("desk-")
+    assert len(rings_of(desk)) == rings_now  # "no": at once; nothing said: after desk_first_s
+    c._desk_fallback({"since": since})
+    assert len(rings_of(desk)) == 1 and jload(c.dir / "rings.json", {})[since]["state"] == "phone"
+    assert c.ring("Wake-up call", alarm=True, key="alarm:next") and len(rings_of(desk)) == 2  # never the alarm
+
+
+def test_the_waited_check_in_is_offered_by_the_greeting_and_taken_at_the_desk(desk):
+    from kurooto.modules import daily
+    from kurooto.modules.face import greet
+
+    app = desk.app
+    desk.on("checkins")
+    app.settings.set("checkins.by_call", True)
+    ck = app.modules["checkins"]
+    day = ck.day_of()
+    ck._status("evening", day, "asked")  # the call went unanswered: it came as a message
+    assert ck.waited() == "evening"
+    text, parts = greet.compose(["waiting", "missed_call"], [], (1, 0), None, 0, False, daily.now(), missed="evening")
+    assert "Your evening check-in waited; say yes to do it here." in text and "Want to go through them" not in text
+    assert parts == ["waiting", "missed_call"]
+    v = app.modules["voice"]
+    v.offer_checkin("evening")
+    assert not v._take_checkin_offer("what's due?")  # not a yes: the offer lapses
+    v.offer_checkin("evening")
+    assert v._take_checkin_offer("yes")
+    assert ck.today(day)["evening"]["status"] == "answered" and v.desk_calling["reason"] == "Evening debrief"
+    assert "Evening debrief" in v.desk_call_line("fine") and v.desk_call_line("fine").endswith("They said: fine")
+    lines = [{"who": "Kurooto", "text": "How did today go?"}, {"who": "Sam", "text": "Wrote the lab report."}]
+    desk.calls.desk_done(v.desk_calling["since"], lines, "Evening debrief")
+    assert "Wrote the lab report." in daily.note_path(app, day).read_text()  # its journal, as a call's

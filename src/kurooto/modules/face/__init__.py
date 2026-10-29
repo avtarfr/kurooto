@@ -149,7 +149,8 @@ register_defaults(
             "after_absent_min": 20,  # only after you've been away at least this long (minutes)
             "gap_min": 60,  # at most one greeting in this many minutes
             "per_day": 3,  # at most this many greetings a day
-            # what it says: next (today), waiting, deadline (24 h), held, answers (0.9.0: not read while you were away)
+            # what it says: next (today), waiting, deadline (24 h), held, answers (0.9.0: not read while you were away),
+            # missed_call (0.9.1, add it to use it: a check-in call that waited, taken here on your yes)
             "say": ["next", "waiting", "deadline", "answers"],
             "with_others": "skip",  # someone else in view too: skip (no greeting), short ("Welcome back." only) or full
             "talk": True,  # then open the conversation: answer without saying its name (needs Voice listening)
@@ -248,7 +249,7 @@ LICENCES = [
 EARLY = PAUSES[:3] + ("template locked",)  # no watcher is built for these
 # a session's kind -> the page's stage
 STAGES = {"enrol": "capturing", "test": "testing", "gaze": "calibrating", "look": "looking"}
-SAY_PARTS = ("next", "waiting", "deadline", "held", "answers")
+SAY_PARTS = ("next", "waiting", "deadline", "held", "answers", "missed_call")  # (0.9.1) missed_call: never by default
 TOGGLES = {
     "greet.on": "Greet me when I sit down",
     "greet.talk": "Then listen for my answer",
@@ -1443,6 +1444,7 @@ class Face(Module):
             extra=extra,
             name="" if others or nearby.others(self.app) else persona.address(self.app),  # (0.9.0) alone in view only
             answers=self._held_answers(),
+            missed=self._waited_checkin() if talk and not others and not nearby.others(self.app) else "",
         )
         text = persona.template(self.app, text)  # (0.9.0, persona.templates) the avoid line, as punctuation
         v = self.app.modules["voice"]
@@ -1459,6 +1461,10 @@ class Face(Module):
                 self._carried[p[6:]] = time.time()
         self.app.events.emit("face_greeted", **_event_safe(parts=parts, talk=opened == "talk"))
         self._record_greeting(parts, opened == "talk")
+        if opened == "talk" and "missed_call" in parts:  # (0.9.1) a yes takes the check-in here (L35)
+            missed = self._waited_checkin()
+            if missed and hasattr(v, "offer_checkin"):
+                v.offer_checkin(missed)
         if opened == "talk" and text.endswith("Want to go through them?"):  # (0.9.0) a yes starts it (walkthrough.py)
             from kurooto.core import walkthrough
 
@@ -1507,6 +1513,17 @@ class Face(Module):
         result = "replied" if answered else "missed"
         records.outcome(self.app, rid, result, 1.0 if answered else 0.0)
         self.app.events.emit("face_greet_outcome", **_event_safe(result=result))
+
+    def _waited_checkin(self) -> str:
+        """(0.9.1, greet.say "missed_call") Today's check-in whose call went unanswered (it came as a message and isn't
+        answered yet), by name, or ""."""
+        if "missed_call" not in (self.setting("greet.say") or []):
+            return ""
+        ck = self.app.modules.get("checkins")
+        try:
+            return (ck.waited() or "") if ck is not None and self.app.is_on("checkins") else ""
+        except Exception:
+            return ""
 
     def _held_answers(self) -> int:
         """(0.9.0) How many answers Voice didn't read while you were away (a count only)."""

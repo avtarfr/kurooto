@@ -212,6 +212,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `calls.chat_sessions` | `true` | Separate chats in the phone app, each its own conversation whose context carries over. ([guide](wiki/user/settings-guide.md#callschatsessions)) |
 | `calls.chat_titles` | `"first words"` | How a new chat gets its title: its first words, or a short title from your AI. ([guide](wiki/user/settings-guide.md#callschattitles)) |
 | `calls.context_brief` | `true` | Calls and desk Live talks hear what every AI request is told: your profile's brief, how to help you, topics you skip. ([guide](wiki/user/settings-guide.md#callscontextbrief)) |
+| `calls.desk_first` | `false` | A call Kurooto places by itself is offered at your desk first when you're there alone; the phone still rings after a wait. ([guide](wiki/user/settings-guide.md#callsdeskfirst)) |
+| `calls.desk_first_s` | `30` | How long the desk offer waits for your yes before the phone rings (seconds, at least 10). ([guide](wiki/user/settings-guide.md#callsdeskfirsts)) |
 | `calls.hold_moving` | `false` | Calls Kurooto places by itself wait while your phone says you're walking or in a vehicle. ([guide](wiki/user/settings-guide.md#callsholdmoving)) |
 | `calls.later_min` | `30` | Minutes until it calls back after you tap Later on a ringing call. ([guide](wiki/user/settings-guide.md#callslatermin)) |
 | `calls.lessons_everywhere` | `true` | Each lesson from the look back after a call is also a dated line in your how-to-help-me note, so every AI request follows it. ([guide](wiki/user/settings-guide.md#callslessonseverywhere)) |
