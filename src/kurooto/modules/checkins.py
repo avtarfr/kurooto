@@ -1040,7 +1040,7 @@ class Checkins(Module):
                 {"name": arg("evening, midday or night")},
                 offline="brief",
                 hint="On a check-in call (the reason is Evening debrief, Midday check-in or Night check-in), first "
-                "call checkin_script with that name and follow it.",
+                "call checkin_script with that name (unless the call's first message already gives it) and follow it.",
             ),
         ]
 
@@ -1168,7 +1168,7 @@ class Checkins(Module):
         if name == "midday":
             return "\n".join(
                 [
-                    "Midday check-in, about 5 minutes.",
+                    "Midday check-in, about 5 minutes. One question at a time: ask, then wait for the answer.",
                     *([f"Today's plan:\n{plan}"] if plan else []),
                     "Ask how the morning went against today's plan.",
                     "Re-plan the afternoon with them in two or three blocks.",

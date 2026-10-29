@@ -7,8 +7,10 @@ three can't behave differently.
                                     today's journal lines and what's in the inbox
     act(app, name, args)            one action; {"ok", "message", ...}; never raises
 
-Actions: journal.add {text} · note.capture {text} · reminder.add {when, what} · reminder.cancel {key} ·
-reminder.snooze {key, minutes} · deadline.add {title, when, course?} · deadline.done {id} · deadline.move {id, when} ·
+Actions: journal.add {text} · note.capture {text} · reminder.add {when, what, repeat?, until?} (repeat: "daily",
+"weekdays", "weekends", "mon,thu"; 0.9.2) · reminder.cancel {key} (a repeating one: every time of it) ·
+reminder.snooze {key, minutes} (a repeating one: that time only) · deadline.add {title, when, course?} ·
+deadline.done {id} · deadline.move {id, when} ·
 alarm.set {when} · alarm.skip {day} · alarm.clear · alarm.daily {time or "off"} · checkin.skip {name} ·
 checkin.postpone {name, minutes} (later today) · checkin.defer {name} (to tomorrow morning) · ask {text} (a job: its
 answer comes like a chat answer) · question.answer {id, answer} · study.mode {on} · study.timer {do: start|pause|reset,
@@ -73,6 +75,7 @@ def inbox_note(app: App) -> Path:
 
 def today(app: App) -> dict:
     from kurooto.modules.daily import morning_view
+    from kurooto.modules.reminders import repeat_label
 
     out = morning_view(app)
     rem = app.modules.get("reminders")
@@ -82,6 +85,7 @@ def today(app: App) -> dict:
                 "key": j.key.split(":", 1)[1],
                 "when": j.when.astimezone().strftime("%a %H:%M"),
                 "what": j.payload.get("what", ""),
+                **({"repeat": repeat_label(j.payload["repeat"])} if j.payload.get("repeat") else {}),
             }
             for j in app.scheduler.jobs("reminders:")[:30]
         ]
@@ -332,11 +336,23 @@ def note_capture(app: App, args: dict) -> dict:
 
 def reminder_add(app: App, args: dict) -> dict:
     rem = _on(app, "reminders", "Reminders")
+    from kurooto.modules.reminders import ONCE, repeat_days, until_date
+
     try:
         when = parse_when(str(args.get("when") or ""))
     except ValueError:
         raise Problem(f"I couldn't read the time {args.get('when')!r}.") from None
-    return {"message": rem.add(when, _text(args, "what"))}
+    every = str(args.get("repeat") or "").strip()
+    days = repeat_days(every) if every and not ONCE.match(every) else None
+    if every and not ONCE.match(every) and days is None:
+        raise Problem(f"I couldn't read how often {every!r} is (daily, weekdays, weekends or days like mon,thu).")
+    until = None
+    if days and str(args.get("until") or "").strip():
+        try:
+            until = until_date(str(args["until"]))
+        except ValueError:
+            raise Problem(f"I couldn't read the end date {args.get('until')!r}.") from None
+    return {"message": rem.add(when, _text(args, "what"), repeat=days, until=until)}
 
 
 def reminder_cancel(app: App, args: dict) -> dict:
@@ -355,8 +371,11 @@ def reminder_snooze(app: App, args: dict) -> dict:
         raise Problem("That reminder is gone already.")
     minutes = max(1, min(24 * 60, int(args.get("minutes") or 10)))
     what = job.payload.get("what", "")
-    app.scheduler.cancel(f"reminders:{key}")
     base = max(now(), job.when.astimezone().replace(tzinfo=None))
+    if job.payload.get("repeat"):  # (0.9.2) a series: this time moves (a one-off), the series goes on from the next
+        rem.skip_next(key)
+    else:
+        app.scheduler.cancel(f"reminders:{key}")
     return {"message": rem.add(base + dt.timedelta(minutes=minutes), what)}
 
 

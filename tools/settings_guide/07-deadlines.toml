@@ -222,6 +222,14 @@ when = "Turn it off to keep reminders to their snooze buttons only."
 cost = "Nothing."
 needs = "Reminders, and an add-on that offers buttons."
 
+[s."reminders.repeat"]
+tip = "Repeating reminders: \"remind me every day at 22:15 to …\", \"on weekdays\", \"every Monday and Thursday\", with \"until <date>\"."
+what = """One reminder that books its own next time after each one. /reminders lists it once, with Cancel (every time
+of it) and Skip next. On calls, add_reminder takes repeat and until, and change_reminder makes one just set repeat."""
+when = "Turn it off if you only want one-off reminders. Each repeating one then comes once more and stops."
+cost = "Nothing."
+needs = "Reminders."
+
 [s."reminders.wait_for_break"]
 tip = "During a Study mode focus, your reminders wait for its break; a pause or reset brings them at once."
 when = "Turn it on if a reminder in the middle of a focus breaks it. Alarms and deadline calls never wait."

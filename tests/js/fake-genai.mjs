@@ -4,6 +4,7 @@
 //                              connect then never resolves
 //   {ok: true, say, dropAfter} set up; `say` sends some of a model turn first, `dropAfter` (ms) closes it with 1011
 //   {ok: true, tools}          set up, then one toolCall message with these functionCalls
+//   {ok: true, messages}       set up, then these server messages in order ({wait: ms} pauses between them)
 export class GoogleGenAI {
   constructor(opts) {
     this.opts = opts;
@@ -32,6 +33,7 @@ function connect({ model, config, callbacks }) {
       setTimeout(() => {
         if (step.say) callbacks.onmessage({ serverContent: { outputTranscription: { text: step.say }, turnComplete: true } });
         if (step.tools) callbacks.onmessage({ toolCall: { functionCalls: step.tools } });
+        if (step.messages) (async () => { for (const m of step.messages) { if (m.wait) await new Promise((r) => setTimeout(r, m.wait)); else if (!session.closed) callbacks.onmessage(m); } })();
         if (step.dropAfter) setTimeout(() => { if (!session.closed) { session.closed = true; callbacks.onclose({ code: 1011, reason: 'The service is currently unavailable.' }); } }, step.dropAfter);
       }, 5);
     }, 5);

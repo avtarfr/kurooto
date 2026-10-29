@@ -17,7 +17,7 @@ const LIVE_DOWN = { error: "the voice service didn't start the call: The service
 let n = 0;
 
 // A fresh page: stub DOM, call line, speech. Returns what it saw.
-async function page({ search, app = null, speech = true, voice = 'auto', tokens = () => null, heard = [] }) {
+async function page({ search, app = null, speech = true, voice = 'auto', tokens = () => null, heard = [], tool = () => ({ ok: true }) }) {
   const els = {};
   const el = (id) => ({ id, textContent: '', hidden: false, className: '', disabled: false, dataset: {}, style: {}, value: '1', children: [], append(c) { this.children.push(c); }, scrollIntoView() {} });
   const seen = { calls: [], spoken: [], els, on: {} };
@@ -45,6 +45,7 @@ async function page({ search, app = null, speech = true, voice = 'auto', tokens 
     } else if (path === '/turn') out = { reply: `**Answer ${++turns}.**`, via: 'computer' };
     else if (path === '/text-call') out = { ok: true, id: 'abc', where: 'telegram' };
     else if (path === '/tasks') out = { finished: [], approvals: [], computer: 'online' };
+    else if (path === '/tool') out = tool(body);
     return { ok: status < 400, status, json: async () => out };
   };
   // the browser's speech: what's "heard", one entry per listen ({error} for a failure); nothing left: silence
@@ -196,7 +197,7 @@ const reports = (s) => s.bodies('/call-report');
     fc('skip_class', { subjects: ['all'] }, 8),
   ] });
   s.els.call.onclick();
-  await until(() => s.bodies('/tool').length === 7, 4000, 'the tools run');
+  await until(() => s.bodies('/tool').filter((b) => b.since).length === 7, 4000, 'the tools run');
   assert.deepEqual(s.els.log.children.map((c) => c.textContent), ['skipping Linear Algebra, Statistics', 'searching notes: lab ×3', "skipping today's classes"]);
   s.els.call.onclick();
 }
@@ -228,6 +229,70 @@ const reports = (s) => s.bodies('/call-report');
   await sleep(30);
   s.on.pagehide.forEach((f) => f());
   assert.deepEqual(s.bodies('/transcript')[0].lines, [{ who: 'Kurooto', text: 'Hi.' }]);
+}
+
+// ---- 10. (0.9.2) two turns of the assistant in a row are two lines, not one run together; a cut-off one ends its line
+{
+  const s = await page({ search: '?p=Midday%20check-in&s=15' });
+  __live.steps.push({ ok: true, messages: [
+    { serverContent: { outputTranscription: { text: 'What is the new date for your Lab Journal submission?' } } },
+    { serverContent: { turnComplete: true } },
+    { serverContent: { outputTranscription: { text: 'To prepare for your quiz,' } } },
+    { serverContent: { interrupted: true } },
+    { serverContent: { inputTranscription: { text: "It's next Wednesday." } } },
+    { serverContent: { outputTranscription: { text: 'Got it.' } } },
+    { serverContent: { outputTranscription: { text: ' Moved.' } } },
+    { serverContent: { turnComplete: true } },
+  ] });
+  s.els.call.onclick();
+  await until(() => s.els.status.textContent === 'Connected', 4000, 'connected');
+  await sleep(60);
+  s.els.call.onclick();
+  await until(() => s.bodies('/transcript').length, 2000, 'the end');
+  assert.deepEqual(s.bodies('/transcript')[0].lines.map((l) => [l.who, l.text]), [
+    ['Kurooto', 'What is the new date for your Lab Journal submission?'],
+    ['Kurooto', 'To prepare for your quiz,'],
+    ['Sam', "It's next Wednesday."],
+    ['Kurooto', 'Got it. Moved.'],
+  ]);
+}
+
+// ---- 11. (0.9.2) a tool's result while its question waits for an answer is added quietly (SILENT), not a new turn;
+// one that comes while it's still speaking waits for the end of its turn; after their answer, WHEN_IDLE as before
+{
+  const config = { tools: [{ functionDeclarations: [{ name: 'answer_question', behavior: 'NON_BLOCKING' }] }] };
+  const s = await page({ search: '?p=Midday%20check-in&s=16', tokens: (b) => [200, { token: 'auth_tokens/x', model: b.model || 'live-a', models: ['live-a'], config, offline: false }] });
+  const fc = (id, name) => ({ toolCall: { functionCalls: [{ id, name, args: {} }] } });
+  __live.steps.push({ ok: true, messages: [
+    { serverContent: { outputTranscription: { text: 'Noted. ' } } },
+    fc('a', 'answer_question'),
+    { wait: 80 },
+    { serverContent: { outputTranscription: { text: 'What is the new date?' } } },
+    { serverContent: { turnComplete: true } },
+    { wait: 40 },
+    fc('b', 'list_deadlines'),
+    { wait: 80 },
+    { serverContent: { inputTranscription: { text: 'Next Wednesday.' } } },
+    fc('c', 'move_deadline'),
+  ] });
+  s.els.call.onclick();
+  await until(() => __live.sessions.length && __live.sessions[0].sent.filter((x) => x.functionResponses).length === 3, 4000, 'three results');
+  const sent = __live.sessions[0].sent.filter((x) => x.functionResponses).map((x) => x.functionResponses.map((r) => [r.id, r.response.scheduling]));
+  assert.deepEqual(sent, [[['a', 'SILENT']], [['b', 'SILENT']], [['c', 'WHEN_IDLE']]]);
+  s.els.call.onclick();
+}
+
+// ---- 12. (0.9.2) a check-in call starts from pending_items and checkin_script fetched while Live connects, so its
+// first words are one greeting with the reason; they're listed without the call's id (not yet "raised")
+{
+  const s = await page({ search: '?p=Midday%20check-in&s=17', tool: (b) => ({ result: b.name === 'pending_items' ? { due_soon: ['Quiz'] } : 'Midday check-in, about 5 minutes.' }) });
+  s.els.call.onclick();
+  await until(() => __live.sessions.length && __live.sessions[0].sent.length, 4000, 'the opening');
+  const first = __live.sessions[0].sent[0].turns[0].parts[0].text;
+  assert.match(first, /^\[The call just connected\. Speak first\.\]\n\[pending_items, already called for you: \{"due_soon":\["Quiz"\]\}\]\n\[checkin_script, already called for you: Midday check-in, about 5 minutes\.\]$/);
+  const primed = s.bodies('/tool');
+  assert.deepEqual(primed.map((b) => [b.name, b.args, b.since]), [['pending_items', {}, undefined], ['checkin_script', { name: 'midday' }, undefined]]);
+  s.els.call.onclick();
 }
 
 console.log('callpage ok');

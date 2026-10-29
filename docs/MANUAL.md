@@ -574,6 +574,12 @@ exchanges go along too.
 [Reminders with the lid shut](#reminders-with-the-lid-shut) on, your Android phone gets it at its time instead).
 Buttons: +10 min, +1 h.
 
+**Every day** (0.9.2, `reminders.repeat`, on): "remind me every day at 22:15 to call home", "on weekdays at 7",
+"every Monday and Thursday at 9 … until 4 dec", `/remind 22:15 call home every day`. It books its own next time after
+each one; `/reminders` lists it once with Cancel (every time of it) and Skip next. On calls, "make it 10:15" or "do that
+every day" right after setting one changes that reminder (`change_reminder`) instead of adding a second. *Undo:*
+`reminders.repeat` to `false`: each repeating reminder comes once more, then stops; Cancel ends one now.
+
 **At a place** (0.6.0, off by default): "remind me when I reach the library to return the book", "remind me whenever
 I'm at the gym to stretch". Turn on Settings → Reminders → `places` and, in the Android app, Location reminders →
 Places (it says the battery cost, then asks for location). Save a place on the phone while you're there (a name, no

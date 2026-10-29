@@ -1149,6 +1149,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `reminders.addon_buttons` | `true` | Let an add-on put its own buttons under a reminder as it fires (for example Order on Zepto under "buy milk"). ([guide](wiki/user/settings-guide.md#remindersaddonbuttons)) |
 | `reminders.place_names` | `false` | The phone app shares the names of the places you saved, so "the lib" finds "Library". ([guide](wiki/user/settings-guide.md#remindersplacenames)) |
 | `reminders.places` | `false` | Location reminders: "remind me when I reach the library to …". ([guide](wiki/user/settings-guide.md#remindersplaces)) |
+| `reminders.repeat` | `true` | Repeating reminders: "remind me every day at 22:15 to …", "on weekdays", "every Monday and Thursday", with "until <date>". ([guide](wiki/user/settings-guide.md#remindersrepeat)) |
 | `reminders.wait_for_break` | `false` | During a Study mode focus, your reminders wait for its break; a pause or reset brings them at once. ([guide](wiki/user/settings-guide.md#reminderswaitforbreak)) |
 
 ### `repair`

@@ -192,6 +192,18 @@ meanwhile.
   says back which classes it skipped; "I'm going to LA after all" undoes it (0.9.1, `attend_class`).
 - **One question, once** (0.9.1). A question you've answered, even unclearly, isn't asked again in the same call; a
   question from an earlier day says which ("How was Wednesday's Linear Algebra?").
+- **One thing at a time** (0.9.2). After a question the call waits for your answer: a tool's result that comes
+  meanwhile is added quietly instead of starting a second question over the first, and two things it says in a row
+  are two lines in the transcript, never run together.
+- **Already answered is answered** (0.9.2). An after-class question ("How was Organic Chemistry?") about a class whose
+  quiz or test you already talked about on the call isn't asked: the call is told the two are the same talk and saves
+  what you said. After the call, one still open for a class the call went over is answered with your words (into the
+  class log, as a reply would be), or closed if you only said "I already answered that". One you said "later" to stays.
+- **One greeting** (0.9.2). A call Kurooto places fetches what it starts from (`pending_items`, and the check-in's
+  steps) while it connects, so its first words are one greeting and the reason, not "Hi, " and then "Hi, how did…".
+- **Reminders by voice** (0.9.2). "Every day at 10 pm" makes a repeating reminder; "make it 10:15" or "do that every
+  day" right after changes that one instead of adding a second (see
+  [Reminders](reminders-and-deadlines.md#every-day-repeating-reminders)).
 - **At the desk first** (0.9.1, `calls.desk_first`, off). A call Kurooto places by itself (a check-in, a reminder; never
   the alarm or one you just asked for) is offered aloud at your desk first when Face presence has you there alone:
   "Evening debrief. Shall we do it here?" Say yes and it goes on at the desk (Live if `voice.listen.live` is on, else

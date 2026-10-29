@@ -35,6 +35,21 @@
 - **Ears source lost** (`voice.degrade.ears`, off): when the microphone you named goes away, it listens through this
   computer's own within about two seconds, with that microphone's voice print, and goes back. **Kokoro fails**
   (`voice.degrade.piper`, on): Piper says the rest, only if it's already set up.
+- **Repeating reminders** (`reminders.repeat`, on): "remind me every day at 22:15 to call home", "on weekdays at 7",
+  "every Monday and Thursday at 9 until 4 dec", also on calls and through `/api/act` (`repeat`, `until`). `/reminders`
+  lists each once with Cancel and Skip next. A call is told never to say a reminder repeats unless the tool said so
+  (one promised "every day" when only tonight's was set).
+- **"Make it 10:15" changes the reminder just set** (`change_reminder`, calls and AI requests) instead of adding a
+  second; a bare time keeps its day and takes the reading nearest the old time. A second `add_reminder` with the same
+  words within 15 minutes moves the first.
+- **Calls ask one thing at a time.** A tool's result that arrives while a question waits is added quietly instead of
+  starting a second question over it, and two things the call says in a row are two transcript lines, not one run
+  together.
+- **An after-class question already answered on the call isn't asked again**: a class whose quiz was talked about is
+  one question, and after the call one still open for a class the call went over is answered with your words (or
+  closed after "I already answered that").
+- **One greeting**: a call Kurooto places fetches what it starts from while it connects, so it no longer says "Hi, "
+  and then greets again.
 
 ## 0.9.1 (2026-10-29)
 
