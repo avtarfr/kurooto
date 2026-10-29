@@ -144,6 +144,9 @@ RESHAPES = {
     "plan_block": "a block planned",
     "remove_blocks": "blocks removed from the plan",
 }
+UNCHANGED = re.compile(  # a RESHAPES tool's answer when it changed nothing
+    r"(?:that failed|i don't know|no |there's no|more than one|say which|that one is gone|i couldn't)", re.I
+)
 PHONES_FRESH_S = 1800  # the health check trusts the last device list (who's connected straight to the line) this long
 
 
@@ -718,9 +721,10 @@ class Calls(Module):
     def _reshaped(self, name: str, out):
         """(0.9.0) After a tool that changes the day (RESHAPES), its result ends with one short line: what the call
         started from (pending_items, the morning's plan) is out of date there, and the day's drafted plan is marked so
-        (modules/daily.py mark_plan_stale). A failed one ("That failed", "I don't know", "No ...") changes nothing."""
+        (modules/daily.py mark_plan_stale). A failed one ("That failed", "I don't know", "No ...", "More than one ...
+        fits", "That one is gone") changes nothing."""
         what = RESHAPES.get(name)
-        if not what or not isinstance(out, str) or re.match(r"(?:that failed|i don't know|no |there's no)", out, re.I):
+        if not what or not isinstance(out, str) or UNCHANGED.match(out):
             return out
         try:
             from kurooto.modules import daily

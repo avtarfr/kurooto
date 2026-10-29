@@ -678,6 +678,14 @@ remain, those messages and `/deadlines` have **+1**, which stays to be tapped ag
 in `notify.app_kinds`, or in the app's chat) each tap counts, in order, even while the computer sleeps. The wake-up
 call, the morning page and `/status` say "Problem set 3 4/7, due Fri".
 
+**Done, in your words:** "chem hw is done", "LA problem set 3 submitted", "I handed in the lab report" mark the one
+open deadline the words name, with **Undo**; a slip in the done word is fine ("doje", "dun", "finsihed"). Homework
+words plus a course's name or short name pick that course's open homework nearest in time (due soonest or most
+recently past); a number picks that one. Two that fit as well: "Which one is done?" with a button each, nothing marked
+until you tap. Words that fit no deadline go to your AI, which has `list_deadlines` (each open one with its id) and
+can give `mark_deadline_done` or `move_deadline` the id or words of the title. *Undo:* the **Undo** under the answer (it
+opens the deadline again and unticks its box in your notes).
+
 **The chase**, for things you hand in:
 - a day before: a message with **Done / Not mine / Snooze 3 h** (and **+1** first for one with parts to do);
 - six hours before: with Phone calls on, **a call** ("is it done, or how will you finish it?"). It waits out

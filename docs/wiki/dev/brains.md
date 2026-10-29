@@ -318,7 +318,8 @@ answered. `fell` comes from `handed()` (step 8 above).
   `build_study_pack`, `save_course_file`, `study_progress` (the compile is `compile_latex` above). See [core.md](core.md).
 - `app.ask.agent_tools()`: `ask_user`.
 - For each enabled module: `call_tools()` and `agent_tools()`, deduplicated by name; `CALL_ONLY = {"run_task",
-  "pending_items"}` are never given to unattended work. Learns from its own work adds `search_history` this way.
+  "pending_items"}` are never given to unattended work (a request learns deadline ids from Deadlines'
+  `list_deadlines`, 0.9.0). Learns from its own work adds `search_history` this way.
 
 `run_tool(app, name, args, tools, via, job=None)` validates `required`, emits `tool_used` / `tool_failed`, notes the
 use in the request's tool log when `job` is given (`Jobs.note_step`, see [core.md](core.md#jobs)), and never raises: an

@@ -170,9 +170,28 @@ midsem, endsem, viva, oral, test or assessment counts as an exam: it can't be "d
 | `/status` | includes "Due in the next 3 days" |
 | `ps3 4/7` · `problem set 3 4 of 7 done` · `did 4 of 7 on the stats problem set` | how much of it is done: "Problem set 3: 4/7, 3 to go, due Fri 17:00". The lists show "(4/7)", and [Start-by](#start-by-dates-and-crunch-weeks) plans from what's left (3/7 of its size). Only for a deadline on your list; at 7/7 it reminds you to tap **Done** once it's handed in |
 | a reply to a deadline's message: `4/7` · `4` · `+1` · `done` | the same for that deadline, no name needed ([below](#problem-set-progress)), with **Undo** |
+| `chem hw is done` · `LA problem set 3 submitted` · `I finished the essay` · `stats hw dun` | marks the open deadline those words name, with **Undo**: "Marked done: Organic Chemistry: Homework 8, due Thu 29 Oct 09:00." See [Done, in your words](#done-in-your-words) |
 
 If you add something that's already on the list, Kurooto says "Already on the list" and keeps one copy (if you had
 dropped it, adding it yourself brings it back).
+
+### Done, in your words
+
+Say that something is done, the way you'd say it: "chem hw is done", "LA problem set 3 submitted", "I handed in
+the lab report", "I'm done with the essay". Kurooto finds the one open deadline the words name and marks it done, with
+**Undo**. Rules on your computer, no AI.
+
+- **A slip of the keyboard is fine.** "doje", "donee", "dun", "finsihed", "submited" count as done, finished,
+  submitted or completed. Ordinary words a letter away ("gone", "none", "fine") don't.
+- **Homework words and the course.** "hw", "homework", "assignment", "problem set", "sheet" keep to things you hand
+  in (homework-like titles first); a course's name or short name ("organic", "chem", "la") keeps to that course; a number
+  keeps to titles with that number ("hw 9" is "Homework 09"). Other words must be in the title.
+- **The nearest one.** Of what fits, the open one nearest in time (due soonest, or most recently past, up to two weeks
+  back) is marked, but only when the next one is at least a day further away. When two fit about as well, it asks
+  "Which one is done?" with a button each, and marks nothing until you tap. "hw is done" with no course marks
+  something only when you have one open homework.
+- **Not done.** "is not done", "will be done tomorrow", "almost done" and questions ("is the hw done?") change
+  nothing. Words that fit no deadline go to your AI as usual.
 
 ### Photo to dates
 
@@ -253,8 +272,13 @@ Ctrl+K: `due essay draft fri 17:00`. The board's **due** corner shows the same l
 
 **On calls.** Every call's brief has what's due in the next `deadlines.plan_h` hours. Say "the lab report is done",
 "it got moved to Friday", "add a deadline: poster due Monday 9am", "I don't care about the drama club". The AI's tools:
-`mark_deadline_done`, `add_deadline`, `move_deadline`, `ignore_topic`, `add_recurring_quiz`. Done while the computer
-is off, they wait and run when it's back.
+`list_deadlines`, `mark_deadline_done`, `add_deadline`, `move_deadline`, `ignore_topic`, `add_recurring_quiz`. Done
+while the computer is off, they wait and run when it's back.
+
+**Your AI, in a chat or a request.** The same tools reach your AI everywhere (Claude Code and agy through Kurooto's
+tools). `list_deadlines` gives it what's open with each one's id; `mark_deadline_done` and `move_deadline` take the id
+or words of the title and course ("chem homework"), found the same way as [above](#done-in-your-words). When two
+fit, nothing changes and the AI asks you which.
 
 **The course.** `add_deadline` takes the course by name or short name ("pota"), so a deadline the mail digest finds
 ("Lab report due Wed" in a mail from your Physics of the Atmosphere teacher) lands on that course even when its title
