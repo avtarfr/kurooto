@@ -518,3 +518,22 @@ Verified against the code; fix with a test.
 information (they aren't books). It is in `SOURCES`, `NAMED`, `SEEN_HEAD`, `MIN_CHARS` (300) and the default
 `integrate.sources`, and has a card toggle. `take_reference(note, title, text)` links the note into the graph, with
 `core/integrate_ai.HEADS["reference"]` as its prompt head. Its subject is the one subject its text names, else `reference`.
+
+## The `papers` source (0.9.0)
+
+A sixth source, `papers`, not in the default `integrate.sources` (the card's toggle adds it). `Zotero.add` (modules/zotero.py)
+calls `Integrate.take_paper(paper)` after a paper is put in Zotero: title, up to four authors, the abstract (`summary`) and
+the link, `MIN_CHARS["papers"]` 300, `HEADS["papers"]`; its subject is the one subject the text names, else `papers`.
+`LATE = ("papers",)`: `ready_batches()` puts those batches after every book's, so class material and books are read first
+in a night's budget. `exam_season.graph_first` (off): `exam_first()` lists the subjects with an exam in the next
+`revision_days` (`ExamSeason.exams()`); `queued_items()` stable-sorts them to the front and `ready_batches()` adds them to
+the books' `first`. Tests: `tests/unit/test_links_notes_graph.py`.
+
+## Yielding to a Voice turn (0.9.0, `integrate.yield_to_owner`, `books.yield_to_owner`, both off)
+
+`core/power.py:owner_turn(app)` says why the computer is the owner's this moment: Voice on and a turn being heard and
+answered (`Voice._turn_t`, Gemini Live's turns too) or spoken (`Speaker.holding()`). `Integrate.tick` with the switch on
+holds the next batch while it lasts (`integrate.soon` in a minute, event `integrate_held`); `Books.read_book` waits
+before each page with `power.wait_for_owner` (at most 10 minutes a time) and moves `until` by the wait, so the night
+still reaches every page. The charger rule (`heavy`, `power.may_run`) is unchanged. The Body add-on's Interest yield is
+its own (R3). Tests: `tests/unit/test_links_notes_graph.py`.

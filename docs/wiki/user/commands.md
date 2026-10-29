@@ -240,7 +240,7 @@ More: [Google](google.md), [Classes and timetable](classes-and-timetable.md#cale
 | `/observing` | what's being watched (Stop and +7 days buttons) | Nightly look back |
 | `/lookback`, `/lookback now` | the last nightly look back; run one now | Nightly look back |
 | `/history lab report`, `/history 7d lab report` | search past requests, calls and chats (the last 7 days) | Learns from its own work (optional) |
-| `/learned` | what it learned lately, each with Undo | Learns from its own work (optional) |
+| `/learned` | what it learned lately, each with Undo; with Brain on, its tested skills too (`/learned run <name> <text>`, `/learned retire <name>`) | Learns from its own work or Brain |
 | `/wrong`, `/wrong <what you meant>`, `/wrong ai` | my last reply was wrong: keep it as a case, or teach me | Wrong button and test cases |
 | `/cases`, `/cases review` | test cases and the phrasings you taught (Unlearn buttons) | Wrong button and test cases |
 | `/backup`, `/backups` | make a backup now; list them | Backups |
@@ -261,6 +261,7 @@ the AI. A request that asks a question only matches the requests below that answ
 
 | You say | What happens | Feature |
 |---|---|---|
+| "I got 12/30 on the LA midterm", "scored 85% in the topology quiz" | the result counts as evidence for the course's concepts, a dated line goes into Kurooto's block of its exam prep note, and after a low score an offer of more preparation hours (0.9.0) | Brain (`mind.tom.from_chat`) |
 | "did I finish that thing?", "did you finish that thing?", "what was that thing?", "the draft thing is done" | what "that thing" is, from your open threads of the last 48 hours (and your AI requests, for "you"), read only; two or more: one question with a button each; "done" closes it with Undo | Kurooto itself ([threads](talking-to-kurooto.md#open-threads-and-that-thing)) |
 | "when did I last talk to Prof Ortiz?", "when did I last meet Lena?" | the newest meetings, daily-note lines, gists and threads that name them | Kurooto itself ([memory](privacy.md#the-memory-ledger)) |
 | "what was I doing last Thursday?", "what did I do yesterday?", "what was I doing on 20 Oct?" | that day's daily note, meetings, calls, requests and threads | Kurooto itself ([memory](privacy.md#the-memory-ledger)) |

@@ -43,7 +43,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from kurooto.core import egress, layout, proc, sources
+from kurooto.core import egress, layout, power, proc, sources
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock, Timeout
@@ -70,6 +70,7 @@ register_defaults(
         "after_read": [],  # your command, run after each book is read, with its subject and id added: ["prog", "-x"]
         "duplicates": True,  # a book that is a copy of one already read (the same file) is linked to it, not read again
         "max_mb": 400,  # bigger files are left alone
+        "yield_to_owner": False,  # the next page waits while you're in a Voice turn; the night's end moves by the wait
     },
 )
 ORDER = {  # who reads a scanned page, in order, per books.ocr
@@ -639,6 +640,10 @@ class Books(Module):
             stop = self._stop_now(until)
             if stop:
                 break
+            if self.setting("yield_to_owner"):  # (0.9.0) a Voice turn of yours first; the morning moves by the wait
+                waited = power.wait_for_owner(self.app)
+                if until is not None and waited >= 1:
+                    until += dt.timedelta(seconds=waited)
             self.status = f"{meta['title']}: page {n} of {total}"
             try:
                 text, how = self.read_page(doc, n, set(engines))

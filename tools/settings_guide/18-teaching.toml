@@ -85,6 +85,11 @@ tip = "Days an untouched open thread waits before it closes by itself."
 when = "Raise it if your tasks run long."
 needs = "`memory.threads`."
 
+[s."remember.offer_settings"]
+tip = "A line you ask it to remember with a time rule (\"I hate calls before 8\") offers the setting that does it, with Set it / No."
+when = "Turn it off if you only want the line kept in your note."
+needs = "Remember."
+
 [s."remember.recheck_days"]
 tip = "A kept line that hasn't come up in this many days gets one \"Still true?\"; 0: never."
 when = "Raise it to be asked less; 0 to never be asked. Lines you wrote yourself are never touched."
@@ -308,6 +313,16 @@ tip = "A second look at what the rules found for your profile: a model here, you
 when = "Pick `off` to keep it to rules only."
 cost = "`main` sends those lines to your AI; `local` keeps them here."
 needs = "`dreaming.fold`."
+
+[s."dreaming.fold_inferred"]
+tip = "The morning's profile suggestions also offer the projects and classes it set up from what you said, with a role, never a name."
+when = "Turn it off if you only want your own lines suggested."
+needs = "`dreaming.fold`."
+
+[s."dreaming.fold_inferred_max"]
+tip = "The most of those suggestions in one morning, besides `dreaming.fold_max`."
+when = "Raise it to catch up faster; 0 offers none."
+needs = "`dreaming.fold_inferred`."
 
 [s."dreaming.fold_max"]
 tip = "The most profile suggestions in one morning message."

@@ -31,6 +31,7 @@ import hashlib
 import json
 import os
 import re
+import uuid
 from pathlib import Path
 
 from kurooto import providers
@@ -94,6 +95,9 @@ register_defaults(
         "links_per_day": 3,  # the most link cards a day (at most 5)
         "links_at": "daily 11:00,16:00,20:00",  # when one may come (never in a class, focus time or the night)
         "links_check": False,  # a local model (Local AI models) says how close your answer came; never a cloud AI
+        "links_frontier": False,  # of the link cards due the same day, those on concepts you're ready for come first
+        "to_doubts": True,  # after a call, questions you got wrong on it (graded below 3) are offered as doubts, once
+        "call_frontier": False,  # on a call, the due questions on concepts you are ready for come first (none added)
     },
 )
 SECTIONS = re.compile(
@@ -118,6 +122,8 @@ BY_CALL = re.compile(r"\b(?:by|on a|over the|with a)\s+(?:call|phone)\b|\bcall m
 CARDS_FILE = "cards.json"  # subject -> how many cards Kurooto wrote there (Brain's dream cards), so /quiz finds them
 CARD_SECTION = "Kurooto's cards"
 CARD_FALLBACK = "kurooto-cards"  # the subject of a card whose concept belongs to none of yours
+WEAK_FILE = "call-weak.json"  # questions graded below 3 on a call, offered as doubts once it ends (quiz.to_doubts)
+WEAK_CHECK_MIN = 3  # how often to look whether the call they were missed on has ended
 
 
 def slugify(text: str) -> str:
@@ -153,6 +159,7 @@ class Quiz(Module):
             except ValueError:
                 self.app.events.emit("quiz_bad_setting", key="exam_daily")
         self.action("links_later", self.links.tick)
+        self.action("weak_offer", self._weak_offer)
         if not self.setting("links"):
             self.app.scheduler.cancel("quiz:links")
         else:
@@ -491,7 +498,7 @@ class Quiz(Module):
             end = self._continue()
             return f"{out} {end}" if end else out
 
-        return {"qz": btn, "qo": self._offer_button, "ql": self.links.button}
+        return {"qz": btn, "qo": self._offer_button, "ql": self.links.button, "qd": self._weak_button}
 
     # ---------------------------------------------------------------------------------------- by call
     def _calls_ok(self) -> bool:
@@ -525,6 +532,82 @@ class Quiz(Module):
             cmd = "/quiz" if subject in ("", "any") else f"/quiz {subject}"
             self.app.notify(f"Missed the quiz call. {cmd} practises here instead.", kind="info", why="quiz.call")
         return False
+
+    def call_transcript(self, key: str, lines: list[dict]) -> None:
+        """A quiz call ended (modules/calls): what was missed on it is offered as doubts now."""
+        self._weak_offer({})
+
+    # ------------------------------------------------------- missed on a call -> doubts (0.9.0, quiz.to_doubts)
+    def _weak_note(self, subject: str, iid: str, q: int) -> None:
+        """A question graded below 3 on a call: kept, and offered as a doubt once the call is over (one message for
+        the whole call). Nothing is written to your notes until you tap Add."""
+        if q >= 3 or not self.setting("to_doubts") or not self.app.is_on("doubts"):
+            return
+        it = self.load(subject)["items"].get(iid)
+        if not it:
+            return
+        f = self._dir() / WEAK_FILE
+        weak = jload(f, {}) or {}
+        weak = weak if isinstance(weak, dict) else {}
+        weak[f"{subject}|{iid}"] = {"subject": subject, "text": it["text"]}
+        jsave(f, dict(list(weak.items())[-12:]))
+        self._weak_later()
+
+    def _weak_later(self) -> None:
+        later = now() + dt.timedelta(minutes=WEAK_CHECK_MIN)
+        self.app.scheduler.at(later, "quiz.weak_offer", {}, key="quiz:weak_offer", module=self.id)
+
+    def _weak_offer(self, p: dict | None = None) -> None:
+        """Once the call is over: "Add these as doubts?" with Add and Not now. Still on the call: look again later."""
+        f = self._dir() / WEAK_FILE
+        weak = jload(f, {}) or {}
+        if not isinstance(weak, dict) or not weak:
+            return
+        if not self.setting("to_doubts") or not self.app.is_on("doubts"):
+            f.unlink(missing_ok=True)
+            return
+        until = self.app.availability.on_call_until(now())
+        if until is not None and until > now():
+            self._weak_later()
+            return
+        rid = uuid.uuid4().hex[:8]
+        offers = jload(self._dir() / "weak-offers.json", {}) or {}
+        offers = {**(offers if isinstance(offers, dict) else {}), rid: list(weak.values())}
+        jsave(self._dir() / "weak-offers.json", dict(list(offers.items())[-10:]))
+        f.unlink(missing_ok=True)
+        lines = [f"{i}. {w['text']}" for i, w in enumerate(weak.values(), 1)]
+        one = len(lines) == 1
+        self.app.notify(
+            f"On the call you missed {'this' if one else 'these'}:\n"
+            + "\n".join(lines)
+            + f"\n\nAdd {'it' if one else 'them'} to your doubts, to ask in the next class?",
+            kind="question",
+            buttons=[[("Add to doubts", f"qd:{rid}:add"), ("Not now", f"qd:{rid}:no")]],
+            why="quiz.to_doubts",
+        )
+        self.app.events.emit("quiz_doubts_offered", n=len(lines))
+
+    def _weak_button(self, ref: str, act: str) -> str:
+        offers = jload(self._dir() / "weak-offers.json", {}) or {}
+        items = offers.pop(ref, None) if isinstance(offers, dict) else None
+        if items is None:
+            return "That offer is gone."
+        jsave(self._dir() / "weak-offers.json", offers)
+        if act != "add":
+            return "Left out of your doubts."
+        doubts, sub = self.app.modules.get("doubts"), self.app.modules.get("subjects")
+        if doubts is None or not self.app.is_on("doubts"):
+            return "The doubt queue is off (Features → Doubt queue)."
+        known = {s["slug"] for s in sub.subjects()} if sub is not None else set()
+        added = 0
+        for w in items:
+            slug = w.get("subject") if w.get("subject") in known else None
+            slug = slug or (sub.resolve(str(w.get("subject") or "")) if sub is not None else None)
+            if slug:
+                doubts.add(slug, w["text"])  # Kurooto's own line, in the subject's doubts note (modules/doubts.py)
+                added += 1
+        self.app.events.emit("quiz_doubts_added", n=added)
+        return f"Added {added} to your doubts." if added else "None of them belongs to one of your subjects."
 
     # ------------------------------------------------------------------------- offers and check-ins
     def _offers(self, p: dict | None = None) -> int:
@@ -759,7 +842,7 @@ class Quiz(Module):
             Tool(
                 "quiz_grade",
                 "Grade their answer to a quiz item: 0 (blank) to 5 (perfect).",
-                lambda a: self.grade(str(a.get("subject", "")), str(a.get("item", "")), int(a.get("grade", 3))),
+                self._tool_grade,
                 {"subject": arg(), "item": arg(), "grade": {"type": "integer"}},
                 ("subject", "item", "grade"),
                 offline="queue",
@@ -786,11 +869,52 @@ class Quiz(Module):
         if not subj or not items:
             return "Nothing due to practise."
         days = self.exam_days(subj)
+        items, focus = self._frontier_first(items[:10])
         return {
             "subject": subj,
             **({"exam_in_days": days} if days is not None else {}),
-            "items": [{"item": k, "section": v["section"], "question": v["text"]} for k, v in items[:10]],
+            **({"focus": focus} if focus else {}),
+            "items": [{"item": k, "section": v["section"], "question": v["text"]} for k, v in items],
         }
+
+    def _frontier_first(self, items: list) -> tuple[list, list[str]]:
+        """quiz.call_frontier (0.9.0): the same due questions a call gets, with those on concepts at your frontier or
+        partly known (mind/frontier.py) first, then their neighbours, then the rest, each group in due order; and the
+        names of those concepts as the call's focus. Never a question that isn't due, never one fewer. Only concept
+        names reach the call's AI."""
+        if not self.setting("call_frontier") or not items:
+            return items, []
+        try:
+            from kurooto.mind import frontier
+            from kurooto.mind.tom import knowledge
+
+            grades = frontier.grades(self.app)
+            if not grades:
+                return items, []
+            notes = knowledge.concepts(self.app)
+            ready, focus = (frontier.FRONTIER, frontier.STARTED), {}
+
+            def rank(kv) -> int:
+                slugs = knowledge.item_slugs(kv[1], notes)
+                for s in slugs:
+                    if grades.get(s) in ready and s in notes:
+                        focus.setdefault(s, notes[s].title)
+                best = max((grades.get(s, 0.0) for s in slugs), default=0.0)
+                return 0 if best in ready else 1 if best == frontier.NEAR else 2
+
+            return sorted(items, key=rank), list(focus.values())[:5]
+        except Exception as e:
+            self.app.events.emit("quiz_failed", error=f"frontier order: {e}"[:200])
+            return items, []
+
+    def _tool_grade(self, a: dict) -> str:
+        subject, iid, q = str(a.get("subject", "")), str(a.get("item", "")), int(a.get("grade", 3))
+        out = self.grade(subject, iid, q)
+        try:  # a question missed on the call: offered as a doubt once it's over (quiz.to_doubts)
+            self._weak_note(subject, iid, max(0, min(5, q)))
+        except Exception as e:
+            self.app.events.emit("quiz_failed", error=f"doubt offer: {e}"[:200])
+        return out
 
     def _tool_schedule(self, a: dict) -> str:
         try:

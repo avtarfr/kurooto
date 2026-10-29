@@ -22,9 +22,17 @@ from pathlib import Path
 from kurooto import providers
 from kurooto.core import layout
 from kurooto.core.clock import now
+from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
 from kurooto.core.tools import add_to_section, write_note_file
 from kurooto.modules.base import Command, Incoming, Module
+
+register_defaults(
+    "hints",
+    {
+        "weak_sign": True,  # reaching the last hint counts as a small sign of a gap in Brain's model of what you know
+    },
+)
 
 POLICY = re.compile(r"^\s*(?:[-*]\s*)?(?:\*\*)?AI[ -]?policy(?:\*\*)?\s*[:\-–]\s*(?P<p>\S.*?)\s*$", re.I | re.M)
 NO_SOLUTION = re.compile(
@@ -74,7 +82,10 @@ class Hints(Module):
         "Stuck on a problem? A photo and /hint: the idea, the setup, the key step, the solution only if asked."
     )
     requires = ("subjects",)
-    privacy = "The problem (its photo or text) and the notes the AI reads go to the AI you picked."
+    privacy = (
+        "The problem (its photo or text) and the notes the AI reads go to the AI you picked; with doubts.share on, "
+        "the subject's open doubts too."
+    )
 
     def __init__(self, app):
         super().__init__(app)
@@ -200,6 +211,10 @@ class Hints(Module):
             f"Subject: {name} (its notes folder: {layout.rel(self.app, 'subject', subject=h['subject'])})\n"
             f"Course AI policy: {line}\nThe problem: {h['problem'] or '(in the file below)'}"
         )
+        doubts = self.app.modules.get("doubts")
+        open_ = doubts.shared(h["subject"]) if doubts is not None and self.app.is_on("doubts") else []
+        if open_:  # doubts.share (modules/doubts.py): the hint may connect to one of them
+            args += "\nTheir open doubts in this course (connect the hint to one if it fits): " + "; ".join(open_)
         files = [Path(f) for f in h.get("files", []) if Path(f).exists()]
         prompt = skill_prompt(self.app, "hint", args, files)
         skill = load_skill(self.app, "hint")
@@ -279,6 +294,24 @@ class Hints(Module):
             text += "\n\nThat's the last hint: the course's AI policy rules out full solutions."
         self.app.notify(text, kind="result", buttons=buttons, map_kind="hint", map_ref=h["id"], why="asked")
         self.app.events.emit("hint_step", step=i + 1)
+        if i + 1 == len(STEPS):
+            self._weak_sign(h)
+
+    def _weak_sign(self, h: dict) -> None:
+        """The key step was needed (the last rung): a weak sign of a gap for the concepts the problem and its idea
+        name, in Brain's model of what you know (mind/tom/knowledge.py, a low weight). Never raises."""
+        if not self.setting("weak_sign"):
+            return
+        try:
+            from kurooto.mind.tom import knowledge, model
+
+            if not model.on(self.app):
+                return
+            text = f"{h.get('problem', '')} {(h.get('ladder') or {}).get('idea', '')}"
+            for slug in knowledge.mentions(text, knowledge.concepts(self.app))[:5]:
+                knowledge.observe(self.app, slug, False, 0.2, f"hint:{h['id']}")
+        except Exception as e:
+            self.app.events.emit("hints_failed", error=f"weak sign: {e}"[:200])
 
     def advance(self, hid: str, act: str) -> str:
         h = self._load(hid)

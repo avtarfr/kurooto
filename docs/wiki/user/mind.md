@@ -400,7 +400,13 @@ you're working on glacier-flow, 60% sure"), what it infers from the activity str
 It is only ever used for the **level** of an explanation, the **timing** of a message (later, quieter) and a **fact correction**; the gate refuses any other purpose, so it
 can't be used to change your mind. It never models your health, relationships, politics, religion or money: a deny-list is checked when a row is written, and what matches
 isn't kept. `/model wrong <id>` says a row is wrong (that counts as something you said, and it won't be inferred again); `/model forget <id>` drops it for good.
-Switches: `mind.tom.on`, `mind.tom.false_beliefs`, `mind.tom.attention`.
+**Exam results you report** (0.9.0, `mind.tom.from_chat`, on). Say "I got 12/30 on the LA midterm" (a score and an
+exam, quiz or test, with the course named) and it counts as evidence, weighted below a quiz card, for the course's
+concepts among its revision topics: right from 60%, wrong below. The course's exam prep note gets a dated line in a
+block of Kurooto's own ("midterm, 40%. A gap to revise."), never in your text. Below 60% with one of the course's exams
+still ahead, it offers to plan more hours for its exams (Start-by, a quarter more), with **Yes** and **No**; nothing
+changes without the tap. Grades stay on this computer.
+Switches: `mind.tom.on`, `mind.tom.false_beliefs`, `mind.tom.attention`, `mind.tom.from_chat`.
 
 ## What it senses, and what it never does
 
@@ -502,7 +508,7 @@ card (the aim is none), with how often it waited and gave up.
 When a task works out (a change it proposed was applied, its tests passed, and you didn't undo it for two days), Kurooto can turn it into a **skill**: a
 small, reusable procedure with a note on when to use it and at least two tests taken from the original task. A new skill has to pass its own tests before
 it is kept, and it starts out **always asking**: it won't run on its own until you classify it with `/autonomy classify skill.<name> R1` after it has
-earned that. `/learned` lists them (how often each worked, older versions); `/learned run <name> <text>` runs one when you ask; `/learned retire <name>`
+earned that. `/learned` lists them (how often each worked, older versions; after the notes skills and lessons, with "Learns from its own work" on too); `/learned run <name> <text>` runs one when you ask; `/learned retire <name>`
 retires one. A skill unused or failing for 30 days retires itself, and its older versions stay. Health, money and other people's messages never become
 skills. Switch: `mind.skills.on`.
 
@@ -639,6 +645,8 @@ its concern for each deadline, else how close it is; nothing close enough, no li
 counts the deadline as started). That day, the subject's separate nudges are folded into the line: the day-before
 deadline reminder, Start-by's "Time to start" and exam mode's daily practice check-in. The six-hour reminder,
 "Overdue?" and the evening-before practice offer still come. Switch: `mind.study_push.on`.
+With `mind.study_push.frontier` on (0.9.0, off), two subjects it's equally uneasy about are told apart by the concepts
+you're ready for next in each (its frontier), and the line names one: "... Next up there: Spectral theorem."
 
 With `mind.study_push.start_timer` (on, 0.9.0) the reminder carries **Start 25 min**: Study mode's timer for that
 subject, tied to the deadline, started only by that tap. Study mode opens on that subject that day, and a tap on the

@@ -42,6 +42,7 @@ register_defaults(
         "classroom": True,  # read Classroom (courses, assignments, announcements)
         "gmail_drafts": False,  # save drafts in Gmail (asked for separately: Google calls it a restricted permission)
         "classroom_every": "every 3h",
+        "classroom_on_calls": False,  # a call's brief gets the last day's Classroom post titles (its AI reads them)
         # the features below ask for their own permission; each is set when you set that feature up
         "classroom_notes": False,  # Classroom materials and attached Drive files (read-only)
         "mail_digest": False,  # read Gmail (read-only)
@@ -734,6 +735,21 @@ class Google(Module):
             return "Google sign-in expired; sign in again from the dashboard."
         self.app.events.emit("gmail_draft")
         return f'Draft saved in Gmail: "{subject}" to {to}. Open Gmail to check it and send it yourself.'
+
+    def call_brief(self) -> dict:
+        """google.classroom_on_calls (0.9.0, off): the last day's Classroom posts, course and title only (what
+        Classroom keeps for catch-up, classroom-posts.json; not-interested posts are never kept), so a call can
+        mention them. The call's AI may be a cloud one, hence off until you turn it on."""
+        if not self.setting("classroom_on_calls") or not self.setting("classroom"):
+            return {}
+        since = (dt.datetime.now(dt.UTC) - dt.timedelta(days=1)).strftime("%Y-%m-%dT%H:%M")
+        out = []
+        for c in (jload(self.app.paths.state / "classroom-posts.json", {}) or {}).values():
+            for p in sorted(c.get("posts", {}).values(), key=lambda p: p.get("at", "")):
+                title = re.sub(r"\s+", " ", str(p.get("title") or "")).strip()[:100]
+                if str(p.get("at", ""))[:16] >= since and title:
+                    out.append(f"{c.get('name', 'a course')}: {title}")
+        return {"classroom_posts_today": out[-8:]} if out else {}
 
     def commands(self):
         out = [

@@ -47,6 +47,7 @@ register_defaults(
         "read_files": False,  # files dropped in the scratch folder (PDF, Word, slides, text) are read into notes
         "read_mb": 25,  # the biggest file read, in MB
         "duplicates": True,  # a note in the scratch folder that copies one you already have is asked about, not filed
+        "by_class": False,  # a note written in or just after a class: that class's folder is a hint (AI, first button)
     },
 )
 
@@ -93,11 +94,12 @@ class Sorter(Module):
                     taken.add(to.lower())
                     moves.append({"from": rel, "to": to, "kind": "sorted"})
                 continue
+            hint = sorting.class_folder(app, rel)  # sorter.by_class: only a hint, after your own rules
             if self.setting("ai") is not False and self._can_ask(st, rel, text, force):
-                self._ask(rel, text, st)
+                self._ask(rel, text, st, hint)
                 out["asked"] += 1
             else:
-                self._wait(st, rel, d)
+                self._wait(st, rel, d, hint)
         if self.setting("recheck") is not False and (force or now().weekday() == 6):  # Sundays, and /sort now
             for m in sorting.recheck(app):
                 if len(moves) < room and m["to"].lower() not in taken:
@@ -189,20 +191,26 @@ class Sorter(Module):
         res = sorting.apply(self.app, p, by)
         return {"moved": [(m["from"], m["to"]) for m in p.moves], "id": res.get("id", "")}
 
-    def _wait(self, st: dict, rel: str, d: sorting.Decision) -> None:
+    def _wait(self, st: dict, rel: str, d: sorting.Decision, hint: str | None = None) -> None:
         w = st["waiting"].setdefault(rel, {"at": time.time()})
-        w.update({"why": d.why, "guesses": d.guesses or w.get("guesses", [])[:2]})
+        guesses = d.guesses or w.get("guesses", [])[:2]
+        hint = hint or w.get("class")
+        if hint:  # sorter.by_class: the class's folder is the first Move button, the others stay after it
+            guesses = list(dict.fromkeys([hint, *guesses]))[:3]
+        w.update({"why": d.why, "guesses": guesses})
 
     def _can_ask(self, st: dict, rel: str, text: str, force: bool) -> bool:
         w = st["waiting"].get(rel) or {}
         return bool(text.strip()) and (force or time.time() - float(w.get("asked", 0)) > 86400)
 
-    def _ask(self, rel: str, text: str, st: dict) -> None:
+    def _ask(self, rel: str, text: str, st: dict, hint: str | None = None) -> None:
         """One short request for a note the rules couldn't place: the answer comes to _decided."""
         w = st["waiting"].setdefault(rel, {"at": time.time(), "why": "waiting for your AI"})
         w["asked"] = time.time()
+        if hint:
+            w["class"] = hint
         self.app.jobs.submit(
-            sorting.prompt(self.app, rel, text),
+            sorting.prompt(self.app, rel, text, hint or ""),
             title=f"Sort a note: {Path(rel).stem[:40]}",
             effort="low",
             background=True,
@@ -257,7 +265,7 @@ class Sorter(Module):
         for i, (rel, w) in enumerate(sorted(st["waiting"].items())[:8]):
             if not (Path(self.app.workspace) / rel).exists():
                 continue
-            g = [x for x in w.get("guesses") or [] if x in have][:2]
+            g = [x for x in w.get("guesses") or [] if x in have][:3]
             lines.append(f"- {rel}: {w.get('why', 'no folder fits')}")
             w["id"] = f"w{i}"
             if g:

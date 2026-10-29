@@ -906,8 +906,14 @@ check has two fact checkers (backup, deadline) and runs only on those domains.
 
 **Deviations.** (1) `/model` is text with ids (Wrong, Forget as commands); no inline buttons, no dashboard page, no mastery overlay on the notes map. (2) Stating a belief in chat
 ("the deadline is Friday") isn't captured automatically yet: `beliefs_about.told(...)` is called with what Kurooto tells him (backup done on `/backup`, deadline reminders); his
-own statements need an intent hook. (3) Quiz cards are linked to concepts by name mention, since a card has no concept id. (4) Prerequisites in the frontier are a note's typed
-`prereq` links, else its links. (5) Exam results he reports aren't evidence yet. (6) Stated goals from chat text aren't parsed; deadlines and projects are.
+own statements need an intent hook. (3) Quiz cards are linked to concepts by the concept a card names (`concept` on a card Kurooto wrote, both ends `a` and `b` of a link recall card, 0.9.0, `knowledge.item_slugs`), and by name mention for the cards from his own quiz notes, which have no concept id. (4) Prerequisites in the frontier are a note's typed
+`prereq` links, else its links. (5) Exam results he reports are evidence since 0.9.0 (`mind.tom.from_chat`,
+`mind/tom/results.py`: Brain's intent `exam_result`, weight 0.3 for the course's revision topics that are concept notes, a line in the
+`exam-results` block of exam-prep.md, and an `mres:<slug>:<hours>|no` offer that calls `StartBy.set_exam`). (6) Stated goals from chat text aren't parsed; deadlines and projects are.
+
+0.9.0 links into the model of what you know: `mind.study_push.frontier` (off: `study_push.next_concepts`, FRONTIER concepts
+whose slug has the subject as a folder; a key after risk in `pick`, and "Next up there" in `line`), `quiz.call_frontier`
+(off), `quiz.links_frontier` (off), `exam_season.use_mastery` (off), `hints.weak_sign` (on: weight 0.2 on the last rung).
 
 ## Stage 15: week-scale plans
 

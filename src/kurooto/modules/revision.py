@@ -107,7 +107,10 @@ def topic_name(line: str) -> str:
 
 
 def rank_key(t: dict) -> tuple:
-    return (t["tier"], t["recall"] if t["recall"] is not None else UNKNOWN, t["order"])
+    """Tier, then recall (weakest first; Brain's mastery, as 0-5, stands in for a topic never graded when
+    exam_season.use_mastery is on), then a concept at your frontier first, then the course's order."""
+    r = t["recall"] if t["recall"] is not None else t.get("mastery5")
+    return (t["tier"], r if r is not None else UNKNOWN, 0 if t.get("frontier") else 1, t["order"])
 
 
 def tier_of(has_note: bool, stub: bool, recall: float | None) -> int:
@@ -119,6 +122,8 @@ def tier_of(has_note: bool, stub: bool, recall: float | None) -> int:
 
 
 def why_of(t: dict) -> str:
+    if t["tier"] == 2 and t.get("doubt") and (t["recall"] is None or t["recall"] >= WEAK):
+        return "an open doubt"
     if t["tier"] == 2:
         return f"weak recall, {t['recall']:.1f} of 5"
     return TIERS[t["tier"]]
@@ -322,16 +327,50 @@ class Revision:
         st = self._state() if st is None else st
         topics, where = self.topics(slug, index)
         since = (now().date() - dt.timedelta(days=self._int("revision_days", 14))).isoformat()
+        ps, front = self._mastery()
+        doubts = self._doubts(slug)
         out = []
         for i, t in enumerate(topics):
             text = t["note"].read_text(encoding="utf-8", errors="replace") if t["note"] else ""
             r = self.recall(slug, t, st)
             own = (st.get("recall") or {}).get(f"{slug}|{t['key']}") or {}
             row = {**t, "order": i, "recall": r, "tier": tier_of(bool(t["note"]), body_words(text) < STUB_WORDS, r)}
+            concept = self._rel(t["note"]) if t["note"] else ""
+            if concept in ps:  # exam_season.use_mastery: never moves a topic out of its tier, only within it
+                row["mastery5"], row["frontier"] = round(ps[concept] * 5, 2), concept in front
+            if doubts and row["tier"] == 3:  # doubts.to_revision: an open doubt about it ranks it with weak recall
+                rx = studypack.pattern(studypack.topics_of(t["name"]))
+                if rx and any(studypack.hits(rx, d) for d in doubts):
+                    row["tier"], row["doubt"] = 2, True
             row["why"] = why_of(row)
             row["covered"] = own.get("act") == "y" and own.get("on", "") >= since
             out.append(row)
         return sorted(out, key=rank_key), where
+
+    def _mastery(self) -> tuple[dict[str, float], set[str]]:
+        """Brain's mastery of each concept with evidence, and the concepts at the frontier (mind/frontier.py), when
+        exam_season.use_mastery is on and Brain's model of what you know is; else nothing. Local arithmetic only."""
+        if not self.es.setting("use_mastery"):
+            return {}, set()
+        try:
+            from kurooto.mind import frontier
+
+            grades = frontier.grades(self.app)
+            if not grades:
+                return {}, set()
+            return frontier.masteries(self.app), {s for s, g in grades.items() if g == frontier.FRONTIER}
+        except Exception:
+            return {}, set()
+
+    def _doubts(self, slug: str) -> list[str]:
+        """The subject's open doubts (the Doubt queue's note, read only), when doubts.to_revision is on."""
+        d = self.app.modules.get("doubts")
+        if d is None or not self.app.is_on("doubts") or not d.setting("to_revision"):
+            return []
+        try:
+            return d.open(slug)
+        except Exception:
+            return []
 
     # ---------------------------------------------------------------------------------- what to read
     def reading(self, slug: str, t: dict, cache: dict) -> list[str]:

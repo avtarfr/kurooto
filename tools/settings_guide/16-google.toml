@@ -24,6 +24,12 @@ tip = "Read Classroom: courses, assignments and announcements, for deadlines."
 when = "Turn it off if you only want other Google features."
 cost = "Read-only access to your Classroom courses and coursework."
 
+[s."google.classroom_on_calls"]
+tip = "A call's brief gets the titles of the last day's Classroom posts."
+when = "Turn it on if you'd like calls to mention new Classroom posts."
+cost = "The posts' course names and titles go to the call's AI (Gemini Live on your key, or your call AI)."
+needs = "`google.classroom` and Phone calls."
+
 [s."google.classroom_every"]
 tip = "How often Classroom is checked for new deadlines."
 when = "Shorten it in busy weeks; lengthen it to check less."
@@ -160,6 +166,12 @@ values = "Gmail search words, e.g. `-category:promotions -category:social`; empt
 when = "Use it to widen what's read without listing senders. Personal mail is still only counted."
 cost = "Matching mail goes to your AI."
 needs = "The Mail digest."
+
+[s."mail_digest.on_calls"]
+tip = "A call's brief gets the last digest's \"Needs you\" line, so the call can bring it up."
+when = "Turn it on if you'd like calls to remind you of mail that needs you."
+cost = "That line goes to the call's AI (Gemini Live on your key, or your call AI). Confidential and personal mail never reach it."
+needs = "The Mail digest and Phone calls."
 
 [s."mail_digest.first_days"]
 tip = "How far back (days) the first digest looks."

@@ -115,6 +115,11 @@ that opens the item in Zotero, at once and in a nightly pass; nothing of yours i
 `auto` uses the app when it's running, else the web API when there's a key; `app` or `web` only that one; `off` no
 buttons. Without either, the digest has no Zotero buttons.
 
+**Into the concept graph** (0.9.0). With `papers` in the concept graph's sources (`integrate.sources`, not there by
+default; the concept graph's card has the switch), a paper you put in Zotero is also read into the graph: its title,
+authors and abstract, after the night's books, so its ideas become concept notes linked to yours ([Notes and the concept
+graph](notes-and-concept-graph.md)). The abstract goes to the AI that does the graph's reading.
+
 ---
 
 ## Projects and their logs

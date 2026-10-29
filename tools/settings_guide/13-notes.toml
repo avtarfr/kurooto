@@ -130,6 +130,11 @@ tip = "A note in the scratch folder that copies one you have is asked about, not
 when = "Turn it off to file copies like any other note."
 needs = "The Notes sorter."
 
+[s."sorter.by_class"]
+tip = "A note written in or just after a class gets that class's folder as a hint: in the AI's request, and the first Move button if it waits."
+when = "Turn it on if you jot notes in class and drop them in the scratch folder."
+needs = "The Notes sorter, Subjects with a timetable."
+
 [s."sorter.read_files"]
 tip = "Documents dropped in the scratch folder (PDF, Word, slides, text) become notes."
 when = "Turn it on to drop documents in and get notes out."

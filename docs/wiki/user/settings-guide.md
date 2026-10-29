@@ -32,17 +32,17 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Morning alarm](#morning-alarm): 13 settings
 - [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 45 settings
 - [Check-ins, journal and the week](#check-ins-journal-and-the-week): 18 settings
-- [Classes and timetable](#classes-and-timetable): 16 settings
+- [Classes and timetable](#classes-and-timetable): 19 settings
 - [Calendar](#calendar): 11 settings
-- [Quiz and exams](#quiz-and-exams): 37 settings
-- [Books, study time and handwritten notes](#books-study-time-and-handwritten-notes): 48 settings
-- [Notes, files and sync](#notes-files-and-sync): 28 settings
-- [Notes brain (GBrain)](#notes-brain-gbrain): 18 settings
-- [Concept graph](#concept-graph): 26 settings
-- [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 51 settings
+- [Quiz and exams](#quiz-and-exams): 43 settings
+- [Books, study time and handwritten notes](#books-study-time-and-handwritten-notes): 49 settings
+- [Notes, files and sync](#notes-files-and-sync): 29 settings
+- [Notes brain (GBrain)](#notes-brain-gbrain): 19 settings
+- [Concept graph](#concept-graph): 27 settings
+- [Google: Classroom, Gmail, Calendar and Drive](#google-classroom-gmail-calendar-and-drive): 53 settings
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
-- [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 58 settings
-- [Brain](#brain): 144 settings
+- [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 61 settings
+- [Brain](#brain): 146 settings
 - [Voice and voice notes](#voice-and-voice-notes): 87 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
@@ -2235,6 +2235,31 @@ Open doubts for a subject come this many minutes before its next class.
 - **When to change it:** Raise it if you want time to look them over before class.
 - **Depends on:** The Doubt queue.
 
+### `doubts.to_revision`
+
+An open doubt about a topic ranks it with the weak-recall topics in Exam season's revision plan.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if doubts shouldn't change the revision plan.
+- **Depends on:** The Doubt queue and Exam season's revision plan.
+
+### `doubts.share`
+
+Open doubts go with a hint request for that subject, and in the brief of a call in the hours before its class.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you'd like hints and calls to connect to what you're unsure of.
+- **Costs and what leaves this computer:** The open doubts' words go to your AI (and the call's AI, which may be a cloud
+  one).
+
+### `doubts.share_h`
+
+How many hours before a class a call carries its open doubts.
+
+- **Values:** A whole number. **Default:** `3`.
+- **When to change it:** Raise it if your calls before class come earlier in the day.
+- **Depends on:** `doubts.share`.
+
 ### `doubts.recent_h`
 
 A doubt that names no subject is filed under the class that's on, or ended this many hours ago.
@@ -2670,6 +2695,64 @@ any other book pages and past the usual 250, up to this many pages for all the b
 - **Costs and what leaves this computer:** Nothing leaves: the pages go into the zip you send yourself.
 - **Depends on:** Skills (`/studypack`), and Books having read the books.
 
+### `quiz.to_doubts`
+
+After a call, the quiz questions you missed on it (graded below 3) are offered as doubts, in one message.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you'd rather not get that message after quiz calls.
+- **Depends on:** The Doubt queue.
+
+### `hints.weak_sign`
+
+Needing the last hint (the key step) counts as a small sign of a gap in Brain's model of what you know.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if hints shouldn't change how Kurooto pitches explanations.
+- **Depends on:** Brain, with its model of what you know (`mind.tom.on`).
+
+### `quiz.call_frontier`
+
+On a call, the due questions on concepts you're ready for (Brain's frontier, or partly known) come first.
+
+Only the order of the questions already due changes; none is added or dropped. The call's AI also gets those concepts'
+names.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you'd like a call's quiz to aim where you're learning now.
+- **Depends on:** Brain, with its model of what you know (`mind.tom.on`).
+
+### `exam_season.use_mastery`
+
+The revision plan places topics with no quiz grade yet by Brain's mastery of their concept, frontier first.
+
+Only within a topic's group (no note, a stub, weak recall, the rest); your grades and answers still decide, and no topic
+is dropped.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on with Brain if you'd like its model of what you know to order ungraded topics.
+- **Depends on:** Exam season, and Brain with its model of what you know (`mind.tom.on`).
+
+### `exam_season.graph_first`
+
+In exam season, the concept graph reads the courses with an exam in the next revision days first.
+
+Like putting them in `integrate.first` by hand until the exam: their class material and books move up the queue; nothing
+is dropped.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you'd like the graph to catch up on what you're about to be examined on.
+- **Depends on:** Exam season and the Concept graph.
+
+### `quiz.links_frontier`
+
+Of the link cards due the same day, those on concepts you're ready for (Brain's frontier) come first.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you'd like link cards to aim where you're learning now; an overdue card still
+  comes first.
+- **Depends on:** `quiz.links` (or `/card`), and Brain's model of what you know.
+
 ## Books, study time and handwritten notes
 
 Books and PDFs read overnight into text your AI can cite, the mix of sources (your notes, books, class material) that
@@ -2705,6 +2788,16 @@ When the night's reading stops; it carries on the next night from that page.
 - **Values:** A time `HH:MM`. **Default:** `07:00`.
 - **When to change it:** Move it earlier if the computer's fan wakes you; later for big backlogs.
 - **Depends on:** Books and PDFs.
+
+### `books.yield_to_owner`
+
+The night's reading waits while you're in a Voice turn (heard, answered or spoken), then carries on.
+
+Only while the turn lasts; the night's end moves by the wait, so every page still gets its turn that night.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if a local reading model slows Voice down on this computer.
+- **Depends on:** Books and PDFs, and Voice (it only waits for a Voice turn).
 
 ### `books.max_mb`
 
@@ -3310,6 +3403,15 @@ A note in the scratch folder that copies one you have is asked about, not filed.
 - **When to change it:** Turn it off to file copies like any other note.
 - **Depends on:** The Notes sorter.
 
+### `sorter.by_class`
+
+A note written in or just after a class gets that class's folder as a hint: in the AI's request, and the first Move
+button if it waits.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you jot notes in class and drop them in the scratch folder.
+- **Depends on:** The Notes sorter, Subjects with a timetable.
+
 ### `sorter.read_files`
 
 Documents dropped in the scratch folder (PDF, Word, slides, text) become notes.
@@ -3398,6 +3500,14 @@ Nightly, each course page gets its key concepts and a dated timeline, in Kurooto
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off if you don't want Kurooto's block on your course pages. Your own text is never
   touched.
+
+### `gbrain.course_announcements`
+
+The course page's timeline also has the course's Classroom posts and the dated lines under its Announcements heading.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if announcements make the timeline too long.
+- **Depends on:** `gbrain.course_pages`.
 
 ### `gbrain.upkeep`
 
@@ -3532,10 +3642,11 @@ For every setting in this group, unless its entry says otherwise:
 
 ### `integrate.sources`
 
-What's read into the graph: books, Classroom files, handwritten notes, repositories, reference files.
+What's read into the graph: books, Classroom files, handwritten notes, repositories, reference files, papers.
 
-- **Values:** A list of `books`, `classroom`, `handwritten`, `repos`, `reference` (files from the inbox). **Default:**
-  `["books", "classroom", "reference"]`.
+- **Values:** A list of `books`, `classroom`, `handwritten`, `repos`, `reference` (files from the inbox), `papers`
+  (papers you add to Zotero from the research digest, read after the books). **Default:** `["books", "classroom",
+  "reference"]`.
 - **When to change it:** Add `handwritten` once your handwritten notes are written out; remove one to stop reading it.
 
 ### `integrate.at`
@@ -3720,6 +3831,14 @@ How alike two notes must be (0.92 to 1) to merge without asking.
 - **When to change it:** Raise it if merges surprise you; it never goes below 0.92.
 - **Depends on:** `integrate.auto_merge`.
 
+### `integrate.yield_to_owner`
+
+The concept graph's next batch waits while you're in a Voice turn, and starts a minute after it ends.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if the graph's reading on a local model slows Voice down.
+- **Depends on:** The Concept graph, and Voice (it only waits for a Voice turn).
+
 ### `integrate.notation`
 
 A Notation table when a second source writes a concept differently.
@@ -3762,6 +3881,16 @@ Read Classroom: courses, assignments and announcements, for deadlines.
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off if you only want other Google features.
 - **Costs and what leaves this computer:** Read-only access to your Classroom courses and coursework.
+
+### `google.classroom_on_calls`
+
+A call's brief gets the titles of the last day's Classroom posts.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you'd like calls to mention new Classroom posts.
+- **Costs and what leaves this computer:** The posts' course names and titles go to the call's AI (Gemini Live on your
+  key, or your call AI).
+- **Depends on:** `google.classroom` and Phone calls.
 
 ### `google.classroom_every`
 
@@ -3980,6 +4109,16 @@ A Gmail search: mail it matches is read too, e.g. everything but Promotions and 
 - **When to change it:** Use it to widen what's read without listing senders. Personal mail is still only counted.
 - **Costs and what leaves this computer:** Matching mail goes to your AI.
 - **Depends on:** The Mail digest.
+
+### `mail_digest.on_calls`
+
+A call's brief gets the last digest's "Needs you" line, so the call can bring it up.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you'd like calls to remind you of mail that needs you.
+- **Costs and what leaves this computer:** That line goes to the call's AI (Gemini Live on your key, or your call AI).
+  Confidential and personal mail never reach it.
+- **Depends on:** The Mail digest and Phone calls.
 
 ### `mail_digest.first_days`
 
@@ -4726,6 +4865,15 @@ Days an untouched open thread waits before it closes by itself.
 - **When to change it:** Raise it if your tasks run long.
 - **Depends on:** `memory.threads`.
 
+### `remember.offer_settings`
+
+A line you ask it to remember with a time rule ("I hate calls before 8") offers the setting that does it, with Set it /
+No.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you only want the line kept in your note.
+- **Depends on:** Remember.
+
 ### `remember.recheck_days`
 
 A kept line that hasn't come up in this many days gets one "Still true?"; 0: never.
@@ -5078,6 +5226,23 @@ A second look at what the rules found for your profile: a model here, your AI, o
 - **When to change it:** Pick `off` to keep it to rules only.
 - **Costs and what leaves this computer:** `main` sends those lines to your AI; `local` keeps them here.
 - **Depends on:** `dreaming.fold`.
+
+### `dreaming.fold_inferred`
+
+The morning's profile suggestions also offer the projects and classes it set up from what you said, with a role, never a
+name.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if you only want your own lines suggested.
+- **Depends on:** `dreaming.fold`.
+
+### `dreaming.fold_inferred_max`
+
+The most of those suggestions in one morning, besides `dreaming.fold_max`.
+
+- **Values:** A whole number. **Default:** `1`.
+- **When to change it:** Raise it to catch up faster; 0 offers none.
+- **Depends on:** `dreaming.fold_inferred`.
 
 ### `dreaming.fold_max`
 
@@ -5721,6 +5886,17 @@ When something you were told turns out wrong, tell you once, with the evidence.
 - **When to change it:** Turn it off if you'd rather not get these corrections.
 - **Depends on:** `mind.tom.on`.
 
+### `mind.tom.from_chat`
+
+An exam result you report ("I got 12/30 on the LA midterm") counts as evidence of what you know.
+
+It also adds a dated line in Kurooto's own block of the course's exam prep note, and after a low score offers more
+preparation hours (a tap).
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if results you mention shouldn't change anything.
+- **Depends on:** `mind.tom.on` and Subjects.
+
 ### `mind.tom.attention`
 
 Hold a message (at most 15 minutes) while you're deep in one project.
@@ -6109,6 +6285,14 @@ How long a study stretch the morning line offers.
 - **Values:** A whole number. **Default:** `25`.
 - **When to change it:** Change it to the length you'd actually start with.
 - **Depends on:** `mind.study_push.on`.
+
+### `mind.study_push.frontier`
+
+Between subjects it's equally uneasy about, the one with concepts you're ready for wins, and the line names one.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you'd like the morning line to say where to go next in the subject.
+- **Depends on:** `mind.study_push.on` and Brain's model of what you know (`mind.tom.on`).
 
 ### `mind.study_push.horizon_days`
 

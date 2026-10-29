@@ -255,6 +255,7 @@ No Stop; only Another time. When sent as urgent they always come.
 | exam mode's daily practice check-in | Quiz | `quiz.exam_daily` | no daily practice | | | yes |
 | a quiz by call | Quiz | `quiz.by_call` | quizzes come as messages | | yes | |
 | a link recall card: how two of your concepts relate | Quiz | `quiz.links` | no more cards by themselves (`/card` still gives one) | one a day | yes | yes |
+| after a call, the quiz questions you missed on it, offered as doubts | Quiz | `quiz.to_doubts` | no more doubt offers after calls | | | |
 | "A revision pack for it tonight?" before an exam | Skills | `skills.auto_pack` | no more offers | | yes | yes |
 | after a class, what was worth keeping | After-class notes | `capture.skip_subjects` | feature off | none after that subject | yes | yes |
 | your open doubts before a subject's class | Doubt queue | `doubts.before_min` | list | | | |

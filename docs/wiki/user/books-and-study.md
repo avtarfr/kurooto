@@ -88,6 +88,7 @@ Page numbers are the PDF's own (p. 1 is the first page of the file, often the co
 | `books.dpi` | 200 | how sharp the page pictures for OCR are |
 | `books.brain` | on | index the text into the notes brain |
 | `books.max_mb` | 400 | bigger PDFs are left alone |
+| `books.yield_to_owner` | off | the next page waits while you're in a Voice turn (heard, answered or spoken), then reading carries on; the night's end (`books.until`) moves by the wait, so no page is lost to it (0.9.0) |
 | `books.folder` | empty | your own books folder (a folder per subject in it) |
 
 For tinkerers: `books.after_read` runs a command of yours after each book (with its subject and id added), and

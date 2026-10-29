@@ -154,6 +154,16 @@ with **Keep**, **Change** and **Forget**. At most two a week, three days apart.
 - Lines you wrote yourself, or anywhere else in the note, are never asked about or touched. Editing a line counts as
   new. `remember.recheck_days` (90; 0 never asks); Less of this on the message works too.
 
+**A time rule, as a setting too** (0.9.0, `remember.offer_settings`, on). When what you ask it to remember has a time
+rule it can act on, it asks once whether to set that too, with **Set it** and **No**:
+- "I hate calls before 8", "don't call me before 9am" → your night hours end then (`availability.night.to`);
+- "no calls after 10 pm", "never call me after 11" → your night hours start then (`availability.night.from`);
+- "I'm usually up from 8 to 11pm", "I work best between 9 and 6pm" → Start-by plans work in those hours
+  (`startby.window`; set this way it counts as yours, so the weekly learning leaves it alone).
+
+Nothing changes without the tap; each change it makes has an **Undo** (the same as Less of this). Off: the line is
+only kept in the note, as before.
+
 **What leaves your computer.** The short version of the note goes to the AI you picked with every request.
 
 **Turn it off.** Features → Remember. The note stays; while it exists, AI requests still read it. Delete the note to
@@ -293,7 +303,9 @@ on. The card on the Features page has a switch for each part.
 | `/history 7d linear algebra` | only the last 7 days |
 | `/learned` | what it learned lately (skills, tips, lessons, facts), each with **Undo** |
 
-**Undo.** Every message has an **Undo** button, and `/learned` lists the last ten changes with theirs.
+**Undo.** Every message has an **Undo** button, and `/learned` lists the last ten changes with theirs. With Brain on,
+the same `/learned` also lists Brain's tested skills after them (0.9.0: before, whichever feature came first answered
+and the other list couldn't be reached).
 - A new skill is removed. Tips or a lesson are taken out again: the skill file goes back to how it was (a copy of it is
   kept in Kurooto's state folder, `learning/before/`). For a skill that comes with Kurooto, the change was made in your
   own copy (`kurooto/skills/<name>/SKILL.md`), and Undo removes that copy.
@@ -609,6 +621,10 @@ of several. The day after an exam or a heavy day it starts with one line saying 
   message you forwarded isn't learned from), health, money or passwords. With `dreaming.fold_ai` = `local` (the
   default) the model on this computer, when there is one, takes a second look and drops what isn't lasting; `main`
   asks your AI (only those lines go to it); `off` leaves it to the rules. `/dream fold` looks now.
+  **What it set up** (0.9.0, `dreaming.fold_inferred`, on): the projects and classes it set up from what you said
+  (`/inferred`) are offered too, in its own words, with a role and never a name ("I have a project with my supervisor
+  on glacier flow", "I have a weekly Linear Algebra lab (Mon 09:00)"), marked "what it set up from what you said". They
+  have a cap of their own (`dreaming.fold_inferred_max`, 1 a morning), so they never take one of your own lines' places.
 
 Apart from that second opinion, nothing new runs for it: it reads Kurooto's own log, its memory and your notes, so it
 uses no AI and nothing leaves the computer.

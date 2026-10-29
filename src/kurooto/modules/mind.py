@@ -79,7 +79,8 @@ from kurooto.mind.tom import goals as tom_goals
 from kurooto.mind.tom import knowledge as tom_knowledge
 from kurooto.mind.tom import model as tom_model
 from kurooto.mind.tom import prefs as tom_prefs
-from kurooto.modules.base import Command, Incoming, Module
+from kurooto.mind.tom import results as tom_results
+from kurooto.modules.base import Command, Incoming, Intent, Module
 
 register_defaults(
     "mind",
@@ -664,7 +665,35 @@ class Mind(Module):
             "prec": lambda ref, act: mind_precedents.button(self.app, ref, act),
             "mdr": lambda ref, act: dream.button(self.app, ref, act),  # a dream card or lesson: Keep, Drop, Undo
             "msp": lambda ref, act: study_push.button(self.app, ref, act),  # the morning line: Yes / Later
+            "mres": lambda ref, act: tom_results.button(self.app, ref, act),  # more hours for a course's exams
         }
+
+    def intents(self):
+        def result(text: str):
+            if not mind.part_on(self.app, "tom") or not self.app.settings.get("mind.tom.from_chat"):
+                return None
+            got = tom_results.parse(text)
+            sub = self.app.modules.get("subjects")
+            if got is None or sub is None or not self.app.is_on("subjects"):
+                return None
+            found = sub.find_in(got[2])
+            return {"slug": found[0], "f": got[0], "what": got[1]} if len(found) == 1 else None
+
+        def run(msg: Incoming, s: dict) -> str:
+            text, offer, buttons = tom_results.take(self.app, s["slug"], s["f"], s["what"])
+            if offer:  # the offer of more preparation time comes as its own message, with its buttons
+                self.app.notify(offer, kind="question", buttons=buttons, why="asked")
+            return text
+
+        return [
+            Intent(
+                "exam_result",
+                "an exam result you got, as evidence of what you know",
+                result,
+                run,
+                examples=("I got 12/30 on the LA midterm",),
+            )
+        ]
 
     def precedents_cmd(self, msg: Incoming, arg: str) -> str:
         if not mind.on(self.app):
@@ -690,10 +719,14 @@ class Mind(Module):
             return "Thanks: that counts." if mind_play.useful(self.app, w[1]) else "No such output, or already counted."
         return mind_play.listing(self.app)
 
-    def learned_cmd(self, msg: Incoming, arg: str) -> str:
+    def learned_cmd(self, msg: Incoming, arg: str) -> str | None:
+        words = (arg or "").split(None, 2)
+        sub = words[0].lower() if words else ""
+        learning = self.app.modules.get("learning")
+        if learning is not None and self.app.is_on("learning") and sub not in ("run", "retire"):
+            return learning._learned(msg, arg)  # noqa: SLF001  one /learned for both lists (modules/learning.py)
         if not mind.on(self.app):
             return "Brain is off (Features → Brain)."
-        words = (arg or "").split(None, 2)
         if len(words) >= 2 and words[0].lower() == "retire":
             return "Retired." if skill_library.retire(self.app, words[1]) else f"There's no active skill {words[1]}."
         if len(words) >= 2 and words[0].lower() == "run":

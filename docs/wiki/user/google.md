@@ -176,6 +176,7 @@ Dashboard → Features → Google → paste the client file → Save → sign in
 |---|---|---|
 | `google.classroom` | `true` | read Classroom (deadlines and announcements) |
 | `google.classroom_every` | `every 3h` | how often Classroom is checked |
+| `google.classroom_on_calls` | `false` | a call's brief gets the titles of the last day's Classroom posts (0.9.0; the call's AI reads them) |
 | `google.gmail_drafts` | `false` | allow `/draft` (needs one more sign-in) |
 | `google.accounts` | `["main"]` | your Google accounts by name ([below](#several-google-accounts)) |
 | `google.use` | `{}` | which account each feature uses; unset means main |
@@ -380,6 +381,7 @@ counted and you're told once.
 | `mail_digest.own_domain` | `true` | on a school or work account, read mail from your own domain |
 | `mail_digest.query` | empty | a Gmail search whose matches are read |
 | `mail_digest.first_days` | `3` | how far back the first check looks |
+| `mail_digest.on_calls` | `false` | a call's brief gets the last digest's "Needs you" line (0.9.0; the call's AI reads it) |
 | `mail_digest.max_messages` | `200` | most mails looked at per check |
 | `mail_digest.save_note` | `true` | keep a copy of each digest in your notes |
 | `mail_digest.skip_confidential` | `true` | never read mail marked confidential |

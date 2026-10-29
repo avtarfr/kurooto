@@ -77,6 +77,8 @@ register_defaults(
         # (0.9.0) /revise <course> starts with a line of the topics you're learning now (concepts another feature
         # marked on Brain's frontier); the ranking below it is unchanged
         "learning_now": True,
+        "graph_first": False,  # the concept graph reads the courses with an exam coming up first (it only reorders)
+        "use_mastery": False,  # revision: Brain's mastery ranks ungraded topics within their tier, frontier first
     },
 )
 

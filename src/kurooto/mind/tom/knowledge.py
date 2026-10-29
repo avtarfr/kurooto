@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 P_INIT, P_TRANSIT, P_SLIP, P_GUESS = 0.30, 0.15, 0.10, 0.20
 NEW_BELOW, SOLID_FROM = 0.35, 0.70
 PART = "knowledge"
+LINKS = "_links"  # the quiz file the link recall cards live in (modules/quiz_links.py SUBJECT)
 
 
 def update(p: float, correct: bool, weight: float = 1.0) -> float:
@@ -93,6 +94,13 @@ def mentions(text: str, notes: dict[str, conceptgraph.Note]) -> list[str]:
     return out
 
 
+def item_slugs(it: dict, notes: dict[str, conceptgraph.Note]) -> list[str]:
+    """The concepts a quiz item is about: the concept a card Kurooto wrote names (Quiz.add_card), or both ends of a link
+    recall card (modules/quiz_links.py), when those notes still exist; else the concepts its text names."""
+    named = [s for s in (it.get("concept"), it.get("a"), it.get("b")) if isinstance(s, str) and s in notes]
+    return list(dict.fromkeys(named)) or mentions(it.get("text", ""), notes)
+
+
 def from_quiz(app: App) -> int:
     """Quiz results -> evidence, for cards that name a concept; each graded answer is counted once."""
     quiz = app.modules.get("quiz")
@@ -101,12 +109,13 @@ def from_quiz(app: App) -> int:
     notes, done = concepts(app), 0
     seen = model._state(app).get("quiz_seen") or {}  # noqa: SLF001
     cards = getattr(quiz, "card_subjects", list)()  # 0.8.14: the cards Kurooto wrote count as evidence too
-    for subj in list(dict.fromkeys([*quiz.sources(), *cards])):
+    links = [LINKS] if (quiz._dir() / f"{LINKS}.json").exists() else []  # noqa: SLF001  the link recall cards (0.9.0)
+    for subj in list(dict.fromkeys([*quiz.sources(), *cards, *links])):
         for iid, it in quiz.state(subj)["items"].items():
             hist = it.get("history") or []
             k = f"{subj}:{iid}"
             for g in hist[int(seen.get(k, 0)) :]:
-                for slug in mentions(it.get("text", ""), notes):
+                for slug in item_slugs(it, notes):
                     observe(app, slug, int(g.get("q", 0)) >= 3, 1.0, f"quiz:{iid}")
                     done += 1
             seen[k] = len(hist)

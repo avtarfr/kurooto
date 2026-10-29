@@ -27,6 +27,7 @@ place; nothing here talks to an AI.
 
 from __future__ import annotations
 
+import datetime as dt
 import hashlib
 import json
 import os
@@ -287,16 +288,44 @@ def decide(app: App, rel: str, text: str) -> Decision:
     return Decision(None, 0.0, "no rule fits", "rules", guesses[:2])
 
 
-def prompt(app: App, rel: str, text: str) -> str:
-    """The one short question for the AI: which of these folders, as JSON."""
+def prompt(app: App, rel: str, text: str, hint: str = "") -> str:
+    """The one short question for the AI: which of these folders, as JSON. hint: the class folder (sorter.by_class)."""
     opts = folders(app)
+    near = (
+        f"\n\nA hint, not a rule: it was written during or soon after a class whose folder is {hint}; pick that only "
+        "if the note's content fits it."
+        if hint
+        else ""
+    )
     return (
         "Sort one note into a folder of the user's notes. Reply with ONLY a JSON object "
         '{"folder": "<one of the folders below, exactly, or null>", "confidence": <0 to 1>, "why": "<five words>"}. '
         "Use null when none clearly fits; never invent a folder.\n\nFolders:\n"
         + "\n".join(f"- {o}" for o in opts[:80])
+        + near
         + f"\n\nThe note ({rel}):\n{text[:1500]}"
     )
+
+
+def class_folder(app: App, rel: str) -> str | None:
+    """sorter.by_class (0.9.0, off): the folder of the class that was on when the note was last written, or ended
+    within the Doubt queue's doubts.recent_h before it (modules/doubts.py:subject_at), when that folder exists. Only a
+    hint: it goes to the AI's request and is the first Move button on a note left waiting, never a move by itself."""
+    if not setting(app, "by_class", False) or not app.is_on("subjects"):
+        return None
+    doubts = app.modules.get("doubts")
+    try:
+        t = dt.datetime.fromtimestamp((Path(app.workspace) / rel).stat().st_mtime)
+        slug = doubts.subject_at(t) if doubts is not None else None
+    except (OSError, ValueError, KeyError):
+        return None
+    if not slug:
+        return None
+    have = set(folders(app))
+    for cand in (layout.of(app).rel("subject", subject=slug), slug, f"sources/{slug}"):
+        if cand in have:
+            return cand
+    return None
 
 
 def answer(app: App, raw: str) -> Decision:

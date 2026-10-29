@@ -29,6 +29,9 @@ register_defaults(
     {
         "before_min": 30,  # open doubts come this long before the subject's next class
         "recent_h": 3,  # a doubt naming no subject is for the class that's on, or ended this many hours ago
+        "to_revision": True,  # an open doubt about a topic ranks it with weak recall in Exam season's revision plan
+        "share": False,  # open doubts go with a hint request for that subject and on a call before its class (your AI)
+        "share_h": 3,  # ...a call this many hours before the class
     },
 )
 
@@ -136,7 +139,11 @@ class Doubts(Module):
 
     def current_subject(self) -> str | None:
         """The class that's on now, or the latest one that ended in the last recent_h hours."""
-        t = now()
+        return self.subject_at(now())
+
+    def subject_at(self, t: dt.datetime) -> str | None:
+        """The class that was on at t, or the latest one that ended in the recent_h hours before it (the notes sorter's
+        class hint reads it too, sorter.by_class)."""
         recent = dt.timedelta(hours=float(self.setting("recent_h") or 0))
         hits = [
             c
@@ -169,6 +176,29 @@ class Doubts(Module):
         if told != old:
             jsave(f, told)
         return sent
+
+    # ------------------------------------------------------------------------- shared with your AI (0.9.0)
+    def shared(self, slug: str) -> list[str]:
+        """The subject's open doubts for an AI request (the hint ladder's), with doubts.share on; else none."""
+        return self.open(slug)[:MAX_LISTED] if self.setting("share") else []
+
+    def call_brief(self) -> dict:
+        """On a call in the hours before a class (doubts.share_h) with open doubts: they're in the call's brief, so
+        they can come up. Only with doubts.share on: the call's AI may be a cloud one."""
+        if not self.setting("share"):
+            return {}
+        t = now()
+        ahead = dt.timedelta(hours=float(self.setting("share_h") or 3))
+        sub, out, seen = self.app.modules["subjects"], [], set()
+        for c in sub.classes_on(t.date()):
+            slug = c.get("subject")
+            if not slug or slug in seen or not (t < c["start_dt"] <= t + ahead):
+                continue
+            seen.add(slug)
+            items = self.open(slug)[:MAX_LISTED]
+            if items:
+                out.append(f"{c['name']} at {c['start_dt']:%H:%M}: " + "; ".join(items))
+        return {"open_doubts_before_class": out} if out else {}
 
     # -------------------------------------------------------------------------------------- messages
     def _refs(self) -> dict:

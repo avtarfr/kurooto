@@ -219,6 +219,7 @@ Each feature you turn on adds what calls can do; a feature that's off adds nothi
 | You can ask | Needs | Works while the computer is off |
 |---|---|---|
 | What needs my attention? (asked at the start of every call) | Phone calls | yes, from the last brief |
+| What the mail digest said needs you; today's Classroom posts (0.9.0, `mail_digest.on_calls` and `google.classroom_on_calls`, both off) | Mail digest; Google (Classroom) | yes, from the last brief |
 | Search my notes; read a note (by meaning, with Notes brain on: "when is the stats quiz?") | Phone calls | keyword search over titles and headings only; whole notes only with Notes sync on |
 | A note's or a course's timeline ("what's coming up in stats?") | Notes brain | needs the computer |
 | Call me back later about something | Phone calls | yes (queued) |
@@ -232,7 +233,7 @@ Each feature you turn on adds what calls can do; a feature that's off adds nothi
 | Mark a deadline done, add or move one, ignore a topic, add a recurring quiz | Deadlines | yes (queued) |
 | When should I start X; this is about a day of work | Start-by dates | start dates from the last brief; sizes queued |
 | I'm skipping a class, several, or all of today's | Subjects | yes (queued) |
-| Quiz me (questions, grading); schedule a quiz | Quiz | questions from the last brief; grades and scheduling queued |
+| Quiz me (questions, grading); schedule a quiz | Quiz | questions from the last brief; grades and scheduling queued; with `quiz.call_frontier` on (0.9.0, off), the due questions on concepts you're ready for come first, and their names are the call's focus |
 | Set, skip or turn off the alarm; when is my alarm | Morning alarm | yes |
 | Log study time; how much did I study | Study tracker | logging queued; totals need the computer |
 | Remember how I like to be helped | Remember | yes (queued) |
@@ -596,6 +597,9 @@ Dashboard → Settings → calls. The ones you're likely to change:
   check-ins, open questions, the steps for check-in, wake-up and Sunday review calls, your notes' titles); the calls
   booked for the next day; questions and messages waiting for your phones; and, only if you approved it, your bot's
   token (for "Kurooto has been offline since ..." messages; see [Messages it sends](messages-it-sends.md)).
+- With `mail_digest.on_calls` or `google.classroom_on_calls` on (0.9.0, both off), the brief also carries the last mail
+  digest's "Needs you" line, or the titles of the last day's Classroom posts: Gemini Live (or the call's AI) reads them.
+  Confidential mail and personal mail never reach that line.
 - Transcripts, lessons and everything else stay on your computer. The look back sends a call's transcript to your AI.
 - Full list: [Privacy](privacy.md).
 

@@ -561,7 +561,17 @@ well. A message lists up to 8 doubts; the rest are named by where they are.
 | `doubts.before_min` | 30 | minutes before the subject's next class when its open doubts come |
 | `doubts.recent_h` | 3 | a doubt naming no subject is for the class that ended this many hours ago |
 | `notes.paths.doubts` | empty | your own place for doubts notes (see [notes layout](notes-and-concept-graph.md)) |
+| `doubts.to_revision` | on | an open doubt about a topic ranks it with weak recall in Exam season's revision plan (0.9.0) |
+| `doubts.share` | off | open doubts go with a `/hint` for that subject, and on a call in the hours before its class (0.9.0) |
+| `doubts.share_h` | 3 | ...a call this many hours before the class |
 
-**What leaves your computer.** Nothing.
+**Open doubts elsewhere** (0.9.0). With `doubts.to_revision` on (on), a topic in the [revision
+plan](quiz-and-exams.md#the-revision-plan) that one of the subject's open doubts names is ranked with the weak-recall
+topics ("an open doubt"), so it gets a block sooner; nothing is dropped. With `doubts.share` on (off), the subject's
+open doubts go with each `/hint` for it (the hint may connect to one) and are in the brief of a call in the 3 hours
+before its class, so they can come up. The doubts note is only read, never changed. The before-class message stays.
+
+**What leaves your computer.** Nothing, unless `doubts.share` is on: then the open doubts' words go to your AI with a
+hint request, and to the call's AI on a call before the class.
 
 **Turn it off.** Features → Doubt queue → Turn off. The doubts notes are yours and stay.

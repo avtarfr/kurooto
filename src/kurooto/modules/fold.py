@@ -43,6 +43,8 @@ register_defaults(
         "fold": True,  # offer lasting things you said for your profile in the morning message (Keep / Not that)
         "fold_ai": "local",  # a second look at what the rules found: local (this computer), main (your AI), off
         "fold_max": 3,  # at most this many in one morning message; the rest wait for the next ones
+        "fold_inferred": True,  # also offer the projects and classes it set up from what you said (/inferred)
+        "fold_inferred_max": 1,  # ...at most this many a morning, besides fold_max (never ahead of your own lines)
     },
 )
 
@@ -52,7 +54,14 @@ SHOWN_MAX = 2  # a line shown this many times without a tap is let go
 PENDING_MAX = 20
 AI_MAX = 8  # second looks a night
 MIN, MAX = 12, 200  # characters a line may have
-WHERE = {"chat": "a chat", "call": "a call", "request": "an AI request", "journal": "your journal"}
+WHERE = {
+    "chat": "a chat",
+    "call": "a call",
+    "request": "an AI request",
+    "journal": "your journal",
+    "inferred": "what it set up from what you said",
+}
+ROLE = re.compile(r"\((?P<role>[a-z][a-z -]{1,30})\)\s*$")
 LEAD = r"^(?:(?:btw|fyi|also|oh|and|so|ok|okay|just so you know|for the record|for context)[,:]?\s+)*"
 ABOUT = re.compile(
     LEAD + r"(?:i(?:'m| am) (?:a|an) (?!(?:bit|little|lot|while|few|tad|mess|wreck|sec|minute)\b)\w"
@@ -287,10 +296,18 @@ def scan(app: App, ai: bool = True) -> int:
             have.append(text)
             found.append({"ref": uuid.uuid4().hex[:8], "h": h, "kind": kind, "text": text, "src": src,
                           "day": dt.date.fromtimestamp(at).isoformat(), "shown": 0})  # fmt: skip
+        for text, at in inferred(app):  # Kurooto's own summaries: no second look needed, never a name
+            h = _h(text)
+            if h in st["decided"] or _is_known(text, have):
+                continue
+            have.append(text)
+            found.append({"ref": uuid.uuid4().hex[:8], "h": h, "kind": "about", "text": text, "src": "inferred",
+                          "day": dt.date.fromtimestamp(at).isoformat(), "shown": 0})  # fmt: skip
         st["scanned"] = time.time()
         _save(app, st)
     if ai:
-        found = second_look(app, found)  # outside the lock: a model can take a while
+        mine = second_look(app, [f for f in found if f["src"] != "inferred"])  # outside the lock: a model is slow
+        found = mine + [f for f in found if f["src"] == "inferred"]
     with Lock(app.paths.state, "dreaming-fold"):
         st = _load(app)
         st["items"] = (st["items"] + found)[-PENDING_MAX:]
@@ -298,6 +315,48 @@ def scan(app: App, ai: bool = True) -> int:
     if found:
         app.events.emit("dreaming_fold_found", n=len(found))
     return len(found)
+
+
+def inferred(app: App) -> list[tuple[str, float]]:
+    """dreaming.fold_inferred (0.9.0): the projects and classes core/infer.py set up and you didn't undo, each as a line
+    for your profile in Kurooto's words, with a role and never a name ("I have a project with my supervisor on glacier
+    flow", "I have a weekly Linear Algebra lab (Mon 09:00)"). (line, when it was set up)."""
+    if not app.settings.get("dreaming.fold_inferred"):
+        return []
+    from kurooto.core import infer
+
+    out = []
+    for it in infer._load(app).get("items") or []:  # noqa: SLF001
+        if it.get("undone"):
+            continue
+        u = it.get("undo") or {}
+        if it.get("kind") == "project":
+            m = ROLE.search(str(u.get("with") or ""))
+            role = m["role"] if m else "supervisor"
+            rel = Path(str(u.get("file") or "x")).parent.name.replace("-", " ").strip()
+            who = str(u.get("with") or "").removeprefix("With:").split("(")[0].strip().lower()
+            last = who.split()[-1] if who else ""
+            topic = (
+                ""
+                if not rel or (last and last in rel.lower()) or rel.lower().startswith(("project", "thesis"))
+                else rel
+            )
+            line = f"I have a project with my {role}" + (f" on {topic}" if topic else "")
+        elif it.get("kind") == "class" and isinstance(u.get("class"), dict):
+            c, subj = u["class"], app.modules.get("subjects")
+            name = subj.name_of(c.get("subject", "")) if subj is not None else c.get("subject", "")
+            what = (
+                "lab"
+                if " lab " in f" {it.get('line', '')} "
+                else "tutorial"
+                if "tutorial" in str(it.get("line"))
+                else "class"
+            )
+            line = f"I have a weekly {name} {what} ({str(c.get('day', '')).title()} {c.get('start', '')})"
+        else:
+            continue
+        out.append((line, float(it.get("at") or time.time())))
+    return out
 
 
 # ------------------------------------------------------------------------------------------- the morning
@@ -330,7 +389,11 @@ def section(app: App, send: bool) -> tuple[str, list]:
         most = max(1, int(app.settings.get("dreaming.fold_max") or 3))
     except (TypeError, ValueError):
         most = 3
-    lines, buttons = [], []
+    try:  # Kurooto's own summaries have a cap of their own: they never take one of your lines' places
+        also = max(0, int(app.settings.get("dreaming.fold_inferred_max") or 0))
+    except (TypeError, ValueError):
+        also = 1
+    lines, buttons, mine, extra = [], [], 0, 0
     with Lock(app.paths.state, "dreaming-fold"):
         st = _load(app)
         keep = []
@@ -340,8 +403,14 @@ def section(app: App, send: bool) -> tuple[str, list]:
             if send and int(it.get("shown") or 0) >= SHOWN_MAX:
                 continue  # shown twice and left: let go
             keep.append(it)
-            if len(lines) >= most:
-                continue
+            if it.get("src") == "inferred":
+                if extra >= also:
+                    continue
+                extra += 1
+            else:
+                if mine >= most:
+                    continue
+                mine += 1
             n = len(lines) + 1
             to = "your profile" if it["kind"] == "about" else "how to help you"
             lines.append(f'{n}. "{it["text"]}" ({WHERE.get(it["src"], it["src"])}, {_when(it["day"])}) → {to}')

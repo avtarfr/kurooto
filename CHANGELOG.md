@@ -160,6 +160,46 @@
   a Study mode focus for it.
 - **The calls name the exam** (`exam_season.in_calls`, on): the wake-up call says today's exam and when to leave; the
   night check-in says tomorrow's and suggests a wake time.
+- **`/learned` shows both lists.** Brain's tested skills and the notes skills and lessons "Learns from its own work"
+  keeps were both `/learned`, and only one answered; now the one command lists the changes with their Undo, then
+  Brain's skills, and `/learned run` and `/learned retire` work either way.
+- **Quiz answers count for the concept a card is about.** A card Kurooto wrote counts for the concept it names, and a
+  link recall card for both of its concepts, in Brain's model of what you know; before, only a concept named in the
+  card's words counted, and link cards not at all.
+- **Questions missed on a call can become doubts** (`quiz.to_doubts`, on, with the Doubt queue). After a call, one
+  message lists the quiz questions you got wrong on it; **Add to doubts** puts them in each subject's doubts note so
+  they come back before the next class. Nothing is written before the tap.
+- **Needing the last hint is a small sign of a gap** (`hints.weak_sign`, on) in Brain's model of what you know, so
+  explanations and quizzes are pitched there.
+- **Link cards and the morning study line can lean on Brain's frontier** (`quiz.links_frontier`,
+  `mind.study_push.frontier`, both off): only among cards due the same day, and only after deadline risk; the morning
+  line then names the concept to go to next.
+- **A call's quiz can start where you're ready to learn** (`quiz.call_frontier`, off). The due questions on concepts at
+  your frontier come first, and the call knows their names; the same questions are due, none added or dropped.
+- **An open doubt moves its topic up the revision plan** (`doubts.to_revision`, on): ranked with the weak-recall
+  topics. With `doubts.share` (off), open doubts also go with a `/hint` for that subject and on a call before its class.
+- **Brain's mastery can order the revision plan's ungraded topics** (`exam_season.use_mastery`, off), within their
+  group and frontier first; your grades and answers still decide.
+- **Tell it an exam result** (`mind.tom.from_chat`, on, with Brain): "I got 12/30 on the LA midterm" counts for the
+  course's concepts in what Brain thinks you know, adds a dated line in Kurooto's own block of its exam prep note, and
+  after a low score offers more preparation hours with a tap.
+- **Course pages' timelines show announcements** (`gbrain.course_announcements`, on): the course's Classroom posts and
+  the dated lines under its page's `## Announcements` heading (where the mail digest puts Courses mail).
+- **Calls can know what mail needs you and what Classroom posted** (`mail_digest.on_calls`, `google.classroom_on_calls`,
+  both off): the last digest's "Needs you" line and the last day's post titles go into a call's brief.
+- **The sorter can use the class you were in as a hint** (`sorter.by_class`, off): a note written in or just after a
+  class gets that class's folder as the first Move button and a hint to the AI; your rules still come first.
+- **Papers you put in Zotero can join the concept graph** (`papers` in `integrate.sources`, not there by default): read
+  from the abstract, after the night's books.
+- **In exam season the concept graph can read the courses with an exam coming up first** (`exam_season.graph_first`,
+  off). It only reorders; nothing is dropped.
+- **"Remember I hate calls before 8" can set it too** (`remember.offer_settings`, on): a time rule in what you ask it
+  to remember is offered as the setting (night hours, Start-by's window), with Set it / No and an Undo.
+- **What it set up can go into your profile** (`dreaming.fold_inferred`, on): the projects and classes it set up from
+  what you said are offered in the morning's "For your profile" with Keep / Not that, with a role and never a name, one
+  a morning besides your own lines.
+- **The night's reading can step aside for Voice** (`integrate.yield_to_owner`, `books.yield_to_owner`, off): while
+  you're in a Voice turn the next batch or page waits, then carries on; Books moves its stopping time by the wait.
 
 ## 0.8.18 (2026-10-29)
 

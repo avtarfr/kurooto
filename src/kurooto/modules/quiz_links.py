@@ -218,10 +218,12 @@ class LinkCards:
         """What's due: cards seen before first (the most overdue), then new ones."""
         today = dt.date.today().isoformat()
         due = [(k, v) for k, v in st["items"].items() if not v.get("gone") and v["due"] <= today]
+        ready = self.frontier()
 
         def order(kv):
             new = kv[1]["reps"] == 0 and not kv[1]["history"]
-            return (new, new and not kv[1].get("recent"), kv[1]["due"], kv[0])  # new ones met in class lately first
+            front = 0 if {kv[1].get("a"), kv[1].get("b")} & ready else 1  # same due day: frontier first
+            return (new, new and not kv[1].get("recent"), kv[1]["due"], front, kv[0])  # new ones met in class first
 
         due.sort(key=order)
         from kurooto.core import notinterested  # (0.9.0, notinterested.filter.quiz_links) about a skipped topic: last
@@ -234,6 +236,18 @@ class LinkCards:
             lambda kv, why: (kv[0], {**kv[1], "not_interested": why}),
         )
         return due[0] if due else None
+
+    def frontier(self) -> set[str]:
+        """quiz.links_frontier (0.9.0, off): the concepts at your frontier or partly known (mind/frontier.py); a card
+        touching one comes first among the cards due the same day, never ahead of an overdue one. Else none."""
+        if not self.quiz.setting("links_frontier"):
+            return set()
+        try:
+            from kurooto.mind import frontier
+
+            return {s for s, g in frontier.grades(self.app).items() if g in (frontier.FRONTIER, frontier.STARTED)}
+        except Exception:
+            return set()
 
     def sent_today(self, st: dict) -> int:
         day = st.get("day") or {}

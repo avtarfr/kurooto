@@ -66,3 +66,11 @@ thread; settings `integrate.duplicates_all` and `integrate.duplicates_per_day`. 
 `core/sorting.ready()` skips notes already redirected. Nothing merges or deletes without a tap, and every merge can be undone.
 Test: `tests/unit/test_note_dupes.py`. Books: `fingerprint` and `duplicate_of` in `core/books.py` hash a file's pages;
 `meta["duplicate_of"]` and `copies` link them; `books.duplicates` switches it.
+
+## The class as a hint (0.9.0, `sorter.by_class`, off)
+
+`core/sorting.py:class_folder(app, rel)`: the note's mtime, `modules/doubts.py:Doubts.subject_at(t)` (the class on at t,
+or ended within `doubts.recent_h`; `current_subject()` is `subject_at(now())`), then the subject's folder as `decide`'s
+`folder_of` finds it. `Sorter.run` computes it only for a note the rules didn't place: `_ask(..., hint)` passes it to
+`sorting.prompt(..., hint)` ("a hint, not a rule") and keeps it as the waiting entry's `class`; `_wait(..., hint)` puts it
+first in `guesses` (up to 3; `waiting_text` shows 3). It never decides a move. Test: `tests/unit/test_links_notes.py`.

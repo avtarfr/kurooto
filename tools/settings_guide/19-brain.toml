@@ -455,6 +455,12 @@ tip = "When something you were told turns out wrong, tell you once, with the evi
 when = "Turn it off if you'd rather not get these corrections."
 needs = "`mind.tom.on`."
 
+[s."mind.tom.from_chat"]
+tip = "An exam result you report (\"I got 12/30 on the LA midterm\") counts as evidence of what you know."
+what = "It also adds a dated line in Kurooto's own block of the course's exam prep note, and after a low score offers more preparation hours (a tap)."
+when = "Turn it off if results you mention shouldn't change anything."
+needs = "`mind.tom.on` and Subjects."
+
 [s."mind.tom.attention"]
 tip = "Hold a message (at most 15 minutes) while you're deep in one project."
 when = "Turn it on if interruptions while you're focused bother you."
@@ -692,6 +698,11 @@ needs = "`mind.study_push.on`."
 tip = "How long a study stretch the morning line offers."
 when = "Change it to the length you'd actually start with."
 needs = "`mind.study_push.on`."
+
+[s."mind.study_push.frontier"]
+tip = "Between subjects it's equally uneasy about, the one with concepts you're ready for wins, and the line names one."
+when = "Turn it on if you'd like the morning line to say where to go next in the subject."
+needs = "`mind.study_push.on` and Brain's model of what you know (`mind.tom.on`)."
 
 [s."mind.study_push.horizon_days"]
 tip = "How far ahead a deadline can be for Brain to be uneasy about it."
