@@ -43,7 +43,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 68 settings
 - [Brain](#brain): 159 settings
-- [Voice and voice notes](#voice-and-voice-notes): 106 settings
+- [Voice and voice notes](#voice-and-voice-notes): 115 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 12 settings
@@ -7501,7 +7501,8 @@ What other voices get: a chat with no actions and none of your data, or just one
 
 ### `voice.speaker_id.gate`
 
-Check who's speaking before writing words out: other people not calling Kurooto are never transcribed.
+Check who's speaking before writing words out: other people not calling Kurooto are never transcribed (unsure voices:
+once).
 
 - **Values:** `true` (others' talk is dropped before transcription), `false` (everything is transcribed, then sorted as
   in 0.8.8). **Default:** on.
@@ -8134,7 +8135,8 @@ the conversation, so later turns don't start it again.
 
 ### `voice.listen.live`
 
-Your own turns answered by Gemini Live, speech to speech, in about a second. Their sound goes to Google.
+Your own turns answered by Gemini Live, speech to speech; /voice turns shows how long yours really take. Their sound
+goes to Google.
 
 Instead of writing your words out, asking your AI and making the answer's voice here, the turn's sound goes to Google's
 Gemini Live (with your Gemini key) and its spoken answer plays through the same speakers or add-on output. A different
@@ -8330,6 +8332,139 @@ without it the answers stay on screen only. /voice and /health say which it's us
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off to keep only the voice you chose (answers on screen when it fails).
 - **Depends on:** Voice speaking with Kokoro; Piper set up earlier (voice.speak.engine piper once).
+
+### `voice.listen.trace`
+
+One numbers-only row per stretch heard, the last 20 in memory: /voice turns, the dashboard, add-ons here.
+
+For each stretch of speech: what the gate called it (addressed, chatter, noise, told off) and by which rule, the face
+check's state (seen, none, blind, off, free), Voice ID's word and score, which way the turn went (Gemini Live, the guest
+session, your AI, the guest path, dropped, lost), and how long each stage took in milliseconds from your last word:
+Voice ID's check, the transcriber's wait and work and how many times it ran, the gate, sent, the first sound. Plus the
+machine's load. Never words or sound; kept in memory only (never in the event log or on disk). `/voice turns` shows the
+table with p50 and p90; the dashboard's hearing panel shows the same in short; add-ons on this computer read it
+(Voice.turn_log).
+
+- **Values:** `true` (default) or `false`. **Default:** on.
+- **When to change it:** Turn it off if you don't want even these numbers kept while Kurooto runs.
+- **Costs and what leaves this computer:** Nothing leaves this computer.
+
+### `voice.listen.stage_deadline_s`
+
+A turn whose words took longer than this to come through gets "Sorry, I lost you there. Say that again?" instead of a
+late answer.
+
+When the computer is busy, writing your words out and judging them can take many seconds, and an answer half a minute
+later is worse than none. Past this many seconds from your last word to the moment the turn would be sent, nothing is
+sent: it says "Sorry, I lost you there. Say that again?" and listens on, so you can say it again without its name. It
+never hands the turn to another AI. /voice turns shows such a turn as "lost".
+
+- **Values:** Seconds; `0` (default) is off. About 8 is a good value. **Default:** `0`.
+- **When to change it:** Set it when you've had answers arrive long after you asked.
+- **Costs and what leaves this computer:** Nothing leaves this computer.
+- **Depends on:** `voice.listen.on`.
+
+### `voice.listen.wait_unfinished`
+
+When your words stop on an unfinished note ("and", "so", a trailing comma) it waits up to 1.4 s for the rest.
+
+Normally 0.7 seconds of quiet ends what you're saying. With this on, the words written out at your first pause are
+looked at: if they stop on a joining word ("and", "so", "but", "because", "the" ...) or a comma, it waits up to 1.4
+seconds of quiet before taking the turn, so a pause to think doesn't cut you off. While those words are still being
+written out it waits too (at most 1.4 s).
+
+- **Values:** `false` (default) or `true`. **Default:** off.
+- **When to change it:** Turn it on if it often answers half a sentence.
+- **Costs and what leaves this computer:** Nothing leaves this computer.
+- **Depends on:** `voice.listen.early`.
+
+### `voice.listen.live_prewarm`
+
+Open Gemini Live's connection ahead when Face presence recognises you looking at it, or your wake word in your voice.
+
+A turn that goes to Gemini Live first waits for the connection and its setup (often most of a second). With this on, the
+connection to your own Live session is opened ahead, with no sound, when Face presence recognises your face looking at
+the camera, or hears your wake word in your voice (Voice ID); never for anyone else's face and never the guest session.
+Nothing you say is sent until the gate has judged a turn said to Kurooto. An unused connection closes after 30 seconds;
+it opens at most 6 times in 10 minutes; one idle for a few seconds is checked (a ping) before your turn uses it.
+**Privacy:** your session's setup (the instructions a call's setup carries: your name, the tools, the lessons from
+earlier calls) goes to Google when it opens, even if you then say nothing.
+
+- **Values:** `false` (default) or `true`. **Default:** off.
+- **When to change it:** Turn it on when Live answers but the first word takes long to come.
+- **Costs and what leaves this computer:** Your session's setup goes to Google (your Gemini key) a little more often; no
+  sound.
+- **Depends on:** `voice.listen.live`, Face presence (enrolled) or a wake word, and Voice ID.
+
+### `voice.listen.fast_live`
+
+The fast way to Live: your face looking at the camera and talking opens Live while you speak, and the gate judges at
+your first pause.
+
+When Face presence sees your face looking at the camera and your mouth moving during what you say (from the five points
+its face model gives: how far your mouth's corners sit below your eyes and how far apart they are, as a change from
+frame to frame), Live's connection is opened right then (no sound), and at your first short pause the gate judges the
+words so far, the local model too where the rules need it, and Voice ID's check is made then. When you then stop with
+nothing more said, the turn goes to Live at once: no second check, no second judgement, no connection to wait for. If
+you go on after the pause, it's judged as usual on all of it. Only turns the gate judged said to Kurooto are ever sent;
+chatter, noise and other people's talk never are. Measured with stand-ins: from your last word to Live's first sound
+about 0.8 s sooner (a 0.6 s connection and a 0.4 s local model). The mouth reading is rough: five points at a few frames
+a second.
+
+- **Values:** `false` (default) or `true`. **Default:** off.
+- **When to change it:** Turn it on with Live when you want its answers to start sooner.
+- **Costs and what leaves this computer:** Like voice.listen.live_prewarm: your session's setup goes to Google when you
+  look at it and talk, before the turn is judged; no sound until it is.
+- **Depends on:** `voice.listen.live`, `voice.listen.early`, Face presence (enrolled), and Voice ID for the check at the
+  pause.
+
+### `voice.live.breaker.on`
+
+After two failed Live connections in 10 minutes, Live rests: turns go the usual way at once instead of waiting 5 s.
+
+Only connections Google refused (or that couldn't be made) count, never a slow first sound. While resting, /voice and
+the dashboard say "Live resting", each turn goes the usual way without trying Live, and once a minute a connection with
+an empty setup (a model name, nothing of yours) is tried; when one works, Live is back.
+
+- **Values:** `false` (default) or `true`. **Default:** off.
+- **When to change it:** Turn it on if your network or Google's Live service is often down and turns wait for it.
+- **Costs and what leaves this computer:** A connection with an empty setup once a minute while resting.
+- **Depends on:** `voice.listen.live`.
+
+### `voice.live.ack`
+
+A soft sound on a Live turn when Live hasn't answered 0.6 s after you stopped, and when it runs a tool.
+
+The same sound as voice.speak.ack (the tone, or the word), through the same speakers or add-on output, and cut off the
+moment Live's own sound starts. The page shows it heard you either way; in a quiet room mode (night, silent) only that.
+
+- **Values:** `false` (default) or `true`. **Default:** off.
+- **When to change it:** Turn it on if Live's pause before answering leaves you wondering whether it heard.
+- **Depends on:** `voice.listen.live`.
+
+### `voice.live.resume`
+
+Live keeps your conversation's context for 10 minutes after it closes (your own session only).
+
+Your Live session asks Google for a resumption handle, kept in memory only; when your session opens again within 10
+minutes (a new conversation, or Google ending the connection), it continues the old one, so "and the one after that?"
+still makes sense. Never for the guest session; a handle Google no longer takes is dropped.
+
+- **Values:** `false` (default) or `true`. **Default:** off.
+- **When to change it:** Turn it on if Live forgets what you just talked about when you come back to it.
+- **Costs and what leaves this computer:** Google keeps your session's context for the resumption window.
+- **Depends on:** `voice.listen.live`.
+
+### `voice.live.spoken_max_s`
+
+Live stops speaking at the first sentence end past this many seconds; the rest is on screen.
+
+Past that many seconds of Live's sound, it stops at the next sentence end (worked out from Live's own words as it says
+them), and the rest of the answer is shown, not said.
+
+- **Values:** Seconds; `0` (default) is off. About 12 is a good value. **Default:** `0`.
+- **When to change it:** Set it if Live gives long spoken answers at the desk.
+- **Depends on:** `voice.listen.live`.
 
 ## Privacy and what it keeps
 

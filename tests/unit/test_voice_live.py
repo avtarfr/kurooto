@@ -350,7 +350,7 @@ def test_a_tool_run_then_a_failure_isn_t_done_again_the_usual_way(lv, monkeypatc
     monkeypatch.setattr(calls, "run_tool", lambda name, args, since="": ran.append(name) or started)
     assert say(lv, "Kurooto, order bread from zepto") == live_mod.ACTED  # (0.9.2) a set line, never its result
     assert ran == ["order_groceries"] and lv.text_way == []  # never the usual way: no second order
-    assert lv.engine.said == [live_mod.ACTED]  # said by the voice made here
+    assert " ".join(lv.engine.said) == live_mod.ACTED  # said by the voice made here (0.9.2: its first clause first)
     ev = events(lv, "voice_live")[-1]
     assert ev["stage"] == "first sound" and ev["fallback"] is False and ev["tools"] == 1
 

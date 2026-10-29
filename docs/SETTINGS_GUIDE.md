@@ -1436,13 +1436,15 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.face_near` | `0.5` | How close counts: a face at least this share of your usual face height at the desk (0.5 is about twice as far). ([guide](wiki/user/settings-guide.md#voicelistenfacenear)) |
 | `voice.listen.face_yaw_deg` | `35` | How directly someone must face the camera: turned at most this many degrees away (an estimate). ([guide](wiki/user/settings-guide.md#voicelistenfaceyawdeg)) |
 | `voice.listen.fast_brain` | `"same"` | Which AI answers plain chat said aloud: your AI as usual, the model on this computer, or the quickest. ([guide](wiki/user/settings-guide.md#voicelistenfastbrain)) |
+| `voice.listen.fast_live` | `false` | The fast way to Live: your face looking at the camera and talking opens Live while you speak, and the gate judges at your first pause. ([guide](wiki/user/settings-guide.md#voicelistenfastlive)) |
 | `voice.listen.follow_s` | `20` | After Kurooto answers, what the same voice says this many seconds after counts as said to it, statements too. ([guide](wiki/user/settings-guide.md#voicelistenfollows)) |
 | `voice.listen.language` | `""` | The language you speak, e.g. `en` or `hi`; empty works it out each time. ([guide](wiki/user/settings-guide.md#voicelistenlanguage)) |
 | `voice.listen.learn_nightly` | `true` | Every night Kurooto learns from how its voice turns went: ones you carried on with, and ones you told off. ([guide](wiki/user/settings-guide.md#voicelistenlearnnightly)) |
 | `voice.listen.levels` | `true` | Show the microphone's loudness as a waveform on the dashboard (numbers only). ([guide](wiki/user/settings-guide.md#voicelistenlevels)) |
-| `voice.listen.live` | `false` | Your own turns answered by Gemini Live, speech to speech, in about a second. Their sound goes to Google. ([guide](wiki/user/settings-guide.md#voicelistenlive)) |
+| `voice.listen.live` | `false` | Your own turns answered by Gemini Live, speech to speech; /voice turns shows how long yours really take. Their sound goes to Google. ([guide](wiki/user/settings-guide.md#voicelistenlive)) |
 | `voice.listen.live_after` | `true` | A turn Gemini Live answered is noticed like a typed message: threads, what you stated, Brain's tone and replies. ([guide](wiki/user/settings-guide.md#voicelistenliveafter)) |
 | `voice.listen.live_everyone` | `false` | Every turn said to Kurooto goes to Gemini Live: yours with your tools, anyone else's to a guest session. Their voices go to Google. ([guide](wiki/user/settings-guide.md#voicelistenliveeveryone)) |
+| `voice.listen.live_prewarm` | `false` | Open Gemini Live's connection ahead when Face presence recognises you looking at it, or your wake word in your voice. ([guide](wiki/user/settings-guide.md#voicelistenliveprewarm)) |
 | `voice.listen.look_anyone` | `true` | Anyone's look opens the conversation, not only yours: a guest looking at it can talk to it too. ([guide](wiki/user/settings-guide.md#voicelistenlookanyone)) |
 | `voice.listen.look_away_s` | `3.0` | Looking away this long, before you've said anything, closes it again. ([guide](wiki/user/settings-guide.md#voicelistenlookaways)) |
 | `voice.listen.look_dwell_s` | `1.0` | How long you look at the camera before it starts listening: a glance shorter than this doesn't count. ([guide](wiki/user/settings-guide.md#voicelistenlookdwells)) |
@@ -1462,15 +1464,22 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.on` | `false` | Listen through the microphone, all on this computer; only what's said to Kurooto leaves it. ([guide](wiki/user/settings-guide.md#voicelistenon)) |
 | `voice.listen.phone_away` | `false` | Stop listening while your phone is out (it left a place you saved). ([guide](wiki/user/settings-guide.md#voicelistenphoneaway)) |
 | `voice.listen.phone_call` | `false` | Stop listening while the phone app says it's in another call (WhatsApp, Meet), not only during Kurooto's own calls. ([guide](wiki/user/settings-guide.md#voicelistenphonecall)) |
+| `voice.listen.stage_deadline_s` | `0` | A turn whose words took longer than this to come through gets "Sorry, I lost you there. Say that again?" instead of a late answer. ([guide](wiki/user/settings-guide.md#voicelistenstagedeadlines)) |
 | `voice.listen.stt_model` | `"base"` | How big the speech-to-text model is: tiny (75 MB), base (145 MB) or small (484 MB, more accurate). ([guide](wiki/user/settings-guide.md#voicelistensttmodel)) |
 | `voice.listen.tap_to_talk` | `true` | A tap on an add-on's device (the Body face) opens the conversation, as its name would. ([guide](wiki/user/settings-guide.md#voicelistentaptotalk)) |
 | `voice.listen.threshold` | `0.7` | How sure the local model must be (0 to 1) that speech is said to Kurooto. ([guide](wiki/user/settings-guide.md#voicelistenthreshold)) |
 | `voice.listen.timing` | `true` | Time each spoken turn from your last word to Kurooto's first sound, as numbers only. ([guide](wiki/user/settings-guide.md#voicelistentiming)) |
 | `voice.listen.told_off` | `true` | "Stop", "not you", "never mind" and the like, right after it woke or spoke, stop it at once and close the talk. ([guide](wiki/user/settings-guide.md#voicelistentoldoff)) |
+| `voice.listen.trace` | `true` | One numbers-only row per stretch heard, the last 20 in memory: /voice turns, the dashboard, add-ons here. ([guide](wiki/user/settings-guide.md#voicelistentrace)) |
+| `voice.listen.wait_unfinished` | `false` | When your words stop on an unfinished note ("and", "so", a trailing comma) it waits up to 1.4 s for the rest. ([guide](wiki/user/settings-guide.md#voicelistenwaitunfinished)) |
 | `voice.listen.wake_threshold` | `0.5` | How sure the wake-word model must be (0 to 1). ([guide](wiki/user/settings-guide.md#voicelistenwakethreshold)) |
 | `voice.listen.wake_word` | `""` | A wake-word model of your own (an openWakeWord `.onnx` path); empty: its name wakes it. ([guide](wiki/user/settings-guide.md#voicelistenwakeword)) |
 | `voice.listen.warm_brain` | `true` | When listening starts, get your AI's program ready on this computer. ([guide](wiki/user/settings-guide.md#voicelistenwarmbrain)) |
 | `voice.listen.warm_up` | `true` | When listening starts, warm the transcriber and the voice, so your first turn isn't the slow one. ([guide](wiki/user/settings-guide.md#voicelistenwarmup)) |
+| `voice.live.ack` | `false` | A soft sound on a Live turn when Live hasn't answered 0.6 s after you stopped, and when it runs a tool. ([guide](wiki/user/settings-guide.md#voiceliveack)) |
+| `voice.live.breaker.on` | `false` | After two failed Live connections in 10 minutes, Live rests: turns go the usual way at once instead of waiting 5 s. ([guide](wiki/user/settings-guide.md#voicelivebreakeron)) |
+| `voice.live.resume` | `false` | Live keeps your conversation's context for 10 minutes after it closes (your own session only). ([guide](wiki/user/settings-guide.md#voiceliveresume)) |
+| `voice.live.spoken_max_s` | `0` | Live stops speaking at the first sentence end past this many seconds; the rest is on screen. ([guide](wiki/user/settings-guide.md#voicelivespokenmaxs)) |
 | `voice.mirror_to_chat` | `true` | What Kurooto says aloud by itself also shows in the app's and the dashboard's Chat. ([guide](wiki/user/settings-guide.md#voicemirrortochat)) |
 | `voice.room_modes.company_h` | `3` | Company mode ends by itself after this many hours. ([guide](wiki/user/settings-guide.md#voiceroommodescompanyh)) |
 | `voice.room_modes.night_db` | `-12` | At night every sound Kurooto plays is this much quieter (decibels). ([guide](wiki/user/settings-guide.md#voiceroommodesnightdb)) |
@@ -1501,7 +1510,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.speaker_id.claim_per_day` | `5` | At most this many "that was me" claims a day. ([guide](wiki/user/settings-guide.md#voicespeakeridclaimperday)) |
 | `voice.speaker_id.claim_s` | `10` | How long after a "not sure" turn a tap can still claim it (seconds). ([guide](wiki/user/settings-guide.md#voicespeakeridclaims)) |
 | `voice.speaker_id.face_assist` | `true` | When Voice ID is only "not sure" it's your voice and Face presence sees just your face, it counts as you. ([guide](wiki/user/settings-guide.md#voicespeakeridfaceassist)) |
-| `voice.speaker_id.gate` | `true` | Check who's speaking before writing words out: other people not calling Kurooto are never transcribed. ([guide](wiki/user/settings-guide.md#voicespeakeridgate)) |
+| `voice.speaker_id.gate` | `true` | Check who's speaking before writing words out: other people not calling Kurooto are never transcribed (unsure voices: once). ([guide](wiki/user/settings-guide.md#voicespeakeridgate)) |
 | `voice.speaker_id.guest_brain` | `"main"` | Who answers other voices: your AI (none of your data, no tools) or the model on this computer. ([guide](wiki/user/settings-guide.md#voicespeakeridguestbrain)) |
 | `voice.speaker_id.guest_per_hour` | `20` | At most this many answers to other voices an hour. ([guide](wiki/user/settings-guide.md#voicespeakeridguestperhour)) |
 | `voice.speaker_id.margin` | `0.05` | The 'not sure' band just below the threshold, at most 0.2 wide. Not sure always counts as not you. ([guide](wiki/user/settings-guide.md#voicespeakeridmargin)) |

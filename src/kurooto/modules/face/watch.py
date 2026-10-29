@@ -612,7 +612,7 @@ class Watcher:
             looks = [(float(f.height), _yaw(f), _pitch(f), self._eyes(frame, f)) for f in rest]
         self.emit(
             "view", faces=n_faces, owner_alone=his is not None and n_other == 0, sizes=sizes, owner=mine, eyes=eyes,
-            frame=full, looks=looks,
+            frame=full, looks=looks, mouth=_mouth(his) if his is not None else None,
         )  # fmt: skip
         others = n_faces >= 2
         if others != self.others or others:  # while it lasts, every frame refreshes it (core/nearby.py's STALE_S)
@@ -811,6 +811,24 @@ def _yaw(f) -> float | None:
         return round(pose(f).yaw, 3)
     except Exception:
         return None
+
+
+def _mouth(f) -> tuple[float, float] | None:
+    """(0.9.2, voice.listen.fast_live) The owner's mouth from YuNet's five points, as two ratios over the eyes' distance
+    with the head's roll taken out: how far the mouth's corners sit below the eyes (it grows as the jaw opens) and how
+    far apart they are. Face presence keeps only how much they changed since his last frame (core/nearby.py)."""
+    try:
+        (rx, ry), (lx, ly), _n, (mrx, mry), (mlx, mly) = f.landmarks[:5]
+    except Exception:
+        return None
+    d = math.hypot(lx - rx, ly - ry)
+    if d <= 1e-6:
+        return None
+    c, s = (lx - rx) / d, (ly - ry) / d  # the eyes' line: rotate it level
+    ex, ey = (rx + lx) / 2, (ry + ly) / 2
+    mx, my = (mrx + mlx) / 2 - ex, (mry + mly) / 2 - ey
+    down = -s * mx + c * my
+    return round(down / d, 4), round(math.hypot(mlx - mrx, mly - mry) / d, 4)
 
 
 def _pitch(f) -> float | None:

@@ -563,6 +563,42 @@ calls `live.turn(text, turn, guest=<decision or "none">)` -> `_guest_turn()`: `o
 it with `voiceid.heard_guest()` (memory). An owner's turn calls `close_guest()` first, `close()` ends both.
 `portal.said_first()` keeps the notice from being shown twice. Events: `voice_live` with `who: "guest"`.
 
+**Latency (0.9.2).** *The turn record* (`trace.py`, `voice.listen.trace`): `hear()` wraps `_hear()` with a row from
+`Trace.new()` (`self._rec`, only for the hearing thread: `_rec_tid`); `_verdict()` times `vid.check` (`voiceid_ms`,
+`id_verdict`, `id_score`), `_write_out()` adds `stt_runs`, `stt_wait_ms` (loading plus `Whisper.last_wait`, the
+model's lock) and `stt_ms`; `face_check()` sets `_face_word` (`seen`/`none`/`blind`/`off`/`free`/""); `Trace.done()`
+merges `fast.numbers(turn)` and `os.getloadavg()`. `Voice.turn_log` (property) is the rows, newest last: the Body
+add-on reads `seq`, `gate`, `face`, `id_verdict`, `id_score`. `/voice turns` is `Trace.table()` plus
+`fast.spread_line()`; `status()` has `turns`, `live` (`Live.status()`), `lost`, and `speed.p50_p90` (`fast.spread`).
+*Route*: `trace.route(facts)` picks `live`/`live_guest`/`brain`/`guest` from `Voice._route_facts()`; `ask_brain()`
+uses it and records `turn["path"]` (`trace.fallback()` when Live returns None). `tests/unit/test_voice_route.py`
+drives `hear()` over the whole grid against the fake Live server (written before the refactor, passing on both).
+*Stalls*: an `unsure` verdict with the gate first is written out once (`_edges()` only for `guest`;
+`test_voice_single_pass.py` has golden cases that pass on the old code); `audio.STT_THREADS` 4 (`cpu_threads`),
+`audio.TTS_THREADS` 2 (Kokoro through `from_session` when the package has it); `Jobs._started()` calls
+`proc.run_nicer(pid)` (+10, `BELOW_NORMAL` on Windows) for background jobs and lanes other than `you`;
+`shape.first_short()` splits a first piece over 90 characters at a clause (`Speaker._speak`). `_too_late()` /
+`_lost()` (`voice.listen.stage_deadline_s`): after the gate and the face check, before `live.keep()`; `LOST` is said,
+`portal.listen_on("lost you")`, event `voice_lost {ms}`. `fast.Early`: `end_ms()` returns `UNFINISHED_MS` (1400) while
+a pause's words are still being written out or when `fast.unfinished()` matches (`voice.listen.wait_unfinished`).
+*Live* (`live.py`): `prewarm(why, switch)` (thread `_prewarm`, `_warming` Event, `warms` rate cap, `Session.warm`),
+`_session()` adopts a warm session (`turn["live_warm"]`), reuses or opens one, `_ready()` pings (`_ping`) one idle
+`PING_IDLE_S` (warm) or `PING_IDLE_TALK_S`; stamp `live_open`. `tick()` (from `background()`) closes an unused warm
+session after `PREWARM_IDLE_S` and runs `_probe()` while `resting()`. `_open()` failing every model calls
+`_open_failed()` (breaker: `BREAKER_FAILS` in `BREAKER_WINDOW_S`, only with `voice.live.breaker.on`); a success clears
+`fails`. `Cue` (`voice.live.ack`): `_first()` starts it, a tool call plays it again, `heard()` cuts it
+(`Speaker._cut_piece`); `Voice.cue_quiet()` reads an optional `Voice.room_mode()` ("night"/"silent": shown only).
+Resume: `setup()` adds `sessionResumption` (owner only), `_read()` keeps `sessionResumptionUpdate.newHandle` (never a
+guest's) and marks `goAway` (`Session.going`); `_open()` retries once without a stale handle. Cap: `_play()` returns
+`CAPPED` at `cap_at()` (the next sentence end by characters per byte), `_rest()` takes the remaining words.
+*fast_live*: Face's `_owner_frame()` (only with `live_prewarm` or `fast_live` on) gives `nearby.set_owner(seen,
+looking, moved)`; `watch._mouth()` is two roll-corrected ratios from YuNet's five points, kept one frame for the
+change. `Early._loop()` keeps `_early_text()`'s verdict (`job["who"]`, made whenever fast_live is on, `adapt=False`) and
+calls `Voice._fast_pause()`: `nearby.owner_attending()` since `_stretch_at` - 0.5 s; looking and talking -> 
+`live.prewarm("fast", "listen.fast_live")`; the gate decides the words so far, its judge `_judge_kept()` (answers kept
+`JUDGED_S`, keyed by the prompt with digits masked; a prompt being judged is waited for, never asked twice). `_hear()`
+takes `job["who"]` through `_fast_early()` (`Early.peek`) when nothing more was said. Nothing is sent before `_take()`.
+
 **Fixes (0.9.2).** Tool results: `_acted()` now returns `ACTED` / `ACTED_RUNNING` (set lines), only for tools that may
 act; a turn whose tools all only read (`READS`, or `Tool.writes is False`, `_reads()`) falls back the usual way
 (`fallback: true, tools: n`). `spoken()` drops output transcription that reads as JSON (ALOUD instead), and

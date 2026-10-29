@@ -1262,6 +1262,14 @@ window.beingMount = async function (host, opts) {
     if (k === "aorta") return callRowsOf();
     return [];
   }
+  function voiceSpeedRows(v) { // (0.9.2) honest latency: p50 / p90 from your last word, the last turn, Live's state
+    const out = [], sp = (v.speed && v.speed.p50_p90) || {}, f = (k, l) => sp[k] ? out.push([l, `${(sp[k][0] / 1000).toFixed(1)} / ${(sp[k][1] / 1000).toFixed(1)} s (p50 / p90)`]) : 0;
+    f("text", "words written out"); f("live_open", "Live ready"); f("play", "first sound");
+    const t = (v.turns || []).slice(-1)[0];
+    if (t) out.push(["last turn", [t.gate, t.face && `face ${t.face}`, t.id_verdict, t.path, t.play_ms != null ? `${(t.play_ms / 1000).toFixed(1)} s` : ""].filter(Boolean).join(" · ")]);
+    if (v.live && v.live.resting) out.push(["Gemini Live", "resting: two connections failed; the usual way meanwhile"]);
+    return out;
+  }
   function callRowsOf() {
     const L = linkOf(); if (L.off) return [["call line", "Phone calls is off"]];
     const calls = (BODY && BODY.calls) || [];
@@ -1272,7 +1280,7 @@ window.beingMount = async function (host, opts) {
       try { VOICE = await api("voice"); } catch { VOICE = null; }
       const v = VOICE, rows = callRowsOf();
       if (!v || v.error) return rows.concat([["voice", "Voice isn't on this install yet"]]);
-      return rows.concat([["voice", v.on ? String(v.state || (v.listening ? "listening" : "on")) : "off"], ["listening", `${v.listening ? "yes" : "no"}${v.why ? ` (${v.why})` : ""}`], ["portal", v.portal ? "open: it's talking with you" : "closed"], ["muted", v.muted ? "yes" : "no"]], v.speak ? [["speaks with", `${v.speak.engine || ""} ${v.speak.voice || ""}`.trim()]] : []);
+      return rows.concat([["voice", v.on ? String(v.state || (v.listening ? "listening" : "on")) : "off"], ["listening", `${v.listening ? "yes" : "no"}${v.why ? ` (${v.why})` : ""}`], ["portal", v.portal ? "open: it's talking with you" : "closed"], ["muted", v.muted ? "yes" : "no"]], v.speak ? [["speaks with", `${v.speak.engine || ""} ${v.speak.voice || ""}`.trim()]] : [], voiceSpeedRows(v));
     }
     if (k === "touch" || k === "balance") return [["moving", SENSE.motion != null ? `${Math.round(SENSE.motion)} min of the last 15` : "no reading"], ["steps", SENSE.steps != null ? String(SENSE.steps) : "no reading"], ["screen on", SENSE.screen != null ? `${Math.round(SENSE.screen)} min` : "no reading"]];
     if (k === "heat") { const s = SYS; if (!s) return [["now", "waiting for the first reading"]]; const t = hottest(); return [["processor", String(s.cpu_name || "")], ["load", s.load ? s.load.map((x) => Number(x).toFixed(2)).join(" ") : ""]].concat(t != null ? [["hottest", `${t}°C`]] : []).filter((r) => r[1]); }

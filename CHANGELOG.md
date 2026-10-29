@@ -50,6 +50,18 @@
   closed after "I already answered that").
 - **One greeting**: a call Kurooto places fetches what it starts from while it connects, so it no longer says "Hi, "
   and then greets again.
+- **Spoken turns stall less** (fixes): a voice Voice ID is unsure of is written out once, not twice; the transcriber
+  and Kokoro use a fixed number of threads; an AI program doing automatic work runs at a lower priority; a long first
+  sentence is said from its first clause. A turn whose words took too long can say "Sorry, I lost you there. Say that
+  again?" instead of answering late (`voice.listen.stage_deadline_s`, off), and it can wait for the rest when your
+  words stop on "and" or a comma (`voice.listen.wait_unfinished`, off).
+- **Every turn's numbers** (`voice.listen.trace`, on): `/voice turns` shows the last 20 (the gate, the face, Voice ID,
+  the way it went, each stage's time); the dashboard's hearing panel shows p50 / p90 to the first sound.
+- **Faster Gemini Live at the desk:** the fast way (`voice.listen.fast_live`, off) opens Live while your face looks at
+  the camera and talks and judges your words at your first pause (about 0.8 s sooner with stand-ins); its connection
+  opened ahead on your face or wake word (`voice.listen.live_prewarm`, off); "Live resting" after failed connections
+  (`voice.live.breaker.on`), a heard-you sound (`voice.live.ack`), context kept for 10 minutes (`voice.live.resume`)
+  and a cap on how long it talks (`voice.live.spoken_max_s`), all off.
 
 ## 0.9.1 (2026-10-29)
 

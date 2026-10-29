@@ -35,10 +35,12 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------------------------------- timing
 # (0.8.17) between "gate" and "sent": "taken" (handed to the routing), then App.handle's own steps (Incoming.mark):
 # "mind" (Brain's hooks), "addon_intents" (an add-on's intent classifier), "intents" (Kurooto's own)
-STAMPS = ("text", "gate", "taken", "mind", "addon_intents", "intents", "sent", "start", "first_text", "answer", "ack",
-          "audio", "play")  # fmt: skip
+# (0.9.2) "live_open": Gemini Live's session ready for the turn (a prewarmed or reused one: at once)
+STAMPS = ("text", "gate", "taken", "mind", "addon_intents", "intents", "live_open", "sent", "start", "first_text",
+          "answer", "ack", "audio", "play")  # fmt: skip
 SHOWN = (("text", "words"), ("gate", "decided"), ("taken", "handed on"), ("addon_intents", "add-on intents"),
-         ("intents", "intents"), ("sent", "sent"), ("start", "AI started"), ("first_text", "first words from the AI"),
+         ("intents", "intents"), ("live_open", "Live ready"),
+         ("sent", "sent"), ("start", "AI started"), ("first_text", "first words from the AI"),
          ("audio", "first sound made"), ("play", "playing"))  # fmt: skip
 KEEP = 20  # turns the medians are taken over
 
@@ -58,7 +60,7 @@ def numbers(turn: dict) -> dict:
     for k in STAMPS:
         if k in turn:
             out[f"{k}_ms"] = max(0, round((turn[k] - end) * 1000))
-    for k in ("face_ms", "streamed", "fast", "live"):
+    for k in ("face_ms", "streamed", "fast", "live", "live_warm", "capped"):
         if k in turn:
             out[k] = turn[k]
     return out
@@ -73,6 +75,29 @@ def medians(rows) -> dict:
         if xs:
             out[f"{k}_ms"] = xs[len(xs) // 2]
     return out
+
+
+SPREAD = (("text", "words"), ("sent", "sent"), ("live_open", "Live ready"), ("audio", "first sound made"),
+          ("play", "first sound"))  # fmt: skip
+
+
+def spread(rows) -> dict:
+    """(0.9.2, honest latency) p50 and p90 of the stamps that matter, ms from your last word: {key: [p50, p90]}."""
+    from kurooto.modules.voice.trace import percentile
+
+    rows = list(rows)
+    out = {}
+    for k, _label in SPREAD:
+        xs = [r[f"{k}_ms"] for r in rows if f"{k}_ms" in r]
+        if xs:
+            out[k] = [percentile(xs, 0.5), percentile(xs, 0.9)]
+    return out
+
+
+def spread_line(sp: dict, n: int) -> str:
+    """'p50 / p90 of 12 turns: words 0.4 / 1.1 s, first sound 1.6 / 3.2 s' or ''."""
+    parts = [f"{label} {sp[k][0] / 1000:.1f} / {sp[k][1] / 1000:.1f} s" for k, label in SPREAD if k in sp]
+    return f"p50 / p90 of {n} turn{'s' if n != 1 else ''}: " + ", ".join(parts) + "." if parts else ""
 
 
 def line(med: dict) -> str:
@@ -121,6 +146,7 @@ class Early:
 
     QUESTION_END_MS = 350
     SENTENCE_END_MS = 550
+    UNFINISHED_MS = 1400  # (0.9.2, voice.listen.wait_unfinished) the words stop on "and", "so", a comma: wait longer
     WAIT_S = 3.0  # hear() waits this long for words still being written out (still sooner than starting again)
 
     def __init__(self, v):
@@ -160,12 +186,31 @@ class Early:
                 job["done"].set()
 
     def end_ms(self, spoke: int) -> float | None:
-        """(the listener's thread) A sooner end, when the words up to `spoke` bytes are in and sound finished."""
+        """(the listener's thread) A sooner end, when the words up to `spoke` bytes are in and sound finished; (0.9.2,
+        wait_unfinished) a later one while they're still being written out, or when they stop unfinished."""
         with self.lock:
             j = self.got
-        if j is None or j["n"] != spoke or not j["done"].is_set():
+        if j is None or j["n"] != spoke:
             return None
+        if not j["done"].is_set():
+            return self.UNFINISHED_MS if self._wait_unfinished() else None
         return j["end_ms"]
+
+    def _wait_unfinished(self) -> bool:
+        try:
+            return bool(self.v.setting("listen.wait_unfinished"))
+        except Exception:
+            return False
+
+    def peek(self, pcm: bytes, flags: bytes) -> dict | None:
+        """(0.9.2, fast_live) The pause's job when the stretch is what was paused on plus quiet (waited for, as take()
+        does), without taking it; None otherwise."""
+        with self.lock:
+            j = self.got
+        if j is None or len(pcm) < j["n"] or any(flags[j["n"] // FRAME_BYTES :]):
+            return None
+        j["done"].wait(self.WAIT_S)
+        return j if j["done"].is_set() else None
 
     def take(self, pcm: bytes, flags: bytes) -> str | None:
         """(hear) The words written out early, when the stretch is what was paused on plus quiet; else None."""
@@ -183,18 +228,35 @@ class Early:
             job, pcm, flags = self.jobs.get()
             try:
                 if not job["stale"]:
+                    self.v._early_who = None
                     text = self.v._early_text(pcm, flags)
                     job["text"] = text
+                    job["who"], self.v._early_who = getattr(self.v, "_early_who", None), None
                     t = (text or "").strip()
                     if t.endswith("?"):
                         job["end_ms"] = self.QUESTION_END_MS
                     elif t.endswith((".", "!")) and len(t.split()) >= 3:
                         job["end_ms"] = self.SENTENCE_END_MS
+                    elif t and self._wait_unfinished() and unfinished(t):
+                        job["end_ms"] = self.UNFINISHED_MS
+                    fast_pause = getattr(self.v, "_fast_pause", None)
+                    if fast_pause is not None:  # (0.9.2, voice.listen.fast_live)
+                        fast_pause(job, pcm, text)
             except Exception as e:
                 self.v.app.events.emit("voice_failed", part="early", error=f"{type(e).__name__}"[:100])
             finally:
                 job["done"].set()
                 del pcm
+
+
+UNFINISHED = re.compile(
+    r"(?:,|\b(?:and|so|but|or|because|then|like|um+|uh+|the|a|an|to|of|with|if|when|that|which|for|my|is))\s*$", re.I
+)
+
+
+def unfinished(text: str) -> bool:
+    """(0.9.2, voice.listen.wait_unfinished) Words that stop mid-thought: a trailing comma, or a joining word last."""
+    return bool(UNFINISHED.search((text or "").strip()))
 
 
 # ---------------------------------------------------------------------------------------------- streaming

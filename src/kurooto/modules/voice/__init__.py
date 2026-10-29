@@ -89,7 +89,7 @@ from kurooto.core import here, nearby
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Module
-from kurooto.modules.voice import fast, outstage
+from kurooto.modules.voice import fast, outstage, trace
 from kurooto.modules.voice import shape as shape_mod
 from kurooto.modules.voice.barge import Barge
 from kurooto.modules.voice.gate import (
@@ -218,6 +218,33 @@ register_defaults(
             # session, anyone else's and your unsure ones to a separate guest session with no tools and none of your
             # data. Their sound goes to Google too
             "live_everyone": False,
+            # (0.9.2) one numbers-only row per stretch heard (gate, face, Voice ID's word and score, the way it went,
+            # each stage's ms), the last 20 in memory: /voice turns, the dashboard, add-ons on this computer
+            "trace": True,
+            # (0.9.2) a turn whose words took longer than this (s) to write out and judge isn't answered half a minute
+            # late: it says "Sorry, I lost you there. Say that again?" and listens on; never another AI (0: off)
+            "stage_deadline_s": 0,
+            # (0.9.2, with early) when your words stop on an unfinished note ("and", "so", a trailing comma), it waits
+            # up to 1.4 s of quiet for the rest before taking the turn, instead of 0.7 s
+            "wait_unfinished": False,
+            # (0.9.2, with live) Gemini Live's connection is opened ahead (no sound sent) when Face presence recognises
+            # you looking at it, or your wake word in your voice, so your turn doesn't wait for it; closed after 30 s
+            # unused. Your session's setup (its instructions) goes to Google then, before you speak
+            "live_prewarm": False,
+            # (0.9.2, with live) the fast way to Live: your face looking at the camera and talking opens Live's
+            # connection while you speak, and the gate judges at your first pause, so the turn goes the moment it ends.
+            # Only turns the gate judged addressed are ever sent
+            "fast_live": False,
+        },
+        "live": {  # (0.9.2) Gemini Live at the desk (voice.listen.live)
+            # two failed connections in 10 minutes: "Live resting", turns go the usual way at once (no 5 s wait), and
+            # it tries again in the background every minute with an empty setup
+            "breaker": {"on": False},
+            "ack": False,  # a soft sound when Live hasn't answered 0.6 s after you stopped, and when it runs a tool
+            # Live keeps your conversation's context for 10 minutes across closings (your own session only, never a
+            # guest's): Google's resumption handle, kept in memory
+            "resume": False,
+            "spoken_max_s": 0,  # Live stops speaking at the first sentence end past this many seconds (0: off)
         },
         "speaker_id": {
             "on": False,  # Voice ID: only your voice can make Kurooto act; others can only chat (enrol first)
@@ -295,10 +322,12 @@ FACE_FREE = ("the wake word", TAPPED)  # rules a face isn't needed for (told off
 WARM = ("warm",)  # (warm_up) the hearing thread's own item: warm the transcriber there, never beside a turn
 WARM_BRAIN_S = 600  # (warm_brain) at most this often
 FAST_BRAINS = ("same", "local", "fastest")
+JUDGED_S = 15.0  # (0.9.2, fast_live) the local model's answer at a pause is reused this long
 TOLD_SPOKE_S = 10.0  # (0.9.0) told off this soon after a line it said by itself: about that line (gate.TOLD_S)
 TALK_MAX = 400  # (after_talk) text lines kept for one conversation at most
 BROKEN_S = 600.0  # (voice.degrade.piper) a speech engine that failed isn't tried again for this long
 UNASKED_S = 600.0  # (mirror_to_chat) a typed turn this soon after an unasked spoken line is told about it
+LOST = "Sorry, I lost you there. Say that again?"  # (0.9.2, voice.listen.stage_deadline_s)
 SAID_YES = re.compile(r"^(?:yes|yeah|yep|sure|ok(?:ay)?|right|go ahead|do it|please do)\b", re.I)  # (0.9.1) spoken_yes
 SAID_NO = re.compile(r"^(?:no|nope|nah|don'?t|not now|cancel|stop)\b", re.I)
 SAID_DONE = re.compile(r"^(?:done|ok(?:ay)?|got it|thanks|thank you|yes|yeah|will do|on it|did it)\b", re.I)
@@ -375,6 +404,7 @@ class Speaker:
             n += len(p)
         if self.v.setting("speak.join_sentences"):
             out = shape_mod.join(out)
+        out = shape_mod.first_short(out)  # (0.9.2, a fix) a long first sentence: its first clause goes first
         if not out:
             return
         try:  # barge-in: what it's about to say (the echo's words), and its own voice print made if wanted
@@ -683,6 +713,16 @@ class Voice(Module):
         self._alt_tts = None  # (voice.degrade.piper) Piper standing in, loaded once
         self.voice_rung = ""  # (voice.degrade) "" as chosen, "piper" standing in, "captions" (no voice)
         self.ears_lost = 0  # (voice.degrade.ears) times the named microphone was lost since start (a count)
+        self.trace = trace.Trace()  # (0.9.2, voice.listen.trace) the last turns' rows, numbers only: turn_log
+        self._rec: dict | None = None  # the row of the stretch being heard, on the hearing thread (_rec_tid)
+        self._rec_tid = 0
+        self._face_word = trace.FACE_UNCHECKED  # (trace) the face check's state for the turn being checked
+        self.lost_count = 0  # (0.9.2, stage_deadline_s) turns said "lost you" to since start
+        self._judged: dict = {}  # (0.9.2, fast_live) the local model's answers at a pause: prompt -> (answer, at)
+        self._judged_lock = threading.Lock()
+        self._judging: dict = {}  # (fast_live) prompts being judged now -> an Event
+        self._stretch_at: float | None = None  # (fast_live) when the stretch being heard began
+        self._early_who = None  # (fast_live) Early's thread: the verdict _early_text just made
 
     # ------------------------------------------------------------------------------------- 0.9.2: room modes
     def setting(self, key: str, default=None):
@@ -1078,6 +1118,9 @@ class Voice(Module):
             "learned": {**self.learner.status(), "on": bool(s("listen.learn_nightly")), "misfires_now": self.misfires},
             "barge_in": {"on": bool(s("listen.barge_in")), "since_start": self.barge.count},
             "auto_gain": {"on": bool(s("listen.auto_gain")), **(g.status() if (g := self._gain()) else {})},
+            "turns": self.turn_log if s("listen.trace") else [],  # (0.9.2) the last turns' rows, numbers only
+            "live": self.live.status(),  # (0.9.2) prewarm, the breaker ("Live resting"), resume
+            "lost": self.lost_count,
             "speed": {  # (0.8.16) the medians of the last turns' times, ms from your last word; the switches
                 **self.speed(),
                 "ack": s("speak.ack"),
@@ -1218,7 +1261,7 @@ class Voice(Module):
     def gate(self) -> Gate:
         return Gate(
             [self.app.name, "Kurooto"],  # the name you gave it, and its own (the mishearings of both: names.py)
-            judge=self.judge,
+            judge=self._judge_kept if self.setting("listen.fast_live") else self.judge,
             threshold=float(self.setting("listen.threshold") or 0.7),
             close_s=float(self.setting("listen.close_s") or 8),
             after_speak_s=float(self.setting("listen.after_speak_s") or 6),
@@ -1241,22 +1284,108 @@ class Voice(Module):
             return helper._generate(prompt, 40, 8)  # Ollama on this computer (core/helper.py)
         return None
 
+    def _judge_kept(self, prompt: str) -> str | None:
+        """(0.9.2, voice.listen.fast_live) judge(), its answer kept JUDGED_S: the words judged at the first pause
+        aren't judged again when the stretch ends (the seconds in the prompt's context aside)."""
+        key = re.sub(r"\d+", "#", prompt)
+        now = time.monotonic()
+        with self._judged_lock:
+            self._judged = {k: v for k, v in self._judged.items() if now - v[1] <= JUDGED_S}
+            hit = self._judged.get(key)
+            busy = self._judging.get(key)
+            if hit is None and busy is None:
+                busy = self._judging[key] = threading.Event()
+                mine = True
+            else:
+                mine = False
+        if hit is not None:
+            return hit[0]
+        if not mine:  # being judged right now (at the pause): its answer, not a second ask
+            busy.wait(25)
+            with self._judged_lock:
+                hit = self._judged.get(key)
+            return hit[0] if hit is not None else self.judge(prompt)
+        try:
+            out = self.judge(prompt)
+            if out is not None:
+                with self._judged_lock:
+                    self._judged[key] = (out, time.monotonic())
+            return out
+        finally:
+            with self._judged_lock:
+                self._judging.pop(key, None)
+            busy.set()
+
     def _early_text(self, pcm: bytes, flags: bytes) -> str | None:
         """(fast.Early, voice.listen.early) The words of a stretch so far, at a first pause; None when they wouldn't be
         written out in full anyway (Voice ID's gate: not your voice, no conversation open)."""
         vid = self.voiceid
-        if vid.on() and vid.s("gate", True) and not self.portal.open:
+        fast_live = bool(self.setting("listen.fast_live"))
+        if vid.on() and ((vid.s("gate", True) and not self.portal.open) or fast_live):
             speech_s = sum(1 for f in flags if f) * 512 / 16000 if flags else len(pcm) / 32000
-            if vid.check(pcm, speech_s, adapt=False).decision != "owner":
+            who = vid.check(pcm, speech_s, adapt=False)
+            self._early_who = who if fast_live else None  # (0.9.2, fast_live) hear() takes it, not a second check
+            if vid.s("gate", True) and not self.portal.open and who.decision != "owner":
                 return None
         return self._write_out(pcm)
 
-    def _write_out(self, pcm: bytes) -> str:
+    # ------------------------------------------------------------------- 0.9.2: the fast way to Gemini Live
+    def _fast_pause(self, job: dict, pcm: bytes, text: str | None) -> None:
+        """(voice.listen.fast_live, on Early's thread at the first pause) His face looked at the camera and his mouth
+        moved during this stretch: Live's session is opened now (no sound: Live.prewarm), and the gate judges the words
+        so far, so the local model's answer is ready (judge's cache) when the stretch ends. Nothing is sent here."""
+        if not self.setting("listen.fast_live") or not self.live.on():
+            return
         try:
-            return self.stt().text(pcm)
+            since = (self._stretch_at or time.monotonic()) - FACE_BEFORE_S
+            looking, talking = nearby.owner_attending(self.app, since)
+            job["fast"] = bool(looking and talking)
+            if job["fast"]:
+                self.live.prewarm("fast", switch="listen.fast_live")
+            if text and text.strip():
+                h = Heard(speech=True, text=text, seconds=len(pcm) / 32000)
+                ctx = self.portal.context()
+                self._moment(ctx, job.get("who"))
+                self.gate().decide(h, ctx)  # its local model's answer is kept for hear() (judge)
+        except Exception as e:
+            self.app.events.emit("voice_failed", part="fast live", error=f"{type(e).__name__}"[:100])
+
+    def _fast_early(self, audio: bytes, flags: bytes) -> dict | None:
+        """(fast_live) The first pause's job when nothing more was said after it (its Voice ID verdict is reused)."""
+        if not self.setting("listen.fast_live") or self.early is None:
+            return None
+        try:
+            return self.early.peek(audio, flags)
+        except Exception:
+            return None
+
+    def cue_quiet(self) -> bool:
+        """(0.9.2) Sounds that only say "heard you" (Live's cue) are shown, not played, while the room wants quiet: a
+        room mode of "night" or "silent" (Voice.room_mode, when a room-modes feature provides it)."""
+        mode = getattr(self, "room_mode", None)
+        try:
+            return callable(mode) and str(mode() or "") in ("night", "silent")
+        except Exception:
+            return False
+
+    def _write_out(self, pcm: bytes) -> str:
+        t0 = loaded = time.monotonic()
+        stt = None
+        try:
+            stt = self.stt()
+            loaded = time.monotonic()
+            return stt.text(pcm)
         except Exception as e:
             self.app.events.emit("voice_failed", part="writing out", error=f"{type(e).__name__}"[:100])
             return ""
+        finally:  # (0.9.2, voice.listen.trace) the turn being heard on this thread: the wait and the work, in ms
+            rec = self._rec
+            if rec is not None and self._rec_tid == threading.get_ident():
+                took = (time.monotonic() - t0) * 1000
+                wait = (loaded - t0) * 1000 + float(getattr(stt, "last_wait", 0.0) or 0.0) * 1000
+                rec["stt_runs"] += 1
+                rec["stt_wait_ms"] += wait
+                rec["stt_ms"] += max(0.0, took - wait)
 
     def hear(self, h: Heard, audio: bytes | None = None, flags: bytes = b"") -> str | None:
         """One stretch of sound, from the listener (or a test): written out here when it's speech, judged, and either
@@ -1264,12 +1393,39 @@ class Voice(Module):
 
         With Voice ID on, the voice is checked too (voiceid.py). With its gate (voice.speaker_id.gate) that comes
         first: someone else's voice that isn't calling Kurooto, with no conversation open, is dropped as chatter and
-        never written out (only its first and last two seconds are, to hear the name). With conversation mode
+        never written out (only its first and last two seconds are, to hear the name). (0.9.2, a fix) A voice it's only
+        unsure of is written out once in full instead (it was two passes, edges then all, the slowest turns), and
+        dropped the same way when its name isn't said first or last. With conversation mode
         (voice.listen.conversation_mode) every stretch of speech is checked too, so another voice is noticed even with
-        the gate off; with both off, only turns the gate calls addressed are checked."""
+        the gate off; with both off, only turns the gate calls addressed are checked.
+
+        (0.9.2, voice.listen.trace) Each stretch leaves one numbers-only row in turn_log (trace.py)."""
         if self.blocked() or not self.app.is_on(self.id):
             return None
         turn = {"end": h.ended_at if h.ended_at is not None else time.monotonic()}  # (timing) from your last word
+        rec = self.trace.new(turn["end"]) if self.setting("listen.trace") else None
+        self._rec, self._rec_tid = rec, threading.get_ident()
+        try:
+            return self._hear(h, audio, flags, turn, rec)
+        finally:
+            self._rec = None
+            if rec is not None:
+                if not rec["speech_s"]:
+                    rec["speech_s"] = h.speech_s or (sum(1 for f in flags if f) * 512 / 16000 if flags else h.seconds)
+                self.trace.done(rec, turn)
+
+    def _verdict(self, audio: bytes, speech_s: float, voices=None, **kw):
+        """(voice id) vid.check, timed into the turn's row (voiceid_ms, the word and the score: memory only)."""
+        t0 = time.monotonic()
+        who = self.voiceid.check(audio, speech_s, voices, **kw)
+        rec = self._rec
+        if rec is not None and self._rec_tid == threading.get_ident():
+            rec["voiceid_ms"] += (time.monotonic() - t0) * 1000
+            rec["id_verdict"], rec["id_score"] = who.decision, who.score
+        return who
+
+    def _hear(self, h: Heard, audio: bytes | None, flags: bytes, turn: dict, rec: dict | None) -> str | None:
+        rec = rec if rec is not None else {}
         self.portal.close_s = float(self.setting("listen.close_s") or 8)
         self.portal.state("hearing")
         vid = self.voiceid
@@ -1281,29 +1437,44 @@ class Voice(Module):
             if not h.speech_s:
                 h.speech_s = sum(1 for f in flags if f) * 512 / 16000 if flags else h.seconds
         gate_first = bool(vid.s("gate", True))
+        early = self._fast_early(audio, flags) if h.speech and audio is not None else None  # (fast_live)
         if on and (gate_first or self.setting("listen.conversation_mode")) and h.speech and audio is not None:
-            who = vid.check(audio, h.speech_s, h.voices)  # (voice id) who, before the words
+            if early is not None and early.get("who") is not None:  # (fast_live) checked at the pause already
+                who = early["who"]
+                rec["id_verdict"], rec["id_score"], rec["id_early"] = who.decision, who.score, 1
+            else:
+                who = self._verdict(audio, h.speech_s, h.voices)  # (voice id) who, before the words
             self._here(who)
+        if h.wake and who is not None and who.decision == "owner":  # (0.9.2) his wake word in his voice
+            self.live.prewarm("wake")
+        if who is not None and on and (gate_first or self.setting("listen.conversation_mode")):
             # a look stood in for the owner's call, no one else's (0.8.18, look_anyone: for anyone's)
             closed = not self.portal.open or (self.portal.looked and not self.setting("listen.look_anyone"))
             if gate_first and who.decision != "owner" and not h.wake and closed:
                 g = self.gate()
                 edges = _edges(audio)
-                heard = self._write_out(edges)
-                if edges is audio:  # short: that was all of it
-                    h.text = heard
-                elif not g.called(heard):
-                    heard = ""  # dropped: someone else, not to it, never written out in full
+                if who.decision == "unsure" or edges is audio:  # (0.9.2, a fix) one pass, not edges then all
+                    heard = self._write_out(audio)
+                    if edges is audio or g.called(heard):
+                        h.text = heard
+                    heard = ""
+                else:
+                    heard = self._write_out(edges)
+                    if not g.called(heard):
+                        heard = ""  # dropped: someone else, not to it, never written out in full
                 if not h.text and not heard:
                     self._heard_wave(audio)
                     del audio
                     self.heard[CHATTER] = self.heard.get(CHATTER, 0) + 1
                     self.portal.take(h, Decision(CHATTER, 0.9, "someone else, not to it"))
                     self.portal.state("listening", CHATTER)
+                    rec.update(gate=CHATTER, rule="someone else, not to it", path="dropped")
                     return None
                 heard = ""
         if h.speech and not h.text and audio is not None and self.early is not None:
             h.text = self.early.take(audio, flags) or ""  # (voice.listen.early) written out at the first pause
+            if h.text:
+                rec["early"] = 1
         if h.speech and not h.text and audio is not None:
             h.text = self._write_out(audio)
         fast.stamp(turn, "text")
@@ -1317,11 +1488,14 @@ class Voice(Module):
         self._count_voices(h, who)
         d = g.decide(h, ctx)
         if d.why == TOLD_OFF:
+            rec.update(gate="told off", rule=TOLD_OFF, path="told off")
             self._told_off(h, audio)
             return None
         d = self._timed_face_check(h, d, turn)
+        rec.update(gate=d.klass, rule=d.why, face=self._face_word)
         self.heard[d.klass] = self.heard.get(d.klass, 0) + 1
         if not d.addressed:
+            rec["path"] = "dropped"
             self._heard_wave(audio)
             del audio
             h.text = ""  # dropped here: never stored, logged or sent
@@ -1335,14 +1509,19 @@ class Voice(Module):
             return None
         said = g.matcher.uncall(h.text) if h.wake or d.why == "its name" else h.text  # the call itself isn't sent
         if on and who is None and said and audio is not None:  # (voice id) the gate first is off: addressed only
-            who = vid.check(audio, h.speech_s, h.voices)
+            who = self._verdict(audio, h.speech_s, h.voices)
             self._here(who)
+        if self._too_late(turn):  # (0.9.2, voice.listen.stage_deadline_s) never an answer half a minute late
+            del audio
+            rec["path"] = "lost"
+            return self._lost(h, who)
         self.live.keep(audio, who)  # (voice.listen.live) an owner's admitted turn (anyone's: live_everyone), this turn
         del audio
         if on and who is None and said:  # nothing to check it with: unsure (fail closed)
             from kurooto.modules.voice.speakerid import UNSURE, Verdict
 
             who = Verdict(UNSURE, "no sound to check")
+            rec["id_verdict"] = UNSURE
         if who is not None:
             self.publish("voice_state", state="addressed", portal=True, listening=True, why=d.why, who=who.word)
         self._went_well(who)
@@ -1353,10 +1532,30 @@ class Voice(Module):
             row["speaker"], row["score"] = who.decision, who.score
         face = vid.take_face() if on else None
         reply = self._take(h, d, said, who, turn)
+        rec["path"] = turn.get("path") or ("none" if who is not None and who.decision != "owner" and
+                                           self.portal.mode == "owner_only_at_all" else "answered here")  # fmt: skip
         if self.portal.open:
             self._pending = {"row": row, "session": self.portal.session, "who": who.decision if who else "",
                              "face": face}  # fmt: skip
         return reply
+
+    def _too_late(self, turn: dict) -> bool:
+        limit = _num(self.setting("listen.stage_deadline_s"), 0.0)
+        return limit > 0 and time.monotonic() - turn["end"] > limit
+
+    def _lost(self, h: Heard, who) -> None:
+        """(0.9.2, voice.listen.stage_deadline_s) Writing the words out and judging them took past the deadline (a busy
+        machine): nothing is sent and no other AI takes the turn; it says LOST and stays open for the same voice."""
+        ms = round((time.monotonic() - (h.ended_at or time.monotonic())) * 1000)
+        h.text = ""
+        self.lost_count += 1
+        self.app.events.emit("voice_lost", ms=ms)
+        self.portal.listen_on("lost you", who.decision if who is not None else "")
+        self.publish("voice_text", who="kurooto", text=LOST)
+        if self._speaks() and not self.portal_cut():
+            self.speaker.say(LOST, wait=True)
+        self.portal.last = self.portal.spoke_at = self.portal.clock()
+        return None
 
     def gone(self) -> bool:
         """(0.9.0, voice.speak.stop_when_gone) Face presence says you've stepped away (its away state, never a turned
@@ -1475,11 +1674,13 @@ class Voice(Module):
         """An addressed turn stays addressed only when a face close to the camera and facing it was seen during the
         stretch or within FACE_AFTER_S of its end (core/nearby.py); else it's chatter. The wake word needs no face,
         and neither does the request right after it. When the camera can't see: need_face_fallback."""
+        self._face_word = trace.FACE_UNCHECKED if not d.addressed else trace.FACE_FREE
         if not d.addressed or d.why in FACE_FREE:
             return d
         if d.why == "right after it was called" and self.portal.opened_why in FACE_FREE:
             return d
         state, _why = self.face_gate()
+        self._face_word = trace.FACE_OFF if state == "off" else trace.FACE_BLIND
         if state == "off":
             return d
         if state == "on":
@@ -1493,6 +1694,7 @@ class Voice(Module):
                     looked, ok = nearby.facing(self.app, lo, limit)
                 if ok:
                     self._faced = True  # (voice.listen.live) a face was seen for this turn, not just let through
+                    self._face_word = trace.FACE_SEEN
                     return d
                 left = limit - time.monotonic()
                 if left <= 0:
@@ -1500,6 +1702,7 @@ class Voice(Module):
                 self._face_sleep(min(0.1, left))
             if looked:
                 self.face_counts["no_face"] += 1
+                self._face_word = trace.FACE_NONE
                 return self._not_to_it(d, NO_FACE)
         if self._fallback() == "voice":  # paused, busy, covered, or no frame came: the voice rules alone
             return d
@@ -1578,6 +1781,8 @@ class Voice(Module):
         while it's open by a look and nothing was said yet, looking keeps it open and looking away for look_away_s
         closes it. One run of looks opens it once (or is spent when it finds it open already)."""
         p = self.portal
+        if self.setting("listen.live_prewarm") and nearby.owner_looking_now(self.app) and not self._look_why():
+            self.live.prewarm("face")  # (0.9.2) his recognised face looking at it: Live's connection opened ahead
         since, last = nearby.look(self.app)
         now = time.monotonic()
         now_looking = since is not None and last is not None and now - last <= LOOK_FRESH_S
@@ -1800,19 +2005,23 @@ class Voice(Module):
             if held is not None:
                 return held
             self._take_checkin_offer(text)  # (0.9.1) "yes" to the waited check-in: this turn starts it, here
-        if who is not None and who.decision == "owner":  # (voice.listen.live) Gemini Live answers it aloud, or None
+        path = trace.route(self._route_facts(who, turn))  # (0.9.2) which way: trace.py, its table tests
+        word = who.decision if who is not None else ""
+        turn["path"] = path
+        if path == trace.LIVE:  # (voice.listen.live) Gemini Live answers it aloud, or None
             said = self.live.turn(text, turn)
             if said is not None:
                 self._talk_line("you", text)  # (after_talk) a Live turn is a turn of this talk too
                 self._talk_line(self.app.name, said)
                 self._desk_chat(text, said, "live")
                 return said
-        elif self.live.everyone():  # (0.9.2, voice.listen.live_everyone) anyone else's turn: Live's guest session
-            said = self.live.turn(text, turn, guest=who.decision if who is not None else "none")
+        elif path == trace.LIVE_GUEST:  # (0.9.2, voice.listen.live_everyone) anyone else's turn: Live's guest session
+            said = self.live.turn(text, turn, guest=word or "none")
             if said is not None:  # never his history, Brain or the talk's lines; kept as a guest's turn (memory)
                 if said and who is not None and self.voiceid.on():
                     self.voiceid.heard_guest(text, said)
                 return said
+        turn["path"] = trace.fallback(path, word)
         replies: list[str] = []
         msg = Incoming(
             text=self.desk_call_line(text) if who is None or who.decision == "owner" else text,
@@ -1881,6 +2090,21 @@ class Voice(Module):
             except Exception:
                 pass
         return answer
+
+    def _route_facts(self, who, turn: dict) -> dict:
+        """(0.9.2) The facts trace.route() picks a turn's way by."""
+        from kurooto.core import guest
+
+        return {
+            "who": who.decision if who is not None else "",
+            "live": self.live.on(),
+            "everyone": self.live.everyone(),
+            "faced": bool(turn.get("faced")),
+            "kept": self.live._pcm is not None,
+            "speak": bool(self.setting("speak.on")),
+            "cut": self.portal_cut(),
+            "at_all": guest.setting(self.app, "mode", "owner_only_acts") == "owner_only_at_all",
+        }
 
     def _turn_opts(self, text: str, turn: dict) -> tuple[fast.Stream | None, dict]:
         """(0.8.16) What your own turn's request gets (core/jobs.py turn_options): the stream that speaks its answer
@@ -1960,8 +2184,20 @@ class Voice(Module):
         self.app.events.emit("voice_timing", **row)
 
     def speed(self) -> dict:
-        """The medians of the last turns' times (ms from your last word), and how many turns."""
-        return {"on": bool(self.setting("listen.timing")), **fast.medians(self.timings)}
+        """The medians of the last turns' times (ms from your last word), and how many turns; (0.9.2) p50 and p90 of
+        the ones that matter ("p50_p90": {stamp: [p50, p90]})."""
+        return {"on": bool(self.setting("listen.timing")), **fast.medians(self.timings),
+                "p50_p90": fast.spread(self.timings)}  # fmt: skip
+
+    @property
+    def turn_log(self) -> list[dict]:
+        """(0.9.2, voice.listen.trace) The last turns heard (at most trace.KEEP), newest last, one dict each, numbers
+        and set words only: seq, at, gate ("addressed", "chatter", "noise", "told off"), rule, face ("seen", "none",
+        "blind", "off", "free", "" not checked), id_verdict ("owner", "unsure", "guest", "" with Voice ID off),
+        id_score (or None), path ("live", "live_guest", "brain", "guest", "dropped", "lost", ...), speech_s, the stage
+        times in ms from the last word (voiceid_ms, stt_wait_ms, stt_ms, text_ms, gate_ms, sent_ms, audio_ms, play_ms
+        ...), stt_runs, load. For add-ons on this computer (the Body's one-word verdict): never sent anywhere."""
+        return [dict(r) for r in self.trace.rows]
 
     def _ack(self, turn: dict) -> None:
         """(voice.speak.ack) The moment a turn goes to the AI: a soft sound after ACK_WAIT_S, unless the answer is
@@ -2506,6 +2742,7 @@ class Voice(Module):
                     s.command("stop")
                 self.portal.tick()
                 self.room.mode()  # (0.9.2) a mode past its time ends now (its event, the pages told)
+                self.live.tick()  # (0.9.2) an unused prewarmed Live session closes; the breaker's probe
                 self.look_tick()
                 self._face_hold()
                 try:
@@ -2574,6 +2811,7 @@ class Voice(Module):
         return audio.Mic(dev, how)
 
     def _stretch_start(self) -> None:
+        self._stretch_at = time.monotonic()  # (0.9.2, fast_live) the face's window starts here
         if self.early is not None:
             self.early.reset()
         self.portal.state("hearing")
@@ -2781,9 +3019,10 @@ class Voice(Module):
         return [
             Command(
                 "voice",
-                "Voice: what it's doing; mute, unmute, stop (stop speaking), say <text>; id (Voice ID), enrol",
+                "Voice: what it's doing; mute, unmute, stop (stop speaking), say <text>, turns (the last 20, numbers); "
+                "id (Voice ID), enrol",
                 self._cmd,
-                usage="/voice [mute|unmute|stop|say <text>|id [test|retrain|undo today|undo all|mics|forget]|"
+                usage="/voice [mute|unmute|stop|say <text>|turns|id [test|retrain|undo today|undo all|mics|forget]|"
                 "enrol [again|stop]]",
             ),
             Command(
@@ -2939,6 +3178,12 @@ class Voice(Module):
         if word == "say":
             ok, why = self.say(rest, wait=False)
             return "Saying it." if ok else why
+        if word == "turns":  # (0.9.2, voice.listen.trace) the last turns, numbers only
+            if not self.setting("listen.trace"):
+                return "The turn record is off (voice.listen.trace)."
+            sp = fast.spread(self.timings)
+            tail = fast.spread_line(sp, len(self.timings)) if sp else ""
+            return self.trace.table() + (f"\n{tail}" if tail else "")
         h = self.heard
         ok, why = self.ready()
         return (
@@ -2947,7 +3192,11 @@ class Voice(Module):
             "two are never kept)."
             + (f"\nLearned: {self.learned_line()}." if self.learned_line() else "")
             + (f"\n{fast.line(self.speed())}" if self.setting("listen.timing") and self.timings else "")
-            + "\n/voice mute, /voice unmute, /voice stop, /voice say <text>; /voice id (Voice ID), /voice enrol"
+            + (f"\n{fast.spread_line(fast.spread(self.timings), len(self.timings))}"
+               if self.setting("listen.timing") and self.timings else "")
+            + (f"\n{self.live.line()}" if self.live.line() else "")
+            + "\n/voice mute, /voice unmute, /voice stop, /voice say <text>, /voice turns; /voice id (Voice ID), "
+            "/voice enrol"
         )  # fmt: skip
 
 
