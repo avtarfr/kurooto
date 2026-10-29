@@ -373,6 +373,35 @@ Notes written out before 0.5.8 get the same with `/handwritten link` (once: a no
 skipped, so running it again changes nothing). Every change keeps a before-copy; `/handwritten undo` puts the last
 linking back (a file you edited since is left as it is).
 
+**What's already in your notes.** When someone sends you full notes for a course you already keep notes for, most of
+each upload repeats what you have. After a note is linked, one more request to the same AI compares each of its
+sections (its headings; else its bold title lines, else its pages) with your notes for that course: the course's
+folder, the handwritten notes of that course written out before, and the concept notes the concept graph's search finds
+for each section (no AI picks those). Then, in Kurooto's own parts of the new note only:
+- a covered section's heading ends `(already in [[note]])`; the text under it stays as it was;
+- a `<!-- kurooto:overlap -->` block after the links lists **Already in your notes** (each section, the note that has
+  it, and one line on what both have) and **New here** (the sections nothing else has);
+- you get one line, e.g. "'Limits and partial derivatives': 2 of 4 sections are already in your notes (marked in the
+  note); new here: Functions of Several Variables, Taylor's theorem in two variables."
+
+Nothing is deleted, your own notes are never edited, and nothing outside Kurooto's markers changes. A section is
+marked only when the AI names one of the notes it was shown, with a specific reason. When the original changes and the
+note is written again, the marks come back. `/handwritten undo` takes the linking and the marks back together.
+`handwritten.overlap_courses` limits it to the courses you name (say `["Multivariable Calculus"]`, the course's slug or
+short name works too); empty means every course. A note with no course is checked only when that list is empty.
+
+**Only from a topic.** When you only need the part from some topic on (the notes start where you stopped last time),
+say so in any of three ways and Kurooto adds that part, from the heading that matches best (spelling needn't be exact)
+to the end, in a `<!-- kurooto:only-from -->` block under the note, with the same marks. The full transcription always
+stays above it.
+- **A text file next to the scan** with the same name: `week5.pdf` and `week5.txt` saying
+  `only from Functions of Several Variables` (or just the topic).
+- **The scan's name**: `notes from Functions of Several Variables.pdf`.
+- **On Telegram or in the app's chat**: `/handwritten only calculus from Functions of Several Variables`. Name a file
+  (its scan's name or the note's), or a course (its latest handwritten note), or nothing (the latest note). For a scan
+  still waiting in the folder, the part is added when it's written out. When no heading matches, the reply lists the
+  note's headings.
+
 **Into the concept graph (opt-in).** Add `"handwritten"` to `integrate.sources` (or tick "Read your handwritten notes"
 on the Concept graph card) and each linked note is then read into the
 [concept graph](notes-and-concept-graph.md#concept-graph) like a book: its concepts become notes (or lines on the ones
@@ -387,7 +416,8 @@ tablet is read again. Notes with no subject are left out.
 | `/handwritten status` | how far it got, and files it couldn't do |
 | `/handwritten retry` | tries the files that failed again |
 | `/handwritten link` | links every written-out note that has no Links section yet (one message when they're done) |
-| `/handwritten undo` | takes back the last linking (the note and the course page as they were) |
+| `/handwritten undo` | takes back the last linking (the note and the course page as they were), or the last marks or "only from" part |
+| `/handwritten only <file or course> from <topic>` | adds the part of that note from the topic's heading on, marked where your notes already have it |
 
 **Settings that matter** (Dashboard → Settings → Handwritten notes)
 
@@ -403,15 +433,21 @@ tablet is read again. Notes with no subject are left out.
 | `handwritten.keep_original` | `copy` | `copy` (next to the note, or in your files folder) or `link` (leave it where it is) |
 | `handwritten.dpi` | 110 | how sharp the page pictures are |
 | `handwritten.link` | on | link each written-out note to its lecture, course page and concept notes (one AI request) |
+| `handwritten.overlap` | on | mark the sections your notes for the course already have, and list what's new (one AI request) |
+| `handwritten.overlap_courses` | empty (every course) | only these courses' notes are checked for overlap |
+| `handwritten.only_from` | on | "only from <topic>" from a text file next to the scan, its name, or `/handwritten only` |
 
 **What leaves your computer.** Nothing when a model here reads the pages. Otherwise the pages go to Google (Gemini, your
 key); on the free tier Google may use them to improve its products. For the linking, the written-out text, the titles
 and opening lines of the notes it may relate to, and your subjects' names go to the AI you picked, like any request
-(nothing leaves when that's a model on this computer; `handwritten.link` = `false`: no linking).
+(nothing leaves when that's a model on this computer; `handwritten.link` = `false`: no linking). For the overlap
+marks, the written-out text and the titles, openings and headings of the notes it may repeat go to the same AI
+(`handwritten.overlap` = `false`: none).
 
 **Turn it off / undo.** Features → Handwritten notes → Turn off; the notes and copies stay. `handwritten.local` =
-`false` sends everything to Gemini instead. `/handwritten undo` takes back the last linking; `handwritten.link` =
-`false` stops linking.
+`false` sends everything to Gemini instead. `/handwritten undo` takes back the last linking (with its marks);
+`handwritten.link` = `false` stops linking, `handwritten.overlap` = `false` the marks, `handwritten.only_from` =
+`false` the "only from" part.
 
 ## Check my draft
 

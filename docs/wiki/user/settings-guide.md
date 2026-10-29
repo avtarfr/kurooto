@@ -35,7 +35,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Classes and timetable](#classes-and-timetable): 15 settings
 - [Calendar](#calendar): 11 settings
 - [Quiz and exams](#quiz-and-exams): 35 settings
-- [Books, study time and handwritten notes](#books-study-time-and-handwritten-notes): 42 settings
+- [Books, study time and handwritten notes](#books-study-time-and-handwritten-notes): 45 settings
 - [Notes, files and sync](#notes-files-and-sync): 28 settings
 - [Notes brain (GBrain)](#notes-brain-gbrain): 18 settings
 - [Concept graph](#concept-graph): 26 settings
@@ -2952,6 +2952,38 @@ Link each written-out note to its lecture, course page and concept notes.
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off to save one AI request per note.
 - **Costs and what leaves this computer:** One AI request per note, with the note's text.
+- **Depends on:** Handwritten notes.
+
+### `handwritten.overlap`
+
+Mark the sections of a written-out note that your notes for its course already have, and list what's new.
+
+After linking, one AI request compares each section with the course's folder, its earlier handwritten notes and the
+concept notes: a covered section's heading gets "(already in [[note]])", and the note gets an "Already in your notes"
+and a "New here" list. Only Kurooto's parts of the new note change.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Keep it on when someone sends you full notes that repeat yours; turn it off to save the
+  request.
+- **Costs and what leaves this computer:** One AI request per note, with the note's text and the titles, openings and
+  headings of the notes it may repeat.
+- **Depends on:** Handwritten notes and an AI.
+
+### `handwritten.overlap_courses`
+
+Only these courses' handwritten notes are checked for overlap; empty: every course.
+
+- **Values:** A list of courses (slug, name or short name), or empty. **Default:** none.
+- **When to change it:** List the courses where a friend's notes repeat yours, so the rest cost nothing.
+- **Depends on:** `handwritten.overlap`; a note's course comes from linking (or `course:` in its header).
+
+### `handwritten.only_from`
+
+"Only from <topic>": add the part of a note from that heading on (a .txt next to the scan, its name, or /handwritten
+only).
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off if your scans' names say "from ..." for another reason.
 - **Depends on:** Handwritten notes.
 
 ## Notes, files and sync

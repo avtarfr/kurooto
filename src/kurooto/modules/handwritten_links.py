@@ -177,9 +177,20 @@ def class_for(sub, times: list) -> dict | None:
 
 
 # ------------------------------------------------------------------------------------------------ the note
-def parts(text: str) -> tuple[str, str, str] | None:
+MARKED = re.compile(
+    r"^((?:#{1,6}[ \t]|\*\*).*?)[ \t]+\(already in (?:\[\[[^\]]*\]\]|\[[^\]]*\]\([^)]*\))\)[ \t]*$", re.M
+)
+
+
+def unmark(text: str) -> str:
+    """The text without the "(already in [[note]])" marks on its headings (modules/handwritten_overlap.py)."""
+    return MARKED.sub(r"\1", text)
+
+
+def parts(text: str, marks: bool = False) -> tuple[str, str, str] | None:
     """(head, transcription, tail): the text before Kurooto's handwritten block, the block's own text (without the
-    marker lines and the "Original:" line), and everything after its end marker. None without the block."""
+    marker lines and the "Original:" line, and without the overlap marks on its headings unless `marks`), and
+    everything after its end marker. None without the block."""
     from kurooto.modules.handwritten import END, START
 
     i = text.find(START)
@@ -188,7 +199,7 @@ def parts(text: str) -> tuple[str, str, str] | None:
         return None
     inner = text[i:j].split("\n", 1)[1] if "\n" in text[i:j] else ""
     inner = re.sub(r"\n---\nOriginal: .*\s*\Z", "", inner.rstrip(), flags=re.S).strip()
-    return text[:i], inner, text[j + len(END) :]
+    return text[:i], inner if marks else unmark(inner), text[j + len(END) :]
 
 
 def heading(head: str) -> str:
@@ -522,6 +533,12 @@ class Linker:
             self.app.notify(got["line"], kind="result", why="handwritten.linked", about=note.name)
         elif batch:
             self.finish(batch)
+        ov = getattr(self.hw, "overlap", None)
+        if ov is not None:  # then what's already in your notes (modules/handwritten_overlap.py), one undo with this
+            try:
+                ov.after_link(note, batch=batch, undo=(got or {}).get("undo") or "")
+            except Exception as e:
+                self.app.events.emit("handwritten_overlap_failed", error=str(e)[:200])
 
     def to_graph(self, note: Path, got: dict) -> None:
         """After linking, the transcription is read into the concept graph like a book when integrate.sources has
@@ -658,7 +675,8 @@ class Linker:
                     write_note_file(course, c_new)
                     journal[str(course)] = {"old": c_old, "new": c_new}
         batch = payload.get("batch") or ""
-        self.keep_undo(batch or uuid.uuid4().hex[:10], journal, title)
+        undo_key = batch or uuid.uuid4().hex[:10]
+        self.keep_undo(undo_key, journal, title)
         what = []
         if lec is not None:
             lt = cg.read_note(self.root, lec)
@@ -684,6 +702,7 @@ class Linker:
             "line": line,
             "subject": subject,
             "day": day,
+            "undo": undo_key,
         }
 
     def course_body(self, subject: str, st: dict) -> str:
@@ -728,7 +747,8 @@ class Linker:
             for path, rec in journal.items():
                 prev = cur["files"].get(path)
                 cur["files"][path] = {"old": prev["old"] if prev else rec["old"], "new": rec["new"]}
-            cur["titles"].append(title)
+            if title not in cur["titles"]:  # the overlap marks join the linking's before-copy
+                cur["titles"].append(title)
             cur["at"] = time.time()
             jsave(f, cur)
         for old in sorted(self.undo_dir.glob("*.json"), key=lambda p: p.stat().st_mtime)[:-60]:
@@ -754,8 +774,11 @@ class Linker:
                     kept += 1
                     continue
                 write_note_file(p, r["old"])
-                st["notes"].pop(self.rel(p), None)
+                if f"<!-- kurooto:{KEY} -->" not in r["old"]:  # (an undo of the overlap marks alone keeps the linking)
+                    st["notes"].pop(self.rel(p), None)
                 back += 1
+                if getattr(self.hw, "overlap", None) is not None:
+                    self.hw.overlap.forget(p)
             self.save(st)
         last.unlink(missing_ok=True)
         titles = ", ".join(f"'{t}'" for t in (rec.get("titles") or [])[:4])

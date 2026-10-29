@@ -2,6 +2,14 @@
 
 ## 0.9.0 (unreleased)
 
+- **Handwritten notes say what's already in your notes** (`handwritten.overlap`, on; `handwritten.overlap_courses`
+  limits it to the courses you list). After a written-out note is linked, one AI request compares its sections with
+  the course's folder, its earlier handwritten notes and the concept notes: repeated sections get "(already in
+  [[note]])" on their heading, and the note gets an "Already in your notes" and a "New here" list. Only Kurooto's parts
+  of the new note change; nothing is deleted. `/handwritten undo` takes it back with the linking.
+- **"Only from <topic>"** (`handwritten.only_from`, on): a text file next to the scan, "from <topic>" in its name, or
+  `/handwritten only <file or course> from <topic>` adds the part of the note from that heading on (a loose match),
+  with the marks. The full transcription stays.
 - **One person is one face** (a fix). A smaller face box inside a bigger one (half a face, a reflection in glasses)
   is no longer counted as a second person, which kept "others nearby" flickering and made Kurooto careful with its
   name when you were alone.
