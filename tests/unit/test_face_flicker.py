@@ -177,7 +177,7 @@ SCENES = {
     ),  # fmt: skip
 }
 
-AFTER = 1  # the column this version checks (1: 0.9.1's)
+AFTER = 2  # the column this version checks (1: 0.9.1's)
 
 
 @pytest.mark.parametrize("name", list(SCENES))
@@ -185,3 +185,30 @@ def test_the_golden_scenes(name):
     scene, *cols = SCENES[name]
     rows, _w, _got = play(scene)
     assert rows == cols[AFTER - 1], name
+
+
+def test_a_kept_frame_is_never_learned_from_counted_as_an_arrival_or_seen():
+    rows, w, got = play([[O()], [P()], [S(ME_)]])
+    assert [r[1] for r in rows] == [True, True, True]
+    assert [x.owner for x in w.recent] == [True, False, False]  # arrivals count recognised frames only
+    assert w.counts.you == 1 and w.candidate is None
+
+
+def test_on_battery_one_frame_is_bridged_however_far_apart():
+    w, clock, got = watcher()
+    alone = []
+    for faces in ([O()], [U(ME_)], [U()]):
+        got.clear()
+        w._look({"faces": faces}, clock(), {})
+        alone.append(next(f for k, f in got if k == "view")["owner_alone"])
+        clock.t += 3.0  # 3 s apart on battery
+    assert alone == [True, True, False]  # one frame (3 s) bridged, not two
+
+
+def test_closing_the_camera_forgets_who_was_where():
+    w, clock, _got = watcher()
+    w._look({"faces": [O()]}, clock(), {})
+    assert w.ids
+    w.camera_open = False
+    w._close("stopped")
+    assert w.ids == []

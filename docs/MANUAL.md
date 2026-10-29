@@ -2289,6 +2289,8 @@ never approves, unlocks or allows anything. Details: [the user guide](wiki/user/
 - **Watching:** the camera stays closed while you type; it looks about once a second only when you're idle, just
   unlocked or being confirmed, and pauses (saying why) when locked, on a call, in focus, at night, when the camera is
   busy, covered or blocked. A "● camera" badge shows on the dashboard while Kurooto holds it.
+- **Steady verdicts** (0.9.2, a fix): faces under half the biggest one's height don't count; someone else needs 2
+  of their last 3 frames; your face stays yours about 2 s through one blurred, unsure or misjudged frame.
 - **Following faces** (`face.track.on`): while the camera is open and a dashboard is in sight, the being's eye
   follows everyone in view (places and movement only), switching between people every few seconds; it looks up to
   10 times a second then (`face.track.fps`).

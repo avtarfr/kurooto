@@ -52,6 +52,14 @@ calibrated), the owner's best face in each recognition frame gets its iris offse
 Anyone's look (0.8.18, voice.listen.look_anyone; cfg "look_anyone"): the other faces big enough to judge, the
 LOOK_OTHERS biggest, go with "view" as looks=[(height, yaw, pitch, eyes)], the same numbers as the owner's: where a
 face looks, never who it is.
+
+Flicker (0.9.2, a fix): a verdict that flips for one frame no longer flips what the watcher says. Only faces at least
+HALF the biggest one's height count (a face far behind, a poster: not "someone else", not a second face). Each counted
+face is followed by its box (intersection over union, IdTrack, in memory, dropped when the camera closes; positions and
+the last OTHER_M verdict words only). A face is someone else only when OTHER_N of its last OTHER_M judged frames said so
+(before, a frame unsure then); and the face that was his keeps his identity for ID_KEEP_S (at least one frame's gap)
+through blurred, unsure or a single "someone else" frame: "view" still says he's alone and where he looks. A kept frame
+is never learned from, never counts towards an arrival and never moves "seen".
 """
 
 from __future__ import annotations
@@ -96,6 +104,11 @@ MICRO_FULL = 0.3  # face heights a second beyond the jitter that make m = 1 (a s
 MICRO_RISE = 0.6  # m rises this share of the way to a new reading at once (a spike shows in one frame)
 MICRO_TAU = 0.5  # seconds: m fades with this time constant once the face is still
 WAIT_MIN_S = 0.02  # the thread never waits less than this between looks: it can't spin
+HALF = 0.5  # (0.9.2) only faces at least this share of the biggest face's height count
+ID_KEEP_S = 2.0  # (0.9.2) the face that was his keeps his identity this long (at least 1.5 frame gaps)
+ID_IOU = 0.3  # (0.9.2) the same face as the frame before: their boxes overlap at least this much (IoU)
+ID_MISS = 2  # (0.9.2) a followed face missing from this many frames in a row is forgotten
+OTHER_N, OTHER_M = 2, 3  # (0.9.2) someone else: at least N of a face's last M judged frames said so
 
 
 @dataclass
@@ -140,6 +153,26 @@ class Track:
     owner: bool = False
     miss: int = 0
     past: deque = field(default_factory=lambda: deque(maxlen=12))  # (t, cx, cy, h, rel) of the last frames
+
+
+@dataclass
+class IdTrack:
+    """(0.9.2) One counted face followed by its box, for its verdict over frames: no numbers that describe it."""
+
+    box: tuple
+    owner_at: float | None = None  # when it was last recognised as his
+    hist: deque = field(default_factory=lambda: deque(maxlen=OTHER_M))  # "owner" / "unsure" / "stranger"
+    miss: int = 0
+
+
+def iou(a: tuple, b: tuple) -> float:
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+    w = min(ax + aw, bx + bw) - max(ax, bx)
+    h = min(ay + ah, by + bh) - max(ay, by)
+    inter = w * h if w > 0 and h > 0 else 0.0
+    union = aw * ah + bw * bh - inter
+    return inter / union if union > 0 else 0.0
 
 
 @dataclass
@@ -205,6 +238,8 @@ class Watcher:
         self._quick = 0
         self._faces_shown = False  # the last "faces" had someone in it (an empty one is sent once, on the change)
         self._scale = 1.0  # (0.8.17) vision.px_scale of the last frame looked at
+        self.ids: list[IdTrack] = []  # (0.9.2) the counted faces followed frame to frame (flicker), boxes only
+        self._looked_at: float | None = None  # (0.9.2) when the last frame was looked at
 
     # --------------------------------------------------------------------------------------------- reading
     def problem_now(self) -> str:
@@ -355,6 +390,7 @@ class Watcher:
         return True
 
     def _close(self, why: str) -> None:
+        self.ids.clear()  # (0.9.2) who was where goes with the camera
         if self.camera_open:
             self.camera_open = False
             self._drop_tracks()
@@ -474,29 +510,50 @@ class Watcher:
         self._scale = px_scale(*full)  # (0.8.17) min_face_px and the still check are pixels of a 480-high frame
         min_px = float(c.get("min_face_px") or 60) * self._scale
         faces = drop_nested(self.detector.detect(frame, SCORE_OTHER))
+        # (0.9.2) only faces at least HALF the biggest's height count; each counted face is followed by its box
+        tall = max((f.height for f in faces if f.score >= SCORE_OTHER), default=0.0)
+        counted = [f.score >= SCORE_OTHER and f.height >= HALF * tall for f in faces]
+        ids = self._follow(now, [(i, f) for i, f in enumerate(faces) if counted[i]])
+        keep_s = max(ID_KEEP_S, 1.5 * (now - self._looked_at)) if self._looked_at is not None else ID_KEEP_S
+        self._looked_at = now
         best: tuple[float, list[float], Any, dict] | None = None
         judged: dict[int, bool] = {}  # index in faces -> recognised as you (for the tracks' owner flag)
         best_i = -1
+        kept_i = -1  # (0.9.2) a face not recognised this frame that keeps his identity (ID_KEEP_S)
         n_other = 0
         n_strangers = 0  # (0.9.0) faces judged not yours in this frame (unsure ones aren't counted)
         seen: list[dict] | None = [] if self.people() else None
         size = full if seen is not None else (0, 0)
+
+        def other(i: int, raw: str) -> None:
+            """A counted face that isn't recognised as his this frame: his still (kept), or another face."""
+            nonlocal kept_i, n_other
+            if self._settle(ids.get(i), raw, now, keep_s) == "kept" and kept_i < 0:
+                kept_i = i
+            else:
+                n_other += 1
+
         for i, f in enumerate(faces):
             p = _person(f, size) if seen is not None and f.score >= SCORE_WATCH else None
             if p is not None:
                 seen.append(p)  # type: ignore[union-attr]
+            if not counted[i]:
+                continue  # (0.9.2) too faint, or far smaller than the biggest face: not someone in front of it
             if f.score < SCORE_WATCH or f.height < min_px:
-                n_other += 1 if f.score >= SCORE_OTHER else 0
+                other(i, "")
                 continue
             crop = self.embedder.align(frame, f)
             st = self.embedder.stats(crop)
             if st.blur < BLUR_MIN / 2 or not (30 <= st.mean <= 225):
                 del crop
-                n_other += 1
+                other(i, "")
                 continue  # too poor to judge: counts for nothing
             e = self.embedder.feature(crop)
             del crop
             klass, s = self.classify(e)
+            # (0.9.2) someone else only N of M frames; the face that was his keeps his identity a moment
+            got = self._settle(ids.get(i), klass, now, keep_s)
+            klass = "unsure" if got == "kept" else got
             if klass == "stranger":
                 judged[i] = False  # unsure keeps the track's flag: one poor frame doesn't make you someone else
             if p is not None:
@@ -517,36 +574,44 @@ class Watcher:
                 else:
                     self.counts.not_you += 1
                     n_strangers += 1
-                n_other += 1
+                if kept_i < 0 and got == "kept":
+                    kept_i = i
+                else:
+                    n_other += 1
             del e  # a stranger's or an unsure face's numbers go with the frame
+        if best is not None and kept_i >= 0:  # he's recognised in another face this frame: the kept one is another
+            kept_i, n_other = -1, n_other + 1
         if seen is not None:
             self.emit("people", faces=seen)  # every frame looked at, empty too: nobody in view is news as well
             del seen
         if self.away and n_strangers:
             self.emit("strangers", n=n_strangers)  # (0.9.0, face.away.report_others) how many, never who
+        his = best[2] if best is not None else faces[kept_i] if kept_i >= 0 else None  # (0.9.2) kept counts here
+        his_i = best_i if best is not None else kept_i
         if self._track != TRACK_OFF:
-            if best_i >= 0:
-                judged[best_i] = True
+            if his_i >= 0:
+                judged[his_i] = True
             self._update_tracks(now, faces, full, judged)
-        n_faces = sum(1 for f in faces if f.score >= SCORE_OTHER)
+        n_faces = sum(1 for c in counted if c)
         # (0.8.13) for Voice ID's face assist: how many faces, and whether the only one is the owner's; and for
         # voice.listen.need_face each face's height (pixels) and yaw, numbers that say how close it is and where it
         # looks, never who (Face.close_facing counts the close and facing ones and drops these with the frame)
-        sizes = [(float(f.height), _yaw(f)) for f in faces if f.score >= SCORE_OTHER]
+        sizes = [(float(f.height), _yaw(f)) for i, f in enumerate(faces) if counted[i]]
         # (0.8.17, voice.listen.look_to_talk) the owner's face: height, yaw and pitch, for Face.looking (never who else)
-        mine = (float(best[2].height), _yaw(best[2]), _pitch(best[2])) if best is not None else None
+        mine = (float(his.height), _yaw(his), _pitch(his)) if his is not None else None
         # (0.8.17, voice.listen.look_gaze) and where his eyes sit in them: two numbers (gaze.py), only while wanted;
         # frame: its (width, height), so "close" is a share of the frame at any camera resolution
-        eyes = self._eyes(frame, best[2]) if best is not None else None
+        eyes = self._eyes(frame, his) if his is not None else None
         # (0.8.18, voice.listen.look_anyone) the other faces close enough to judge, the LOOK_OTHERS biggest: the same
         # numbers and eyes, so anyone's look opens the talk; never who they are, dropped with the frame
         looks = None
         if c.get("look_anyone"):
-            rest = [f for i, f in enumerate(faces) if i != best_i and f.score >= SCORE_WATCH and f.height >= min_px]
+            rest = [f for i, f in enumerate(faces) if i != his_i and counted[i] and f.score >= SCORE_WATCH
+                    and f.height >= min_px]  # fmt: skip
             rest = sorted(rest, key=lambda f: -float(f.height))[:LOOK_OTHERS]
             looks = [(float(f.height), _yaw(f), _pitch(f), self._eyes(frame, f)) for f in rest]
         self.emit(
-            "view", faces=n_faces, owner_alone=best is not None and n_other == 0, sizes=sizes, owner=mine, eyes=eyes,
+            "view", faces=n_faces, owner_alone=his is not None and n_other == 0, sizes=sizes, owner=mine, eyes=eyes,
             frame=full, looks=looks,
         )  # fmt: skip
         others = n_faces >= 2
@@ -580,6 +645,47 @@ class Watcher:
         if q["good"] and n_other == 0 and self.returning is not None and self.learnable(e):
             self.candidate = (e, now)
         self._arrival(now, c)
+
+    # ------------------------------------------------------------------------------------- flicker (0.9.2)
+    def _follow(self, now: float, faces: list) -> dict[int, IdTrack]:
+        """This frame's counted faces matched to the followed ones by their boxes (greedy, best overlap first, at
+        least ID_IOU); new ones start; one missing ID_MISS frames in a row is forgotten. {index in faces: track}."""
+        pairs = sorted(
+            ((iou(f.box, tr.box), k, i) for i, f in faces for k, tr in enumerate(self.ids)), key=lambda x: -x[0]
+        )
+        got: dict[int, IdTrack] = {}
+        used: set[int] = set()
+        for o, k, i in pairs:
+            if o >= ID_IOU and i not in got and k not in used:
+                got[i] = self.ids[k]
+                used.add(k)
+        for k, tr in enumerate(self.ids):
+            tr.miss = 0 if k in used else tr.miss + 1
+        self.ids = [tr for tr in self.ids if tr.miss < ID_MISS]
+        for i, f in faces:
+            if i not in got:
+                got[i] = IdTrack(f.box)
+                self.ids.append(got[i])
+            got[i].box = f.box
+        return got
+
+    @staticmethod
+    def _settle(tr: IdTrack | None, raw: str, now: float, keep_s: float) -> str:
+        """A followed face's verdict this frame from the classifier's (raw: owner, unsure, stranger, or "" when it
+        couldn't be judged): owner; stranger once OTHER_N of its last OTHER_M said so; else kept (his face, recognised
+        within keep_s) or unsure."""
+        if tr is None:
+            return raw or "unsure"
+        tr.hist.append(raw or "unsure")
+        if raw == "owner":
+            tr.owner_at = now
+            return "owner"
+        if sum(1 for x in tr.hist if x == "stranger") >= OTHER_N:
+            tr.owner_at = None
+            return "stranger"
+        if tr.owner_at is not None and now - tr.owner_at <= keep_s:
+            return "kept"
+        return "unsure"
 
     def _arrival(self, now: float, c: dict) -> None:
         if self.returning is None:

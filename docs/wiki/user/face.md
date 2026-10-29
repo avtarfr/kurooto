@@ -213,6 +213,12 @@ While someone is talking (0.9.0, `face.track.speaker`, on), the eye looks at the
 were yours, else at the face moving most (the one talking). Only "someone is talking" and Voice ID's word reach the
 page, never the sound. Off: it moves between faces as before.
 
+**One odd frame doesn't change its mind** (0.9.2, a fix): a face far smaller than the biggest one in view (a poster,
+someone across the room) doesn't count as someone here; a face counts as someone else only after two of its last three
+frames said so; and your face stays yours for about two seconds through a blurred, unsure or misjudged frame, so
+"only you in view" (which Voice ID and look to talk use) doesn't blink off. Arrivals and learning still need frames
+that really recognised you.
+
 **You've arrived** when it recognises you in 3 of 4 frames within 6 seconds, after at least 20 minutes with no sign of
 you (`face.greet.after_absent_min`; a locked screen isn't a sign of you). Unsure frames and other people count for
 nothing. A photo propped up in front of the camera doesn't move, so it waits for movement.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.2 (unreleased)
+
+- **Face presence doesn't flicker** (a fix). A face far smaller than the biggest in view no longer counts as someone
+  here, someone else needs two of their last three frames, and your face stays yours for about two seconds through a
+  blurred, unsure or misjudged frame, so "only you in view" (Voice ID's face assist, look to talk) holds steady.
+
 ## 0.9.1 (2026-10-29)
 
 - **"The lib" finds "Library"** (`reminders.place_names`, off). The phone app can share the names of the places you
