@@ -237,7 +237,7 @@ def test_the_page_has_both_layouts_and_keeps_the_tabs(env):
     assert "window.innerWidth >= 1280" in js and "function renderBoard" in js and "function showDense" in js
     for tab in ("activity", "jobs", "schedule", "features", "phone", "research", "about", "settings"):
         assert f"{tab}:" in js.split("const DLABEL")[1].split("\n")[0], tab  # every page is in the terminal's border
-    assert 'api("say", { text })' in js and "kurooto:palette" in js
+    assert 'api("say", from ? { text, from } : { text })' in js and "kurooto:palette" in js
     assert "body.dense" in css and "#" not in "".join(
         ln for ln in css.splitlines() if "body.dense" in ln and "color:" in ln
     )

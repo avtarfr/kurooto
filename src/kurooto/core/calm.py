@@ -960,6 +960,15 @@ REASONS: dict[str, Reason] = {
             counted=False,
             feature="voice",
         ),
+        R(  # (0.9.1) calls.desk_first: "shall we do it here?" said aloud before a call Kurooto places by itself
+            "calls.desk_first",
+            "a call it was about to place, offered at your desk first (calls.desk_first)",
+            setting="calls.desk_first",
+            stop=to(False, "calls aren't offered at the desk any more"),
+            later=False,
+            counted=False,
+            feature="calls",
+        ),
         R(  # (0.9.1) Voice, voice.speak.messages: a due reminder said aloud at the desk too (the phone copy still goes)
             "voice.messages.reminder",
             "a due reminder, said aloud at your desk as well (voice.speak.messages)",

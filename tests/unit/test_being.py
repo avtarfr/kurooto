@@ -105,8 +105,8 @@ def test_the_dashboard_mounts_it_and_has_the_talk_box():
     assert all(f'"{f}"' in home and static(f"vendor/three/{f}.js") for f in passes)
     assert all(f"BEING.{f}(m)" in home for f in ("update", "event", "graph", "voice"))
     # the chat tab and the talk box send the same way (POST /api/say), one function
-    assert home.count('api("say", { text })') == 1
-    assert "askKurooto(text, chatAdd)" in home and "askKurooto(text, talkAdd)" in home
+    assert home.count('api("say", from ? { text, from } : { text })') == 1  # (0.9.1) the talk box adds from: board
+    assert "askKurooto(text, chatAdd)" in home and 'askKurooto(text, talkAdd, "board")' in home
     assert 'key === "look.talk_box"' in home and 'e.code === "KeyK"' in home
 
 
