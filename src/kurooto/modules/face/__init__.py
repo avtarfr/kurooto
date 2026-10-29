@@ -154,6 +154,7 @@ register_defaults(
             "per_day": 3,  # at most this many greetings a day
             # what it says: next (today), waiting, deadline (24 h), held, answers (0.9.0: not read while you were away),
             # threads (0.9.1, add it to use it: the first thing you said you'd do that's due today)
+            # missed_call (0.9.1, add it to use it: a check-in call that waited, taken here on your yes)
             "say": ["next", "waiting", "deadline", "answers"],
             "with_others": "skip",  # someone else in view too: skip (no greeting), short ("Welcome back." only) or full
             "talk": True,  # then open the conversation: answer without saying its name (needs Voice listening)
@@ -180,6 +181,11 @@ register_defaults(
             "use_places": False,
             # (0.9.0) and while your phone is out, the camera stays closed (a look, an arrival: none till it's back)
             "places_close_camera": False,
+            # (0.9.1) back at the desk: one "while you were away" pop-up and a card on the dashboard's Waiting page
+            # listing what came meanwhile (the held pop-ups in full, the talk box's answers), with Send now
+            "summary": False,
+            # (0.9.1) and that one pop-up instead of every held pop-up (they stay on the card; Send now shows them)
+            "summary_only": False,
         },
         "track": {
             "on": True,  # while the camera is open, follow every face in view (places only) for the being's eye
@@ -247,7 +253,8 @@ LICENCES = [
 EARLY = PAUSES[:3] + ("template locked",)  # no watcher is built for these
 # a session's kind -> the page's stage
 STAGES = {"enrol": "capturing", "test": "testing", "gaze": "calibrating", "look": "looking"}
-SAY_PARTS = ("next", "waiting", "deadline", "held", "answers", "threads")
+# (0.9.1) threads and missed_call: never in the default greet.say
+SAY_PARTS = ("next", "waiting", "deadline", "held", "answers", "threads", "missed_call")
 TOGGLES = {
     "greet.on": "Greet me when I sit down",
     "greet.talk": "Then listen for my answer",
@@ -322,6 +329,8 @@ class Face(Module):
         self.why = "feature off"
         self.paused_until: float | None = None  # /face pause: a time.time() end, inf = until /face pause off
         self.held: deque = deque(maxlen=20)  # desktop pop-ups held while you're away (title, text, urgent)
+        self._left_ts: float | None = None  # (0.9.1, away.summary) when you stepped away, as time.time()
+        self.away_card: dict | None = None  # (0.9.1) the last "while you were away" card, in memory only
         self._tpl: Template | None = None
         self._tpl_lock = threading.RLock()
         self._thread: threading.Thread | None = None
@@ -730,6 +739,7 @@ class Face(Module):
         elif kind == "arrived":
             self._arrived(int(f.get("away_min") or 0), bool(f.get("others")))
         elif kind == "left":
+            self._left_ts = time.time()  # (0.9.1, away.summary) what came since goes on the card
             self.app.events.emit("face_left")  # (0.9.0) a "left" break too, with face.breaks (mind/breaks.py)
             self._tell_study("left")
         elif kind == "back":
@@ -1213,14 +1223,70 @@ class Face(Module):
             self.held.extend(keep)
         return n
 
-    def flush_desktop(self) -> int:
+    def flush_desktop(self, card: bool = True) -> int:
+        """Back at the desk: the pop-ups held while you were away show. (0.9.1) With face.away.summary, first the
+        "while you were away" card (away_summary) and its one pop-up; with face.away.summary_only that pop-up instead
+        of the held ones, which stay on the card until its Send now (card=False: show them now)."""
         from kurooto.core import desktop
 
+        if card and self.setting("away.summary"):
+            self.away_summary()
+            if self.setting("away.summary_only") and self.away_card and self.away_card["popups"]:
+                self.held.clear()  # on the card, in full; Send now shows them (show_away)
+                return 0
+            if self.away_card:
+                self.away_card["shown"] = True  # they show now, as before: the card only lists them
         n = 0
         while self.held:
             title, text, urgent = self.held.popleft()[:3]
             try:
                 desktop.notify(title, text, urgent=urgent)
+                n += 1
+            except Exception:
+                pass
+        return n
+
+    def away_summary(self) -> dict | None:
+        """(0.9.1, face.away.summary) The "while you were away" card: the pop-ups held meanwhile (title and full text)
+        and the board talk box's answers that came since you left (calls/chat.py), with one desktop pop-up counting
+        them. Kept in memory (away_card) for the dashboard's Waiting page until Send now or the next time away. None
+        when nothing came."""
+        from kurooto.core import desktop
+
+        since, self._left_ts = self._left_ts, None
+        popups = [{"title": h[0], "text": h[1], "urgent": bool(h[2])} for h in self.held]
+        answers: list[dict] = []
+        calls = self.app.modules.get("calls")
+        if calls is not None and self.app.is_on("calls") and since is not None:
+            try:
+                answers = calls.chat.answers_since(since)
+            except Exception as e:
+                self._failed("the talk box's answers", e)
+        if not popups and not answers:
+            self.away_card = None
+            return None
+        self.away_card = {"at": time.time(), "since": since, "popups": popups, "answers": answers}
+        bits = []
+        if popups:
+            bits.append(f"{len(popups)} message{'s' if len(popups) != 1 else ''}")
+        if answers:
+            bits.append(f"{len(answers)} answer{'s' if len(answers) != 1 else ''} to what you asked in the talk box")
+        try:
+            desktop.notify("While you were away", " and ".join(bits) + ". The dashboard's Waiting page has them.")
+        except Exception:
+            pass
+        self.app.events.emit("face_away_summary", popups=len(popups), answers=len(answers))
+        return self.away_card
+
+    def show_away(self) -> int:
+        """(0.9.1) Send now on the "while you were away" card: its held pop-ups show now, one by one; the card goes."""
+        from kurooto.core import desktop
+
+        card, self.away_card = self.away_card, None
+        n = 0
+        for p in [] if (card or {}).get("shown") else (card or {}).get("popups") or []:
+            try:
+                desktop.notify(p["title"], p["text"], urgent=bool(p.get("urgent")))
                 n += 1
             except Exception:
                 pass
@@ -1347,6 +1413,8 @@ class Face(Module):
         return True
 
     def _arrived(self, away_min: int, others: bool) -> None:
+        if self._left_ts is None and away_min > 0:
+            self._left_ts = time.time() - away_min * 60
         nearby.set_phone_out(self.app, False)  # (0.9.0) your face is here: the phone's "out" is over
         self.app.events.emit("face_arrived", **_event_safe(away_min=away_min))
         self.flush_desktop()
@@ -1382,6 +1450,7 @@ class Face(Module):
             name="" if others or nearby.others(self.app) else persona.address(self.app),  # (0.9.0) alone in view only
             answers=self._held_answers(),
             threads=self._threads_due(t) if "threads" in (self.setting("greet.say") or []) else (),
+            missed=self._waited_checkin() if talk and not others and not nearby.others(self.app) else "",
         )
         text = persona.template(self.app, text)  # (0.9.0, persona.templates) the avoid line, as punctuation
         v = self.app.modules["voice"]
@@ -1398,6 +1467,10 @@ class Face(Module):
                 self._carried[p[6:]] = time.time()
         self.app.events.emit("face_greeted", **_event_safe(parts=parts, talk=opened == "talk"))
         self._record_greeting(parts, opened == "talk")
+        if opened == "talk" and "missed_call" in parts:  # (0.9.1) a yes takes the check-in here (L35)
+            missed = self._waited_checkin()
+            if missed and hasattr(v, "offer_checkin"):
+                v.offer_checkin(missed)
         if opened == "talk" and text.endswith("Want to go through them?"):  # (0.9.0) a yes starts it (walkthrough.py)
             from kurooto.core import walkthrough
 
@@ -1446,6 +1519,17 @@ class Face(Module):
         result = "replied" if answered else "missed"
         records.outcome(self.app, rid, result, 1.0 if answered else 0.0)
         self.app.events.emit("face_greet_outcome", **_event_safe(result=result))
+
+    def _waited_checkin(self) -> str:
+        """(0.9.1, greet.say "missed_call") Today's check-in whose call went unanswered (it came as a message and isn't
+        answered yet), by name, or ""."""
+        if "missed_call" not in (self.setting("greet.say") or []):
+            return ""
+        ck = self.app.modules.get("checkins")
+        try:
+            return (ck.waited() or "") if ck is not None and self.app.is_on("checkins") else ""
+        except Exception:
+            return ""
 
     def _held_answers(self) -> int:
         """(0.9.0) How many answers Voice didn't read while you were away (a count only)."""

@@ -235,6 +235,7 @@ function loadLook() {
     BEING_LIVE = look.values.being_live_waveform !== false; if (BEING) BEING.setLive(BEING_LIVE);
     if ((look.values.talk_box !== false) !== TALK.on) { TALK.on = look.values.talk_box !== false; talkShow(); }
     setChatPage(look.values.chat_page !== false);
+    setWaitingPage(look.values.being_held_link !== false);
     if (m !== BRAIN_MON) { BRAIN_MON = m; if (B3 && B3.setMonitor) B3.setMonitor(m); }
     const v = cleanHide(look.values.panes);
     if (Object.keys(PANES).filter((p) => v.has(p)).join() !== hideList().join()) { HIDE = v; MAX = null; applyPanes(); }
@@ -880,6 +881,38 @@ function renderPage(name, body) {
   else if (name === "face") renderFace(body);
   else if (name === "chat") renderChat(body);
   else if (name === "memory") renderMemory(body);
+  else if (name === "waiting") renderWaiting(body);
+}
+// The Waiting page (0.9.1, look.being_held_link, core/waiting.py): what Calm holds, in full, and the "while you were
+// away" card (face.away.summary); the being's held count opens it. Send now sends them (as the evening bundle would).
+const WAITING_PAGE = { key: "w", tab: "Waiting", label: "waiting" };
+function setWaitingPage(on) {
+  if (on === !!DLABEL.waiting) return;
+  if (on) { PKEY.waiting = WAITING_PAGE.key; TABS.waiting = WAITING_PAGE.tab; DLABEL.waiting = WAITING_PAGE.label; }
+  else { if (PAGE === "waiting") closePage(); delete PKEY.waiting; delete TABS.waiting; delete DLABEL.waiting; }
+  renderNav(); renderMenu(); if (PAGE) renderPageNav();
+}
+async function renderWaiting(body) {
+  body.onclick = body.onchange = body.onsubmit = null;
+  let w;
+  try { w = await api("waiting"); } catch { body.innerHTML = '<p class="d">The Waiting page could not load.</p>'; return; }
+  if (w.off) { body.innerHTML = '<p class="d">The Waiting page is off (Settings: look.being_held_link).</p>'; return; }
+  const when = (t) => new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const held = w.held || [], card = w.card;
+  const counts = [w.questions ? `${w.questions} open question${w.questions === 1 ? "" : "s"} (/q)` : "", w.proposals ? `${w.proposals} proposal${w.proposals === 1 ? "" : "s"} waiting for your tap` : ""].filter(Boolean).join(" · ");
+  const cardHtml = !card ? "" : `<h4>While you were away</h4>${(card.popups || []).map((p) => `<p><b>${esc(p.title)}</b>: ${esc(p.text)}</p>`).join("")}${(card.answers || []).map((a) => `<p><b>${esc(a.asked)}</b> <span class="d">(talk box, ${when(a.at)})</span><br>${esc(a.answer)}</p>`).join("")}<button class="primary" data-wait="away">${card.shown || !(card.popups || []).length ? "Clear" : "Send now"}</button>`;
+  body.innerHTML = `<p class="d">What waits for you. Nothing here is sent anywhere until you press Send now.${counts ? ` ${counts}.` : ""}</p>${cardHtml}
+    ${(w.talked || []).length ? `<h4>Questions you went over</h4>${w.talked.map((q) => `<p>${esc(q.text)} <span class="d">(talked through ${esc(q.talked)})</span> <button data-settle="question" data-id="${esc(q.id)}">Settled</button></p>`).join("")}` : ""}
+    <h4>Held messages</h4>${held.length ? `${held.map((r) => `<p><b>${esc(r.title || "Message")}</b> <span class="d">(${when(r.at)}, ${esc(r.waits)}${r.talked ? `; talked through ${esc(r.talked)}` : ""})</span><br>${esc(r.text)}${r.talked ? ` <button data-settle="held" data-id="${esc(r.id)}">Settled</button>` : ""}</p>`).join("")}<button class="primary" data-wait="send">Send now</button>` : '<p class="d">Nothing is held.</p>'}<p class="d" id="wait-said"></p>`;
+  body.onclick = async (e) => {
+    const st = e.target.closest("[data-settle]");
+    const b = st || e.target.closest("[data-wait]"); if (!b) return;
+    b.disabled = true;
+    const r = st ? await api("waiting/settle", { kind: st.dataset.settle, id: st.dataset.id }).catch(() => null)
+      : await api(b.dataset.wait === "send" ? "waiting/send" : "waiting/away", {}).catch(() => null);
+    const said = $("#wait-said"); if (said) said.textContent = (r && r.message) || "That didn't work.";
+    setTimeout(() => renderWaiting(body), 1200);
+  };
 }
 // The Memory page (0.9.0, look.memory_page, core/memorypage.py): every store of what Kurooto keeps about you, side by
 // side. Changes stay with each store's command and its Undo; the model of you has Wrong and Forget here too.
@@ -1002,7 +1035,7 @@ async function mountBeing() {
     if (!window.beingMount) await loadScript("/static/being.js?v=1");
     if (!beingBoard()) return; // the board changed while it loaded
     const hoodOf = (id) => { const n = mind.nodes && mind.nodes.get(id), k = n && n.neighborhood, h = k && mind.hoods && mind.hoods.get(k); return k ? { key: k, label: h ? h.label : k } : null; };
-    const b = await window.beingMount(host, { api, hoodOf, pal: PAL, theme: BEING_THEME, hints: BEING_HINTS, restSparks: BEING_REST, liveWave: BEING_LIVE, talkWidth: TALK.on ? 400 : 190, talkRoom: TALK.on ? 230 : 150, openItem: openUneasy });
+    const b = await window.beingMount(host, { api, hoodOf, pal: PAL, theme: BEING_THEME, hints: BEING_HINTS, restSparks: BEING_REST, liveWave: BEING_LIVE, talkWidth: TALK.on ? 400 : 190, talkRoom: TALK.on ? 230 : 150, openItem: openUneasy, openHeld: () => { if (DLABEL.waiting) openPage("waiting"); } });
     if (!beingBoard()) { b.stop(); return; }
     BEING = b;
     if (last) BEING.update(last);
@@ -1045,7 +1078,7 @@ function talkAdd(text, c = "a") {
 async function talkSend(text) {
   if (TALK.fold) { TALK.fold = false; talkShow(); }
   talkAdd(text, "q");
-  await askKurooto(text, talkAdd);
+  await askKurooto(text, talkAdd, "board"); // (0.9.1) the talk box: its turns go to the Desk chat (calls.chat_desk)
 }
 (function talkInit() {
   const inp = $("#talk-input"); if (!inp) return;
@@ -1830,9 +1863,9 @@ async function chatSend(text) {
   await askKurooto(text, chatAdd);
 }
 // plain English to Kurooto, as on Telegram (POST /api/say); add(text, kind) prints each line: the chat tab, the talk box
-async function askKurooto(text, add) {
+async function askKurooto(text, add, from) {
   let r;
-  try { r = await api("say", { text }); } catch { add("Kurooto didn't answer (is it running?).", "x"); return; }
+  try { r = await api("say", from ? { text, from } : { text }); } catch { add("Kurooto didn't answer (is it running?).", "x"); return; }
   if (!r.ok) { add(r.error || "That didn't work.", "x"); return; }
   if (!r.job) { add((r.replies || []).join("\n") || "Done."); return; }
   add("working on it; the answer prints here", "w");
@@ -2092,6 +2125,7 @@ function settingChanged(key, value) {
   if (key === "look.being_theme") { BEING_THEME = value === "theme" ? "theme" : "void"; stopBeing(); applyPanes(); }
   if (key === "look.talk_box") { TALK.on = value !== false; talkShow(); }
   if (key === "look.chat_page") setChatPage(value !== false);
+  if (key === "look.being_held_link") setWaitingPage(value !== false);
   if (key === "look.being_hints") { BEING_HINTS = value !== false; if (BEING) BEING.setHints(BEING_HINTS); }
   if (key === "look.being_resting_sparks") { BEING_REST = value !== false; if (BEING) BEING.setRest(BEING_REST); }
   if (key === "look.being_live_waveform") { BEING_LIVE = value !== false; if (BEING) BEING.setLive(BEING_LIVE); }

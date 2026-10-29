@@ -271,6 +271,49 @@ transcripts, events and answers until the computer takes them (`Calls.take_queue
   "all"). `skip_class` takes `subject` (one, as before) or `subjects` (a list, `["all"]` for every class today,
   `subjects.ALL_TODAY`) and has a hint telling Live to use one call; `skip_commitment` takes `name` or `names` the same
   way. Before, "I skipped all classes" made Live call `skip_class` seven times in two seconds, each its own line.
+  (0.9.1) `attend_class` (`Subjects._tool_attend`, offline `queue`, in `RESHAPES`) is its undo: the same arguments,
+  `["all"]` = every class skipped today; it emits `class_attend` as `/attend` does. A class that wasn't skipped
+  answers "No change: ..." (so `_reshaped` leaves it alone). `skip_class`'s hint: only a class they name or clearly
+  mean; "today's class" said in answer to a question about class X is X; say back what the result names.
+- (0.9.1) The same question twice: `config_template` says to ask each question once a call; `Calls.run_tool` passes a
+  `pending_items` result through `_mark_raised`, which marks an open question listed earlier in the same call
+  (`_raised[since]`, cleared by `save_transcript`) `raised_this_call`. `Ask.call_brief` adds `asked_on` ("Wednesday
+  (yesterday)") to a question created on an earlier day, and `answer_question`'s hint says to name that day.
+- (0.9.1, L34, `calls.desk_first`, off) `ring(..., desk=True)`: an automatic, non-alarm call goes to `_desk_first` when
+  `desk_free()` (switch, Voice and Face on, `notifier.at_desk()`, not `Voice.others_here()`, not muted, no open
+  portal) returns Voice: a rings.json row with state `desk`, `calls.desk_fallback` booked `desk_first_s` ahead, and
+  `_desk_ask` on a thread (`Voice.spoken_yes`, owner-only with Voice ID on). It returns `"desk-<since>"` (truthy, so
+  `checkins._call` sets "calling" and its unstick as for a ring). Yes: state `taken`, fallback cancelled,
+  `call_outcome("answered")`, `Voice.desk_call(since, reason, desk_script(key))`. No: the fallback at once; silence:
+  at `desk_first_s`. `_desk_fallback` rings only from state `desk` (-> `phone`) with `desk=False`; `_realert` passes
+  `desk=False`. `Voice.desk_call` opens the portal; while `desk_calling` is set, owner turns go to the AI through
+  `desk_call_line` (the call's steps first) and Live's setup gets them too; `_talk_line` keeps lines whatever
+  `after_talk` says, and on the portal's close `Calls.desk_done(since, lines, reason)` -> `save_transcript` with that
+  since, so the owning feature's `call_transcript` writes the journal. No Android "Answer here" card yet.
+- (0.9.1, L35, `face.greet.say` part `missed_call`, never default) `Checkins.waited()`: today's by-call check-in in
+  status "asked". `greet.compose(missed=...)` adds "Your <name> check-in waited; say yes to do it here." (not with
+  `answers`, and it stops the "Want to go through them?" ending). After a talk greeting, `Voice.offer_checkin(name)`;
+  a `SAID_YES` within `CHECKIN_OFFER_S` in `ask_brain` -> `Calls.desk_checkin(name)` (a `taken` ring, answered, the
+  check-in message retracted) and `desk_calling`, so that same turn starts the check-in.
+- (0.9.1, L29) `save_transcript` calls `review.settle_covered(calls, lines, used, layer)`: `review.covered()` turns the
+  tool log into items (`deadline:<id>` for a deadline tool with an `id`, `class:<slug>` for `skip_class` /
+  `attend_class`), and the user's own lines are the `words`. `Calm.talked(items, said, settle, words)` marks held rows
+  whose `ws_item` (or `deadline:<map_ref>`, or the row's `item`) is one of them, or whose `about` (4+ letters) is in the
+  words: `msg.talked = "on your 17:00 call"` ("at your desk (HH:MM)" for `layer == "desk"`). Release and the bundle set
+  `m.talked` from the stored body, and `calm.still()` returns "talked through ..." when nothing else changed, so
+  `recheck` adds it. `Ask.talked` marks open questions (never `kind == "approval"`) the same way (`q["talked"]`, shown
+  by `/q` and `public()`). With `calls.settle_messages` both settle instead (`state='settled'`, `ask.expire`). Only with
+  `notify.calm.recheck` or `calls.settle_messages` on. The Waiting page's Settled is `POST waiting/settle {kind, id}`.
+- (0.9.1) The wake-up call: `Alarm.done_lately()` (deadlines `done` with `done_at` in the last 36 h) goes into
+  `script()` ("Already done, so never a to-do now"), the morning-prep request and the morning skill's request;
+  both skills say a done deadline is never a to-do even where a note lists it. `Checkins.deferred_steps` names the
+  day and leaves a class whose Capture question is still open (`_open_capture`) to that question; `take_deferred`
+  hands the journal skill the whole transcript with the rule that only the journal answer and that day's classes
+  belong (`journal_ask`), and the no-AI fallback keeps only `checkins.journal_answer(lines)`: the user's lines after
+  the first assistant turn naming the journal, up to the next assistant turn. Study logs go only to classes still in
+  `logs_due` after the call. Capture's `_hook`: a short answer matching `capture.NOT_THERE` (`not_there()`, at most
+  160 characters, no files) calls `Capture.missed`: `set_skip` for that day, status `skipped`, `subjects.catch_up`,
+  no class-log entry and no study-log job.
 - What needs attention: `Calls.pending` merges every enabled module's `call_brief()` with `app.ask.call_brief()` and
   `core/assembler.py:call_brief()` (`open_threads`, `earlier`: the last day's gists, within `memory.budget_tokens`).
   (0.9.0, `calls.context_brief`) The `pending_items` tool calls `pending(context=True)`, which adds `about_them`:
@@ -643,6 +686,21 @@ turns, each side 4000 characters), and its newest turns up to 16 000 characters 
 restart too (`core/jobs.py` passes `jid` to `record_turn`). `/new` in a chat starts that chat over. Retention
 (`privacy.keep_days`, `/forget`) and gists cover the sessions' turns (`modules/chat.py:history_files`).
 `Incoming` has `session` and `quote` for this.
+
+### The Desk chat (0.9.1, `calls.chat_desk`, `calls.chat_desk_history`)
+
+`sessions.DESK` (`de5c000000000000`, 16 hex so the Worker's `SESSION_ID` and the apps take it as any chat) is made by
+`Sessions.ensure_desk()` (title "Desk", `named: "fixed"`, no rename) and left out of `listing()` with the switch off.
+`PhoneChat.desk_turn(you, reply, how)` adds a `from: "you"` message (`how`: spoken, live, typed) and a `from:
+"kurooto"` one with `quiet: true`, pushes both by `chat-say` (the Worker's `chatSay` keeps a quiet one and tells only
+the phones linked straight to it, no ntfy or Web Push), touches the session and calls `Chat.session_turn(DESK, ...)` so
+its context follows on. Callers: `Voice._desk_chat` after an owner's turn (Live and the usual path; guests return
+earlier, R10) and `web/tools_api.say(board=True)` (the talk box sends `from: "board"`; the kurooto command and the
+terminal tab don't). A talk-box AI request goes to `PhoneChat.board_job(jid, text)`; `on_event(job_done)` ->
+`_board_done` adds the turn and keeps `{at, asked, answer}` in `board_answers` (memory, `BOARD_KEEP`, 12 h) for
+`answers_since()` (Face's away card): L140, a fix, so it happens with `chat_desk` off too, minus the chat. With
+`chat_desk_history`, the talk box's `Incoming.session` is `DESK`, and `Chat.ask` injects that session's turns even for
+`via="terminal"` (only then).
 
 ### The chat on the dashboard (0.8.14)
 

@@ -89,6 +89,52 @@ def merge(old: list[str], new: list[str], cap: int) -> list[str]:
     return out[-cap:] if cap > 0 else []
 
 
+def covered(app: App, tools: list[dict]) -> set[str]:
+    """(0.9.1, L29) The items a call's tools worked on, as Brain's workspace names them: "deadline:<id>" for a deadline
+    tool given its id, "class:<slug>" for a class skipped or attended. From the call's tool log (calls/__init__.py:
+    run_tool keeps each tool's arguments as text)."""
+    import ast
+
+    out: set[str] = set()
+    subjects = app.modules.get("subjects") if app.is_on("subjects") else None
+    for t in tools or []:
+        name = str(t.get("name") or "")
+        try:
+            args = ast.literal_eval(str(t.get("args") or "{}"))
+        except (ValueError, SyntaxError):
+            continue
+        if not isinstance(args, dict):
+            continue
+        if "deadline" in name and args.get("id"):
+            out.add(f"deadline:{args['id']}")
+        if name in ("skip_class", "attend_class") and subjects is not None:
+            want = args.get("subjects") if isinstance(args.get("subjects"), list) else []
+            for x in [*want, args.get("subject")]:
+                slug = subjects.resolve(str(x)) if x else None
+                if slug:
+                    out.add(f"class:{slug}")
+    return out
+
+
+def settle_covered(calls, lines: list[dict], tools: list[dict], layer: str = "") -> int:
+    """(0.9.1, L29) After a call or a talk at the desk: held messages and open questions about what it went over (the
+    items its tools worked on, or what they're about said in your own lines) are marked "talked through on your 17:00
+    call" (under notify.calm.recheck), or settled with calls.settle_messages (off). Never approvals. How many."""
+    app = calls.app
+    settle = bool(calls.setting("settle_messages"))
+    if not settle and not app.settings.get("notify.calm.recheck"):
+        return 0
+    items = covered(app, tools)
+    words = " ".join(str(x.get("text") or "") for x in lines if x.get("who") not in (app.name, "(note)"))
+    said = f"at your desk ({now():%H:%M})" if layer == "desk" else f"on your {now():%H:%M} call"
+    n = 0
+    calm = getattr(app, "calm", None)
+    if calm is not None:
+        n += calm.talked(items, said, settle=settle, words=words)
+    n += app.ask.talked(items, said, settle=settle, words=words)
+    return n
+
+
 def review(calls, lines: list[dict], tools: list[dict], purpose: str = "") -> str | None:
     app = calls.app
     if not calls.setting("review") or len(lines) < MIN_LINES or not app.settings.get("brain.main"):

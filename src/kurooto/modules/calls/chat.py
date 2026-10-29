@@ -54,7 +54,7 @@ from kurooto.core.notify import counts
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Incoming
 from kurooto.modules.calls import line
-from kurooto.modules.calls.sessions import MAIN
+from kurooto.modules.calls.sessions import DESK, MAIN
 
 if TYPE_CHECKING:
     from kurooto.core.notify import Message
@@ -92,6 +92,8 @@ register_defaults("phone", {"bedside": {"signal": True}})
 # text buttons after the message's own, never as its first, filled one
 QUIET_BUTTON = re.compile(r"^(?:wrong:[^:]+:x|calm:[^:]+:(?:why|less))$")
 WORKING_S = 3 * 3600  # a chat shows "working" at most this long without hearing the request ended
+BOARD_KEEP = 20  # (0.9.1) the board talk box's requests whose answers are still to come, and answers kept for the
+BOARD_KEEP_S = 12 * 3600  # "while you were away" summary, at most this many and this long
 
 
 def _clip(s: str, n: int) -> str:
@@ -113,6 +115,10 @@ class PhoneChat:
         self.file = calls.dir / "chat.json"
         self.working: dict[str, tuple[str, float]] = {}  # AI requests running for a chat: job -> (session, since)
         self._api = None  # the dashboard's own handlers, for the being's requests (web/api.py)
+        # (0.9.1) the board's talk box: its AI requests still running (job -> what you typed, when), and the answers
+        # that came (for the Desk chat and the "while you were away" summary), in memory only
+        self.board_jobs: dict[str, tuple[str, float]] = {}
+        self.board_answers: list[dict] = []
 
     @property
     def sessions(self):
@@ -365,6 +371,62 @@ class PhoneChat:
         self.live("status", session=sid, state=state)
         return self.calls.connector.admin_later("chat-status", session=sid, state=state, job=job)
 
+    # ------------------------------------------------------------------------------- the Desk chat (0.9.1)
+    def desk_turn(self, you: str, reply: str, how: str = "spoken") -> bool:
+        """(calls.chat_desk) One turn said at the desk (how: "spoken", "live", "typed" on the board's talk box) and its
+        answer, into the Desk chat: kept here, on the dashboard's Chat page, and sealed to the call line like any chat
+        message, quietly (no notification on the phone). Your turns only: the callers leave guests out. Its AI context
+        (modules/chat.py) gets the turn too, so a message typed in the Desk chat follows on. True when it went in."""
+        you, reply = str(you or "").strip(), str(reply or "").strip()
+        if not you or not reply or not self.sessions.ensure_desk():
+            return False
+        t = int(time.time())
+        mine = {"id": uuid.uuid4().hex[:16], "from": "you", "text": _clip(you, TEXT_MAX), "at": t, "session": DESK,
+                "how": how}  # fmt: skip
+        said = {"id": uuid.uuid4().hex[:16], "from": "kurooto", "text": _clip(reply, SAY_MAX), "at": t, "buttons": [],
+                "reply": False, "session": DESK, "quiet": True, "_data": []}  # fmt: skip
+        for m in (mine, said):
+            self._add(m)
+            self._push(m)
+        self.sessions.touch(DESK, mine)
+        self.sessions.touch(DESK, said)
+        chat = self.app.modules.get("chat")
+        if chat is not None and hasattr(chat, "session_turn"):
+            try:
+                chat.session_turn(DESK, you, reply)
+            except Exception as e:
+                self.app.events.emit("chat_desk_failed", error=f"{type(e).__name__}"[:80])
+        self.app.events.emit("chat_desk", how=how)
+        return True
+
+    def board_job(self, jid: str, text: str) -> None:
+        """(0.9.1) The board's talk box started an AI request: its answer goes to the Desk chat and the "while you were
+        away" summary when it ends, even if the page that asked is closed by then."""
+        if not jid:
+            return
+        self.board_jobs[jid] = (str(text or "")[:TEXT_MAX], time.time())
+        while len(self.board_jobs) > BOARD_KEEP:
+            self.board_jobs.pop(next(iter(self.board_jobs)))
+
+    def _board_done(self, jid: str) -> None:
+        got = self.board_jobs.pop(jid, None)
+        if got is None:
+            return
+        job = self.app.jobs.get(jid)
+        if job is None:
+            return
+        answer = str(job.result or "").strip() if job.status == "ok" else "That request failed (the jobs tab says why)."
+        if not answer:
+            return
+        t = time.time()
+        self.board_answers = [a for a in self.board_answers if t - a["at"] < BOARD_KEEP_S][-(BOARD_KEEP - 1) :]
+        self.board_answers.append({"at": t, "asked": got[0][:200], "answer": answer[:SAY_MAX], "job": jid})
+        self.desk_turn(got[0], answer, "typed")
+
+    def answers_since(self, since: float) -> list[dict]:
+        """(0.9.1) The board talk box's answers that came at or after `since` (time.time()): {at, asked, answer}."""
+        return [dict(a) for a in self.board_answers if a["at"] >= since]
+
     def on_event(self, rec: dict) -> None:
         """(core/events.py subscribe) An AI request for a chat ended: it's idle again. A chat switch changed: the
         phones hear (the sessions message carries the switches)."""
@@ -373,6 +435,11 @@ class PhoneChat:
             return
         if rec.get("kind") not in ("job_done", "job_ended", "job_cancelled"):
             return
+        if str(rec.get("job") or "") in self.board_jobs:
+            try:
+                self._board_done(str(rec.get("job")))
+            except Exception as e:  # never in the way of the event feed
+                self.app.events.emit("chat_desk_failed", error=f"{type(e).__name__}"[:80])
         got = self.working.pop(str(rec.get("job") or ""), None)
         if got:
             self.status(got[0], "idle", str(rec.get("job")))

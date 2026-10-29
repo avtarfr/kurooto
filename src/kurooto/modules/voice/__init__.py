@@ -132,6 +132,10 @@ register_defaults(
             # 0.9.0: with someone else at the desk, an answer isn't read aloud by itself (speak.what "all"): it stays
             # on screen, and a message offers "Read it aloud"
             "guests_private": False,
+            # (0.9.1) a due reminder or a question for you (not an approval) is also said aloud while Face presence has
+            # you alone at the desk; the phone copy still comes, and your own spoken answer (Voice ID: your voice)
+            # closes it everywhere. Each through Calm's rules (voice.messages.reminder / .question)
+            "messages": False,
         },
         # 0.9.0: after the greeting's "Want to go through them?", a yes said aloud goes through the waiting questions
         # one by one and takes your spoken answers (your voice only; approvals stay a tap)
@@ -265,6 +269,11 @@ FAST_BRAINS = ("same", "local", "fastest")
 TOLD_SPOKE_S = 10.0  # (0.9.0) told off this soon after a line it said by itself: about that line (gate.TOLD_S)
 TALK_MAX = 400  # (after_talk) text lines kept for one conversation at most
 UNASKED_S = 600.0  # (mirror_to_chat) a typed turn this soon after an unasked spoken line is told about it
+SAID_YES = re.compile(r"^(?:yes|yeah|yep|sure|ok(?:ay)?|right|go ahead|do it|please do)\b", re.I)  # (0.9.1) spoken_yes
+SAID_NO = re.compile(r"^(?:no|nope|nah|don'?t|not now|cancel|stop)\b", re.I)
+SAID_DONE = re.compile(r"^(?:done|ok(?:ay)?|got it|thanks|thank you|yes|yeah|will do|on it|did it)\b", re.I)
+SPOKEN_WAIT_S = 8.0  # (0.9.1) a spoken answer is waited for this long after the question
+CHECKIN_OFFER_S = 120  # (0.9.1, L35) a yes this soon after the greeting's offer of the waited check-in takes it
 READ_IT = re.compile(  # (0.9.0) a yes to the greeting's offer of the answers held while you were away
     r"^\s*(?:yes|yeah|yep|sure|ok(?:ay)?|go ahead|please|read (?:it|them)(?: out)?)(?:[\s,]+please)?[\s.!]*$", re.I
 )
@@ -564,6 +573,10 @@ class Voice(Module):
         self.held_answers: deque = deque(maxlen=10)  # (0.9.0) answers not read while you were away (memory only)
         self._unasked: tuple[float, str] | None = None  # (0.9.0, mirror_to_chat) its last unasked line, for Chat
         self._talk: list[dict] = []  # (0.9.0, after_talk) this conversation's text lines, yours and its (memory only)
+        # (0.9.1, calls.desk_first) a call taken at the desk: since, reason, script; and (L35) the check-in the
+        # greeting offered, with when
+        self.desk_calling: dict | None = None
+        self._checkin_offer: tuple[str, float] | None = None
 
     # ------------------------------------------------------------------------------------------- the parts
     def wants(self) -> list[str]:
@@ -743,6 +756,13 @@ class Voice(Module):
                 if face is not None and hasattr(face, "greet_closed"):
                     face.greet_closed(self.portal.turns > 0)
             talk, self._talk = self._talk, []
+            dc, self.desk_calling = self.desk_calling, None
+            if dc is not None:  # (0.9.1) a call taken at the desk: its lines go where the call's would (its journal)
+                calls = self.app.modules.get("calls")
+                if calls is not None and hasattr(calls, "desk_done"):
+                    threading.Thread(target=calls.desk_done, args=(dc["since"], talk, dc["reason"]),
+                                     name="voice-desk-call", daemon=True).start()  # fmt: skip
+                return
             if talk and self.setting("listen.after_talk"):  # (0.9.0) a talk at the desk, as a call's end has
                 threading.Thread(target=self.after_talk, args=(talk,), name="voice-after-talk", daemon=True).start()
 
@@ -1506,15 +1526,17 @@ class Voice(Module):
             held = self.read_held(text)
             if held is not None:
                 return held
+            self._take_checkin_offer(text)  # (0.9.1) "yes" to the waited check-in: this turn starts it, here
         if who is not None and who.decision == "owner":  # (voice.listen.live) Gemini Live answers it aloud, or None
             said = self.live.turn(text, turn)
             if said is not None:
                 self._talk_line("you", text)  # (after_talk) a Live turn is a turn of this talk too
                 self._talk_line(self.app.name, said)
+                self._desk_chat(text, said, "live")
                 return said
         replies: list[str] = []
         msg = Incoming(
-            text=text,
+            text=self.desk_call_line(text) if who is None or who.decision == "owner" else text,
             via="voice",
             voice=True,
             respond=lambda t, buttons=None: replies.append(str(t)),
@@ -1563,6 +1585,7 @@ class Voice(Module):
             fast.stamp(turn, "first_text")
             fast.stamp(turn, "answer")
             self._talk_line(self.app.name, "\n".join(replies))
+            self._desk_chat(text, "\n".join(replies))
             return "\n".join(replies)
         answer = self._wait_job(msg) if stream is None else self._wait_job(msg, stream)
         if stream is not None and stream.cut and not answer:  # cut off mid-answer: what it said is the answer shown
@@ -1571,6 +1594,7 @@ class Voice(Module):
         fast.stamp(turn, "first_text")
         fast.stamp(turn, "answer")
         self._talk_line(self.app.name, answer)
+        self._desk_chat(text, answer)
         chat = self.app.modules.get("chat")
         if chat is not None and answer and chat.owns(jid):  # the conversation goes on, as a typed one does
             try:
@@ -1925,10 +1949,175 @@ class Voice(Module):
         self.portal.invite(text, listen_s)
         return True, "talk"
 
+    # ------------------------------------------------------------- the shared spoken answer (0.9.1, L41)
+    def others_here(self) -> bool:
+        """Someone besides you is at the desk (core/biometric.py, or the notifier's faces-and-voices check): nothing
+        of yours is said aloud then and no spoken answer is taken (R10)."""
+        from kurooto.core import biometric
+
+        try:
+            if biometric.others_present(self.app):
+                return True
+        except Exception:
+            pass
+        guests = getattr(self.app.notifier, "guests_here", None)
+        try:
+            return bool(guests()) if guests is not None else False
+        except Exception:
+            return False
+
+    def verdict_of(self, emb: list[float] | None, speech_s: float) -> str:
+        """Voice ID's word for one stretch's numbers: "owner", "unsure" or "guest"; "" with Voice ID off. The score
+        never leaves here."""
+        if not self.voiceid.on():
+            return ""
+        from kurooto.modules.voice import speakerid as sid
+
+        try:
+            t = self.voiceid.template() if not self.voiceid.problem() else None
+            if t is None or not emb:
+                return sid.UNSURE
+            score = sid.dot(list(emb), sid.from_b64(t["centroid"]))
+            ctx = sid.Ctx(now=self.portal.clock(), face_owner=self.voiceid.face_owner())
+            return sid.decide(score, self.voiceid.thresholds(t), speech_s, ctx, **self.voiceid.rules()).decision
+        except Exception:
+            return sid.UNSURE
+
+    def spoken_answer(self, prompt: str = "", timeout_s: float = SPOKEN_WAIT_S, why: str = "") -> dict | None:
+        """(0.9.1, L41) The shared spoken answer, for Kurooto's own features and add-ons (an add-on's yes or no can call
+        this or spoken_yes instead of keeping its own): says `prompt` (unprompted, `why` its Calm reason), then takes
+        the next stretch of speech through listen_once (whatever voice.addons.listen says). {"text", "who"}: who is
+        Voice ID's word ("owner", "unsure", "guest"; "" with Voice ID off); a caller that acts on the answer needs
+        "owner" (R8). None: Voice off or muted, someone else here (R10), it couldn't speak, or nothing was said in
+        time. The sound is never kept; the text goes only to the caller."""
+        if not self.app.is_on(self.id) or self.muted() or self.others_here():
+            return None
+        if prompt:
+            ok, _ = self.say(prompt, wait=True, unprompted=True, why=why or "voice.unprompted")
+            if not ok:
+                return None
+        got = self.listen_once(timeout_s, own=True)
+        if not got or not str(got[0] or "").strip():
+            return None
+        text, emb, secs = got
+        who = self.verdict_of(emb, float(secs or 0))
+        self.app.events.emit("voice_spoken_answer", who=who or "unchecked")
+        return {"text": str(text).strip(), "who": who}
+
+    def spoken_yes(self, prompt: str, timeout_s: float = SPOKEN_WAIT_S, why: str = "", need_owner: bool = True):
+        """(0.9.1) A yes or no said aloud: True, False, or None (no clear answer, not your voice, or none). need_owner
+        False also takes an answer with Voice ID off (for a question that changes nothing)."""
+        got = self.spoken_answer(prompt, timeout_s, why)
+        if got is None or (got["who"] != "owner" and (need_owner or got["who"] != "")):
+            return None
+        said = got["text"].strip().strip(".!")
+        return True if SAID_YES.match(said) else False if SAID_NO.match(said) else None
+
+    # ---------------------------------------------------------- messages said aloud at the desk (0.9.1, L42)
+    def spoken_message(self, msg) -> bool:
+        """(voice.speak.messages; the notifier's on_deliver) A due reminder or an ask-me question that just went out
+        everywhere as usual is also said aloud, when Face presence has you at the desk, alone, and Calm's rules allow
+        it. Never an approval. On its own thread; True when it started."""
+        if not self.setting("speak.messages") or not self.app.is_on(self.id) or self.muted():
+            return False
+        kind = str(getattr(msg, "kind", "") or "")
+        if kind not in ("reminder", "question") or (kind == "question" and getattr(msg, "map_kind", "") != "ask"):
+            return False
+        if kind == "question":
+            q = self.app.ask.get(str(msg.map_ref or ""))
+            if not q or q.get("kind") != "question":
+                return False  # an approval waits for your tap (R8)
+        n = self.app.notifier
+        if not n.at_desk() or self.others_here():
+            return False
+        why = f"voice.messages.{kind}"
+        calm = getattr(self.app, "calm", None)
+        if calm is not None and not calm.speak_ok(why, about=str(getattr(msg, "about", "") or "")):
+            return False
+        threading.Thread(target=self._say_message, args=(msg, why), name="voice-message", daemon=True).start()
+        return True
+
+    def _say_message(self, msg, why: str) -> None:
+        try:
+            from kurooto.core.ask import OPEN
+
+            if msg.kind == "question":
+                q = self.app.ask.get(str(msg.map_ref or ""))
+                if not q or q.get("status") not in OPEN:
+                    return
+                got = self.spoken_answer(f"A question for you: {q['text']}", why=why)
+                if got and got["who"] == "owner":  # your voice: it's answered, and taken down everywhere
+                    r = self.app.ask.answer(q["id"], got["text"], via="voice")
+                    self.say("Noted." if r.get("ok") else "That one was dealt with already.", wait=False)
+                    self.app.events.emit("voice_message_answered", kind="question", ok=bool(r.get("ok")))
+                return
+            text = " ".join(str(msg.text or "").split("\n\n")[0].split())
+            got = self.spoken_answer(f"Reminder: {text}"[:600], why=why)
+            if got and got["who"] == "owner" and SAID_DONE.match(got["text"].strip()) and msg.map_kind:
+                self.app.notifier.retract(msg.map_kind, msg.map_ref)  # heard: its copies come down
+                self.app.events.emit("voice_message_answered", kind="reminder", ok=True)
+        except Exception as e:
+            self.app.events.emit("voice_failed", part="message aloud", error=f"{type(e).__name__}"[:100])
+
+    # --------------------------------------------------------------- a call taken at the desk (0.9.1, L34)
+    def desk_call(self, since: str, reason: str, script: str) -> bool:
+        """(calls.desk_first) You said yes to taking a call here: the conversation opens with its first words, and
+        until it closes each of your turns goes to your AI with the call's steps (Live, if voice.listen.live is on,
+        answers with its own call setup). When it closes, its lines go to Calls.desk_done. True when it opened."""
+        self.desk_calling = {"since": since, "reason": reason, "script": script[:4000]}
+        opening = "OK, here then."
+        ok, _ = self.say(opening, wait=True)
+        blocked = self.blocked()
+        if not ok or blocked:
+            self.desk_calling = None
+            calls = self.app.modules.get("calls")
+            if calls is not None and hasattr(calls, "_desk_fallback"):
+                calls._desk_state(since, "taken", "desk")
+                calls._desk_fallback({"since": since})  # the phone after all
+            return False
+        self._talk_line(self.app.name, opening)
+        self.portal.invite(opening, float(self.setting("listen.follow_s") or 20))
+        return True
+
+    def offer_checkin(self, name: str) -> None:
+        """(0.9.1, L35) The greeting just offered the check-in that waited: a yes said within CHECKIN_OFFER_S takes it
+        here."""
+        self._checkin_offer = (name, time.monotonic())
+
+    def _take_checkin_offer(self, text: str) -> bool:
+        off, self._checkin_offer = self._checkin_offer, None
+        if off is None or time.monotonic() - off[1] > CHECKIN_OFFER_S or not SAID_YES.match((text or "").strip()):
+            return False
+        calls = self.app.modules.get("calls")
+        got = calls.desk_checkin(off[0]) if calls is not None and self.app.is_on("calls") else None
+        if not got:
+            return False
+        self.desk_calling = {"since": got[0], "reason": got[1], "script": got[2][:4000]}
+        return True
+
+    def desk_call_line(self, text: str) -> str:
+        """The turn as your AI gets it during a call at the desk: the call's steps first, then what you said."""
+        dc = self.desk_calling
+        if not dc:
+            return text
+        return (f"[A call taken at the desk: {dc['reason']}. Go through it as the call would, one question at a time, "
+                f"briefly, as spoken words. Its steps:\n{dc['script']}]\n\nThey said: {text}")  # fmt: skip
+
+    def _desk_chat(self, said: str, answer: str, how: str = "spoken") -> None:
+        """(0.9.1, calls.chat_desk) Your turn at the desk and its answer, into the phone app's and the dashboard's
+        "Desk" chat. Only your own turns reach here (a guest's returned before). Never raises."""
+        calls = self.app.modules.get("calls")
+        if calls is None or not self.app.is_on("calls") or not hasattr(calls, "chat"):
+            return
+        try:
+            calls.chat.desk_turn(said, answer, how)
+        except Exception as e:
+            self.app.events.emit("voice_failed", part="desk chat", error=f"{type(e).__name__}"[:100])
+
     def _talk_line(self, who: str, text: str) -> None:
         """(after_talk) One text line of this conversation, in memory until it closes (at most TALK_MAX lines)."""
         text = (text or "").strip()
-        if text and self.setting("listen.after_talk") and len(self._talk) < TALK_MAX:
+        if text and (self.setting("listen.after_talk") or self.desk_calling) and len(self._talk) < TALK_MAX:
             self._talk.append({"who": who, "text": text[:4000]})
 
     def after_talk(self, lines: list[dict]) -> None:
@@ -1994,9 +2183,15 @@ class Voice(Module):
         if not self._watching:
             self.app.jobs.watchers.append(self._job_done)
             self._watching = True
+        hooks = getattr(self.app.notifier, "on_deliver", None)
+        if hooks is not None and self.spoken_message not in hooks:  # (0.9.1, voice.speak.messages)
+            hooks.append(self.spoken_message)
 
     def stop(self) -> None:
         super().stop()
+        hooks = getattr(self.app.notifier, "on_deliver", None)
+        if hooks is not None and self.spoken_message in hooks:
+            hooks.remove(self.spoken_message)
         self.portal.close("turned off")
         self.speaker.stop()
         self._stop_listening("turned off")
@@ -2157,15 +2352,15 @@ class Voice(Module):
             del pcm
 
     # -------------------------------------------------------------------------------------- hooks for add-ons
-    def listen_once(self, timeout_s: float = 8.0) -> tuple[str, list[float] | None, float] | None:
+    def listen_once(self, timeout_s: float = 8.0, own: bool = False) -> tuple[str, list[float] | None, float] | None:
         """The next stretch of speech, any voice and without its name, for an add-on: (text, the voice's numbers or
         None, seconds of speech), or None (nothing said within timeout_s, listening blocked or muted, the portal
         open, another holder, voice.addons.listen off). Written out here; never sent to the gate, the portal or the
         AI, never kept. Blocks the caller (call it from the add-on's own thread); the stretch is written out on
         Voice's own hearing thread meanwhile. The voice's numbers come from Voice ID's model when its parts are set
         up (Voice ID itself may be off)."""
-        if not self.app.is_on(self.id) or not self.setting("addons.listen") or self.blocked():
-            return None
+        if not self.app.is_on(self.id) or not (own or self.setting("addons.listen")) or self.blocked():
+            return None  # own (0.9.1): Kurooto's own spoken_answer, which isn't an add-on's
         if self.listener is None or not self.listener.running() or self.portal.open or self.portal.busy:
             return None
         if not self._once_lock.acquire(blocking=False):

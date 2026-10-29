@@ -181,3 +181,8 @@ when = "Pick `layout` to get every tab each time."
 tip = "The dashboard's Memory page (Alt+U): everything Kurooto keeps about you, side by side."
 what = "The memory ledger, open threads, what was set up from what you said, what it learned from its own work, topics you aren't interested in, Brain's model of you (with Wrong and Forget) and what add-ons keep, as counts. It reads; each list's own command changes it, with Undo. Nothing on it is sent anywhere."
 when = "Turn it off to hide the page."
+[s."look.being_held_link"]
+tip = "The being's held count opens the Waiting page (Alt+W): every held message in full, with Send now."
+what = "Also the \"while you were away\" card and how many questions and proposals wait. It reads on this computer; Send now sends the held messages as the evening bundle would."
+when = "Turn it off to hide the page and make the count a plain number again."
+

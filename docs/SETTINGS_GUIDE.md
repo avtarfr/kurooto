@@ -206,11 +206,15 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | Setting | Default | What it does |
 |---|---|---|
 | `calls.after_infer` | `true` | After a call, what you said on it is read like a typed message: stated facts are set up, "remember that" is kept. ([guide](wiki/user/settings-guide.md#callsafterinfer)) |
+| `calls.chat_desk` | `true` | What you say at the desk (aloud, Live, the board's talk box) and its answers, as one Desk chat on the dashboard and phone. ([guide](wiki/user/settings-guide.md#callschatdesk)) |
+| `calls.chat_desk_history` | `false` | The board's talk box sends the Desk chat's recent turns with each request, so your AI can follow on. ([guide](wiki/user/settings-guide.md#callschatdeskhistory)) |
 | `calls.chat_edit` | `true` | Edit your own messages in the app's chat for 15 minutes after sending. ([guide](wiki/user/settings-guide.md#callschatedit)) |
 | `calls.chat_files_inline` | `true` | Files in the app's chat show inline and open in the app. ([guide](wiki/user/settings-guide.md#callschatfilesinline)) |
 | `calls.chat_sessions` | `true` | Separate chats in the phone app, each its own conversation whose context carries over. ([guide](wiki/user/settings-guide.md#callschatsessions)) |
 | `calls.chat_titles` | `"first words"` | How a new chat gets its title: its first words, or a short title from your AI. ([guide](wiki/user/settings-guide.md#callschattitles)) |
 | `calls.context_brief` | `true` | Calls and desk Live talks hear what every AI request is told: your profile's brief, how to help you, topics you skip. ([guide](wiki/user/settings-guide.md#callscontextbrief)) |
+| `calls.desk_first` | `false` | A call Kurooto places by itself is offered at your desk first when you're there alone; the phone still rings after a wait. ([guide](wiki/user/settings-guide.md#callsdeskfirst)) |
+| `calls.desk_first_s` | `30` | How long the desk offer waits for your yes before the phone rings (seconds, at least 10). ([guide](wiki/user/settings-guide.md#callsdeskfirsts)) |
 | `calls.hold_moving` | `false` | Calls Kurooto places by itself wait while your phone says you're walking or in a vehicle. ([guide](wiki/user/settings-guide.md#callsholdmoving)) |
 | `calls.later_min` | `30` | Minutes until it calls back after you tap Later on a ringing call. ([guide](wiki/user/settings-guide.md#callslatermin)) |
 | `calls.lessons_everywhere` | `true` | Each lesson from the look back after a call is also a dated line in your how-to-help-me note, so every AI request follows it. ([guide](wiki/user/settings-guide.md#callslessonseverywhere)) |
@@ -229,6 +233,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `calls.review_brain` | `""` | Which AI does the look back after a call; empty is your main one. ([guide](wiki/user/settings-guide.md#callsreviewbrain)) |
 | `calls.review_effort` | `"high"` | How hard the look back after a call thinks. ([guide](wiki/user/settings-guide.md#callsrevieweffort)) |
 | `calls.ring_s` | `60` | Seconds a call rings before it counts as missed (a wake-up call rings 5 minutes). ([guide](wiki/user/settings-guide.md#callsrings)) |
+| `calls.settle_messages` | `false` | After a call or a desk talk went over something, its held messages and open questions are closed, not just marked. ([guide](wiki/user/settings-guide.md#callssettlemessages)) |
 | `calls.tell_senses` | `true` | A call's brief says whether Face presence and Voice ID are on, and when you were last at the desk. ([guide](wiki/user/settings-guide.md#callstellsenses)) |
 | `calls.text_model` | `"gemini-flash-latest"` | The Gemini model that answers turn-by-turn calls (here, or on your call line while the computer is off). ([guide](wiki/user/settings-guide.md#callstextmodel)) |
 | `calls.threads_live` | `true` | A call can close one of your open threads while it's on, when you say it's done. ([guide](wiki/user/settings-guide.md#callsthreadslive)) |
@@ -448,6 +453,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `face.away.on` | `false` | Notice when you leave the desk and come back. ([guide](wiki/user/settings-guide.md#faceawayon)) |
 | `face.away.places_close_camera` | `false` | While your phone is out, keep the camera closed. ([guide](wiki/user/settings-guide.md#faceawayplacesclosecamera)) |
 | `face.away.report_others` | `false` | While you're away, note the times someone else's face was in view at your desk, and tell you once when you're back. ([guide](wiki/user/settings-guide.md#faceawayreportothers)) |
+| `face.away.summary` | `false` | Back at the desk: one "while you were away" pop-up, and a card on the dashboard's Waiting page with what came meanwhile. ([guide](wiki/user/settings-guide.md#faceawaysummary)) |
+| `face.away.summary_only` | `false` | With the away summary: its one pop-up instead of every held pop-up; they wait on the card until Send now. ([guide](wiki/user/settings-guide.md#faceawaysummaryonly)) |
 | `face.away.use_places` | `false` | Your phone leaving a place you saved marks you away from the desk at once. ([guide](wiki/user/settings-guide.md#faceawayuseplaces)) |
 | `face.breaks` | `true` | Leaving, looking up at the camera and standing up are natural breaks for Brain's door. ([guide](wiki/user/settings-guide.md#facebreaks)) |
 | `face.camera.device` | `""` | The camera to use: empty for the first ordinary one (infrared ones are skipped), or a number or part of its name. ([guide](wiki/user/settings-guide.md#facecameradevice)) |
@@ -707,6 +714,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 
 | Setting | Default | What it does |
 |---|---|---|
+| `look.being_held_link` | `true` | The being's held count opens the Waiting page (Alt+W): every held message in full, with Send now. ([guide](wiki/user/settings-guide.md#lookbeingheldlink)) |
 | `look.being_hints` | `true` | The being's hints: what to click and what each part is (H on the board toggles them). ([guide](wiki/user/settings-guide.md#lookbeinghints)) |
 | `look.being_live_waveform` | `true` | The being's YOU lane live: a trace of the microphone's loudness as you speak, the last six seconds. ([guide](wiki/user/settings-guide.md#lookbeinglivewaveform)) |
 | `look.being_mood` | `true` | Brain's own mood in the drawing: the fluid's tint and the heart's beat; its pupil and pulse show the three knobs. ([guide](wiki/user/settings-guide.md#lookbeingmood)) |
@@ -1465,6 +1473,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.speak.guests_private` | `false` | With someone else at the desk, an AI answer isn't read aloud by itself: it stays on screen, and a message offers Read it aloud. ([guide](wiki/user/settings-guide.md#voicespeakguestsprivate)) |
 | `voice.speak.join_sentences` | `true` | Speak short sentences together, up to about 200 characters at a time, instead of each on its own. ([guide](wiki/user/settings-guide.md#voicespeakjoinsentences)) |
 | `voice.speak.max_chars` | `800` | How much of a long answer is read aloud before it says "the rest is on screen". ([guide](wiki/user/settings-guide.md#voicespeakmaxchars)) |
+| `voice.speak.messages` | `false` | A due reminder or a question for you is also said aloud while you're alone at the desk; your spoken answer closes it. ([guide](wiki/user/settings-guide.md#voicespeakmessages)) |
 | `voice.speak.numbers_as_words` | `true` | Say numbers as a person would: 21:31 as "nine thirty-one PM", ₹3,000 as "three thousand rupees". ([guide](wiki/user/settings-guide.md#voicespeaknumbersaswords)) |
 | `voice.speak.on` | `true` | Kurooto speaks through this computer's speakers. ([guide](wiki/user/settings-guide.md#voicespeakon)) |
 | `voice.speak.rate` | `1.0` | How fast it speaks: 1.0 is normal, 0.8 slower, 1.2 faster. ([guide](wiki/user/settings-guide.md#voicespeakrate)) |

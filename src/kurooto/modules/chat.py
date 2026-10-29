@@ -153,7 +153,8 @@ class Chat(Module):
             history = jload(self.history_file, []) or []
             recent = [h for h in history if now_ts - h.get("at", 0) < 7200][-6:]
 
-        if recent and not terminal:
+        desk = sid and sid == getattr(msg, "session", "") and msg.via == "terminal"  # (0.9.1) the board's box
+        if recent and (not terminal or desk):  # ...with calls.chat_desk_history: the Desk chat's turns go with it
             conv = ["Previous conversation:"]
             for h in recent:
                 conv.append(f"User: {h['user']}")
@@ -425,6 +426,15 @@ class Chat(Module):
             }
         )
         jsave(self.history_file, history[-10:])
+
+    def session_turn(self, sid: str, user: str, reply: str) -> None:
+        """(0.9.1) A turn into a phone app chat's own context, from elsewhere (the Desk chat: calls/chat.py)."""
+        if not sid or sid == MAIN or not reply or not self._session_lives(sid):
+            return
+        f = self.session_file(sid)
+        history = jload(f, []) or []
+        history.append({"user": str(user)[:4000], "assistant": str(reply)[:4000].strip(), "at": time.time()})
+        jsave(f, history[-SESSION_KEEP:])
 
     def _session_lives(self, sid: str) -> bool:
         calls = self.app.modules.get("calls")

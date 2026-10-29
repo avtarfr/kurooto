@@ -396,6 +396,16 @@ at once; an arrive does nothing to the watcher. "back" and an arrival clear `pho
 `voice.listen.phone_away` is a `blocked()` reason of its own reading the same `phone_out`. Needs Brain on and
 `mind.senses.phone.places` (the phone's saved places); without them nothing ever sets it.
 
+## While you were away (0.9.1, `face.away.summary`, `face.away.summary_only`, off)
+
+`_on_watch("left")` stamps `_left_ts` (an arrival without it: `time.time() - away_min * 60`). `flush_desktop(card=True)`
+with the switch calls `away_summary()`: the held pop-ups (`self.held`, title/text/urgent) and
+`calls.chat.answers_since(_left_ts)` (the board talk box's answers, calls/chat.py) become `away_card` (memory only) and
+one `desktop.notify("While you were away", ...)`, event `face_away_summary {popups, answers}`. Without `summary_only` the
+held pop-ups then flush as before and the card is marked `shown`; with it, `held` is cleared and `show_away()` (the
+Waiting page's Send now, `POST waiting/away`) shows them. `core/waiting.py:view` puts the card on the Waiting page;
+`calls/today.py:_waiting` adds `away` (a count).
+
 ## Someone else while you're away (0.9.0, `face.away.report_others`, off)
 
 `Watcher._look` counts the faces classified `stranger` in a frame (unsure ones don't count) and, while `away`, emits

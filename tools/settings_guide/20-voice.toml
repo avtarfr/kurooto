@@ -577,6 +577,12 @@ what = "Only for answers read out because `voice.speak.what` is `all`. Someone e
 when = "Turn it on if answers about your work shouldn't be heard by whoever is with you."
 needs = "`voice.speak.what` = `all`, and Face presence or Voice ID to notice others."
 
+[s."voice.speak.messages"]
+tip = "A due reminder or a question for you is also said aloud while you're alone at the desk; your spoken answer closes it."
+what = "Only with Face presence seeing you at the desk and nobody else there. The phone and Telegram copies still come. A question's answer counts only in your own voice (Voice ID), and then it's answered everywhere; \"done\" to a reminder takes its copies down. Approvals are never said: they wait for your tap. Each kind goes through Calm (Why?, Stop)."
+when = "Turn it on if you'd rather hear reminders at the desk than look at the phone."
+needs = "Voice speaking and listening, Face presence; Voice ID for answers to close anything."
+
 [s."voice.listen.timing"]
 tip = "Time each spoken turn from your last word to Kurooto's first sound, as numbers only."
 what = """Each turn that goes to your AI is timed from the end of your speech: written out, decided (the face check

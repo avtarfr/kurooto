@@ -138,11 +138,16 @@ still (it sweeps across instead of scrolling). Both lanes are smooth waveforms, 
 
 **Brain's glance** (0.8.14, with Brain on): the being shows Brain's status. Its eyes shut while focus time is on or
 it's asleep, a small number by the heart counts the messages it's holding, and a slow glow sits on the one deadline it's
-uneasy about: click it to open the deadline (`look.being_status`). Its own mood tints the fluid round the brain and sets
+uneasy about: click it to open the deadline (`look.being_status`). Click the held number to open the **Waiting**
+page (0.9.1, Alt+W, `look.being_held_link`): every held message in full, why it waits and since when, with **Send now**
+(they go out as the evening bundle would), the "while you were away" card ([face.md](face.md#when-you-step-away)), and
+how many questions and proposals wait. Its own mood tints the fluid round the brain and sets
 the heart's beat: a low mood is only dimmer and softer, never sad (`look.being_mood`). More: [mind.md](mind.md#one-being-its-status-temperament-and-knobs).
 
 **The talk box** (bottom right, on every board; **Alt+K**): type to Kurooto as on Telegram; the answer prints in it.
-Turn it off with `look.talk_box`.
+Turn it off with `look.talk_box`. (0.9.1) What you type there and its answers also go to the **Desk** chat (Chat page,
+phone app; `calls.chat_desk`), so an answer that comes after you closed the page isn't lost; it never goes to Telegram.
+`calls.chat_desk_history` (off) lets the talk box follow on from the Desk chat's recent turns.
 
 ### STATUS: this computer
 

@@ -28,7 +28,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Your AI](#your-ai): 37 settings
 - [Messages and where they reach you](#messages-and-where-they-reach-you): 41 settings
 - [When it may interrupt you](#when-it-may-interrupt-you): 14 settings
-- [Phone calls and the call line](#phone-calls-and-the-call-line): 47 settings
+- [Phone calls and the call line](#phone-calls-and-the-call-line): 52 settings
 - [Morning alarm](#morning-alarm): 13 settings
 - [Reminders, deadlines and start-by dates](#reminders-deadlines-and-start-by-dates): 49 settings
 - [Check-ins, journal and the week](#check-ins-journal-and-the-week): 21 settings
@@ -43,14 +43,14 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 68 settings
 - [Brain](#brain): 159 settings
-- [Voice and voice notes](#voice-and-voice-notes): 91 settings
+- [Voice and voice notes](#voice-and-voice-notes): 92 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 12 settings
-- [Dashboard and terminal](#dashboard-and-terminal): 33 settings
+- [Dashboard and terminal](#dashboard-and-terminal): 34 settings
 - [Add-ons](#add-ons): 4 settings
 - [The phone app's own settings](#the-phone-apps-own-settings): 28 settings
-- [Face presence](#face-presence): 53 settings
+- [Face presence](#face-presence): 55 settings
 
 ## You and how it talks to you
 
@@ -1406,6 +1406,32 @@ How a new chat gets its title: its first words, or a short title from your AI.
 - **When to change it:** Pick `ai` for neater titles; it costs one small AI request per new chat.
 - **Costs and what leaves this computer:** `ai` sends the chat's first message and answer to your AI once.
 
+### `calls.chat_desk`
+
+What you say at the desk (aloud, Live, the board's talk box) and its answers, as one Desk chat on the dashboard and
+phone.
+
+Your own turns only, never a guest's. The Desk chat sits beside your other chats; its messages are sealed to your call
+line like the rest and come to the phone without a notification. A message you type in it follows on from what you said
+at the desk.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to keep desk talk out of the chat list (the Desk chat and its context are kept
+  until it's back on).
+- **Costs and what leaves this computer:** Sealed copies on your call line, as for every chat message.
+- **Depends on:** `calls.chat_sessions`.
+
+### `calls.chat_desk_history`
+
+The board's talk box sends the Desk chat's recent turns with each request, so your AI can follow on.
+
+Only the dashboard's talk box: the kurooto command, the terminal tab and setup stay requests on their own.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you use the talk box for back-and-forth conversations.
+- **Costs and what leaves this computer:** Longer requests to your AI (the recent turns go with each one).
+- **Depends on:** `calls.chat_desk`.
+
 ### `lidsafe.hours`
 
 How far ahead your call line holds reminders and the morning line, in hours.
@@ -1535,6 +1561,36 @@ Counts and a word only. Tapping the held line sends today's held messages now.
 - **When to change it:** Turn it off if you'd rather not see those on the phone.
 - **Costs and what leaves this computer:** Sealed for each phone, with the rest of Today.
 - **Depends on:** `calls.today`.
+
+### `calls.settle_messages`
+
+After a call or a desk talk went over something, its held messages and open questions are closed, not just marked.
+
+Off, they're only marked "talked through on your 17:00 call" (with notify.calm.recheck) and the Waiting page has Settled
+for each. On, they're settled at once. Approvals never: they wait for your tap.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if a call usually covers what was waiting.
+
+### `calls.desk_first`
+
+A call Kurooto places by itself is offered at your desk first when you're there alone; the phone still rings after a
+wait.
+
+Never the alarm or a call you asked for just now. It asks aloud "shall we do it here?"; a yes takes it at the desk (Live
+if voice.listen.live is on, else Voice's own way), and its words go where the call's would (a check-in's journal). No or
+silence: the phone rings, as before.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you're often at the computer when check-in calls come.
+- **Depends on:** Voice speaking and listening, and Face presence seeing you at the desk.
+
+### `calls.desk_first_s`
+
+How long the desk offer waits for your yes before the phone rings (seconds, at least 10).
+
+- **Values:** A whole number. **Default:** `30`.
+- **When to change it:** Raise it if you need longer to answer; lower it if the phone should ring sooner.
 
 ### `calls.today_plan`
 
@@ -7945,6 +8001,18 @@ presence) or a voice that isn't yours lately (Voice ID).
 - **When to change it:** Turn it on if answers about your work shouldn't be heard by whoever is with you.
 - **Depends on:** `voice.speak.what` = `all`, and Face presence or Voice ID to notice others.
 
+### `voice.speak.messages`
+
+A due reminder or a question for you is also said aloud while you're alone at the desk; your spoken answer closes it.
+
+Only with Face presence seeing you at the desk and nobody else there. The phone and Telegram copies still come. A
+question's answer counts only in your own voice (Voice ID), and then it's answered everywhere; "done" to a reminder
+takes its copies down. Approvals are never said: they wait for your tap. Each kind goes through Calm (Why?, Stop).
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if you'd rather hear reminders at the desk than look at the phone.
+- **Depends on:** Voice speaking and listening, Face presence; Voice ID for answers to close anything.
+
 ### `voice.listen.timing`
 
 Time each spoken turn from your last word to Kurooto's first sound, as numbers only.
@@ -8862,6 +8930,16 @@ list's own command changes it, with Undo. Nothing on it is sent anywhere.
 - **Values:** On or off. **Default:** on.
 - **When to change it:** Turn it off to hide the page.
 
+### `look.being_held_link`
+
+The being's held count opens the Waiting page (Alt+W): every held message in full, with Send now.
+
+Also the "while you were away" card and how many questions and proposals wait. It reads on this computer; Send now sends
+the held messages as the evening bundle would.
+
+- **Values:** On or off. **Default:** on.
+- **When to change it:** Turn it off to hide the page and make the count a plain number again.
+
 ## Add-ons
 
 Your own add-ons folder (extra features, skills, prompts and default settings laid over Kurooto), and add-ons by link
@@ -9247,6 +9325,26 @@ it isn't sure about (maybe you) don't count, and it only knows about the times t
 - **Costs and what leaves this computer:** One message on your return when someone was seen.
 - **Depends on:** Noticing when you leave (face.away.on).
 
+### `face.away.summary`
+
+Back at the desk: one "while you were away" pop-up, and a card on the dashboard's Waiting page with what came meanwhile.
+
+The card lists the pop-ups held while you were away in full and the talk box's answers that came meanwhile, with Send
+now. The held pop-ups still show one by one, as before. In memory only.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on to see at a glance what you missed.
+- **Costs and what leaves this computer:** One more pop-up when you come back to something waiting.
+- **Depends on:** Noticing when you leave (face.away.on).
+
+### `face.away.summary_only`
+
+With the away summary: its one pop-up instead of every held pop-up; they wait on the card until Send now.
+
+- **Values:** On or off. **Default:** off.
+- **When to change it:** Turn it on if the pop-ups on your return come all at once.
+- **Depends on:** `face.away.summary`.
+
 ### `face.away.hold_calls`
 
 While you're away, calls Kurooto would start by itself wait for you (up to the longest wait below).
@@ -9325,7 +9423,8 @@ A daily cap on greetings.
 What the greeting tells you: what's next today, what's waiting, deadlines in 24 h, what was held while you were away.
 
 Parts: next, waiting, deadline, held, and (0.9.0) answers: how many answers weren't read aloud while you were away (a
-yes right after reads them).
+yes right after reads them). (0.9.1) missed_call, never on by default: a check-in call that went unanswered today; a yes
+takes it here, at the desk.
 
 - **Values:** A list, typed as JSON. **Default:** `["next", "waiting", "deadline", "answers"]`.
 - **When to change it:** Trim it to what you want to hear first when you sit down.

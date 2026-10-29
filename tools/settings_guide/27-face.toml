@@ -72,6 +72,18 @@ when = "Turn it on if you want to know whether someone used your computer while 
 cost = "One message on your return when someone was seen."
 needs = "Noticing when you leave (face.away.on)."
 
+[s."face.away.summary"]
+tip = "Back at the desk: one \"while you were away\" pop-up, and a card on the dashboard's Waiting page with what came meanwhile."
+what = "The card lists the pop-ups held while you were away in full and the talk box's answers that came meanwhile, with Send now. The held pop-ups still show one by one, as before. In memory only."
+when = "Turn it on to see at a glance what you missed."
+cost = "One more pop-up when you come back to something waiting."
+needs = "Noticing when you leave (face.away.on)."
+
+[s."face.away.summary_only"]
+tip = "With the away summary: its one pop-up instead of every held pop-up; they wait on the card until Send now."
+when = "Turn it on if the pop-ups on your return come all at once."
+needs = "`face.away.summary`."
+
 [s."face.away.hold_calls"]
 tip = "While you're away, calls Kurooto would start by itself wait for you (up to the longest wait below)."
 when = "Turn it off if you'd rather a call rings the phone anyway."
@@ -116,7 +128,7 @@ when = "Lower it to one for just a morning greeting."
 
 [s."face.greet.say"]
 tip = "What the greeting tells you: what's next today, what's waiting, deadlines in 24 h, what was held while you were away."
-what = "Parts: next, waiting, deadline, held, and (0.9.0) answers: how many answers weren't read aloud while you were away (a yes right after reads them)."
+what = "Parts: next, waiting, deadline, held, and (0.9.0) answers: how many answers weren't read aloud while you were away (a yes right after reads them). (0.9.1) missed_call, never on by default: a check-in call that went unanswered today; a yes takes it here, at the desk."
 when = "Trim it to what you want to hear first when you sit down."
 
 [s."face.greet.tell_ai"]

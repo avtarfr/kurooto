@@ -174,7 +174,10 @@ if that would push it into the next day, comes as a message. The night itself do
 the goodnight call).
 
 **Too tired?** Say so on the call, or tap **Tomorrow morning**: the rest moves to your wake-up call, which starts with
-it ("anything for Tuesday's journal? What did Linear Algebra cover?") before planning the day. With no alarm set,
+it ("anything for Tuesday's journal? What did Tuesday's Linear Algebra cover?") before planning the day. Its
+questions name the day, so "today's class" isn't taken for that one. Only your answer to the journal question and
+what you said about that day's classes go into that day's journal; the new day's planning goes to today's plan
+(0.9.1). An after-class question still open for one of that day's classes is asked once, not twice. With no alarm set,
 you get a message in the morning instead ("Last night's check-in, as promised: ...") at the end of your night hours
 (08:00 if you have none).
 

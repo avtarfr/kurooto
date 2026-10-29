@@ -22,7 +22,9 @@ them.
 section `## Plan for today (draft, HH:MM)`:
 - **Classes today:** each with a link to its course page and the last lecture note, plus what to look at before
   class (one line).
-- **Due soon:** deadlines in the next 7 days, soonest first, with dates; tests and exams within 14 days stand out.
+- **Due soon:** open deadlines in the next 7 days, soonest first, with dates; tests and exams within 14 days stand
+  out. A deadline marked done (the deadline tools, or "Already done" above) is never a to-do, even where a note
+  (a course page's `## Tasks`, yesterday's plan) still lists it.
 - **Time to start:** if you have the start_by tool, what it says to start now (start-by dates, an estimate), with
   the size it gives; put the first step of each into the Top 3 or the blocks.
 - **Top 3:** the three things that matter most today, each with a one-line reason (an exam soon, a deadline, what

@@ -151,9 +151,13 @@ class PhoneToday:
             return {}
         out: dict = {}
         try:
-            out["held"] = len(self.app.calm.held())
+            out["held"] = len(self.app.calm.held_rows())  # (0.9.1) the same list as the dashboard's Waiting page
         except Exception:
             out["held"] = 0
+        face = self.app.modules.get("face") if self.app.is_on("face") else None
+        card = getattr(face, "away_card", None) if face is not None else None
+        if card:  # (0.9.1, face.away.summary) what came while you were away, as a count
+            out["away"] = len(card.get("popups") or []) + len(card.get("answers") or [])
         try:
             from kurooto.core import proposals
 

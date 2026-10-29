@@ -462,10 +462,16 @@ class Alarm(Module):
         day = dt.date.fromisoformat(p.get("day") or now().date().isoformat())
         if daily.has_section(self.app, "Plan", day):
             return
+        done = self.done_lately()
         jid = daily.run_skill(
             self.app,
             "morning-prep",
-            f"Today is {day.isoformat()}; the alarm is at {p.get('at', '')}.",
+            f"Today is {day.isoformat()}; the alarm is at {p.get('at', '')}."
+            + (
+                f" Already done (leave these out of the plan, even where a note still lists them): {'; '.join(done)}."
+                if done
+                else ""
+            ),
             title="Drafting today's plan",
             quiet=True,
             lane="bg",  # nobody is waiting on it yet: it never holds up your own requests
@@ -504,6 +510,9 @@ class Alarm(Module):
             if plan
             else "Ask what matters most today."
         )
+        done = self.done_lately()
+        if done:  # (0.9.1) a deadline ticked off after (or despite) the draft is never brought up as a to-do
+            steps.append(f"Already done, so never a to-do now (even if the plan above lists it): {'; '.join(done)}.")
         if app.is_on("subjects"):
             cls = app.modules["subjects"].classes_on(today)
             later = [c for c in cls if str(c.get("start") or "") > f"{t:%H:%M}"]
@@ -561,6 +570,24 @@ class Alarm(Module):
         )
         return "\n".join([head] + [f"{i}. {x}" for i, x in enumerate(steps, 1)])
 
+    def done_lately(self, hours: float = 36) -> list[str]:
+        """(0.9.1) Deadlines marked done in the last day and a half, by title: the morning's plan never lists them as
+        to-dos (a draft written from a note that still said "due", or drafted before you ticked one off)."""
+        dl = self.app.modules.get("deadlines")
+        if dl is None or not self.app.is_on("deadlines"):
+            return []
+        cut, out = now() - dt.timedelta(hours=hours), []
+        for it in dl.items().values():
+            if it.get("status") != "done":
+                continue
+            try:
+                at = dt.datetime.fromisoformat(str(it.get("done_at") or "")).replace(tzinfo=None)
+            except ValueError:
+                continue
+            if at >= cut:
+                out.append(dl.full_title(it))
+        return out[:8]
+
     def call_reschedule(self, key: str, at: dt.datetime) -> str | None:
         """ "Call me back in ten minutes" on the wake-up call: the alarm again then (like a snooze)."""
         if key != KEY:
@@ -598,10 +625,12 @@ class Alarm(Module):
         if not said:
             return
         if daily.ai_on(self.app):
+            done = self.done_lately()
             jid = daily.run_skill(
                 self.app,
                 "morning",
-                f"From my wake-up call:\n\n{daily.transcript(self.app, lines)}",
+                f"From my wake-up call:\n\n{daily.transcript(self.app, lines)}"
+                + (f"\n\nAlready done (never a to-do in the plan): {'; '.join(done)}." if done else ""),
                 title="Today's plan, from your wake-up call",
             )
             if jid:

@@ -1053,6 +1053,12 @@ window.beingMount = async function (host, opts) {
   UNEASY.style.cssText = "position:absolute;z-index:3;display:none;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:0;background:transparent;cursor:pointer;padding:0";
   host.append(UNEASY);
   UNEASY.addEventListener("click", (e) => { e.stopPropagation(); const it = ST.item; if (opts.openItem && it) opts.openItem(it); else if (ST.uneasy && ST.uneasy.startsWith("deadline:") && ORG.deadlines) showFeature("deadlines"); });
+  // (0.9.1, look.being_held_link) the held count by the heart is a button: it opens the dashboard's Waiting page
+  const HELDB = document.createElement("button"); HELDB.type = "button"; HELDB.className = "held-link";
+  HELDB.style.cssText = "position:absolute;z-index:3;display:none;width:52px;height:24px;margin:-12px 0 0 -12px;border:0;background:transparent;cursor:pointer;padding:0";
+  HELDB.title = "held messages: tap to see them"; HELDB.setAttribute("aria-label", HELDB.title);
+  host.append(HELDB);
+  HELDB.addEventListener("click", (e) => { e.stopPropagation(); if (opts.openHeld) opts.openHeld(); });
   function status(m) {
     if (!m) return;
     const was = ST.uneasy;
@@ -1084,8 +1090,10 @@ window.beingMount = async function (host, opts) {
   // the glance, over the drawing: the held count by the heart, the uneasy glow (its button follows it for the tap)
   function glanceDraw(c) {
     const show = (org) => !OM ? !FOCUS || FOCUS === org : ONLY === org;
+    HELDB.style.display = "none";
     if (glance() && ST.held > 0 && show("heart")) {
       const [x, y, z] = proj(HEART_C.clone().add(V(.55, -.45, 0))); if (z < 1) {
+        if (opts.openHeld) { HELDB.style.display = "block"; HELDB.style.left = `${x}px`; HELDB.style.top = `${y}px`; }
         c.save(); c.globalAlpha = .9; c.fillStyle = P.bg; c.strokeStyle = P.mute; c.lineWidth = 1; c.beginPath(); c.arc(x, y, 9, 0, 6.2832); c.fill(); c.stroke();
         c.fillStyle = P.ink; c.font = "600 10px Inter,sans-serif"; c.textAlign = "center"; c.fillText(String(Math.min(99, ST.held)), x, y + 3.5);
         c.textAlign = "left"; c.fillStyle = P.mute; c.font = "400 9.5px Inter,sans-serif"; c.fillText("held", x + 13, y + 3); c.restore();

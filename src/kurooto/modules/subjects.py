@@ -913,16 +913,57 @@ class Subjects(Module):
                 },
                 offline="queue",
                 hint='Skipping several classes, or all of today\'s: ONE skip_class call with subjects (["all"] for '
-                "every class today), never one call per class. Classes are skip_class, never skip_commitment.",
-            )
+                "every class today), never one call per class. Classes are skip_class, never skip_commitment. Only "
+                'a class they name or clearly mean: "today\'s class" said in answer to a question about a class is '
+                "that class. Say back the classes its result names.",
+            ),
+            Tool(
+                "attend_class",
+                "Undo a skip: they're going to these classes today after all (as /attend). subjects lists them, "
+                '["all"] is every class skipped today.',
+                self._tool_attend,
+                {
+                    "subject": arg("one class, e.g. Linear Algebra"),
+                    "subjects": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": 'several classes at once, or ["all"] for every one skipped today',
+                    },
+                },
+                offline="queue",
+                hint="If they say they're going to a class after all, or a class was skipped by mistake, call "
+                "attend_class with it.",
+            ),
         ]
 
-    def _tool_skip(self, a: dict) -> str:
-        """One class (subject, as before 0.8.17), several (subjects) or all of today's, in one call."""
+    def _wanted(self, a: dict) -> list[str]:
         want = a.get("subjects")
         want = [str(x) for x in want] if isinstance(want, list) else [str(want)] if want else []
         if a.get("subject"):
             want.append(str(a["subject"]))
+        return want
+
+    def _tool_attend(self, a: dict) -> str:
+        """(0.9.1) The undo for skip_class on a call: the classes are on again today (the same as /attend)."""
+        want = self._wanted(a)
+        skipped = self.skipped()
+        if any(ALL_TODAY.fullmatch(x.strip()) for x in want):
+            slugs = sorted(skipped)
+        else:
+            slugs = list(dict.fromkeys(s for s in (self.resolve(x) for x in want) if s))
+            if not slugs:
+                return "I don't know that subject."
+        back = [s for s in slugs if s in skipped]
+        if not back:
+            names = ", ".join(self.name_of(s) for s in slugs)
+            return f"No change: {names} wasn't skipped today." if names else "No class is skipped today."
+        self.set_skip(back, add=False)
+        self.app.events.emit("class_attend", subjects=back)
+        return f"Not skipping {', '.join(self.name_of(s) for s in back)} today after all."
+
+    def _tool_skip(self, a: dict) -> str:
+        """One class (subject, as before 0.8.17), several (subjects) or all of today's, in one call."""
+        want = self._wanted(a)
         if any(ALL_TODAY.fullmatch(x.strip()) for x in want):
             slugs = list(dict.fromkeys(c["subject"] for c in self.classes_on(include_skipped=True) if c.get("subject")))
             if not slugs:

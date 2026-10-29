@@ -93,7 +93,10 @@ in your day's classes on calls and the morning plan, and calls are allowed durin
 A question ("can I skip LA on Friday?") is never taken as a skip. A day Kurooto can't pin down ("next week", a date)
 goes to your AI, which can use the same skip tool. A plain-English skip must name exactly one subject.
 
-**On calls.** Say you're skipping a class; the wake-up call also asks which classes you're skipping today.
+**On calls.** Say you're skipping a class; the wake-up call also asks which classes you're skipping today. The call
+says back which classes it skipped. Changed your mind, or it skipped the wrong one? "I'm going to Organic Chemistry
+after all" puts it back on (0.9.1, the call's `attend_class`, the same as `/attend`). A call skips only a class you
+name or clearly mean: "today's class" in answer to a question about a class is that class.
 
 **What leaves your computer.** Nothing. **Undo:** `/attend la` for today; a skip for another day ends by itself.
 
@@ -503,6 +506,10 @@ or a class calendar).
 note; or answer in the phone app or on a call.
 - **Nothing new** (button, or reply "nothing"): nothing is saved for that class.
 - **Later**: keeps the question open for your evening check-in call.
+- **"I didn't go"** ("I did not attend lab", "skipped it", "wasn't there"; 0.9.1): the class is marked missed
+  for that day, as `/skip` would (a catch-up follows when that's on). Nothing goes into its class log and no lecture
+  note is written.
+- Asked on a call the next day, the question says which day ("How was Wednesday's Linear Algebra?").
 - Unanswered, the question expires after 20 hours.
 
 **When it doesn't ask.** For a class you skipped, on holidays, in exam periods, after the term's last day, for a

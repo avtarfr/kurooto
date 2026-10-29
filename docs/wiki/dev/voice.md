@@ -73,6 +73,22 @@ On `Voice` (`app.modules["voice"]`), both blocking: call them from the add-on's 
   prompt never carries the name. `guest.handle` puts the name in the prompt only when the turn runs on the local model
   (`guest_brain: local`, or a main AI that can't be sealed). Never in an event, the ledger or the job's title.
 - `say(text, wait=True)` (already there) speaks a scripted line.
+- (0.9.1, L41) `spoken_answer(prompt="", timeout_s=8, why="") -> {"text", "who"} | None`: the shared spoken answer.
+  Says `prompt` (unprompted, `why` as its Calm reason), then `listen_once(own=True)` (Kurooto's own use: not gated by
+  `voice.addons.listen`), and `verdict_of(emb, speech_s)` gives Voice ID's word from the stretch's numbers
+  (`speakerid.decide` against the template's centroid with `voiceid.thresholds` and `rules()`; "" with Voice ID off,
+  "unsure" without a template or numbers). None with Voice off or muted, `others_here()` (`biometric.others_present` or
+  `notifier.guests_here`, R10), a failed say, or silence. `spoken_yes(prompt, ..., need_owner=True) -> True | False |
+  None` reads `SAID_YES` / `SAID_NO`; need_owner False also takes "" (Voice ID off). Callers that act need "owner"
+  (R8). The Body add-on's Interest can call these instead of its own `listen_yes` (its half: replace the body of
+  `listen_yes` with `voice.spoken_yes(prompt, need_owner=...)`).
+- (0.9.1, L42, `voice.speak.messages`, off) `core/notify.py` `Notifier.on_deliver`: callbacks run after `_deliver` sent
+  every copy. Voice registers `spoken_message` in `start()` (removed in `stop()`): a `reminder`, or a `question` with
+  `map_kind == "ask"` whose question isn't an approval, while `notifier.at_desk()`, not `others_here()`, and
+  `calm.speak_ok("voice.messages.<kind>")` (two new Calm reasons, `counted=False`, `later=False`). `_say_message` on
+  its own thread: a question is said and an owner's spoken answer goes to `ask.answer(via="voice")` (which retracts
+  the other copies); a reminder is said ("Reminder: ...", its first paragraph) and an owner's `SAID_DONE` retracts it
+  by `map_kind`/`map_ref`.
 
 ## Outputs: playing the voice elsewhere (0.8.12)
 

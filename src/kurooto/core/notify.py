@@ -121,6 +121,8 @@ class Notifier:
         self.editors: dict[str, Editor] = {}
         self.queue_file = app.paths.state / "focus-queue.jsonl"
         self.shown: list[tuple] = []  # (0.9.0) desktop pop-ups that can be closed: (map_kind, map_ref, data, id)
+        # (0.9.1) told after each message went out, with it: Voice says some aloud at the desk (voice.speak.messages)
+        self.on_deliver: list[Callable[[Message], None]] = []
 
     def register(self, name: str, send: Sender, retract: Retractor | None = None, edit: Editor | None = None) -> None:
         self.channels[name] = send
@@ -342,6 +344,11 @@ class Notifier:
         calm = getattr(self.app, "calm", None)
         if calm is not None and msg.rid:
             calm.delivered(msg.rid, ref)
+        for fn in list(self.on_deliver):  # (0.9.1) in addition to every copy above, never instead of one
+            try:
+                fn(msg)
+            except Exception as e:
+                self.app.events.emit("notify_failed", channel="on_deliver", error=f"{type(e).__name__}"[:100])
         return ref
 
     def _to_chat(self, msg: Message) -> Any:

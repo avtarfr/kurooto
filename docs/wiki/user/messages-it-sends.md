@@ -77,7 +77,12 @@ The phone app, the desktop and calls get the plain message, without these button
 - **what changed meanwhile** (0.9.0, `notify.calm.recheck`): a message that waited (here, during focus, overnight
   while Kurooto slept, while the network was down, or at Brain's door) is checked again as it goes out. If its deadline
   was done, moved or dropped, its class skipped or its quiz is over, a line says so: "(Since then: done 14:10.)". It
-  still comes; `drop` leaves such ones out instead, `false` sends them as they were.
+  still comes; `drop` leaves such ones out instead, `false` sends them as they were. (0.9.1) A message about something
+  a call or a desk talk went over says so: "(Since then: talked through on your 17:00 call.)"; `calls.settle_messages`
+  (off) settles such ones instead. Approvals are never settled this way.
+- **said aloud at the desk** (0.9.1, `voice.speak.messages`, off): a due reminder or a question for you also said
+  aloud while you're alone at the desk, as well as every usual copy; Why? and Stop work on each kind
+  (`voice.messages.reminder`, `voice.messages.question`).
 
 **Never held, never stopped, not counted:** the alarm (and the alarm to leave for an exam, and "tonight's alarm might
 not ring"); approvals; your own reminders (reminders, calls you asked for, quiz times and study sessions you set,

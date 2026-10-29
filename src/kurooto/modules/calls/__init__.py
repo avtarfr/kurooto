@@ -94,6 +94,12 @@ register_defaults(
         "chat_files_inline": True,  # files in the phone app's chat both ways, shown in place (photos, documents, audio)
         "chat_edit": True,  # edit (15 minutes), delete and pin your messages in the phone app's chat
         "chat_titles": "first words",  # a new chat's name: "first words" of its first message, or "ai" (a short title)
+        # (0.9.1) what you say at the desk (aloud, Live, the board's talk box) and its answers, as one "Desk" chat on
+        # the dashboard's Chat page and the phone app (sealed like the rest; no notification for it). Your turns only
+        "chat_desk": True,
+        # (0.9.1) the board's talk box also sends the Desk chat's recent turns to your AI, so it can follow on. Never
+        # the kurooto command, the terminal or setup: each of those stays a request on its own
+        "chat_desk_history": False,
         # (0.9.0) what every AI request is told goes to calls and desk Live talks too: your profile's brief, how to help
         # you, your not-interested topics, Brain's state (never the read, mood, tone or senses; providers/context.py)
         "context_brief": True,
@@ -117,6 +123,14 @@ register_defaults(
         # (0.9.0) a call Kurooto places by itself while your phone says you're walking or in a vehicle uses the phone's
         # own speech (voice mode "phone") instead of Live; never holds it. Needs Brain's phone motion sense on
         "mode_when_moving": False,
+        # (0.9.1) after a call or a desk talk went over something, the held messages and open questions about it are
+        # settled (closed) instead of only marked "talked through on your 17:00 call". Never approvals
+        "settle_messages": False,
+        # (0.9.1) a call Kurooto places by itself (a check-in, a reminder; never the alarm or one you asked for now) is
+        # offered at the desk first when Face presence has you there alone and Voice can speak: "yes" takes it here
+        # (Live if voice.listen.live is on, else Voice's own way); the phone still rings after desk_first_s
+        "desk_first": False,
+        "desk_first_s": 30,
     },
 )
 
@@ -139,6 +153,7 @@ RESHAPES = {
     "add_deadline": "a deadline added",
     "remove_deadline": "a deadline removed",
     "skip_class": "a class skipped",
+    "attend_class": "a skipped class back on",
     "skip_commitment": "a commitment skipped",
     "reschedule_day": "the day's plan rescheduled",
     "plan_block": "a block planned",
@@ -213,6 +228,9 @@ class Calls(Module):
         # each call's tool uses, by the call's "since" ("" when the call page didn't say), for the look back after it
         # (review.py); two calls at once, or work queued while the computer was off, each keep their own
         self.tool_log: dict[str, list[dict]] = {}
+        # (0.9.1) the open questions each call's pending_items has listed, by the call's "since": listed again in the
+        # same call, they say they were raised already, so the call doesn't ask the same thing twice
+        self._raised: dict[str, set[str]] = {}
         # the transcripts already kept (a hash of each), so the same end of a call sent twice is kept once (0.8.17: the
         # call page also sends it as the page closes, and the app hangs up a call its screen was closed on)
         self._kept: list[str] = []
@@ -303,6 +321,7 @@ class Calls(Module):
         self.action("missed", self._missed)
         self.action("task_check", self._task_check)
         self.action("realert", self._realert)
+        self.action("desk_fallback", self._desk_fallback)  # (0.9.1, calls.desk_first) the phone after the desk
         self.every("line_update", "daily 05:10", self._line_update)
         self.action("app_line", self._app_line)  # a new phone app goes to the line soon, not at 05:10
         self.app.jobs.then_actions["calls.task_done"] = self._task_done
@@ -705,6 +724,8 @@ class Calls(Module):
             keep.used(keep.tool_owner(name), "tool")
         try:
             out = tool.run(args or {})
+            if name == "pending_items":
+                out = self._mark_raised(out, str(since or ""))
             from kurooto.mind import act  # (0.9.0, mind.act.record_asked) a change you asked for on the call
 
             act.record_asked(self.app, tool, args or {}, "call")
@@ -717,6 +738,19 @@ class Calls(Module):
         for old in list(self.tool_log)[:-10]:  # calls that never sent a transcript don't pile up
             self.tool_log.pop(old, None)
         return out
+
+    def _mark_raised(self, out, since: str):
+        """(0.9.1) An open question this call's pending_items listed before is marked raised_this_call: asked once
+        already (answered or not), it isn't asked again in the same call."""
+        if not isinstance(out, dict) or not since:
+            return out
+        seen = self._raised.setdefault(since, set())
+        rows = out.get("open_questions") or []
+        marked = [{**q, "raised_this_call": True} if q.get("id") in seen else q for q in rows]
+        seen.update(str(q.get("id")) for q in rows if q.get("id"))
+        for old in list(self._raised)[:-10]:  # calls that never ended here don't pile up
+            self._raised.pop(old, None)
+        return {**out, "open_questions": marked} if rows else out
 
     def _reshaped(self, name: str, out):
         """(0.9.0) After a tool that changes the day (RESHAPES), its result ends with one short line: what the call
@@ -1087,6 +1121,7 @@ class Calls(Module):
         buttons: list | None = None,
         why: str | None = None,
         due: str | None = None,
+        desk: bool = True,
     ) -> str:
         """Ring your paired phones now (and say so on Telegram, with a link to answer from anywhere). `buttons`: more
         buttons for that Telegram message, e.g. [("Tomorrow morning", "chk:night:defer")]. why/due: the envelope
@@ -1122,6 +1157,12 @@ class Calls(Module):
             )
             self._tell_owner_module({"key": key, "reason": reason}, "held")
             return ""
+        if desk and automatic and not alarm:
+            offered = self._desk_first(reason, key, why, due, buttons)
+            if (
+                offered
+            ):  # (0.9.1, calls.desk_first) offered at the desk; the phone rings after desk_first_s if not taken
+                return offered
         since = str(int(time.time()))
         rings = jload(self.dir / "rings.json", {}) or {}
         while since in rings:  # two calls in the same second (a repeat ring right after another call)
@@ -1189,6 +1230,125 @@ class Calls(Module):
         self.app.events.emit("call_rang", alarm=alarm, key=key, line=sent)
         self.connector.poke()  # the call line's copy of the schedule no longer has this one
         return since
+
+    # ------------------------------------------------------------------ desk-first calls (0.9.1, L34)
+    def desk_free(self) -> object | None:
+        """Voice, when a call could be taken at the desk now: calls.desk_first on, Voice on and able to speak, Face
+        presence seeing you at this computer, nobody else there (R10), no conversation open. Else None."""
+        if not self.setting("desk_first") or not self.app.is_on("voice") or not self.app.is_on("face"):
+            return None
+        v = self.app.modules.get("voice")
+        if v is None or not hasattr(v, "desk_call") or v.muted() or v.portal.open:
+            return None
+        try:
+            if not self.app.notifier.at_desk() or v.others_here():
+                return None
+        except Exception:
+            return None
+        return v
+
+    def _desk_first(self, reason: str, key: str, why, due, buttons) -> str:
+        """Offer the call at the desk: kept in rings.json as state "desk" (its transcript reaches the feature that
+        placed it, as a phone call's does), the phone booked to ring after desk_first_s (calls.desk_fallback), and
+        Voice asks on a thread of its own. "desk-<since>" when offered (a feature reads it as placed: a check-in waits
+        for its outcome as for a ring), else ""."""
+        v = self.desk_free()
+        if v is None:
+            return ""
+        since = str(int(time.time()))
+        rings = jload(self.dir / "rings.json", {}) or {}
+        while since in rings:
+            since = str(int(since) + 1)
+        rings[since] = {"reason": reason, "alarm": False, "key": key, "at": time.time(), "state": "desk"}
+        rings[since].update({k: v2 for k, v2 in (("why", why), ("due", due)) if v2})
+        if buttons:
+            rings[since]["buttons"] = [list(b) for b in buttons]
+        jsave(self.dir / "rings.json", dict(list(rings.items())[-100:]))
+        wait = max(10, int(self.setting("desk_first_s") or 30))
+        self.app.scheduler.at(time.time() + wait, "calls.desk_fallback", {"since": since}, key=f"calls:desk:{since}",
+                              module=self.id)  # fmt: skip
+        self.app.events.emit("call_desk_offered", key=key)
+        threading.Thread(
+            target=self._desk_ask, args=(v, since, reason, key, wait), name="call-desk", daemon=True
+        ).start()
+        return f"desk-{since}"
+
+    def _desk_ask(self, v, since: str, reason: str, key: str, wait: int) -> None:
+        try:
+            yes = v.spoken_yes(f"{reason}. Shall we do it here? Say yes, or I'll ring your phone.",
+                               timeout_s=max(5, wait - 5), why="calls.desk_first",
+                               need_owner=v.voiceid.on())  # fmt: skip
+        except Exception as e:
+            self.app.events.emit("calls_desk_failed", error=type(e).__name__)
+            yes = None
+        if yes is not True:
+            if yes is False:  # "no": the phone now, not after the wait
+                self.app.scheduler.cancel(f"calls:desk:{since}")
+                self._desk_fallback({"since": since})
+            return
+        if not self._desk_state(since, "desk", "taken"):
+            return  # the phone rang meanwhile
+        self.app.scheduler.cancel(f"calls:desk:{since}")
+        self._tell_owner_module({"key": key, "reason": reason}, "answered")
+        self.app.events.emit("call_desk_taken", key=key)
+        v.desk_call(since, reason, self.desk_script(key, reason))
+
+    def _desk_state(self, since: str, was: str, now_state: str) -> bool:
+        rings = jload(self.dir / "rings.json", {}) or {}
+        r = rings.get(since)
+        if not r or r.get("state") != was:
+            return False
+        r["state"] = now_state
+        jsave(self.dir / "rings.json", rings)
+        return True
+
+    def _desk_fallback(self, p: dict) -> None:
+        """(calls.desk_fallback) Not taken at the desk in time: the phone rings, as it would have."""
+        since = str(p.get("since") or "")
+        r = (jload(self.dir / "rings.json", {}) or {}).get(since)
+        if not r or not self._desk_state(since, "desk", "phone"):
+            return
+        self.app.events.emit("call_desk_phone", key=r.get("key") or "")
+        self.ring(r.get("reason") or "", key=r.get("key") or "", buttons=r.get("buttons"), why=r.get("why"),
+                  due=r.get("due"), desk=False)  # fmt: skip
+
+    def desk_script(self, key: str, reason: str) -> str:
+        """What a call taken at the desk goes through: a check-in's own steps (modules/checkins.py script), else its
+        reason."""
+        mid, _, rest = key.partition(":")
+        m = self.app.modules.get(mid)
+        if mid == "checkins" and m is not None and self.app.is_on(mid):
+            try:
+                return m.script(rest.split(":")[0])
+            except Exception:
+                pass
+        return f"A call you placed by yourself about: {reason}. Say what it's about and talk it through briefly."
+
+    def desk_checkin(self, name: str) -> tuple[str, str, str] | None:
+        """(0.9.1, L35) The waited check-in, taken at the desk after the greeting's offer: a "taken" ring for it (so its
+        transcript writes the journal), the check-in answered, and its waiting message taken down. (since, reason,
+        steps), or None when there's no such check-in now."""
+        ck = self.app.modules.get("checkins")
+        if ck is None or not self.app.is_on("checkins") or ck.waited() != name:
+            return None
+        day = ck.day_of().isoformat()
+        key, reason = f"checkins:{name}:{day}", ck._reason(name)
+        since = str(int(time.time()))
+        rings = jload(self.dir / "rings.json", {}) or {}
+        while since in rings:
+            since = str(int(since) + 1)
+        rings[since] = {"reason": reason, "alarm": False, "key": key, "at": time.time(), "state": "taken"}
+        jsave(self.dir / "rings.json", dict(list(rings.items())[-100:]))
+        self._tell_owner_module({"key": key, "reason": reason}, "answered")
+        self.app.notifier.retract("checkin", f"{name}:{day}")
+        self.app.events.emit("call_desk_taken", key=key, waited=True)
+        return since, reason, self.desk_script(key, reason)
+
+    def desk_done(self, since: str, lines: list[dict], reason: str) -> None:
+        """Voice: the desk call's conversation closed. Its lines go where a phone call's do (save_transcript with its
+        since: the feature that placed it writes its journal), and the ring is over."""
+        self._desk_state(since, "taken", "done")
+        self.save_transcript({"since": since, "lines": lines, "purpose": reason, "layer": "desk"})
 
     def _ring_fallback(self, push: dict, res: dict | None) -> None:
         """The call line's answer to "ring": it rings the Android app itself ("android": true: on the phone's own
@@ -1266,7 +1426,13 @@ class Calls(Module):
             self._missed_for_good(since, r)
             return
         new = self.ring(
-            r["reason"], alarm=False, key=r.get("key", ""), buttons=r.get("buttons"), why=r.get("why"), due=r.get("due")
+            r["reason"],
+            alarm=False,
+            key=r.get("key", ""),
+            buttons=r.get("buttons"),
+            why=r.get("why"),
+            due=r.get("due"),
+            desk=False,  # (0.9.1) a repeat rings the phone: the desk had its turn
         )
         with Lock(self.app.paths.state, "calls-rings"):
             rings = jload(self.dir / "rings.json", {}) or {}
@@ -1555,6 +1721,7 @@ class Calls(Module):
         except Exception:
             pass
         used = self.tool_log.pop(str(b.get("since") or ""), [])
+        self._raised.pop(str(b.get("since") or ""), None)
         from kurooto.core import gists
 
         gists.note_call(f, purpose, used)  # what it did, for its gist when the transcript is forgotten
@@ -1564,6 +1731,10 @@ class Calls(Module):
         from kurooto.mind import tone
 
         tone.from_call(self.app, lines)  # (0.9.0, mind.tone.calls) the day's tone counts your call lines too, locally
+        try:  # (0.9.1, L29) what the call went over: held messages and open questions about it say so (or settle)
+            review.settle_covered(self, lines, used, str(b.get("layer") or ""))
+        except Exception as e:
+            self.app.events.emit("calls_settle_failed", error=type(e).__name__)
         try:  # (0.9.0, calls.after_infer) never in the way of keeping the transcript
             self._after_infer(lines)
         except Exception as e:
@@ -1672,6 +1843,9 @@ class Calls(Module):
             *[t.hint for t in tools if t.hint],
             "Never say you did something (planned, moved, removed, set, sent) unless a tool's result in this call says "
             "it was done; if no tool can do it, say so.",
+            "Ask each question once a call: once they've answered it, even unclearly, don't ask it again (an open "
+            "question marked raised_this_call was raised already); if the answer was unclear, ask one short "
+            "follow-up about what they said instead.",
             "If something needs a screen or their computer, say so. Don't read out email contents or other people's "
             "details.",
         ]

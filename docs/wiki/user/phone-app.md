@@ -581,6 +581,10 @@ done; "Kurooto is working…" shows under the chat's name meanwhile), and as a n
 Buttons under an answer work as on Telegram. Answers to what you wrote in the app come back to the app only, not to
 Telegram.
 
+**The Desk chat** (0.9.1, `calls.chat_desk`, on): what you said at your desk (aloud, a Live talk, the dashboard's talk
+box) and the answers, as one chat named Desk. It comes without a notification. Type in it to follow on from what you
+said at the desk. Only your own turns go in, never a guest's.
+
 **Chats (sessions).** Down the left edge is a rail of shapes, one per chat, each its own shape and colour, with a
 number for what you haven't read. The top one is **Kurooto**: its own messages (reminders, results, what it found) land
 there, and it can't be deleted. Every other chat is a separate conversation with your AI that remembers what was said

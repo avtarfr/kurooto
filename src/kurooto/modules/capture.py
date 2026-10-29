@@ -14,6 +14,7 @@ ones never to ask about (a subject's short name, full name or alias works in bot
 from __future__ import annotations
 
 import datetime as dt
+import re
 import shutil
 from pathlib import Path
 
@@ -35,6 +36,20 @@ register_defaults(
 )
 
 IMAGES = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic")
+# (0.9.1) an answer that says they weren't there: "I did not attend lab", "skipped it", "didn't go"
+_CLASS = r"(?:it|that|the\s+(?:class|lecture|lab|tutorial)|class|lecture|lab|tutorial)"
+NOT_THERE = re.compile(
+    rf"\b(?:did(?:n['’]?t| not)\s+(?:go|attend|make it)|not\s+attend(?:ed|ing)?|never\s+went|bunked|"
+    rf"(?:was|were)(?:n['’]?t| not)\s+there|(?:skipped|missed)\s+{_CLASS})\b|^\W*(?:i\s+)?(?:skipped|missed)\W*$",
+    re.I,
+)
+NOT_THERE_MAX = 160  # longer answers are about the class itself, even when they mention skipping something
+
+
+def not_there(text: str) -> bool:
+    """(0.9.1) A short answer to "How was <class>?" that says they didn't go to it."""
+    t = re.sub(r"\s+", " ", text or "").strip()
+    return bool(t) and len(t) <= NOT_THERE_MAX and bool(NOT_THERE.search(t))
 
 
 class Capture(Module):
@@ -157,7 +172,25 @@ class Capture(Module):
             return f"OK, nothing new from {p.get('name') or slug}."
         files = [self.app.workspace / f for f in q.get("files") or []]
         text = "" if answer == "(files)" else answer
+        if not files and not_there(text):
+            return self.missed(slug, day, p.get("name"))
         return self.save(slug, day, text, files, name=p.get("name"), start=p.get("start", ""))
+
+    def missed(self, slug: str, day: str, name: str | None = None) -> str:
+        """(0.9.1) "I didn't go": the class is marked missed for that day (skipped, as /skip would; a catch-up follows
+        when subjects.catch_up is on), and nothing goes into its class log and no study log is started."""
+        subjects = self.app.modules["subjects"]
+        name = name or subjects.name_of(slug)
+        d = dt.date.fromisoformat(day)
+        subjects.set_skip([slug], day=d)
+        self._set(day, slug, status="skipped")
+        self.app.events.emit("capture_missed", subject=slug)
+        try:
+            subjects.catch_up(d)
+        except Exception as e:  # the mark is what matters; a catch-up that fails is tried again by its timer
+            self.app.events.emit("capture_failed", subject=slug, error=f"{type(e).__name__}: {e}"[:200])
+        when = "today" if d == now().date() else f"on {d:%A}"
+        return f"OK, marked {name} as missed {when}; no study log for it."
 
     def save(self, slug: str, day: str, text: str, files: list[Path], name: str | None = None, start: str = "") -> str:
         """Add what you said, and the files (moved to the subject's files folder and linked), to its class log."""

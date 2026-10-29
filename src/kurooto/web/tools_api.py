@@ -75,7 +75,7 @@ def post(app: App, path: str, b: dict) -> tuple[int, dict]:
         via = b.get("via") if b.get("via") in ("mcp", "dashboard", "terminal") else "api"
         return 200, {"ok": True, "result": run_tool(app, name, args or {}, tools, via=via, job=of)}
     if path == "say":
-        return say(app, str(b.get("text") or ""))
+        return say(app, str(b.get("text") or ""), board=b.get("from") == "board")
     if path == "job":
         return job(app, str(b.get("id", "")))
     if path == "call":
@@ -91,16 +91,35 @@ def post(app: App, path: str, b: dict) -> tuple[int, dict]:
     return 404, {"error": "not found"}
 
 
-def say(app: App, text: str) -> tuple[int, dict]:
+def say(app: App, text: str, board: bool = False) -> tuple[int, dict]:
     """Route it like a message: a /command or an instant request answers now; anything else for the AI becomes
-    a job (Chat sees via="terminal" and keeps the answer off Telegram)."""
+    a job (Chat sees via="terminal" and keeps the answer off Telegram).
+
+    board (0.9.1): typed in the dashboard board's talk box. Its turn and answer go to the Desk chat (calls.chat_desk),
+    an AI request's answer even after the page closed, and that answer to the "while you were away" summary; never to
+    Telegram. With calls.chat_desk_history the Desk chat's recent turns go to the AI with it. The kurooto command and
+    the terminal stay stateless one-shots."""
     text = text.strip()[:4000]
     if not text:
         return 400, {"ok": False, "error": "nothing to say"}
     replies: list[str] = []
-    msg = Incoming(text=text, via="terminal", respond=lambda t, buttons=None: replies.append(str(t)))
+    calls = app.modules.get("calls") if board and app.is_on("calls") else None
+    desk = ""
+    if calls is not None and calls.sessions.desk_on() and calls.setting("chat_desk_history"):
+        from kurooto.modules.calls.sessions import DESK
+
+        desk = DESK if calls.sessions.ensure_desk() else ""
+    msg = Incoming(text=text, via="terminal", respond=lambda t, buttons=None: replies.append(str(t)), session=desk)
     app.handle(msg)
     jid = getattr(msg, "job", None)
+    if calls is not None:
+        try:
+            if jid:
+                calls.chat.board_job(jid, text)
+            elif replies:
+                calls.chat.desk_turn(text, "\n".join(replies), "typed")
+        except Exception as e:  # the talk box's own answer never waits on the Desk chat
+            app.events.emit("chat_desk_failed", error=f"{type(e).__name__}"[:80])
     return 200, {"ok": True, "job": jid, "replies": [] if jid else replies}
 
 

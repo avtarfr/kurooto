@@ -188,7 +188,22 @@ meanwhile.
   other apps, with an "On a call with Kurooto" notification to go back to it (a tap) or end it (its **Hang up**). However a
   call's screen closes, its transcript still reaches your computer (0.8.17).
 - **Skipping classes:** "I'm skipping all my classes today" or "skipping LA and stats" is one step, not one per class;
-  the call screen shows it as one line ("skipping today's classes"). Notes that repeat show once with "×N".
+  the call screen shows it as one line ("skipping today's classes"). Notes that repeat show once with "×N". The call
+  says back which classes it skipped; "I'm going to LA after all" undoes it (0.9.1, `attend_class`).
+- **One question, once** (0.9.1). A question you've answered, even unclearly, isn't asked again in the same call; a
+  question from an earlier day says which ("How was Wednesday's Linear Algebra?").
+- **At the desk first** (0.9.1, `calls.desk_first`, off). A call Kurooto places by itself (a check-in, a reminder; never
+  the alarm or one you just asked for) is offered aloud at your desk first when Face presence has you there alone:
+  "Evening debrief. Shall we do it here?" Say yes and it goes on at the desk (Live if `voice.listen.live` is on, else
+  Voice's own way), its words written into your journal as a call's would be. No, or nothing within
+  `calls.desk_first_s` (30 s): your phone rings, as before.
+- **What a call went over** (0.9.1). Held messages and open questions about something the call talked through (a
+  deadline it moved or updated, a class it skipped, or what they're about said in your own words) are marked "talked
+  through on your 17:00 call" (with `notify.calm.recheck`): the line goes with them when they're sent, and the
+  dashboard's Waiting page has **Settled** for each. `calls.settle_messages` (off) closes them instead. A talk at the
+  desk counts too. Approvals never: they wait for your tap.
+- **Done is done** (0.9.1). A deadline you ticked off in the last day and a half is never brought up as a to-do on
+  the wake-up call, even if the plan drafted before it (or a note) still lists it.
 - **Open questions and approvals come first.** Every call starts with what needs you (`pending_items`): open
   questions, approvals, deadlines soon, today's classes and check-ins, calls booked. Answer them by voice. An approval
   that arrives during a call is asked right away.

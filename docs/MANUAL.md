@@ -625,7 +625,9 @@ into your journal (`journal/YYYY-MM-DD.md` in your notes folder).
   evening one asks tomorrow's priority and the wake-up time.
 - **Too tired?** Say so on the call, or tap **Tomorrow morning** (on the missed-call message; for the night check-in
   also on the ringing call's message and in `/checkins`): the rest moves to your wake-up call, which starts with it
-  before planning the day. With no alarm set, it's asked by message in the morning.
+  before planning the day, naming the day ("Wednesday's journal", "Wednesday's Linear Algebra"). Only your answer to
+  the journal question and what you said about that day's classes go into that day's journal (0.9.1). With no alarm
+  set, it's asked by message in the morning.
 - **Afterwards**, with Chat on, the AI writes your journal entry from what you said (your words, not its own) and a
   study log for each class you talked about. Without Chat, what you said goes into the journal as it is.
 - **"Call me back in an hour"** on a check-in call moves that check-in (the same call, with the same steps), never a
@@ -897,7 +899,8 @@ off; crunch weeks: `startby.crunch_weeks` = 0; reshaped plans: `startby.negotiat
 ### Subjects and timetable
 Your courses with short names (`/subject add Linear Algebra (la, linalg)`) and your timetable (`/class mon 09:00-09:55
 la`). Kurooto never calls you during a class (or in the 5 minutes before it, `subjects.margin_min`). `/classes today`,
-`/skip la` or "skipping LA today" (not going: calls aren't held for it), `/attend la` (undo). Attendance and standing is
+`/skip la` or "skipping LA today" (not going: calls aren't held for it), `/attend la` (undo; on a call, "I'm going to
+LA after all": `attend_class`, 0.9.1). Attendance and standing is
 gone from 0.5.8: `/skip` no longer warns about attendance. "not going to LA on Friday" and "skipping stats tomorrow"
 mark that day. Other features use the subjects: after-class notes, the quiz, the study tracker.
 
@@ -1385,7 +1388,9 @@ A couple of minutes after each class in your timetable ends, Kurooto asks what w
 or two, photos of the board or slides, files or a voice note (reply to the question, or answer in the phone app or on
 a call). It goes into that subject's `class-log.md`; photos and files are moved next to it (`<subject>/files/`) and
 linked. With Chat on, the AI also writes a study log for the class (a lecture note in the subject's folder, linked from
-the day's note). **Nothing new** ends it; **Later** keeps the question for your evening check-in call. No questions
+the day's note). **Nothing new** ends it; **Later** keeps the question for your evening check-in call. "I didn't
+go" ("I did not attend lab", "skipped it") marks the class missed for that day, with no class-log entry and no study
+log (0.9.1). No questions
 for classes you skip, on holidays, in exam periods or after the term ends (see `/term`). Needs Subjects with a
 timetable.
 
@@ -2006,6 +2011,21 @@ features and notes are changed and read through the same checks as the dashboard
 *Undo:* Settings → calls → `chat_sessions`, `chat_files_inline`, `chat_edit` to `false` (each stops at once; your
 chats come back when it's on again); delete a chat to forget what was said in it.
 
+**At the desk first (0.9.1, `calls.desk_first`, off).** A call Kurooto places by itself is offered aloud at your desk
+when you're there alone; yes takes it there (journal as a call's), no or silence rings the phone after
+`calls.desk_first_s`. Never the alarm. A check-in call you missed can be offered by the desk greeting too (add
+`missed_call` to `face.greet.say`). *Undo:* turn it off; take `missed_call` out.
+
+**What a call went over (0.9.1).** Held messages and open questions about what a call or a desk talk went over are
+marked "talked through on your 17:00 call" (sent with them; the Waiting page has Settled). `calls.settle_messages`
+(off) closes them instead; approvals never. *Undo:* turn it off.
+
+**The Desk chat (0.9.1, `calls.chat_desk`, on).** What you say at the desk (aloud, a Live talk, the board's talk box)
+and Kurooto's answers land in one chat named Desk, on the dashboard's Chat page and the phone app, without a
+notification; your turns only, never a guest's. An answer to a talk-box request comes there even after you closed the
+page, and never to Telegram. `calls.chat_desk_history` (off) also sends the Desk chat's recent turns with each talk-box
+request, so your AI can follow on (never the kurooto command or the terminal). *Undo:* turn `calls.chat_desk` off.
+
 **When the computer is off:** chat messages, button taps, answers and files you share from a paired phone wait on your
 call line (at most 100 things and 20 MB of files) and reach the computer when it's back, in order, each once. The app
 shows "Waiting for your computer" until then, and says "Reached your computer" for an answer or a file.
@@ -2115,7 +2135,9 @@ Needs Phone calls.
 - **The wake-up call** knows the time and your time zone, plans from now (a late wake-up isn't asked about classes
   that are over), goes through that plan, asks which classes still to come you're skipping and when to call you today (the
   evening check-in, and a midday one if you want), and afterwards, with Chat on, settles "## Plan for today" in the
-  daily note from what you said.
+  daily note from what you said. A deadline you ticked off in the last day and a half is never a to-do in it, even
+  when the draft or a note still lists it (0.9.1). A class skipped by mistake on the call: "I'm going to it after
+  all" (`attend_class`).
 - **The morning page:** at the alarm, if this computer is awake, it opens the morning page in your browser (today's
   plan, classes, calendar, what's due, check-ins). It's also at `http://127.0.0.1:8770/morning`.
 - **Keep this computer awake until the alarm** (`alarm.keep_awake`, off until you turn it on): from 12 hours before
@@ -2209,6 +2231,9 @@ that. Packages go into Kurooto's own folder, never your system.
 *Leaves:* nothing while no conversation is open; then only the turns said to Kurooto, as text, to your AI (and kept
 in the chat history like typed ones). Sound is never saved; the words of noise and chatter are dropped at once and
 never stored, logged or sent. Setting up downloads from PyPI, GitHub and Hugging Face.
+**Reminders and questions aloud** (0.9.1, `voice.speak.messages`, off): alone at the desk, a due reminder or a question
+for you is also said aloud (the phone copy still comes); your own voice's answer closes a question everywhere, "done"
+takes a reminder down; never approvals. *Undo:* turn it off.
 *Undo:* `/voice mute` stops listening and speaking at once; `voice.listen.barge_in` off drops the microphone while it
 speaks, as before; `voice.speak.ack` `off`, `voice.speak.stream` off and `voice.listen.fast_brain` `same` put a turn
 back as in 0.8.15; `voice.listen.on` off stops listening; turning Voice off
@@ -2276,6 +2301,10 @@ never approves, unlocks or allows anything. Details: [the user guide](wiki/user/
   desk in one stretch, one message suggests a short break, once a stretch, through Calm. *Undo:* turn it off.
 - **What you said you'd do** (0.9.1): `threads` in `face.greet.say` adds the first open thread due today to the
   greeting, last, never with someone else in view. *Undo:* take it out of the list.
+- **While you were away** (0.9.1, `face.away.summary`, off): back at the desk, one pop-up says what came meanwhile and
+  the dashboard's Waiting page (Alt+W) has a card with the held pop-ups in full and the talk box's answers, with Send
+  now; the held pop-ups still show as before. `face.away.summary_only` (off): that one pop-up instead of all of them.
+  *Undo:* turn them off.
 - **Add this look** (0.9.0, `face.looks.on`, on): "unsure" with your hair up or a hat? The Face page's Add this look,
   `/face add-look [label]` or `kurooto face add-look [label]` takes about 10 seconds of you at the camera (enrolment's
   checks, only frames at least "unsure" against your enrolment) and adds up to 10 samples as a labelled look of their
@@ -4496,6 +4525,8 @@ embedding order.
 - **`look.being_resting_sparks`** (on): a low trickle of sparks in the being's brain from what Kurooto does all the time
   (its body's readings, its own processor use, timers firing, notes changing, sound heard). **Undo:** turn it off.
 - **The talk box** (`look.talk_box`, on; Alt+K): talk to Kurooto from any board. **Undo:** turn `look.talk_box` off.
+- **The Waiting page** (0.9.1, `look.being_held_link`, on; Alt+W): click the being's held count to see every message
+  Calm holds in full (why it waits, when), with Send now, and the "while you were away" card. **Undo:** turn it off.
 
 ## What 0.8.7 added to Brain
 

@@ -26,6 +26,37 @@
 - **For add-ons:** a place you arrive at or leave reaches an add-on's `place_event` (`mind.senses.places_to_addons`,
   on; the add-on's own switch decides), and `work_hours(subject, title)` tells Start-by when you work on what. The
   nightly readers share one read of the chat's turns (`memory.night_read`, on); nothing they do changes.
+- **A skip on a call can be undone** (a fix). "I'm going to Organic Chemistry after all" on a call puts the class back
+  on (`attend_class`, the same as `/attend`). The call skips only a class you name or clearly mean ("today's class",
+  said about a class it just asked about, is that class) and says back which ones it skipped.
+- **The wake-up call's questions about yesterday say "yesterday"** (a fix). A check-in moved to the wake-up call asks
+  "anything for Wednesday's journal? What did Wednesday's Linear Algebra cover?", and an after-class question from
+  an earlier day says its day, so "today's class" isn't taken for it. Only your answer to the journal question and what
+  you said about that day's classes go into that day's journal; the new day's planning stays out of it.
+- **"I didn't go" in answer to "How was ...?"** (a fix) marks the class missed for that day, with no class-log entry
+  and no study log (it used to write a lecture note saying "Did not attend").
+- **Done deadlines stay off the morning plan** (a fix): one ticked off in the last day and a half is never brought up
+  as a to-do on the wake-up call, even when the plan drafted before it or a note still lists it.
+- **One question, once a call** (a fix): an answered question, even an unclear answer, isn't asked again in the same
+  call.
+- **The Desk chat** (`calls.chat_desk`, on): what you say at your desk (aloud, a Live talk, the board's talk box) and
+  the answers, as one chat named Desk on the dashboard's Chat page and the phone app, without a notification. Your
+  turns only. `calls.chat_desk_history` (off) lets the talk box follow on from it.
+- **Talk-box answers aren't lost when the page closes** (a fix): an AI answer to the talk box arrives in the Desk chat
+  and on the "while you were away" card, never on Telegram.
+- **The Waiting page** (`look.being_held_link`, on; Alt+W): click the being's held count to read every held message in
+  full, with Send now.
+- **Calls at the desk first** (`calls.desk_first`, off): a call Kurooto places by itself is offered aloud at your desk
+  when you're there alone; yes takes it there, no or silence rings the phone as before. Never the alarm. Add
+  `missed_call` to `face.greet.say` and the desk greeting offers a check-in call you missed today.
+- **What a call went over** (`calls.settle_messages`, off): held messages and open questions about what a call or a
+  desk talk went over say "talked through on your 17:00 call", with Settled on the Waiting page; the switch closes
+  them instead. Never approvals.
+- **Reminders and questions said aloud at the desk** (`voice.speak.messages`, off): while you're alone at the desk, as
+  well as the usual copies; your own spoken answer closes a question everywhere, and "done" takes a reminder down.
+  Never approvals. Features and add-ons share one spoken-answer helper (`Voice.spoken_answer`, `spoken_yes`).
+- **While you were away** (`face.away.summary`, off): back at the desk, one pop-up and a card listing what came
+  meanwhile; `face.away.summary_only` (off) shows only that pop-up until you press Send now.
 
 ## 0.9.0 (2026-10-29)
 

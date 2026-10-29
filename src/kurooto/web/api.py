@@ -278,6 +278,10 @@ class Api:
             from kurooto.mind import status
 
             return 200, status.view(self.app)
+        if path == "waiting":  # (0.9.1) the Waiting page: what Calm holds, the away card (core/waiting.py)
+            from kurooto.core import waiting
+
+            return 200, waiting.view(self.app)
         if path == "memory":  # (0.9.0) the Memory page: every about-you store side by side (core/memorypage.py)
             from kurooto.core import memorypage
 
@@ -541,6 +545,16 @@ class Api:
                 return 200, {"ok": False, "message": "Nothing of it left to quiet."}
             ok, said, uid = self.app.calm.apply(c, why="dashboard")
             return 200, {"ok": ok, "message": said, "undo": uid}
+        if path in ("waiting/send", "waiting/away", "waiting/settle"):  # (0.9.1) the Waiting page (core/waiting.py)
+            from kurooto.core import waiting
+
+            if not waiting.on(self.app):
+                return 200, {"ok": False, "message": "The Waiting page is off (look.being_held_link)."}
+            if path == "waiting/settle":
+                said = waiting.settle(self.app, str(b.get("kind") or ""), str(b.get("id") or ""))
+            else:
+                said = waiting.send_held(self.app) if path == "waiting/send" else waiting.show_away(self.app)
+            return 200, {"ok": True, "message": said}
         if path == "calm/undo":  # the Undo beside a change made from the dashboard (core/calm.py)
             return 200, {"ok": True, "message": self.app.calm.undo(str(b.get("id") or ""))}
         if path.startswith("profile/"):  # save now; restore on a new computer (modules/profile.py)
