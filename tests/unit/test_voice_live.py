@@ -397,3 +397,27 @@ def test_a_face_seen_for_the_turn_goes_to_live(lv):
     srv = lv.fake()
     assert say(lv, faced=True) == "It's due Friday."
     assert len(srv.turns) == 1
+
+
+# ------------------------------------------------------------------------------------- after the turn (0.9.0)
+def test_a_live_turn_is_noticed_like_a_typed_message(lv, monkeypatch):
+    """L36: a Live turn counts as a message from you (message_in) and goes past the same observers App.handle runs;
+    voice.listen.live_after off keeps only the message_in."""
+    from kurooto.core import infer, threads
+    from kurooto.mind import pest, tone
+
+    lv.fake()
+    seen = []
+    monkeypatch.setattr(tone, "seen", lambda app, t: seen.append(("tone", t)))
+    monkeypatch.setattr(pest, "heard", lambda app, t: seen.append(("pest", t)))
+    monkeypatch.setattr(infer, "observe", lambda app, t, via="chat": seen.append(("infer", t, via)))
+    monkeypatch.setattr(threads, "observe", lambda app, t, via="chat": seen.append(("threads", t)))
+    assert say(lv) == "It's due Friday."
+    assert [e["via"] for e in events(lv, "message_in")][-1] == "voice_live"
+    assert [s[0] for s in seen] == ["tone", "pest", "infer", "threads"]
+    assert seen[2] == ("infer", "what's due this week", "voice_live")
+    lv.app.settings.set("voice.listen.live_after", False)
+    seen.clear()
+    n = len(events(lv, "message_in"))
+    say(lv)
+    assert seen == [] and len(events(lv, "message_in")) == n + 1  # the message_in itself is a fix, never off

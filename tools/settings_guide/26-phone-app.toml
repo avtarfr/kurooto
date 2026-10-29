@@ -88,6 +88,22 @@ tip = "Keep the screen on while bedside mode is open and charging."
 default = "on"
 when = "Turn it off to let the screen sleep; bedside mode still dims at night."
 
+[s."app.bedsideToday"]
+tip = "Bedside mode also shows today's reminders, what's due within a day and that Kurooto is asleep."
+default = "on"
+what = "From the Today list your computer sealed for this phone. Locked with a PIN or pattern: only how many."
+when = "Turn it off for the plain clock, alarm and calls."
+
+[parent."phone.bedside"]
+tip = "What this computer hears from bedside mode on your phone."
+
+[s."phone.bedside.signal"]
+tip = "Your phone tells this computer when bedside mode opens or closes (a flag, no sensor)."
+what = "Kept as on or off with its time (calls/bedside.json) and an event; one sent while the computer was off is dropped. Nothing acts on it unless a feature that uses it is turned on."
+when = "Turn it off if this computer shouldn't know."
+cost = "The flag goes sealed through your call line, which passes it on."
+needs = "A paired Android phone (0.9.0 or later)."
+
 [s."app.places.on"]
 tip = "Location reminders: \"remind me when I reach the library\" for the places you saved."
 default = "off"

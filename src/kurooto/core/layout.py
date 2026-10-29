@@ -50,7 +50,17 @@ register_defaults(
         "links": "wiki",  # how Kurooto links notes: "wiki" ([[path|Name]]) or "markdown" ([Name](path.md), relative)
     },
 )
-register_defaults("files", {"folder": "", "links": ""})
+register_defaults(
+    "files",
+    {
+        "folder": "",
+        "links": "",
+        # (0.9.0) a file Kurooto sends you (`kurooto send`, the AI's send_file, a long answer, an add-on's picture)
+        # also comes to the phone app's chat as a link when the chat gets Kurooto's messages (notify.app_chat), not
+        # only to Telegram (core/notify.py, modules/skills.py:send_file)
+        "to_app": True,
+    },
+)
 
 DEFAULT = "kurooto"
 

@@ -59,7 +59,8 @@ If you need calls that really ring, use an Android phone. See [Phone app](phone-
   Waiting for you); the rest of the dashboard is still on the computer.
 - Phone makers that close background apps hard can still delay rings; the app's checklist says what to change, but not
   every phone has been tried.
-- Bedside mode shows the calls due in the next day (from your call line), not reminders, deadlines or classes. On
+- Bedside mode shows the calls due in the next day and (0.9.0) today's reminders and deadlines from the Today list,
+  not classes. On
   Android 10 and newer, "open by itself while charging" is a full-screen notification: with the phone in use it only
   shows a notice to tap. How dim "very dim" is depends on the phone's screen.
 

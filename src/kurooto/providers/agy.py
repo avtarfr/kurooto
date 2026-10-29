@@ -60,7 +60,7 @@ GBRAIN_ALLOW = "mcp(gbrain/*)"  # every tool of your own GBrain's MCP server (gb
 # commands an unattended AI may run: none of them can start another program, whatever its arguments (find -exec,
 # git -c or aliases, latexmk -e or a latexmkrc, rg --pre and sort --compress-program can, so they're not here: a
 # prompt hidden in a mail or a web page must not get a way to run code). Searching is the AI programs' own tools'
-# job, and Kurooto compiles LaTeX itself (skills.compile_tex).
+# job, and Kurooto compiles LaTeX itself (skills.compile_tex; for an AI, the compile_latex tool, core/tools.py).
 COMMANDS = (
     "cat", "cd", "date", "echo", "file", "grep", "head", "jq", "ls", "mkdir", "pdftotext",
     "pwd", "stat", "tail", "tree", "uniq", "wc", "which",

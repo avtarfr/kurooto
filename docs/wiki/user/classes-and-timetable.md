@@ -111,7 +111,8 @@ that come later that day join the short note while you haven't written in it. Wi
 minus that list.
 
 One message lists them once the classes are over (it looks every 30 minutes), each with a **Went to ...** button for
-a class you did go to: it takes the task back, and the note too if you haven't written in it.
+a class you did go to: it takes the task back, and the note too if you haven't written in it. While the catch-up
+stands, the evening check-in doesn't ask what that class covered (0.9.0).
 
 **Went to it, by place** (`subjects.attend_by_place`, off, 0.9.0). With the phone app's places sense on (Brain), the
 phone arriving at a place you saved while a class is on (from a quarter of an hour before it starts) asks once:

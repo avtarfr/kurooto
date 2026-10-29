@@ -428,6 +428,8 @@ class Api:
             from kurooto.core import actions
 
             return 200, actions.today(self.app)
+        if path == "notes/mastery":  # (0.9.0, look.notes_mastery) Brain's grade of each concept, for the NOTES map
+            return 200, notes_mastery(self.app)
         if path == "study":  # the dashboard's Study mode, for one subject (core/actions.py)
             from kurooto.core import actions
 
@@ -1537,3 +1539,20 @@ class Api:
 
         said = uninstall.after_setting(self.app, key, value).strip()
         return 200, {"ok": True, **({"message": said} if said else {})}
+
+
+MASTERY_WORDS = {1.0: "frontier", 0.5: "near", 0.4: "started", 0.1: "solid"}  # mind/frontier.py's grades
+
+
+def notes_mastery(app) -> dict:
+    """(0.9.0) The NOTES map's mastery rings (look.notes_mastery): each concept note Brain's model of what you know
+    has a grade for, as a word (mind/frontier.py: frontier, near, started, solid). {"on": False} with the switch or
+    mind.tom off; nothing leaves this computer."""
+    if not app.settings.get("look.notes_mastery"):
+        return {"on": False}
+    from kurooto.mind import frontier
+
+    g = frontier.grades(app)  # {} with Brain's model of what you know off
+    if not g:
+        return {"on": False}
+    return {"on": True, "grades": {k: MASTERY_WORDS[v] for k, v in g.items() if v in MASTERY_WORDS}}

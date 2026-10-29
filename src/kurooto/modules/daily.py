@@ -191,7 +191,12 @@ def morning_view(app: App) -> dict:
         part(
             "classes",
             lambda: [
-                {"time": f"{c['start']}–{c['end']}", "name": c["name"], "skipping": c["subject"] in subj.skipped()}
+                {
+                    "time": f"{c['start']}–{c['end']}",
+                    "name": c["name"],
+                    "skipping": c["subject"] in subj.skipped(),
+                    "subject": c["subject"],  # (0.9.0) for Today's Skip / Going (core/actions.py: class.skip)
+                }
                 for c in subj.classes_on(include_skipped=True)
             ],
         )

@@ -486,7 +486,6 @@ values = "Seconds, 0 to 5 (default 0)."
 when = "Raise it a little (0.3) if a passing glance at the camera opens it."
 needs = "`voice.listen.look_gaze` and a calibration."
 
-
 [s."voice.listen.look_anyone"]
 tip = "Anyone's look opens the conversation, not only yours: a guest looking at it can talk to it too."
 what = """Face presence reads where every close face looks (the three biggest besides yours), by the head's turn, or by
@@ -666,3 +665,10 @@ tip = "When a talk at the desk ends, its text goes where a call's does: transcri
 what = "Your turns and its answers as text (never sound, never anyone else's turns). With Phone calls on they're kept with the call transcripts (forgotten like them, with their gist); \"I'll send it tonight\" opens a thread; the day's note gets the time and the count of your turns under \"Desk talks\". The AI's look back after calls doesn't run for these."
 when = "Turn it off to keep desk talks out of the transcripts, threads and your daily note."
 cost = "Nothing leaves this computer."
+
+[s."voice.listen.live_after"]
+tip = "A turn Gemini Live answered is noticed like a typed message: threads, what you stated, Brain's tone and replies."
+what = "What App.handle notices in a typed message runs on a Live turn's words too: threads opened or closed, what you stated set up (`infer.on`), Brain's reply tracking and tone tag (on this computer). The turn always counts as a message from you either way."
+when = "Turn it off if Live turns shouldn't open threads or set things up."
+cost = "Nothing leaves this computer."
+needs = "`voice.listen.live`."

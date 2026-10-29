@@ -12,7 +12,7 @@ reminder.snooze {key, minutes} · deadline.add {title, when, course?} · deadlin
 alarm.set {when} · alarm.skip {day} · alarm.clear · alarm.daily {time or "off"} · checkin.skip {name} ·
 checkin.postpone {name, minutes} (later today) · checkin.defer {name} (to tomorrow morning) · ask {text} (a job: its
 answer comes like a chat answer) · question.answer {id, answer} · study.mode {on} · study.timer {do: start|pause|reset,
-subject?}
+subject?} · class.skip {subject, attend?} (today's class: skipping it, or going after all; look.today_class_actions)
 
     study_view(app, subject)        what the dashboard's Study mode shows (the timer, today's study per subject, what's
                                     due, start-by dates, recall cards, the subject's notes)
@@ -121,6 +121,7 @@ def today(app: App) -> dict:
         else 0
     )
     out["features"] = sorted(m.id for m in app.enabled())
+    out["class_actions"] = bool(app.settings.get("look.today_class_actions")) and app.is_on("subjects")
     return out
 
 
@@ -232,6 +233,12 @@ def study_view(app: App, subject: str | None = None) -> dict:
             "cards": [{"text": v["text"], "section": v["section"]} for _, v in items[:3]],
         }
     out["notes"] = subject_notes(app, slug) if slug else []
+    if app.settings.get("look.study_extras") and slug:  # (0.9.0) open doubts and where to study next
+        dq = app.modules.get("doubts") if "doubts" in on else None
+        out["doubts"] = dq.open(slug)[:6] if dq else None
+        from kurooto.mind import frontier  # Brain's model of what you know: [] with mind.tom off
+
+        out["frontier"] = frontier.next_up(app, [n["id"] for n in out["notes"]])
     return out
 
 
@@ -423,6 +430,17 @@ def checkin_postpone(app: App, args: dict) -> dict:
     return {"message": ck.postpone(_text(args, "name"), minutes, via=args.get("_via", "dashboard"))}
 
 
+def class_skip(app: App, args: dict) -> dict:
+    """(0.9.0) Skip today's class, or go after all (attend): the same as /skip and /attend, by your tap only."""
+    subj = _on(app, "subjects", "Subjects")
+    if not app.settings.get("look.today_class_actions"):
+        raise Problem("Class buttons are off: Settings → look.today_class_actions.")
+    slug = str(args.get("subject") or "").strip()
+    if not slug or subj.resolve(slug) is None:
+        raise Problem("Which class?")
+    return {"message": subj._skip(slug, add=not args.get("attend"))}
+
+
 def ask(app: App, args: dict) -> dict:
     from kurooto.web import tools_api
 
@@ -461,6 +479,7 @@ ACTIONS = {
     "checkin.skip": checkin_skip,
     "checkin.postpone": checkin_postpone,
     "checkin.defer": checkin_defer,
+    "class.skip": class_skip,
     "ask": ask,
     "question.answer": question_answer,
     "study.mode": study_mode_act,

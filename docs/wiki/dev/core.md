@@ -426,9 +426,13 @@ jid = app.jobs.submit(
 - **Worker** (`Jobs.worker`, an asyncio task): `recover()` first (jobs left `running` by a dead process, identified by
   `runner` = pid plus start time, go back to `queued`), then every 5 s or on `poke()`: `watchdog()`, and for each free
   lane `_claim()` the oldest ready job and run it in a thread (`_start`). Nothing runs while paused; background jobs
-  only run in `normal` power mode (`_READY`).
+  only run in `normal` power mode (`_READY`). (0.9.0) `Jobs.boosts` (name -> `fn(info) -> bool`, `info`: id, lane, why,
+  title; `boosted()`, a boost that raises counts as no) reorders `_claim`'s ready rows: a reply target first as before,
+  then boosted ones, each group oldest first. Exam season registers `boosts["exam_season"]` (`jobs_priority`).
 - **Effort**: a fixed `low`/`medium`/`high`, or `providers/effort.py:pick` (see [brains.md](brains.md#effort)).
-  Timeout per level: `brain.timeout_min`.
+  Timeout per level: `brain.timeout_min`. (0.9.0) A boosted job whose effort was picked goes one step up
+  (`_step_up`: low -> medium -> high, `job_effort_up`), unless `Quota.wait_until(pool(brain, up))` says that limit is
+  kept or used up; a forced or asked-for effort is never changed.
 - **Retries** are the fallback chain, not repeats: each brain in `[main, fallback, last resort]` (rearranged by
   `Quota.arrange`) is tried once; `RETRY` verdicts move on. There's no automatic re-run of a failed job; features that
   need one (the concept graph) count tries themselves.

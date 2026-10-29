@@ -484,7 +484,10 @@ window.beingMount = async function (host, opts) {
   // m): it looks at one face and moves on to another every 3-8 s, sooner when someone new appears or another face
   // moves clearly more; alone, one face is followed closely, with a quick small saccade when it moves. The owner gets
   // no priority. Remove animations or the system's reduced motion: no saccades, a slower smooth gaze.
-  const ATT = { faces: new Map(), at: 0, on: null, since: 0, until: 0, fresh: null, known: new Set(), spike: 0 };
+  // (0.9.0, face.track.speaker: the "faces" message says speaker) while someone is talking, it looks at them: your
+  // face when Voice ID said the words were yours, else the face moving most (the one talking). Only that someone is
+  // talking and Voice ID's word; never sound
+  const ATT = { faces: new Map(), at: 0, on: null, since: 0, until: 0, fresh: null, known: new Set(), spike: 0, spk: false, talk: { at: 0, owner: false } };
   const RM = window.matchMedia ? matchMedia("(prefers-reduced-motion: reduce)") : null, calmEye = () => STILL || !!(RM && RM.matches);
   function attend(now, calm) { // the face looked at now, or null; face_seen alone (tracking off) as before
     if (!(ATT.faces.size && now - ATT.at < 2000)) return GAZE.at && now - GAZE.at < 3000 ? { x: GAZE.x, y: GAZE.y } : null;
@@ -496,6 +499,10 @@ window.beingMount = async function (host, opts) {
       if (fresh && fresh !== cur && dwell > 700) to = fresh; // someone new
       else if (lively && lively.m > .3 && lively.m > cur.m + .25 && dwell > 1000) to = lively; // someone moving more
       else if (now >= ATT.until) to = pick(cur.id);
+    }
+    if (ATT.spk && fs.length > 1 && now - ATT.talk.at < 1500 && (!cur || now - ATT.since > 400)) { // the one talking
+      const talker = (ATT.talk.owner && fs.find((f) => f.owner)) || fs.reduce((a, f) => (!a || f.m > a.m ? f : a), null);
+      if (talker && talker !== cur) to = talker; else if (talker === cur) to = null;
     }
     if (to) { if (ATT.on != null && !calm) GAZE.fast = now + 140; cur = to; ATT.on = to.id; ATT.since = now; ATT.until = now + 3000 + Math.random() * 5000; ATT.fresh = null; }
     if (fs.length === 1 && !calm && now < GAZE.fast) return { x: cur.x + (cur.x - cur.px) * .5, y: cur.y + (cur.y - cur.py) * .5 }; // a saccade lands a little ahead
@@ -1116,6 +1123,10 @@ window.beingMount = async function (host, opts) {
   }
   function graph(g) { if (memory.nodes.length && REST.on) mind.fire("memory", NOW, 3); memory.build(g); } // a note changed
   async function voice(m) {
+    const pn = performance.now(); // (0.9.0) who's talking, for the eye (attend): a moment of speech, and whose words
+    if (m.kind === "voice_text" && m.who === "you") ATT.talk = { at: pn, owner: m.speaker === "owner" };
+    else if (m.kind === "voice_heard") ATT.talk = { at: pn, owner: false };
+    else if (m.kind === "voice_level" && m.levels && Math.max(0, ...m.levels.map(Number).filter(isFinite)) > .2) ATT.talk = { at: pn, owner: pn - ATT.talk.at < 1500 && ATT.talk.owner };
     if (m.kind === "voice_text") { const s = await shape(m.text || ""); LANES[m.who === "you" ? "you" : "me"] = { text: m.text, s, t: NOW }; if (m.who === "you") { senses.hit.hearing = NOW; LIVE.settled = NOW; } else { mind.fire("speak", NOW, 8); } }
     if (m.kind === "voice_speak" && m.samples) LANES.me = { text: "", s: m.samples, t: NOW };
     // speech heard that wasn't a turn (chatter, or not to it): only its loudness, never words; drawn dimmer
@@ -1129,6 +1140,7 @@ window.beingMount = async function (host, opts) {
     if (m.kind === "face_seen" && m.owner && Number.isFinite(+m.x) && Number.isFinite(+m.y)) { GAZE.x = cl(m.x); GAZE.y = cl(m.y); GAZE.at = now; }
     if (m.kind === "camera" && !m.on) { ATT.faces.clear(); ATT.at = 0; }
     if (m.kind !== "faces" || !Array.isArray(m.faces)) return;
+    ATT.spk = !!m.speaker; // face.track.speaker
     const next = new Map(), had = ATT.faces.size;
     for (const f of m.faces.slice(0, 16)) {
       if (!f || !Number.isFinite(+f.x) || !Number.isFinite(+f.y)) continue;

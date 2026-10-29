@@ -919,7 +919,10 @@ init 0.30, transit 0.15, slip 0.10, guess 0.20 and a weight (a weak sign moves i
 as whole words (alias and title). Evidence from `from_quiz` (a graded answer counts once; cards that name a concept), `from_notes` (a changed note) and `asked`. The false-belief
 check has two fact checkers (backup, deadline) and runs only on those domains.
 
-**Deviations.** (1) `/model` is text with ids (Wrong, Forget as commands); no inline buttons, no dashboard page, no mastery overlay on the notes map. (2) Stating a belief in chat
+**Deviations.** (1) `/model` is text with ids (Wrong, Forget as commands); no inline buttons, no dashboard page; (0.9.0, L132) the notes map's mastery overlay exists: `web/api.py:notes_mastery` (`GET
+notes/mastery`, `look.notes_mastery`) maps `frontier.grades()` to words (`MASTERY_WORDS`; UNKNOWN left out), home.js
+reads it every 2 minutes into `mind.mastery`, `views/notesmap.js` rings started/solid/frontier nodes and the card says
+the grade. (2) Stating a belief in chat
 ("the deadline is Friday") isn't captured automatically yet: `beliefs_about.told(...)` is called with what Kurooto tells him (backup done on `/backup`, deadline reminders); his
 own statements need an intent hook. (3) Quiz cards are linked to concepts by the concept a card names (`concept` on a card Kurooto wrote, both ends `a` and `b` of a link recall card, 0.9.0, `knowledge.item_slugs`), and by name mention for the cards from his own quiz notes, which have no concept id. (4) Prerequisites in the frontier are a note's typed
 `prereq` links, else its links. (5) Exam results he reports are evidence since 0.9.0 (`mind.tom.from_chat`,
@@ -929,6 +932,13 @@ own statements need an intent hook. (3) Quiz cards are linked to concepts by the
 0.9.0 links into the model of what you know: `mind.study_push.frontier` (off: `study_push.next_concepts`, FRONTIER concepts
 whose slug has the subject as a folder; a key after risk in `pick`, and "Next up there" in `line`), `quiz.call_frontier`
 (off), `quiz.links_frontier` (off), `exam_season.use_mastery` (off), `hints.weak_sign` (on: weight 0.2 on the last rung).
+own statements need an intent hook; (0.9.0, L94, `mind.tom.from_chat`) `model.from_chat(app, text)`, called in
+`App.handle` beside `infer.observe` / `threads.observe`, keeps per sentence `beliefs_about.heard` ("the essay is due
+Monday" naming one open deadline: a `deadline` fact for `check()`) and `goals.heard` ("my goal is to ...", "I want
+to ... by Friday": `stated(evidence="chat")`), skipping a message with a `remember.sensitive` detail or a `DENY`
+topic; event `mind_tom_said` (rows only). The nightly readers (infer.sweep, fold, retro's remember) keep their own
+reads and schedules: the shared cached read L94 proposed isn't built. (3) Quiz cards are linked to concepts by name mention, since a card has no concept id. (4) Prerequisites in the frontier are a note's typed
+`prereq` links, else its links. (5) Exam results he reports aren't evidence yet. (6) Stated goals from chat text are parsed since 0.9.0 (above); deadlines and projects were already.
 
 ## Stage 15: week-scale plans
 
@@ -1331,6 +1341,8 @@ per app for `CACHE_S` (600 s), so an add-on may call it every few seconds. 0 wit
 card after a session's last, `_learning_extra` / `_ask_item`, never one answered today; the session's own picks and order
 unchanged) and the revision plan (`exam_season.learning_now`: `Revision.learning` names matching topics in a line above
 `/revise <course>`'s ranked list, which is unchanged). Off with `mind.tom.on`.
+`next_up(app, among, n)` (0.9.0): the `FRONTIER` concepts as `{"id", "title", "subject"}`, those in `among` (a subject's
+note ids) first, from the same cache; the dashboard's Study pane shows one (`look.study_extras`). Local only.
 
 **Dreaming** (`mind/dream.py`, `PART = "dream"`: `mind.dream.on`, then `cards`, `lessons`, `voice`; `frontier.py` is
 part of `tom`). `nightly(app)` runs at `WHEN` (`daily 00:15,...,06:15`, `modules/mind.py` job `mind:dream`,

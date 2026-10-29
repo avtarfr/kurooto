@@ -13,6 +13,7 @@ a grade:
                               off): an add-on can weigh what's on screen by it
     on_frontier(slug, ...)    the rule above, for Dreaming's cards (mind/dream.py)
     grades(app)               every concept's grade, worked out at most every CACHE_S seconds
+    next_up(app, among)       frontier concepts, a subject's first, for the Study pane (0.9.0)
 
 A file read and plain arithmetic: no model, nothing leaves this computer. The grades are kept in memory only.
 
@@ -112,6 +113,21 @@ def grades(app: App) -> dict[str, float]:
     return dict(_load(app)[1]) if model.on(app) else {}
 
 
+def next_up(app: App, among: list[str] | None = None, n: int = 1) -> list[dict]:
+    """(0.9.0) Concepts on his frontier, [{"id", "title"}], the ones in `among` (a subject's note ids) first: the
+    dashboard's Study pane shows one (look.study_extras). [] with the model off. Never raises."""
+    try:
+        if not model.on(app):
+            return []
+        notes, g = _load(app)
+        front = sorted(s for s, v in g.items() if v == FRONTIER)
+        mine = set(among or [])
+        ordered = [s for s in front if s in mine] + [s for s in front if s not in mine]
+        return [{"id": s, "title": notes[s].title, "subject": s in mine} for s in ordered[:n]]
+    except Exception:
+        return []
+
+
 def score(app: App, text: str) -> float:
     """How close this text is to his mastery frontier, 0 to 1: the best grade among the concepts it names. 0 when it
     names none, or Brain's model of what he knows (mind.tom.on) is off. Never raises."""
@@ -175,4 +191,14 @@ def learning_now(app: App) -> list[str]:
         return []
 
 
-__all__ = ["score", "on_frontier", "grades", "masteries", "prereqs", "forget_cache", "mark_learning", "learning_now"]
+__all__ = [
+    "score",
+    "on_frontier",
+    "grades",
+    "masteries",
+    "prereqs",
+    "forget_cache",
+    "mark_learning",
+    "learning_now",
+    "next_up",
+]

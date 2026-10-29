@@ -57,6 +57,8 @@ class BedsideState {
     var date by mutableStateOf("")
     var alarm by mutableStateOf("")
     var calls by mutableStateOf<List<String>>(emptyList())
+    var today by mutableStateOf<List<String>>(emptyList()) // (0.9.0) reminders and what's due, from the Today list
+    var asleep by mutableStateOf("") // (0.9.0) "Kurooto is asleep", or ""
     var waiting by mutableStateOf("")
     var status by mutableStateOf("")
     var talk by mutableStateOf("")
@@ -99,6 +101,9 @@ private fun Bedside(a: BedsideActivity, s: BedsideState) {
                 textAlign = TextAlign.Center, maxLines = 1,
             )
             Text(s.date, color = dim, fontSize = 18.sp, textAlign = TextAlign.Center)
+            if (s.asleep.isNotEmpty()) {
+                Text(s.asleep, color = dim, fontSize = 15.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
+            }
             if (s.alarm.isNotEmpty()) {
                 Text(s.alarm, color = ink, fontSize = 20.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 16.dp))
             }
@@ -110,6 +115,19 @@ private fun Bedside(a: BedsideActivity, s: BedsideState) {
                     Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         s.calls.forEach {
                             Text(it, color = dim, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth())
+                        }
+                    }
+                }
+            }
+            if (s.today.isNotEmpty()) { // (0.9.0) reminders and what's due, in the same quiet card as the calls
+                Surface(
+                    shape = MaterialTheme.shapes.extraLarge, color = card, contentColor = dim,
+                    modifier = Modifier.padding(top = 12.dp).widthIn(max = 520.dp),
+                ) {
+                    Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        s.today.forEach {
+                            Text(it, color = dim, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
                                 modifier = Modifier.fillMaxWidth())
                         }
                     }

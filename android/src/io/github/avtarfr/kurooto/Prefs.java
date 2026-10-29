@@ -127,6 +127,10 @@ final class Prefs {
         sp(c).edit().putBoolean("bedsideAuto", auto).putString("bedsideFrom", from).putString("bedsideTo", to).apply();
     }
     static void setBedsideKeepOn(Context c, boolean on) { sp(c).edit().putBoolean("bedsideKeepOn", on).apply(); }
+    /** (0.9.0) Bedside mode also shows today's reminders and what's due soon from the Today list, and that your
+     *  assistant is asleep (on by default). */
+    static boolean bedsideToday(Context c) { return sp(c).getBoolean("bedsideToday", true); }
+    static void setBedsideToday(Context c, boolean on) { sp(c).edit().putBoolean("bedsideToday", on).apply(); }
 
     // switches (0.7.2, every feature can be turned off): the line's own connection (off: calls through ntfy only),
     // and the moving background (off: a still frame, as with "Remove animations")

@@ -252,6 +252,55 @@
   add-ons' counts, side by side.
 - **"Want to go through them?" now goes through them** (L41, `voice.answers_questions`): after the greeting, a spoken
   yes reads the waiting questions one by one and takes your spoken answers; approvals stay a tap.
+- **Files reach the phone app too** (`files.to_app`, on). With the app's chat getting Kurooto's messages
+  (`notify.app_chat`), a file it sends you (`kurooto send`, the AI's file, a long answer, a grocery order's screenshot
+  from an add-on) comes to the chat as a link as well as to Telegram; one reply says both. A file too big for Telegram
+  goes to the chat. Off: Telegram only, as before.
+- **LaTeX to PDF for your AI** (`tools.latex`, on). A request that writes LaTeX can now get its PDF: the new
+  `compile_latex` tool compiles a copy with shell escape off and answers with the PDF or the first errors. The PDF goes
+  beside the `.tex` in your files folder, else into it, never into your notes when a files folder is set; your AI is
+  told to write the documents it makes there too.
+- **Fix: the call line no longer drops for nothing.** A heartbeat that looked silent because this computer was busy
+  now gets one more ping and five seconds before the line is called dead (about 35 needless reconnects a day before);
+  a late heartbeat is logged with how late it was.
+- **Fix: the evening check-in doesn't ask what a class you missed covered.** A class with a catch-up task is
+  mentioned as missed (the catch-up is on your list), and no study log is asked for it.
+- **Live turns count like typed ones** (`voice.listen.live_after`, on). A turn Gemini Live answered at the desk now
+  opens and closes threads, sets up what you stated and reaches Brain's tone and reply tracking, as a typed message
+  does; it always counts as a message from you (a fix: "first up today" missed it).
+- **Skip or go to a class from Today** (`look.today_class_actions`, on). Each of today's classes on the dashboard's
+  Today page has **skip**, or **going** on one you skip: the same as `/skip` and `/attend`.
+- **Open doubts and what to learn next in Study mode** (`look.study_extras`, on). The Study pane lists the subject's
+  open doubts and, with Brain's model of what you know on, the concept it thinks you're ready for next.
+- **Where each AI request came from** (`look.jobs_source`, on). The dashboard's AI jobs page has a **from** column:
+  Telegram, the phone chat (a link to that chat), the talk box, voice at the desk, or by itself.
+- **Study first during exams** (`exam_season.jobs_priority`, on). In an exam season, AI requests about an exam's
+  subject and quiz or revision work go first in the queue and, when Kurooto picks the effort, one step higher; the rest
+  still runs. Holding back other background AI work until the season ends is its own switch,
+  `exam_season.defer_background`, off.
+- **"Am I at my desk?" gets a real answer** (`face.tools`, on). Every AI and calls get `kurooto_now`: at the desk or
+  away and since when, on a call, where messages reach you, Voice ID's last word, Brain's plan line and the camera's
+  state, in words only.
+- **Brain's plan and your free time for your AI** (`mind.tools.on`, on with Brain). Read-only `brain_plan`,
+  `brain_free_time` ("Likely free from 16:00") and `brain_precedents`; "call me back when I'm free" books the call
+  for that hour.
+- **The evening check-in asks about what you said you'd do today** (`checkins.reflect_open`, on). Open threads due
+  today come up in the evening call and message; your answer ("I emailed the draft") closes them.
+- **A gentler order on a quiet day** (`checkins.follow_register`, off). With Brain's register quiet, the evening call
+  does how it went and tomorrow first, then asks once whether to go through the rest; nothing is dropped.
+- **What you know, on the notes map** (`look.notes_mastery`, on). With Brain's model of what you know on, concept
+  notes get a ring: known well, partly known, or ready to learn next; pointing at one says it in words.
+- **Brain hears goals and due dates you state** (`mind.tom.from_chat`, on with its model of you). "My goal is to
+  finish the draft by Friday" and "the essay is due Monday" become rows you can see and correct in `/model`; never
+  health, money or the deny-list's topics.
+- **The eye looks at whoever is talking** (`face.track.speaker`, on). On the dashboard's being, while someone talks
+  the eye turns to them: to you when Voice ID says it's you, else to the face moving most.
+- **Reminders, deadlines and sleep on the bedside screen** (phone app: Settings → Bedside, on). Bedside mode shows
+  today's reminders, what's due within a day and that Kurooto is asleep; locked, only how many.
+- **The computer hears when bedside mode opens** (`phone.bedside.signal`, on). A flag, no sensor; nothing acts on it
+  yet unless a feature that uses it is turned on.
+- **Your time at the desk** (`face.desk_time`, off). From when Face presence saw you arrive and leave: "4 h 10 at the
+  desk today, longest 2 h 40 unbroken" in the evening check-in and the weekly summary, as your own numbers.
 
 ## 0.8.18 (2026-10-29)
 

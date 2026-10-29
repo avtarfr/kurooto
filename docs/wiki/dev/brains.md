@@ -292,6 +292,24 @@ answered. `fell` comes from `handed()` (step 8 above).
 - `sync_tools()`: `sync_status`, `sync_now`.
 - `core/selfdoc.py:tool(app)`: `kurooto_self` (read-only): this computer's `self.md`, or with `part=manual` the shipped
   manual. See [self-manual.md](self-manual.md).
+- `core/rightnow.py:now_tools()` (0.9.0, L124, `face.tools`; kept out of core/tools.py, which never touches Face: tests/unit/test_face.py): `kurooto_now` (`writes=False`, so MCP marks it read-only), also in
+  `Calls.tools()` (calls, desk Live). `now_view(app)`: `desk` from the last `face_arrived`/`face_back`/`face_left`
+  event (`DESK_EVENTS`) and the watcher's `away`, `camera` = `Face.line()`, `call` from `web/tools_api.live_call`,
+  `messages_go_to` from the notifier's channels (and `notify.app_chat`), `voice_id` = `VoiceID.last_word` (a
+  `speakerid.WORDS` word), `plan` = `mind/plans.line()` (`digest_line` cached `LINE_S`). Words only (R7); guests get no
+  tools (`tools_for`). Place labels aren't built: they need the owner's yes.
+- Brain's read-only tools (0.9.0, L125, `modules/mind.py:Mind.call_tools`, `mind.tools.on`): `brain_plan`
+  (`mind/plans.view`), `brain_free_time` (`free_words`: "Likely free from 16:00" from `presence_forecast.next_free`,
+  never its chance), `brain_precedents` (`precedents.listing`). Nothing reads the read, mood, tone or the forecast of
+  him (I-11, I-14).
+- `latex_tools()` (0.9.0, `tools.latex`): `compile_latex(path)`. The source must be inside `places.read_roots`;
+  `_latex_workdir` copies its folder (at most `LATEX_COPY_MAX` files/bytes, hidden files left out; else the `.tex`
+  alone) into a temp dir and `modules/skills.py:compile_tex` compiles there (Tectonic `--untrusted`, else `latexmk -norc
+  -no-shell-escape` or `pdflatex` twice, `openin_any`/`openout_any` paranoid, `LATEX_TIMEOUT`). Only the PDF is copied
+  out, to `latex_dest`: beside the source inside `files.folder` or `places.course_files`; else `layout.file_dir("latex")`
+  (the files folder's inbox), except that with no files folder a source in a write root keeps its PDF beside it.
+  `latex_rule()` adds a line to the AI's context (`providers/context.py`) when `files.folder` is set: documents it makes
+  go there, not in the notes. Events `latex_compiled` (beside), `latex_compile_failed` (the first error line).
 - `app.ask.agent_tools()`: `ask_user`.
 - For each enabled module: `call_tools()` and `agent_tools()`, deduplicated by name; `CALL_ONLY = {"run_task",
   "pending_items"}` are never given to unattended work. Learns from its own work adds `search_history` this way.

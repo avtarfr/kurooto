@@ -11,7 +11,12 @@ sense in unattended work). Below, the ones that are always there:
 - fetch_url: a web page as text (GET only; never this computer or a private network);
 - sync_status: when each sync last ran, how it went, and when it runs next;
 - kurooto_self: what Kurooto is running here (version, AIs and models, features and their health, the last day's
-  failures) and, with part=manual, how it works (core/selfdoc.py).
+  failures) and, with part=manual, how it works (core/selfdoc.py);
+- kurooto_now (face.tools, 0.9.0): where you are in coarse words (at the desk or away and since when, on a call,
+  where its messages reach you, Voice ID's last word, Brain's plan line, the camera's state); never pictures, mood,
+  Brain's read, tone or sense readings;
+- compile_latex (tools.latex, 0.9.0): a .tex file to a PDF with shell escape off, so an agent that may not run
+  pdflatex itself still gets its PDF; the PDF goes to the files folder, never into the notes when one is set.
 Tools say whether they write (Tool.writes): text-only requests get none at all. A tool that sets an alarm, places a
 call or does anything else on core/tap.py's list says so (Tool.guarded): outside a live call it waits for your Approve.
 A request that changes files works in a scratch folder (core/scratch.py, tools_for()): its writing tools write only
@@ -38,6 +43,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kurooto.core import egress, places, tap
+from kurooto.core.config import register_defaults
 from kurooto.core.state import jload
 from kurooto.modules.calls.tools import Tool, arg, clip, keyword_search
 
@@ -48,6 +54,15 @@ if TYPE_CHECKING:
 # settings use them (Stay awake on charger, the alarm); tests/unit/test_mind_stops.py checks the import graph
 TOOL_NEVER = ("kurooto.core.inhibit",)
 CALL_ONLY = {"run_task", "pending_items"}  # an unattended request doesn't start more requests or brief a call
+
+register_defaults(
+    "tools",
+    {
+        # (0.9.0) compile_latex: the AI can turn a .tex file into a PDF (shell escape off, a time limit); the PDF goes
+        # beside the source in your files folder, else into it, never into the notes when files.folder is set
+        "latex": True,
+    },
+)
 MAX_NOTE = 200_000  # characters a tool may add in one go
 BAD_CHARS = re.compile(r'[<>:"|?*\x00-\x1f]')  # not allowed in file names on Windows
 RESERVED = {"con", "prn", "aux", "nul", *(f"com{i}" for i in range(10)), *(f"lpt{i}" for i in range(10))}
@@ -676,11 +691,116 @@ def sync_tools(app: App) -> list[Tool]:
     ]
 
 
+# --------------------------------------------------------------------------------------------------- LaTeX
+LATEX_TIMEOUT = 300  # seconds for one compile (Tectonic's first run fetches packages: skills.compile_tex)
+LATEX_COPY_MAX = (500, 50 * 2**20)  # files and bytes of the source's folder copied to compile in (its \input, figures)
+
+
+def latex_dest(app: App, tex: Path) -> Path:
+    """Where compile_latex puts the PDF: beside the source when that's in your files folder or the course files
+    folder; else in the files folder's inbox (layout's "latex" place); without a files folder, beside the source when
+    the AI may write there, else the layout's place (the notes' inbox: the notes are where files live then)."""
+    from kurooto.core import layout
+
+    files = places.files_folder(app)
+    own = [r for r in (files, places.course_files(app)) if r is not None]
+    if places.inside(tex, own):
+        return tex.parent
+    if files is None and places.inside(tex, places.write_roots(app)):
+        return tex.parent
+    return layout.file_dir(app, "latex")
+
+
+def _latex_workdir(tex: Path, tmp: Path) -> Path:
+    """A copy to compile in, so the engine's leftovers never land in your folders: the source's folder when it's
+    small (its \\input files and figures come along), else the .tex alone. Hidden files stay behind."""
+    src, n, size = tex.parent, 0, 0
+    files = []
+    for f in src.rglob("*"):
+        rel = f.relative_to(src)
+        if any(part.startswith(".") for part in rel.parts) or not f.is_file() or f.is_symlink():
+            continue
+        n, size = n + 1, size + f.stat().st_size
+        if n > LATEX_COPY_MAX[0] or size > LATEX_COPY_MAX[1]:
+            files = []
+            break
+        files.append(rel)
+    work = tmp / "src"
+    for rel in files or [Path(tex.name)]:
+        (work / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src / rel, work / rel)
+    return work / tex.name
+
+
+def compile_latex(app: App, path: str) -> str:
+    """compile_latex's answer: where the PDF went, or the first errors from the log."""
+    from kurooto.modules import skills
+
+    raw = str(path or "").strip().removeprefix("file://")
+    if not raw:
+        return "compile_latex needs the .tex file's path."
+    tex = Path(os.path.expanduser(raw))
+    if not tex.is_absolute():
+        tex = Path(app.workspace) / tex
+    if tex.suffix.lower() != ".tex" or not tex.is_file():
+        return f"There's no .tex file at {raw}."
+    if not places.inside(tex, places.read_roots(app)):
+        return "That file is outside the folders I may read."
+    tex = tex.resolve()
+    if not skills.pdf_engine(app):
+        return "There's no LaTeX on this computer (TeX Live, MiKTeX or Tectonic); ask them to install one."
+    dest = latex_dest(app, tex)
+    with tempfile.TemporaryDirectory(prefix="kurooto-tex-") as tmp:
+        work = _latex_workdir(tex, Path(tmp))
+        ok, err = skills.compile_tex(app, work, timeout=LATEX_TIMEOUT)
+        if not ok:
+            app.events.emit("latex_compile_failed", error=(err.splitlines() or ["failed"])[0][:200])
+            return f"It didn't compile. The first errors:\n{err}"
+        dest.mkdir(parents=True, exist_ok=True)
+        pdf = dest / (tex.stem + ".pdf")
+        shutil.copyfile(work.with_suffix(".pdf"), pdf)
+    app.events.emit("latex_compiled", beside=dest == tex.parent)
+    return f"Compiled: {pdf}"
+
+
+def latex_tools(app: App) -> list[Tool]:
+    if not app.settings.get("tools.latex"):
+        return []
+    return [
+        Tool(
+            "compile_latex",
+            "Compile a LaTeX .tex file to a PDF (latexmk or pdflatex, shell escape off). The PDF goes beside the "
+            "source when it's in their files folder, else into the files folder; the answer gives the PDF's path, "
+            "or the first errors to fix.",
+            lambda a: compile_latex(app, a.get("path")),
+            {"path": arg("the .tex file's full path, or its path in the notes folder")},
+            ("path",),
+            writes=True,
+            hint="To make a PDF from LaTeX, call compile_latex (never run pdflatex yourself). Write documents you "
+            "make (solutions, reports, .tex) in their files folder for that course, not in the notes folder.",
+        )
+    ]
+
+
+def latex_rule(app: App) -> str:
+    """For the AI's context: where documents it makes go (files.folder set and compile_latex on), else ""."""
+    files = places.files_folder(app)
+    if files is None or not app.settings.get("tools.latex"):
+        return ""
+    return (
+        f"Documents you make (solutions, reports, LaTeX) go in their files folder {files}, in that course's folder, "
+        "never in the notes folder; compile LaTeX with the compile_latex tool."
+    )
+
+
 def agent_tools(app: App) -> list[Tool]:
     """Every tool for unattended work: the notes tools, then each enabled feature's own."""
     from kurooto.core import selfdoc  # kurooto_self: what Kurooto is running, for questions about itself
 
-    out = NoteTools(app).tools() + FileTools(app).tools() + sync_tools(app) + [selfdoc.tool(app)]
+    out = NoteTools(app).tools() + FileTools(app).tools() + sync_tools(app) + [selfdoc.tool(app)] + latex_tools(app)
+    from kurooto.core.rightnow import now_tools  # kurooto_now (face.tools)
+
+    out += now_tools(app)
     seen = {t.name for t in out}
     sources = [("ask", getattr(getattr(app, "ask", None), "agent_tools", None))]  # ask_user: a question to them
     for m in app.enabled():

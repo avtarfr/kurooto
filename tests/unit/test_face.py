@@ -1714,7 +1714,7 @@ def test_faces_reach_open_pages_at_most_ten_a_second_and_add_ons_each_their_own_
     for _ in range(50):
         f._on_watch("faces", faces=one)
     msgs = [m for m in pushed if m.get("kind") == "faces"]
-    assert len(msgs) == 1 and msgs[0] == {"t": "face", "kind": "faces", "faces": one}
+    assert len(msgs) == 1 and msgs[0] == {"t": "face", "kind": "faces", "faces": one, "speaker": True}  # (0.9.0)
     assert len(got) == 50 and got[-1][0]["x"] == 0.1  # one add-on's change never reaches the next
     f._on_watch("faces", faces=[])  # the last face gone: always said
     assert pushed[-1]["faces"] == [] and got[-1] == []
@@ -1831,3 +1831,20 @@ def test_a_face_inside_a_bigger_face_is_part_of_it():
     other = Face((100, 220, 300, 310), (), 0.9)  # beside you: a second person
     assert drop_nested([inner, you, other]) == [you, other]
     assert drop_nested([you]) == [you] and drop_nested([]) == []
+
+
+def test_the_faces_message_says_when_the_eye_follows_the_talker(app, monkeypatch):
+    """L136 (0.9.0, face.track.speaker): the pages' "faces" message carries speaker, so the eye looks at whoever is
+    talking (web/static/being.js); off, it doesn't."""
+    f = app.modules["face"]
+    sent = []
+    monkeypatch.setattr(f, "_page_in_sight", lambda: True)
+    monkeypatch.setattr(f, "_push", lambda msg, cid=None: sent.append(msg))
+    one = [{"id": 1, "x": 0.1, "y": 0.0, "owner": True, "m": 0.2}]
+    f._faces_at = 0.0
+    f._on_watch("faces", faces=one)
+    assert sent[-1]["speaker"] is True and sent[-1]["faces"][0]["owner"] is True
+    app.settings.set("face.track.speaker", False)
+    f._faces_at = 0.0
+    f._on_watch("faces", faces=one)
+    assert "speaker" not in sent[-1]

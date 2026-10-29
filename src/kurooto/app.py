@@ -384,6 +384,27 @@ class App:
             self.events.emit("module_failed", module="proposals", error=f"{type(e).__name__}: {e}"[:300])
 
     # ------------------------------------------------------------------------------------- messages
+    def after_turn(self, text: str, via: str) -> None:
+        """(0.9.0) A turn of yours answered outside handle() (desk Live, modules/voice/live.py, which takes only the
+        owner's turns): it counts as a message from you (message_in, so "first up" and the rest see it), and with
+        voice.listen.live_after on, what handle() notices in a message is noticed in it too: Brain's tone (on this
+        computer) and the answer to its own message, what it states (core/infer.py) and the threads it opens or closes
+        (core/threads.py). Never raises."""
+        text = (text or "").strip()
+        self.events.emit("message_in", via=via, chars=len(text), files=0)
+        if not text or text.startswith("/") or not self.settings.get("voice.listen.live_after"):
+            return
+        try:
+            from kurooto.core import infer, threads
+            from kurooto.mind import pest, tone
+
+            tone.seen(self, text)
+            pest.heard(self, text)
+            infer.observe(self, text, via=via)
+            threads.observe(self, text, via="chat")
+        except Exception as e:
+            self.events.emit("after_turn_failed", error=f"{type(e).__name__}"[:60])
+
     def handle(self, msg: Incoming, also: list[Module] | None = None) -> None:
         """Route one message from you: a reply to something Kurooto asked, a /command, files, a plain-English
         request that runs instantly, or (if Chat is on) a request for the AI. `also`: features that answer this
@@ -571,6 +592,9 @@ class App:
             from kurooto.core import threads  # "I'll send the draft tonight": an open thread (core/threads.py)
 
             threads.observe(self, text, via="chat")
+            from kurooto.mind.tom import model as tom  # (0.9.0) goals and due dates you state (mind.tom.from_chat)
+
+            tom.from_chat(self, text)
             from kurooto.core import meetings  # "about the meeting with X: ...": minutes in its project note
 
             if meetings.take(self, msg, text):

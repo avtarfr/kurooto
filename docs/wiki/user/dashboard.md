@@ -236,6 +236,12 @@ once the [concept graph](notes-and-concept-graph.md) reads a book, hundreds of n
 lines, and before 0.5.19 it took every label and the map read as a list of book titles. The region names step back
 while you point at or search for a note.
 
+**What you know, on the map (0.9.0, `look.notes_mastery`, on).** With Brain's model of what you know on
+(`mind.tom.on`), concept notes get a ring over their neighbourhood's colour: green for one you know well, sand for one
+partly known, and a double peach ring for one you're ready to learn next (its prerequisites are solid). Pointing at a
+note says it in words ("Brain: ready to learn next"). It's worked out on this computer and read again every two
+minutes; off, or with Brain off, no rings.
+
 **Pointing at a note (0.6.1).** The note and the notes it links to (or that link to it) light up in full colour with
 their names raised above everything else, placed so they never overlap (up to 24 neighbours' names, the course
 pages, hubs and links you made first); everything else dims and the region names step aside. It eases in over
@@ -329,6 +335,10 @@ What it shows:
     ([Start-by dates](reminders-and-deadlines.md)).
   - **Recall:** with [Quiz](quiz-and-exams.md) on, up to three cards due for the subject from its exam-prep notes;
     click one to see it. `/quiz <subject>` practises them.
+  - **Open** (0.9.0, `look.study_extras`, on): the subject's open doubts from the [Doubt queue](classes-and-timetable.md)
+    (with it on), and with Brain's model of what you know on (`mind.tom.on`) the concept it thinks comes next for
+    you (a concept not mastered whose prerequisites are; one of this subject's first, else "another subject"). Click it
+    to find it on the map. Shown only when there's something to show.
   - **Notes:** the subject's course page, exam prep, doubts and class log, then its lecture and concept notes, newest
     first (wherever your notes layout keeps them).
 
@@ -338,6 +348,7 @@ What it shows:
 | `study.focus_min` | `25` | minutes of focus |
 | `study.break_min` | `5` | minutes of break |
 | `study.timer_ends_mode` | off | Study mode ends with the focus |
+| `look.study_extras` | on | the Open box: open doubts and the next concept (0.9.0) |
 
 The timer needs the Study tracker (and Subjects); without it, Study mode still shows your notes and what's due. A
 focus never shortens a `/focus` of yours that lasts longer. `/study stop` (or "done studying") during a focus ends the
@@ -412,7 +423,9 @@ The day, and the everyday things done right there.
   reminder (`! in 20m tea`, `! tomorrow 9am gym`; the time comes first). Press Enter or **↵**.
 - **Alarm** (needs the Morning alarm): what's set, a box to set one ("7:30", "tomorrow 6:45"), **skip tomorrow**,
   **turn this one off**, and **daily alarm…** / **change daily** (asks for a time, or `off`).
-- **Classes:** today's classes, "(skipping)" on ones you skip.
+- **Classes:** today's classes, "(skipping)" on ones you skip. Each has **skip** (you're not going: the same as
+  `/skip`, so calls may come then), or **going** on one you skip (the same as `/attend`); 0.9.0,
+  `look.today_class_actions` (on) hides them when off.
 - **Due:** the next three weeks; **done** ticks one off (and the `- [ ]` box in your notes when it came from one),
   **new date** asks for a date ("tomorrow 23:59"). An add box takes "essay draft fri 17:00" (when it's due goes last).
 - **Reminders:** each with **+10 min** and **cancel**.
@@ -480,7 +493,9 @@ as one sent on Telegram does. `look.chat_page` turns the page off.
 - **Activity** lists the last 80 events as they happen. Events never hold what you typed, only names, counts and
   times.
 - **AI jobs** lists requests with **Cancel** on running and waiting ones (a running agent program is stopped with what
-  it started). The same as `/jobs` on Telegram.
+  it started). The same as `/jobs` on Telegram. Its **from** column (0.9.0, `look.jobs_source`, on) says where each
+  came from: Telegram, the phone chat (a link that opens that chat on the Chat page), the talk box or terminal, voice
+  at the desk, a routine, or "by itself" for work Kurooto started.
 - **Schedule** lists what's coming with its time.
 
 ### Features (Alt+F)

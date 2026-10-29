@@ -98,7 +98,11 @@ one message (`why="calls.line_update"`). Tests: `tests/unit/test_apk_ship.py` (t
 - One outbound WebSocket to `wss://<worker>/connect` with header `x-connector-secret`; `max_size` 8 MB; the library's
   own pings off. Runs as `Calls.background(stop)`, started by `App.start_background`.
 - Heartbeat: text `"ping"` every `PING_S = 30` s; the Durable Object answers `"pong"` through
-  `setWebSocketAutoResponse` without waking. Nothing heard for `DEAD_S = 75` s ends the session and redials.
+  `setWebSocketAutoResponse` without waking. Nothing heard for `DEAD_S = 75` s ends the session and redials, but
+  only after `_still_there` (0.9.0, N3): it yields once so the reader can take frames that already came, sends one more
+  ping and waits up to `CONFIRM_S = 5` s for any frame. A heartbeat that wakes more than `LAG_S = 5` s late (a busy event
+  loop, a suspend) logs the lag at info, so the real cause of a drop shows (before, about 35 false drops a day, each a
+  2-16 s reconnect).
 - Reconnect back-off 2 s doubling to 60 s; failures go to `app.presence.net_failed("line", e)`. Link state:
   `<state>/calls/link.json`.
 - Computer to Worker: `hello` (`pull: true`: hand over what waited one item at a time), `state` (`Calls.state_message`: setup, tools, brief, schedule, texts, voices, presence
@@ -246,8 +250,11 @@ transcripts, events and answers until the computer takes them (`Calls.take_queue
   the zone named, a Live model once planned in UTC ("1:30 PM" at 17:00 IST). Voice by kind: `Calls.voice_for`.
 - Tool calls: page to `/tool`, Worker to WebSocket, `Calls.handle_request` to `Calls.run_tool`. Tools are
   `Calls.tools()`: its own (`pending_items`, `search_notes`, `read_note`, `schedule_call`, `call_now`, `hold_calls`,
-  `run_task` when Chat is on), `app.ask.call_tools()`, `core/tools.py:sync_tools`, and every enabled module's
-  `call_tools()`. With the computer off, each tool's `offline` value decides: `brief` (answered from the last pushed
+  `run_task` when Chat is on), `app.ask.call_tools()`, `core/tools.py:sync_tools`, `core/tools.py:now_tools`
+  (0.9.0, `kurooto_now` with `face.tools`), and every enabled module's `call_tools()`. (0.9.0, L125) `schedule_call`'s
+  `when` matching `FREE_WHEN` ("when I'm free", "when free", "next free") takes `_when_free()`: 10 minutes ahead when
+  `presence_forecast.free_now`, else `next_free`'s hour; with `mind.tools.on` or the forecast off, or no free hour, it
+  answers "give a time". Still `guarded="call.place"`. With the computer off, each tool's `offline` value decides: `brief` (answered from the last pushed
   brief), `queue` (done later), `needs` (the assistant says it can't).
 - `/tasks` is polled for finished jobs and approvals; `Calls.on_call` keeps `availability.set_on_call` 90 s ahead
   (`ON_CALL_S`), so nothing else rings and updates wait. The end: the page's `/transcript` (`ended: true`) clears it at
@@ -398,7 +405,12 @@ on Telegram (`core/turnon.py` already offers its buttons for `via` `app`). `resp
 `core/calm.py:Calm.bundle` sends each held message by itself unless `notify.calm.bundle_one`.
 Jobs answer with `reply_to="app:<id>"`: `core/notify.py:Notifier._deliver` sends such a message to the `chat` channel
 only (and the desktop, by its kinds); with no `chat` channel it goes to Telegram without the reply_to. With
-`notify.app_chat` on, messages whose kind isn't in `notify.app_kinds` (and isn't `call`) also go to `chat`.
+`notify.app_chat` on, messages whose kind isn't in `notify.app_kinds` (and isn't `call`) also go to `chat`; a
+`Message.file` too since 0.9.0 (`files.to_app`, on: before, a file with Telegram was Telegram's document only).
+`PhoneChat.send` makes such a copy with `send_file(wait=True)` when the file is at most `FILE_MAX`, so it's on the line
+before the sender goes on: a sender may delete its file once `skills.send_file` says "Sent" (the Body add-on's order
+screenshots live in a RAM folder only while they're sent). `skills.send_file` says both places in its one reply
+(`skills.to_app`), and sends a file over Telegram's 50 MB straight to the chat when `to_app` holds.
 A button press runs `App.callback(data)` and says its answer in the chat unless it's empty or "ok"; under the answer
 to a counting button (`core/notify.py:counts`, a "+1"; 0.5.20) the same button again, so the chat's notification can
 offer it too.
@@ -1025,7 +1037,15 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
 - Bedside mode (0.6.0): `BedsideActivity` (theme `Kurooto.Call`, `showWhenLocked`, immersive): clock, date, next
   alarm (the first `alarm` call from `GET /upcoming`, or `AlarmManager.getNextAlarmClock()` if earlier), up to three
   calls (reasons hidden while a secure keyguard is locked), the waiting count, and the Talk button (`Line.callLink` then
-  `CallActivity`, which shows over the lock screen itself); Chat and the main screen go through
+  `CallActivity`, which shows over the lock screen itself). (0.9.0, L135, `Prefs.bedsideToday`, on) `showToday`
+  adds up to three reminders and two deadlines whose `due` is within a day (`Dock.withinDay`, past by under 12 h) from
+  `Today.load()`'s list (counts only behind a secure keyguard) and "<assistant> is asleep" from the list's `asleep`
+  (`calls/today.py` sets it while `mind/sleep.asleep`; `mind_sleep` is in `CHANGES`, so it's pushed when it turns).
+  (0.9.0, L11) `onCreate` / `onDestroy` (finishing) send `Chat.signal(c, "bedside", on)`: op `bedside` `{on}` through
+  `/chat`, quiet (no toast); `PhoneChat._bedside` takes it only sealed and not `queued` (stale) with
+  `phone.bedside.signal` on, keeps `calls/bedside.json` `{on, at}` and emits `phone_bedside`; `PhoneChat.bedside()`
+  reads it (12 h at most). Its consumers (sleep onset `mind.sleep.follow_bedside`, Calm's night `calm.night.bedside`)
+  aren't built: they wait for L10's external-asleep hook. Chat and the main screen go through
   `requestDismissKeyguard` (8+). `/upcoming` (device key) answers `{calls: [{at, reason, alarm}] from the pushed
   schedule (next day, at most 8), waiting, computer, assistant}`; read every 5 minutes. Window brightness and colours
   by the hour come from `Dock` (pure Java, `test/DockTest.java`); a tap sets 0.3 for 15 s; `FLAG_KEEP_SCREEN_ON` while

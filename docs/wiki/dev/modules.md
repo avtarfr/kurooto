@@ -604,6 +604,14 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `_status`, `mark_done` and a ticked notes task), `threads.closed_between()` rows closed as done (not those keyed
   `deadline:`/`study:`, told from their own record), deadlines with `progress_at` in the day, study totals of
   `REFLECT_STUDY_MIN` (15) min or more per subject (one line), and classes whose after-class question is `answered`.
+  (0.9.0, L45, `checkins.reflect_open`) `open_due(day)`: open threads (`threads.open_threads`, `memory.threads`) whose
+  `due` is before the next `day_starts`, oldest due first, at most 3: a "done, later or drop?" step in the evening
+  script and a list in the evening message. Closing stays `threads.observe`: the call's transcript (`from_call`), and
+  now the evening message's reply (`_answer` calls `threads.observe(via="checkin")`), so nothing closes twice. The
+  greeting's line and the Agent plan's slot (L45's other parts) wait for the face branch's greet parts (L105).
+  (0.9.0, L43, `checkins.follow_register`, off) `_quiet_day()` (`mind/register.register == "quiet"`, rule-side):
+  the evening steps are reordered, never dropped: how it went (+ the records' line), tomorrow, "want to go through the
+  rest, or stop here?", then every other step prefixed "(If they go on)". Nothing about the register goes in the call.
   Each part fails alone (`checkin_reflect_failed`). Nothing found: no list.
 - **deadlines** (`modules/deadlines.py`): merges deadlines from manual entries, notes tasks, Classroom, the calendar,
   recurring quizzes and the term note; the hourly `deadlines:tick` chases them (24 h ping, 6 h call or urgent message,
@@ -684,7 +692,11 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   never a user-set share. Tests: `tests/unit/test_startby_ledger.py`, `tests/unit/test_plan_links.py`.
 - **exam_season** (`modules/exam_season.py`): one card for an exam period (update hold, alarm check, the eve question,
   leave-by alarm, debrief, no calls in exams, the Calm budget). Registers `app.updates.holds["exam_season"]` and an
-  availability blocker; `budget_during_exams()` is read by Calm. An add-on since 0.5.8 (`extra = True`). Its
+  availability blocker; `budget_during_exams()` is read by Calm. (0.9.0, L129) `studying(info)`: in a season, a job
+  whose `why` starts with one of `STUDY_WHY` or whose title names a season exam's subject (`Subjects.find_in`) or its
+  name (the season read once a minute); `_job_first` is `Jobs.boosts["exam_season"]` (`jobs_priority`, on) and
+  `_job_later` a `Jobs.gates` entry (`defer_background`, off) holding non-study automatic work to the day after the
+  season; both are taken off in `stop()`. An add-on since 0.5.8 (`extra = True`). Its
   `revision` part is `modules/revision.py` (not a module: `ExamSeason.revision`, a `Revision`, settings in
   `exam_season.*`): `topics()` reads the exam prep note's "Covered so far"/"Gaps" lines, else dated lecture notes, else
   concept notes (`integrate`'s `chapters.json`, the subject folder); `ranked()` sorts by `rank_key` (tier: no note,
@@ -757,6 +769,10 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `place_event(label, "arrive")` (0.9.0, `subjects.attend_by_place`, off): during a class (from 15 minutes before)
   writes `{"asked": true}` for it (which `catch_up` ignores) and asks with `cup:<date>|<slug>:here`, which writes
   `{"went": true}`. Never a skip, never a catch-up, the label unused. With Classroom
+  `subjects/catchup-<date>.json`; button `cup:<date>|<slug>:went`; Calm reason `subjects.catch_up`. `missed(day)`
+  (0.9.0, L31): the slugs in that file without `went`; `checkins._classes` gives them status `missed` (unless the
+  after-class question was answered), so the evening script says "missed, catch-up on the list" instead of asking what
+  it covered, and `logs_due` leaves them out. With Classroom
   on (`google` with `google.classroom`, or `classroom_notes`), `google_classroom.posts_on(app, slug, day)` gives that
   day's posts of the courses filed under the subject (`classroom_notes.folders`, `classroom-notes/folders.json`, else
   `course_subject()`, the longest subject name in the course's name) from `classroom-posts.json`

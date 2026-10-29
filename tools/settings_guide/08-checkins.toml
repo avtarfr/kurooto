@@ -58,6 +58,18 @@ when = "Turn it off to keep check-ins at the times you set."
 tip = "The evening check-in lists up to three things today's records show you did, and asks what's first tomorrow."
 when = "Turn it off for the plain question only."
 
+[s."checkins.reflect_open"]
+tip = "The evening check-in asks about what you said you'd do today (open threads due today): done, later or drop?"
+what = "Up to three open threads due by the end of the day, in the evening call and message. Your answer closes them the usual way (\"I emailed the draft to Mira\"), from the call's transcript or your reply."
+when = "Turn it off if you'd rather not be asked."
+needs = "`memory.threads`."
+
+[s."checkins.follow_register"]
+tip = "On a quiet day (Brain's register), the evening call does how it went and tomorrow first, then asks whether to go on."
+what = "Nothing is dropped: say go on and every other step follows, the quiz offer too. Decided on this computer by rules; the call never says why."
+when = "Turn it on for a shorter call on a quiet day."
+needs = "Brain with `mind.register.on`."
+
 [s."checkins.by_call"]
 tip = "Check-ins come as a call (a missed call falls back to Telegram)."
 when = "Turn it on if you'd rather talk than type at the end of the day."

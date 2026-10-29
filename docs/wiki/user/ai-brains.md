@@ -41,6 +41,14 @@ writing in your notes, course-files and add-on skills folders, reading web pages
 `grep`, `ls`, `pdftotext`...; none that can start another program through its options, so not `find`, `git`,
 `latexmk`, `rg` or `sort`). Anything else is refused, and the answer says what was refused.
 
+**LaTeX to PDF (0.9.0, `tools.latex`, on).** Since your AI may not run `pdflatex` itself, it asks Kurooto with the
+`compile_latex` tool: Kurooto compiles a copy of the `.tex` (shell escape off, five minutes at most) and answers with the
+PDF's path, or the first errors so the AI can fix them. The PDF goes beside the `.tex` when that's in your files folder
+(`files.folder`) or the course files folder; otherwise into your files folder's `inbox`, never into your notes. With no
+files folder set, your notes are where files live, so it goes beside the `.tex`. With a files folder set, your AI is also
+told to write the documents it makes (solutions, reports, LaTeX) there, in that course's folder, not in your notes. Off:
+no `compile_latex` tool, as before.
+
 **Your own scripts.** To let your AI programs run a script of yours unattended (one that does one thing, such as
 `make-figures`), put its full path in `agents.scripts` (Settings → Skills in other AI programs, or settings.json). It's
 allowed by its path, and by its name when it's on your PATH. Shells and interpreters (`bash`, `python`, `node`...) are

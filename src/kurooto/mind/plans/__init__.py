@@ -136,6 +136,27 @@ def digest_line(app: App) -> str:
     )
 
 
+_LINE: dict[int, tuple[float, str]] = {}  # app id -> (when, the line): a plan's rollout takes a moment
+LINE_S = 600
+
+
+def line(app: App) -> str:
+    """(0.9.0) Brain's plan in one line for an AI (core/tools.py kurooto_now, modules/mind.py brain_plan): the
+    milestone most at risk, or "" (plans off, nothing at risk). Worked out at most every LINE_S. Never raises."""
+    try:
+        if not on(app):
+            return ""
+        t = time.monotonic()
+        hit = _LINE.get(id(app))
+        if hit is not None and t - hit[0] < LINE_S:
+            return hit[1]
+        out = digest_line(app)
+        _LINE[id(app)] = (t, out)
+        return out
+    except Exception:
+        return ""
+
+
 def weekly(app: App, payload: dict | None = None, now: float | None = None) -> bool:
     """Sunday: at most one plan line a week, and only when something is at risk. Through the gate (reason mind.plan)."""
     if not on(app):

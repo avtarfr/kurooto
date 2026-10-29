@@ -295,6 +295,7 @@ private fun index(a: MainActivity): List<Hit> {
         h(SetGroup.BEDSIDE, "Open bedside mode", "clock night charger"),
         h(SetGroup.BEDSIDE, "Open by itself while charging", "hours charger night auto"),
         h(SetGroup.BEDSIDE, "Keep the screen on while charging", "awake display"),
+        h(SetGroup.BEDSIDE, "Show today's reminders and deadlines", "due asleep today night"),
         h(SetGroup.PHONE, "Battery: unrestricted", "optimisation optimization sleep background doze"),
         h(SetGroup.PHONE, "Alarms at the exact time", "exact alarm permission"),
         h(SetGroup.PHONE, "Paired with your call line", "pairing pair line worker"),
@@ -509,6 +510,10 @@ private fun ColumnScope.BedsideGroup(a: MainActivity, ui: HomeState) {
                 help = "app.bedsideAuto",
             ),
             Item("Keep the screen on while charging", null, checked = Prefs.bedsideKeepOn(a), onClick = { a.toggleKeepOn() }, help = "app.bedsideKeepOn"),
+            Item(
+                "Show today's reminders and deadlines", null, checked = Prefs.bedsideToday(a),
+                onClick = { Prefs.setBedsideToday(a, !Prefs.bedsideToday(a)); ui.tick++ }, help = "app.bedsideToday",
+            ),
         ),
     )
     Footnote(

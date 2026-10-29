@@ -188,6 +188,7 @@ class Live:
                 chat.record_turn(heard.strip() or text, reply)
             except Exception:
                 pass
+        self.app.after_turn(heard.strip() or text, via="voice_live")  # (0.9.0) noticed as a message from you
         return reply or ALOUD
 
     def _acted(self, text: str, ran: list[dict]) -> str:
@@ -210,6 +211,7 @@ class Live:
                 chat.record_turn(text, reply)
             except Exception:
                 pass
+        self.app.after_turn(text, via="voice_live")  # (0.9.0) noticed as a message from you
         return reply
 
     # ---------------------------------------------------------------------------------------------- the setup

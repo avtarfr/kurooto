@@ -94,6 +94,31 @@ tip = "On the Settings page, a line under each setting that says what it does an
 what = "With it on, the search box also looks through the entries, so \"battery\" finds `power.on_battery`. Off, the page shows only the settings, with what each does when you hover its name."
 when = "Turn it off once you know your settings and want a shorter page; the guide stays in the user wiki."
 
+[s."look.today_class_actions"]
+tip = "Today's classes on the dashboard get skip / going buttons (the same as /skip and /attend)."
+what = "Skip marks today's class as skipped (calls may come during it, the evening check-in doesn't ask about it); going undoes that. Only what you tap: nothing is guessed."
+when = "Turn it off to keep the Classes list read-only."
+needs = "Subjects."
+
+[s."look.study_extras"]
+tip = "The Study pane's Open box: the subject's open doubts, and the concept Brain thinks you're ready to learn next."
+what = "Doubts come from the Doubt queue (with it on). The next concept comes from Brain's model of what you know (`mind.tom.on`): a concept not mastered whose prerequisites are, the subject's own first. Worked out on this computer."
+when = "Turn it off for a shorter Study pane."
+cost = "Nothing leaves this computer."
+
+[s."look.jobs_source"]
+tip = "The AI jobs page says where each request came from (Telegram, the phone chat, the talk box, voice, by itself)."
+what = "A request from one of the phone app's chats links to that chat on the Chat page. Only the kind of place is kept (a word per request), never what was asked."
+when = "Turn it off for the shorter table."
+cost = "Nothing leaves this computer."
+
+[s."look.notes_mastery"]
+tip = "The NOTES map rings concept notes by what Brain thinks you know: known well, partly, or ready to learn next."
+what = "A ring over the neighbourhood's colour (green: known well; sand: partly; double peach: ready next), and the grade in words when you point at a note. From Brain's model of what you know (`mind.tom.on`), worked out on this computer."
+when = "Turn it off for the plain map."
+cost = "Nothing leaves this computer."
+needs = "Brain with `mind.tom.on`."
+
 [s."look.study_mode"]
 tip = "The dashboard in Study mode: the notes map, the study timer and what's due (Alt+M, `/study mode`)."
 when = "Usually switched with Alt+M rather than here."

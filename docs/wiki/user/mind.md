@@ -415,6 +415,12 @@ still ahead, it offers to plan more hours for its exams (Start-by, a quarter mor
 changes without the tap. Grades stay on this computer.
 Switches: `mind.tom.on`, `mind.tom.false_beliefs`, `mind.tom.attention`, `mind.tom.from_chat`.
 
+**From what you write (0.9.0, `mind.tom.from_chat`, on with the model).** A goal you state in a message ("my goal is
+to finish the draft by Friday", "I want to ...") and a due date you state for one of your deadlines ("the essay is
+due Monday") are kept as rows with source "said". The second is what lets it tell you once if you have the date
+wrong. A message with a health, money or password detail, or a topic on the deny-list, gives nothing. Off: only
+your deadlines, projects and what Kurooto told you.
+
 ## What it senses, and what it never does
 
 Kurooto looks at three things, each switchable, and everything stays on this computer.
@@ -738,6 +744,11 @@ class. The night and Kurooto's sleep window count as not free (`mind.presence_fo
   likelier time when you aren't seen at your desk, and says "Held a call until 11:00 (you're usually free then)".
 - **Where it shows:** `/mind` gives its Brier score (lower is better) next to the baseline's, and the next hour you're
   likely free.
+- **Your AI and calls can ask (0.9.0, `mind.tools.on`, on with Brain):** the tool `brain_free_time` answers in words
+  ("Likely free from 16:00", "Likely free now"), never a chance or a number; "call me back when I'm free" books the
+  call for that hour (`schedule_call` with when "when I'm free"; it still asks for your Approve outside a call). Two more
+  read-only tools: `brain_plan` (this week's suggested hours and the milestones at risk, as `/plan` shows) and
+  `brain_precedents` (your rulings, as `/precedents` shows). Off: none of the three, and "when I'm free" asks for a time.
 
 - **Planning with it** (`mind.presence_forecast.plan`, off, 0.9.0): Start-by's deadline hours go first into the hours
   you're likeliest free, and the study push offers the likeliest stretch today. No hour is taken away, so a start-by
@@ -807,8 +818,11 @@ The log keeps **ids, kinds and numbers, never words**: never the words of a mess
 an error or anything you typed. A decision record keeps the reason Kurooto's code gave, and, when an AI made the
 decision, what the AI said about it, in at most 300 characters.
 
-Nothing of Brain leaves this computer, and it isn't in backups or Profile sync: an older copy put back would look like
-a log that was cut short. Deleting it: turn Brain off and tap **Delete Brain's data**.
+Nothing of Brain's data leaves this computer, and it isn't in backups or Profile sync: an older copy put back would
+look like a log that was cut short. Since 0.9.0 your AI may ask Brain for a few lines in words, and only these
+(`mind.tools.on`; `face.tools` for the plan line in `kurooto_now`): when you're likely free ("Likely free from 16:00"),
+this week's plan and the milestone most at risk, and your precedents. These go to the AI you picked, like any tool's
+answer; never the read, a mood, tone, its forecast of you as numbers or a sense reading. Deleting it: turn Brain off and tap **Delete Brain's data**.
 
 ## Hardened mode (optional)
 

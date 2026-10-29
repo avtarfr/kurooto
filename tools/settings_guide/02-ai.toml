@@ -160,6 +160,13 @@ tip = "Minutes a request may sit with no AI at work and no program running befor
 when = "Raise it if long-thinking requests are stopped while they're still fine; lower it to free a stuck queue sooner. A stopped request says so."
 cost = "Nothing."
 
+[s."tools.latex"]
+tip = "Your AI can compile a LaTeX file to a PDF with the compile_latex tool (shell escape off)."
+what = "Kurooto compiles a copy of the .tex (Tectonic, else latexmk or pdflatex, at most five minutes) and answers with the PDF's path or the first errors. The PDF goes beside the .tex in your files folder (`files.folder`) or the course files folder, else into the files folder's inbox; never into your notes when a files folder is set. With a files folder, your AI is told to write the documents it makes there."
+when = "Turn it off if your AI shouldn't make PDFs."
+cost = "Nothing leaves this computer (Tectonic fetches LaTeX packages it lacks the first time)."
+needs = "LaTeX on this computer (TeX Live, MiKTeX, MacTeX) or Tectonic."
+
 [s."agents.export"]
 tip = "Which other AI programs get your skills as slash commands, so /journal works there too."
 values = "A list of `agy`, `agents` (Copilot CLI and others that read ~/.agents) and `claude` (Claude Code); empty: none."

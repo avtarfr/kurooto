@@ -266,11 +266,21 @@ always; only while `Live.watched()`) and to `watch_faces` subscribers (every one
 `x`, `y` the box's centre in -1..1 of the camera's own picture (not mirrored, as `face_seen`), `h` its height's share
 of the frame. Never an event, never kept. `face_seen` is unchanged (owner only, recognition frames, ≤ 5 a second).
 
+**Time at the desk** (0.9.0, L22, `face.desk_time`, off): `Face.desk_spans(lo, hi)` pairs `face_arrived` /
+`face_back` with `face_left` from the event log (a stretch open at `lo` starts there, one still going ends now);
+`desk_line(lo, hi, when)` says the total and the longest (under 15 min: ""); `weekly_lines()` gives the week's for the
+weekly summary, and `checkins._desk_line(day)` the check-in day's for the evening message and call (a step that says
+it once, never as a judgement). The break bid at Brain's door (L22's third part) waits for L18 (Face -> mind/breaks).
+
 **The being's eye** (`static/being.js`, `ATT`/`attend()`): with `faces` fresh (< 2 s) it looks at one face and moves
 to another (picked at random, weighted 0.4 + m) every 3-8 s, after 0.7 s to someone new, after 1 s to a face whose
 m is over 0.3 and 0.25 above the current one's; a switch is a saccade (fast gaze for 140 ms). One face is followed
 closely (gaze rate 9 against 5), with a quick small saccade, landing a little ahead, when its m jumps by 0.12 or
-passes 0.35. The owner has no priority. `STILL` (Remove animations) or the system's reduced motion: no saccades, a
+passes 0.35. The owner has no priority, except (0.9.0, L136, `face.track.speaker`: `Face._on_watch` adds
+`speaker: true` to the pages' `faces` message) while someone talks: `voice()` keeps `ATT.talk` from `voice_text`
+(`who: "you"`, `speaker` = Voice ID's decision), `voice_heard` and `voice_level` above 0.2, and `attend()` turns to the
+owner's face when the words were the owner's, else the face with the highest `m`, within 1.5 s of speech (400 ms
+dwell). Booleans and the verdict word only (R2). `STILL` (Remove animations) or the system's reduced motion: no saccades, a
 slow smooth gaze (rate 1.5). Without `faces` (tracking off, an older daemon) it follows `face_seen` as before. The
 phone's Views → Being (`being-phone.js`) runs the same code but gets no face messages.
 

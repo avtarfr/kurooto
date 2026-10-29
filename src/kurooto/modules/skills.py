@@ -282,7 +282,7 @@ def skill_prompt(app: App, name: str, args: str = "", files=()) -> str | None:
 def send_file(app: App, path, caption: str = "", inside: list[Path] | None = None, to: str = "") -> tuple[bool, str]:
     """Send a file to your Telegram (up to 50 MB). `inside`: the folders it must be in (for the AI's tool). to="drive",
     or a bigger file with Drive upload on: into your Google Drive instead, and you get the link. Without Telegram: a
-    link in the phone app's chat (calls/chat.py:send_file)."""
+    link in the phone app's chat (calls/chat.py:send_file); with both, a link there too (files.to_app)."""
     try:
         p = Path(os.path.expanduser(str(path))).resolve(strict=True)
     except (OSError, RuntimeError):
@@ -302,6 +302,8 @@ def send_file(app: App, path, caption: str = "", inside: list[Path] | None = Non
         return drive.send(p, caption, temporary=to != "drive")  # too big for Telegram: a link that lasts a few days
     if app.app_main() and "chat" in app.notifier.channels:  # no Telegram: a link in the app's chat (calls/chat.py)
         return app.modules["calls"].chat.send_file(p, caption.strip()[:900])
+    if size > TELEGRAM_MAX and to_app(app):  # too big for Telegram: the app's chat can still carry a link
+        return app.modules["calls"].chat.send_file(p, caption.strip()[:900])
     if size > TELEGRAM_MAX:
         more = " Turn on Drive upload to get bigger files as a Drive link." if drive is not None else ""
         return False, f"{p.name} is {size / 1024 / 1024:.0f} MB; Telegram takes files up to 50 MB.{more}"
@@ -314,7 +316,20 @@ def send_file(app: App, path, caption: str = "", inside: list[Path] | None = Non
         return True, f"{p.name} comes to your Telegram when focus ends ({focus:%H:%M})."
     if ref is None:
         return False, f"Telegram didn't take {p.name}; try again in a minute."
+    if to_app(app):  # core/notify.py put a link in the app's chat too
+        return True, f"Sent {p.name} to your Telegram and the phone app's chat."
     return True, f"Sent {p.name} to your Telegram."
+
+
+def to_app(app: App) -> bool:
+    """A file sent to you also comes to the phone app's chat (files.to_app, 0.9.0): the chat is set up and gets
+    Kurooto's messages (notify.app_chat). core/notify.py makes the copy beside Telegram's."""
+    return (
+        bool(app.settings.get("files.to_app"))
+        and bool(app.settings.get("notify.app_chat"))
+        and "chat" in app.notifier.channels
+        and "calls" in app.modules
+    )
 
 
 def send_files(

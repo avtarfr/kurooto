@@ -70,6 +70,8 @@ tip = "\"Why this?\" under a message Kurooto started."
 tip = "The small \"now\" stage that decides what's on Brain's mind."
 [parent."mind.play"]
 tip = "A little nightly time for Brain to explore its own questions on your topics."
+[parent."mind.tools"]
+tip = "Brain's read-only tools for your AI and calls: its plan, when you're likely free (in words), your precedents."
 [parent."mind.precedents"]
 tip = "Judgement calls between your values, asked once and then followed."
 [parent."mind.read"]
@@ -404,6 +406,13 @@ needs = "`mind.workspace.on`."
 tip = "Keep where each belief came from (said, saw, inferred, imagined) and how sure it is."
 when = "Turn it off to drop the hedging rules. `/beliefs` lists them."
 
+[s."mind.tools.on"]
+tip = "Your AI and calls can read Brain's plan, when you're likely free (in words) and your precedents; \"call me when I'm free\" works."
+what = "Three read-only tools: brain_plan (as /plan), brain_free_time (\"Likely free from 16:00\", never a chance), brain_precedents (as /precedents). schedule_call takes when \"when I'm free\" and books the forecast's hour, still asking for your Approve outside a call."
+when = "Turn it off to keep Brain's plan and forecast away from your AI."
+cost = "Those lines go to the AI you picked when it asks."
+needs = "Brain; the free-time part needs `mind.presence_forecast.on`."
+
 [s."mind.precedents.on"]
 tip = "Judgement calls between your values are asked once, then followed (off until you turn it on)."
 when = "Turn it on if you'd like fewer repeat questions. It can never unlock anything on the always-ask list."
@@ -476,10 +485,10 @@ when = "Turn it off if you'd rather not get these corrections."
 needs = "`mind.tom.on`."
 
 [s."mind.tom.from_chat"]
-tip = "An exam result you report (\"I got 12/30 on the LA midterm\") counts as evidence of what you know."
-what = "It also adds a dated line in Kurooto's own block of the course's exam prep note, and after a low score offers more preparation hours (a tap)."
-when = "Turn it off if results you mention shouldn't change anything."
-needs = "`mind.tom.on` and Subjects."
+tip = "Goals you state, due dates you give for your deadlines and exam results you report (\"I got 12/30 on the LA midterm\"), in your messages, go into Brain's model of you."
+what = "\"My goal is to finish the draft by Friday\" becomes a stated goal; \"the essay is due Monday\" (one of your open deadlines) becomes what you believe about its date, so a wrong date can be pointed out once. An exam result counts as evidence of what you know: it adds a dated line in Kurooto's own block of the course's exam prep note, and after a low score offers more preparation hours (a tap). Never health, money, passwords or the deny-list's topics. Kept on this computer."
+when = "Turn it off to keep Brain's model to your deadlines, projects and what Kurooto told you, and results you mention from changing anything."
+needs = "`mind.tom.on`; Subjects for exam results."
 
 [s."mind.tom.attention"]
 tip = "Hold a message (at most 15 minutes) while you're deep in one project."

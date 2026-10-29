@@ -32,6 +32,9 @@ if TYPE_CHECKING:
 
 log = logging.getLogger("kurooto.calls")
 PING_S, DEAD_S, STATE_S, INDEX_S = 30, 75, 300, 3600
+# (0.9.0) a heartbeat that wakes this late was held up here (a busy event loop, a suspend), not by the line; a stale
+# line is only called dead after a fresh ping goes unanswered for CONFIRM_S
+LAG_S, CONFIRM_S = 5, 5
 
 
 class Connector:
@@ -158,12 +161,38 @@ class Connector:
                 self.outbox.set()
 
     async def _heartbeat(self, ws) -> None:
+        """Ping every PING_S; reconnect when the line stopped answering. "Stopped" is checked, not assumed: when this
+        loop or the reader ran late (the computer was busy or suspended), frames may be waiting unread, so a stale
+        line first gets a moment to read them and one more ping (N3, 0.9.0: about 35 false drops a day, each a 2-16 s
+        reconnect)."""
         while True:
+            before = time.monotonic()
             await asyncio.sleep(PING_S)
-            if time.time() - self.last_pong > DEAD_S:
+            lag = time.monotonic() - before - PING_S
+            if lag > LAG_S:  # the real cause of a drop shows in the log
+                log.info("call line: the heartbeat woke %.0f s late (this computer was busy or asleep)", lag)
+            if time.time() - self.last_pong > DEAD_S and not await self._still_there(ws):
                 log.info("call line: no heartbeat; reconnecting")
                 return
             await ws.send("ping")
+
+    async def _still_there(self, ws) -> bool:
+        """The line looks silent: let the reader take what already came, ping, and wait up to CONFIRM_S for any
+        frame."""
+        seen = self.last_pong
+        await asyncio.sleep(0)
+        if self.last_pong != seen:
+            return True
+        try:
+            await ws.send("ping")
+        except Exception:
+            return False
+        end = time.monotonic() + CONFIRM_S
+        while time.monotonic() < end:
+            await asyncio.sleep(0.1)
+            if self.last_pong != seen:
+                return True
+        return False
 
     async def _pusher(self) -> None:
         while True:

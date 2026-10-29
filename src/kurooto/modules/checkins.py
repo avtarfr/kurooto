@@ -71,6 +71,10 @@ register_defaults(
         # alarm don't)
         "asleep_follows_brain": False,
         "learn_times": True,  # a check-in you keep moving or answering late moves to when you do it (with Undo)
+        # (0.9.0) on a quiet day (Brain's register), the evening call does how it went and tomorrow first, then asks
+        # once whether to go through the rest (all of it still there, the quiz offer too). Off: the usual order
+        "follow_register": False,
+        "reflect_open": True,  # (0.9.0) the evening call asks about open threads due today: done, later or drop?
         "reflect": True,  # the evening check-in lists up to 3 things today's records show you did, asks about tomorrow
     },
 )
@@ -293,6 +297,13 @@ class Checkins(Module):
                 did = self.done_today(dt.date.fromisoformat(day))
                 if did:  # nothing recorded: no list, never "you did nothing"
                     q += "\n\nFrom today's records:" + "".join(f"\n- {x}" for x in did)
+                desk = self._desk_line(dt.date.fromisoformat(day))
+                if desk:  # (0.9.0, face.desk_time) your own numbers, never a judgement
+                    q += f"\n\n{desk[0].upper()}{desk[1:]}"
+                owed = self.open_due(dt.date.fromisoformat(day)) if self.setting("reflect_open") else []
+                if owed:  # (0.9.0) what you said you'd do by today; your reply closes it
+                    q += "\n\nStill open from what you said you'd do today (done, later or drop?):"
+                    q += "".join(f"\n- {x}" for x in owed)
                 q += f"\n\n{TOMORROW}"
                 skip = ("Not tonight", f"chk:{name}|{day}:not")
             self.app.notify(
@@ -463,6 +474,10 @@ class Checkins(Module):
             plan[name]["answered_at"] = now().isoformat(timespec="seconds")
             self._save(plan, dt.date.fromisoformat(day))
         self.app.events.emit("checkin_answered", name=name, chars=len(msg.text), via="telegram")
+        if name == "evening" and self.setting("reflect_open"):  # (0.9.0) "I emailed the draft" closes that thread
+            from kurooto.core import threads
+
+            threads.observe(self.app, msg.text, via="checkin")
         if not self.setting("journal"):
             return "Thanks."
         j = daily.append(self.app, f"{name.title()} check-in ({now():%H:%M})", msg.text, dt.date.fromisoformat(day))
@@ -978,20 +993,24 @@ class Checkins(Module):
     # ------------------------------------------------------------------------------------- the scripts
     def _classes(self, day: dt.date) -> list[dict]:
         """The day's classes and what became of each one's after-class question: "" (not asked or no answer yet),
-        "later", "answered", "nothing", or "skipped"."""
+        "later", "answered", "nothing", "skipped", or "missed" (0.9.0: Subjects made a catch-up for it, so the
+        evening call doesn't ask what it covered; an answer after class still wins)."""
         if not self.app.is_on("subjects"):
             return []
         subj = self.app.modules["subjects"]
-        skip = subj.skipped(day)
+        skip, missed = subj.skipped(day), subj.missed(day)
         cap = self.app.modules.get("capture")
         status = cap.statuses(day) if cap is not None and self.app.is_on("capture") else {}
+
+        def of(slug: str) -> str:
+            if slug in skip:
+                return "skipped"
+            if slug in missed and status.get(slug, "") in ("", "later"):
+                return "missed"
+            return status.get(slug, "")
+
         return [
-            {
-                "name": c["name"],
-                "start": c["start"],
-                "slug": c["subject"],
-                "status": "skipped" if c["subject"] in skip else status.get(c["subject"], ""),
-            }
+            {"name": c["name"], "start": c["start"], "slug": c["subject"], "status": of(c["subject"])}
             for c in subj.classes_on(day, include_skipped=True)
         ]
 
@@ -1108,7 +1127,14 @@ class Checkins(Module):
                 f"From today's records they did: {'; '.join(did)}. Say these back in one line, plainly (no praise, "
                 "no score, nothing about what they didn't do)."
             )
-        classes = [c for c in self._classes(today) if c["status"] != "skipped"]
+        day_classes = self._classes(today)
+        classes = [c for c in day_classes if c["status"] not in ("skipped", "missed")]
+        missed = [c["name"] for c in day_classes if c["status"] == "missed"]
+        if missed:  # (0.9.0) not "what did it cover?": they weren't there, and the catch-up is already a task
+            steps.append(
+                f"They missed {', '.join(missed)} today; a catch-up task for it is already on their list. Don't ask "
+                "what it covered."
+            )
         if classes:
             names = ", ".join(f"{c['name']} ({c['start']})" for c in classes)
             steps.append(f"Today's classes: {names}. For each, ask what it covered and anything unclear.")
@@ -1122,6 +1148,15 @@ class Checkins(Module):
             f"Today's plan said:\n{plan}\nAsk what got done and what slipped." if plan else "Ask what slipped."
         )
         steps.append("If pending_items lists open questions, ask them (answer_question).")
+        desk = self._desk_line(today)
+        if desk:  # (0.9.0, face.desk_time) told as their own numbers, once, never as a judgement or a check-up
+            steps.append(f"If it fits, mention their own numbers once, plainly: {desk} Don't judge it or ask about it.")
+        owed = self.open_due(today) if self.setting("reflect_open") else []
+        if owed:  # (0.9.0) what they said they'd do by today; their answer closes it (core/threads.py: from_call)
+            steps.append(
+                f"Still open from what they said they'd do by today: {'; '.join(owed)}. Ask about each: done, later, "
+                "or drop it."
+            )
         study = app.modules.get("study")
         if study is not None and app.is_on("study"):
             counted = ", ".join(f"{study.name_of(k)} {v / 3600:.1f} h" for k, v in study.totals(1, last=today).items())
@@ -1142,6 +1177,17 @@ class Checkins(Module):
             steps.append(f"Tomorrow and the alarm are for the night check-in at {night}; don't ask them now.")
         else:
             steps.append(f"Ask tomorrow's top priority and when they want to wake up{alarm}.")
+        if self.setting("follow_register") and len(steps) > 3 + bool(did) and self._quiet_day():
+            # (0.9.0) a quiet day: the same steps, reordered, never fewer: how it went (and what they did), tomorrow,
+            # then one question whether to go on. Decided here by rules; nothing about why goes into the call
+            first = 1 + bool(did)
+            rest = steps[first:-1]
+            steps = [
+                *steps[:first],
+                steps[-1],
+                "Then ask once: want to go through the rest, or stop here? If they stop, go to the last step.",
+                *[f"(If they go on) {s}" for s in rest],
+            ]
         notes = "journal" + (" and study logs" if classes else "")
         end = "Wrap up" if night else "Say goodnight"
         steps.append(
@@ -1154,6 +1200,45 @@ class Checkins(Module):
             "keep yours short. " + later
         )
         return "\n".join([head] + [f"{i}. {s}" for i, s in enumerate(steps, 1)])
+
+    def _desk_line(self, day: dt.date) -> str:
+        """(0.9.0) Face presence's time at the desk over the check-in day, or "" (face.desk_time off, nothing seen)."""
+        face = self.app.modules.get("face")
+        if face is None or not hasattr(face, "desk_line"):
+            return ""
+        lo = dt.datetime.combine(day, self._day_start())
+        try:
+            return face.desk_line(lo, lo + dt.timedelta(days=1))
+        except Exception:
+            return ""
+
+    def open_due(self, day: dt.date, n: int = 3) -> list[str]:
+        """(0.9.0, checkins.reflect_open) Open threads ("I'll send the draft tonight", core/threads.py) due by the end
+        of that check-in day, oldest due first, at most n. [] with threads off or none due."""
+        from kurooto.core import threads
+
+        if not threads.on(self.app):
+            return []
+        edge = dt.datetime.combine(day + dt.timedelta(days=1), self._day_start())
+        rows = []
+        for r in threads.open_threads(self.app):
+            try:
+                due = dt.datetime.fromisoformat(str(r.get("due") or "")).replace(tzinfo=None)
+            except ValueError:
+                continue
+            if due < edge:
+                rows.append((due, str(r.get("text") or "")))
+        return [t for _, t in sorted(rows)[:n] if t]
+
+    def _quiet_day(self) -> bool:
+        """(0.9.0, checkins.follow_register) Brain's register says quiet today (mind/register.py: its score at -0.5
+        or below). False with Brain or the register off, or on any failure."""
+        try:
+            from kurooto.mind import register
+
+            return register.on(self.app) and register.register(self.app) == "quiet"
+        except Exception:
+            return False
 
     def _exams(self) -> list[dict]:
         """Exams and quizzes in the next two weeks (from Deadlines, when it's on), soonest first."""

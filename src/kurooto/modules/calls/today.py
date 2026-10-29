@@ -65,6 +65,7 @@ CHANGES = {
     # (0.9.0) the plan, Start-by, revision and classes skipped or attended: Today's rows change with them
     "class_skip", "class_attend", "startby_planned", "revision_planned", "plan_block_added", "plan_rescheduled",
     "plan_cleared", "plan_blocks_removed", "plan_reschedule_undone",
+    "mind_sleep",  # (0.9.0) asleep or awake: bedside mode says so
 }  # fmt: skip
 
 
@@ -114,6 +115,8 @@ class PhoneToday:
             out["waiting"] = waiting
         if self.calls.setting("today_plan"):  # (0.9.0) the day's plan, what to start, the hours studied
             out.update(self._plan(t))
+        if self._asleep():  # (0.9.0) bedside mode says so (Prefs.bedsideToday on the phone); absent while awake
+            out["asleep"] = True
         return out
 
     @staticmethod
@@ -178,6 +181,15 @@ class PhoneToday:
         except Exception:
             return {}
         return {"on": said.startswith("camera on") or "(camera on)" in said, "why": _clip(said, 120)}
+
+    def _asleep(self) -> bool:
+        """Is Kurooto asleep (Brain, mind/sleep.py)? False with Brain off or on any failure."""
+        try:
+            from kurooto.mind import sleep
+
+            return bool(sleep.asleep(self.app))
+        except Exception:
+            return False
 
     def _due(self, rows: list[dict]) -> list[dict]:
         dl = self.app.modules.get("deadlines")

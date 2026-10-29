@@ -228,6 +228,9 @@ class Jobs:
         # (0.8.14) the job gate: fn(info) -> a time to look again (epoch seconds), or None to let it run. Asked before
         # automatic work starts (never your own requests, nor one someone waits for); info: id, lane, why, title, brain
         self.gates: list = []
+        # (0.9.0) first in line: name -> fn(info) -> True for a job that goes before others of its kind (after any
+        # someone waits for) and, when its effort was picked automatically, one step higher (modules/exam_season.py)
+        self.boosts: dict = {}
         if "background" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # older databases
             self._db.execute("alter table jobs add column background integer default 0")
         if "runner" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # which process runs it
@@ -512,6 +515,17 @@ class Jobs:
                 return max(float(until), time.time() + 60)
         return None
 
+    def boosted(self, info: dict) -> bool:
+        """(0.9.0) Does a boost (self.boosts) put this job first? info: id, lane, why, title. A boost that fails
+        doesn't."""
+        for name, fn in list(self.boosts.items()):
+            try:
+                if fn(info):
+                    return True
+            except Exception as e:
+                self.app.events.emit("jobs_failed", error=f"boost {name}: {type(e).__name__}: {e}"[:300])
+        return False
+
     def _claim(self, lane: str | None = None) -> str | None:
         """Mark the oldest ready job (of one lane, or of any) as running; its id, or None."""
         with self._lock:
@@ -522,6 +536,13 @@ class Jobs:
                 "order by (reply_to is null), created limit 20",
                 (*self._ready_args(), *((lane,) if lane else ())),
             ).fetchall()
+            if self.boosts and rows:  # (0.9.0) boosted ones first, each kind still oldest first (a stable sort)
+                rows.sort(
+                    key=lambda r: (
+                        r[5] is None,
+                        not self.boosted({"id": r[0], "lane": r[1] or "you", "why": r[2] or "", "title": r[3] or ""}),
+                    )
+                )
             row = None
             for r in rows:
                 until = self._gated(r)
@@ -540,6 +561,26 @@ class Jobs:
             )
             self._stops[row[0]] = threading.Event()
             return row[0]
+
+    def _step_up(self, job: Job, level: str, brain) -> str:
+        """(0.9.0) A boosted job whose effort was picked automatically goes one step up (low -> medium -> high),
+        unless the free limit that step uses is kept for you or used up (core/quota.py). A forced or asked-for effort
+        never gets here."""
+        if not self.boosts or level == "high":
+            return level
+        row = self._read("select why from jobs where id=?", (job.id,))
+        info = {"id": job.id, "lane": job.lane or "you", "why": (row[0] if row else "") or "", "title": job.title or ""}
+        if not self.boosted(info):
+            return level
+        up = {"low": "medium", "medium": "high"}.get(level, level)
+        q = self.app.quota
+        try:
+            if brain is not None and q.wait_until(q.pool(brain, up)) is not None:
+                return level
+        except Exception:
+            return level
+        self.app.events.emit("job_effort_up", job=job.id, effort=up)
+        return up
 
     def run_next(self, lane: str | None = None) -> str | None:
         """Run the oldest queued job (of a lane, or of any) to completion here. Its id, or None if none is ready."""
@@ -714,6 +755,7 @@ class Jobs:
             level, origin = effort_mod.pick_with_origin(job.prompt, self._classifier(main, jid))
             if job.lane == "you":  # tuned while dreaming, for your own requests only (core/tuning.py)
                 level = effort_mod.tuned(level, origin, s.get("brain.effort_map"))
+            level = self._step_up(job, level, main)
         self._mark(jid, effort_from=origin or "")
         minutes = (s.get("brain.timeout_min") or {}).get(level, 15)
         tools = tools_for(self.app, jid)  # in a scratch folder: writing only there (core/scratch.py)
@@ -1401,6 +1443,37 @@ class Jobs:
 
     def close(self) -> None:
         self._db.close()
+
+
+FROM = {  # Incoming.via -> the words the AI jobs tab shows (source)
+    "telegram": "Telegram",
+    "app": "phone chat",
+    "terminal": "talk box or terminal",
+    "setup": "setup page",
+    "voice": "voice at the desk",
+    "routine": "a routine",
+}
+
+
+def source(app, j: Job) -> dict:
+    """(0.9.0) Where a request came from, for the dashboard's AI jobs tab (look.jobs_source): {"from": words} and, for
+    the phone app's chat, {"session": its chat}, so the tab can jump there. From what Chat recorded (modules/chat.py:
+    job_via), else the job itself: an answer for the app's chat, work that started by itself."""
+    chat = app.modules.get("chat")
+    via, sid = ("", "")
+    if chat is not None and hasattr(chat, "job_via"):
+        try:
+            via, sid = chat.job_via(j.id)
+        except Exception:
+            pass
+    rt = str(j.reply_to or "")
+    if via == "app" or rt.startswith("app:"):
+        return {"from": FROM["app"], "session": sid or "main"}
+    if via in FROM:
+        return {"from": FROM[via]}
+    if j.background or j.lane != "you":
+        return {"from": "by itself"}
+    return {"from": "Telegram"} if rt else {"from": ""}
 
 
 def public(j: Job) -> dict:

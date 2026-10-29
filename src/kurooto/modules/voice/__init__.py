@@ -200,6 +200,9 @@ register_defaults(
             "warm_up": True,  # when listening starts, warm the transcriber and the voice so the first turn is quick
             "warm_brain": True,  # and the AI's program (Claude Code's files; with fast_brain local, the local model)
             "live": False,  # your own turns answered by Gemini Live, speech to speech: their sound goes to Google
+            # (0.9.0) a turn Live answered is noticed like a typed message (App.after_turn): Brain's tone and reply
+            # tracking, what it sets up ("I have a quiz every Thursday") and the threads it opens or closes
+            "live_after": True,
         },
         "speaker_id": {
             "on": False,  # Voice ID: only your voice can make Kurooto act; others can only chat (enrol first)

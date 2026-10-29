@@ -204,6 +204,8 @@ An old Android phone on a charger by your bed, as a dock. It shows:
 - a big **clock** and the date;
 - the **next alarm**: Kurooto's wake-up call ("Wake-up call 06:30"), or the phone's own alarm if that comes first;
 - the **calls due next** (a check-in, a reminder call; up to three) and how many things are **waiting for you**;
+- (0.9.0) **today's reminders** (up to three) and **what's due** within the next day (up to two), from the Today list
+  your computer sealed for this phone, and "Kurooto is asleep" while it sleeps;
 - one big **Talk to Kurooto** button: one tap starts a voice call with Kurooto, the same call screen as the app's
   **Call** button. **Chat** and **Close** are the small buttons below it.
 
@@ -231,6 +233,11 @@ the alarm volume, as always); after the call you're back at the clock. Keep the 
 |---|---|---|
 | Open by itself while charging | Off | Pick the hours (say 22:00 to 07:00). Plugging the phone in during them, or the hours starting while it charges, opens bedside mode; unplugging closes it if it opened by itself. On Android 10 and newer it opens through a full-screen notification: by itself with the screen off, as a notice to tap while you use the phone. |
 | Keep the screen on while charging | On | Off: the screen times out as usual (bedside mode is still there when you wake it). |
+| Show today's reminders and deadlines (0.9.0) | On | Off: only the clock, the alarm, the calls and the waiting count, as before. Locked with a PIN or pattern it shows only how many ("2 reminders and deadlines (unlock to see)"). |
+
+**Your computer hears that it's open (0.9.0).** Opening and closing bedside mode sends your computer a flag (no
+sensor, nothing else): it notes that the phone is at your bedside (`phone.bedside.signal` on the computer, on). One
+sent while your computer was off is dropped when it comes back. Nothing on the computer acts on it yet by default.
 
 What's coming is read from your call line every 5 minutes: the calls your computer has booked for the next day,
 so it works with the computer asleep. Reminders, deadlines and classes aren't on it (see
@@ -622,7 +629,11 @@ it on), `chat_files_inline`, `chat_edit`. Each stops at once and leaves the rest
 
 **Kurooto's own messages in the chat.** With `notify.app_chat` on (Dashboard → Settings → notify), reminders,
 results and other messages also show in the chat, besides Telegram. Without Telegram they always do. Questions and
-approvals stay under **Waiting for you**, with their answer buttons.
+approvals stay under **Waiting for you**, with their answer buttons. Since 0.9.0 files come too: a file Kurooto sends
+you (`kurooto send`, a file the AI sends, a long answer, a grocery order's screenshot from an add-on) lands on
+Telegram and, as a link, in the chat; Kurooto's reply says "Sent ... to your Telegram and the phone app's chat". A
+file too big for Telegram (over 50 MB) still reaches the chat when your call line or Drive upload can carry it.
+Turn the file copy off with `files.to_app` (Dashboard → Settings → files): files go to Telegram only, as before.
 
 **The same chat on your computer's dashboard (0.8.14).** The dashboard's **Chat** page (Alt+H) shows these chats
 and messages live, with Kurooto's buttons and what's waiting for you, and has a box to write in the open chat. What you
@@ -800,7 +811,8 @@ There's no undo: the old keys are gone. A phone you don't pair again can't call 
   line to your computer, like a chat message. The call line keeps a hash of each link (not the link), the phone it
   belongs to, and when it was made and last used.
 - Bedside mode reads from your call line the calls already booked there (times and reasons) and how many things are
-  waiting; nothing new goes there.
+  waiting, and (0.9.0) today's reminders and deadlines from the Today list already on this phone; it sends your
+  computer only whether it's open (sealed like a chat message), which the call line passes on and doesn't keep.
 - Files from your computer for the chat (where Telegram would get a document): with Drive upload on, to your own Google
   Drive; otherwise a copy on your call line for a day, encrypted on your computer. The key is only in the link, which
   travels inside the chat message, so the copy is as private as the chat itself; ntfy never sees either.

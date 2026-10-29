@@ -94,6 +94,19 @@ final class Dock {
         return days[at.get(Calendar.DAY_OF_WEEK) - 1] + " " + t;
     }
 
+    /** (0.9.0) Is a deadline's due time ("2026-10-30T23:59", local, as the Today list has it) within the next day, or
+     *  past by under 12 hours? Bedside mode shows only those. False when it can't be read. */
+    static boolean withinDay(String due, long nowMs) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("^(\\d{4})-(\\d{2})-(\\d{2})[T ](\\d{2}):(\\d{2})").matcher(due == null ? "" : due);
+        if (!m.find()) return false;
+        Calendar at = Calendar.getInstance();
+        at.clear();
+        at.set(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)) - 1, Integer.parseInt(m.group(3)),
+                Integer.parseInt(m.group(4)), Integer.parseInt(m.group(5)));
+        long d = at.getTimeInMillis() - nowMs;
+        return d <= 24 * 3600_000L && d >= -12 * 3600_000L;
+    }
+
     /** Milliseconds to the next whole minute, so the clock turns over on time. */
     static long toNextMinute(long nowMs) { return 60000 - nowMs % 60000 + 50; }
 }

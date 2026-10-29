@@ -148,6 +148,26 @@ tip = "When someone else is in view too: skip the greeting, say just \"Welcome b
 values = "`skip`, `short`, `full`."
 when = "Leave it on skip so your day isn't read out in front of others."
 
+[s."face.tools"]
+tip = "Your AI can ask kurooto_now: at the desk or away and since when, on a call, the camera's state, in words."
+what = "Also where Kurooto's messages reach you, Voice ID's last verdict as a word and Brain's plan line. Never a picture, who else is in view, a mood, Brain's read, tone or a sense reading."
+when = "Turn it off if your AI shouldn't know whether you're at the desk."
+cost = "Those words go to the AI you picked when it asks."
+needs = "Nothing; the desk and camera parts need Face presence."
+
+[s."face.track.speaker"]
+tip = "While someone talks, the being's eye looks at them: at you when Voice ID says it's you, else the face moving most."
+what = "Only that someone is talking and Voice ID's word reach the dashboard, never the sound."
+when = "Turn it off for the eye that moves between faces by itself."
+needs = "`face.track.on` and Voice listening."
+
+[s."face.desk_time"]
+tip = "Your time at the desk, from when Face presence saw you arrive and leave, in the evening check-in and the weekly summary."
+what = "\"4 h 10 at the desk today, longest 2 h 40 unbroken\": a total and the longest stretch, told once as your own numbers, never as a judgement or to check what you said you did."
+when = "Turn it on if you'd like to know how long you sit at the screen."
+cost = "Those two numbers go where the check-in and the weekly summary go (your AI reads the call's script)."
+needs = "Face presence."
+
 [s."face.track.on"]
 tip = "While the camera is open, follow every face in view (where it is and how much it moves) for the being's eye."
 what = """Each face gets a number that stays with it from frame to frame, its place, its size, whether it's you and how
