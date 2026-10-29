@@ -70,6 +70,8 @@ tip = "\"Why this?\" under a message Kurooto started."
 tip = "The small \"now\" stage that decides what's on Brain's mind."
 [parent."mind.play"]
 tip = "A little nightly time for Brain to explore its own questions on your topics."
+[parent."mind.tools"]
+tip = "Brain's read-only tools for your AI and calls: its plan, when you're likely free (in words), your precedents."
 [parent."mind.precedents"]
 tip = "Judgement calls between your values, asked once and then followed."
 [parent."mind.read"]
