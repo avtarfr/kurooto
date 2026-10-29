@@ -25,7 +25,8 @@ Voice ID (0.8.10; fetched when you set it up, not included in the package):
 The impostor sets in src/kurooto/data/voiceid/ (when present) are speaker embeddings computed with those models from
 LibriSpeech's dev and test sets (Panayotov, Chen, Povey and Khudanpur, 2015; https://www.openslr.org/12), licensed
 CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Changed: only computed vectors are kept, no audio, speaker
-ids or transcripts.
+ids or transcripts. The *-phone sets (0.9.2) are computed the same way after passing the audio through a simulated
+phone channel (equalising, gain, band-limiting, mu-law, a short room tail and noise).
 Downloaded when you set a feature up, not included in Kurooto:
 
 Face presence: YuNet (face_detection_yunet_2023mar.onnx), MIT licence, copyright 2020 Shiqi Yu; SFace

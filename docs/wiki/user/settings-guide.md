@@ -43,7 +43,7 @@ This page is written by `tools/gen_settings_guide.py` from Kurooto's code and th
 - [Research, projects and proposals](#research-projects-and-proposals): 48 settings
 - [Teaching Kurooto and what it remembers](#teaching-kurooto-and-what-it-remembers): 68 settings
 - [Brain](#brain): 159 settings
-- [Voice and voice notes](#voice-and-voice-notes): 93 settings
+- [Voice and voice notes](#voice-and-voice-notes): 98 settings
 - [Privacy and what it keeps](#privacy-and-what-it-keeps): 6 settings
 - [Updates, backups and upkeep](#updates-backups-and-upkeep): 29 settings
 - [This computer](#this-computer): 12 settings
@@ -7960,6 +7960,58 @@ last answer to you. A voice clearly someone else's, or two voices, are never car
 - **Values:** `true` (default), `false` (only short replies carry, as before 0.8.13). **Default:** on.
 - **When to change it:** Turn it off in a shared room where someone with a voice like yours might carry on your
   conversation.
+
+### `voice.speaker_id.per_device`
+
+Through a microphone you didn't enrol on, Voice ID learns that microphone's own print, used after your yes.
+
+A phone's microphone (through an add-on) or a headset makes your voice score lower than at enrolment, so most turns come
+out "not sure". With this on, turns there that are proven yours (only your face in view at that moment, one voice, at
+least 2 seconds of speech, and a score not in the "clearly not you" band; or a "that was me" tap) keep their numbers (a
+vector, never sound) in your sealed voice print. With 12 of them it builds that microphone's own print, calibrated
+against the impostor voices heard through a simulated phone channel (never synthetic voices), and asks you once: Use it,
+or No (No drops them and it stops learning there). /voice id mics lists them; /voice id mic <n> use|no|forget. Until a
+microphone's print is in use, "improve over time" doesn't learn there (it used to drift your print toward that
+microphone until its guard stopped it for good).
+
+- **Values:** `true` (default), `false`. **Default:** on.
+- **When to change it:** Turn it off to use only your enrolled print everywhere and keep nothing more of your voice.
+- **Depends on:** Voice ID enrolled; Face presence enrolled for the face-proven turns.
+
+### `voice.speaker_id.per_device_per_day`
+
+At most this many face-proven turns a day are kept for a microphone's own print.
+
+- **Values:** A whole number; default `10`. **Default:** `10`.
+- **When to change it:** Lower it to keep fewer of your turns; the print is then built more slowly.
+
+### `voice.speaker_id.claim`
+
+Tap the Body face within 10 s of a turn Voice ID wasn't sure of: it was you, and it's heard again as yours.
+
+Only with only your face in view at the tap. The "not sure" turn's sound waits in memory for voice.speaker_id.claim_s
+(never written), then goes. A claim opens the talk, runs the turn as yours, and may keep its numbers: as a sample for
+that microphone's own print (voice.speaker_id.per_device), or with "improve over time" on, as a learned turn under its
+caps, drift guard and undo. At most voice.speaker_id.claim_per_day a day. A tap with nothing to claim does what it did
+before (voice.listen.tap_to_talk).
+
+- **Values:** `true` (default), `false`. **Default:** on.
+- **When to change it:** Turn it off if someone else might tap the face while you sit in front of it.
+- **Depends on:** Voice ID and Face presence enrolled; an add-on that passes taps (the Body face).
+
+### `voice.speaker_id.claim_s`
+
+How long after a "not sure" turn a tap can still claim it (seconds).
+
+- **Values:** Seconds; default `10`. **Default:** `10`.
+- **When to change it:** Shorter if you want a turn's sound gone from memory sooner; longer if the tap often comes late.
+
+### `voice.speaker_id.claim_per_day`
+
+At most this many "that was me" claims a day.
+
+- **Values:** A whole number; default `5`. **Default:** `5`.
+- **When to change it:** Lower it if claims are being used more than you expect.
 
 ### `voice.speak.ack`
 

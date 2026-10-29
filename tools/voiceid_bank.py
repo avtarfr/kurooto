@@ -15,7 +15,16 @@ Per speaker: 4 utterances of 4 s or more, spread over chapters; for each, three 
 and a 1.5 s crop from its middle (the short crops give the impostor scores for short turns). About 146 x 4 x 3 = 1,750
 rows. Only vectors ship: no audio, speaker ids or transcripts. The file is modules/voice/speakerid.py's bank format
 (one JSON header line with the model's sha256, then float16 rows), impostors-<name>.bin. Download the data to a scratch
-folder on a big disk, never to ~, and delete it afterwards."""
+folder on a big disk, never to ~, and delete it afterwards.
+
+--channel phone (0.9.2, Voice ID per microphone): the same utterances first passed through a simulated phone channel,
+written as impostors-<name>-phone.bin. Voice ID calibrates a print built on another microphone (a phone's, through an
+add-on) against it, so strangers are scored as they'd sound through that kind of microphone. Simulated here, offline,
+from the dev/test audio only: never a real microphone, never a synthetic (TTS) voice. Three channels in turn, one per
+utterance (phone_channel): "mic" (a phone microphone's response: a high-pass at 150 Hz, a presence lift at 2-4 kHz, a
+roll-off above 6.5 kHz, then automatic gain and soft compression), "call" (mic, then band-limited to 300-3400 Hz and
+8-bit mu-law, the narrowband voice-call path) and "far" (mic at arm's length: a short room tail and a noise floor 30 dB
+under the speech)."""
 
 from __future__ import annotations
 
@@ -53,6 +62,52 @@ def load16k(path: Path):
     if sr != 16000:
         n = int(len(x) * 16000 / sr)
         x = np.interp(np.linspace(0, len(x) - 1, n), np.arange(len(x)), x).astype("float32")
+    return (np.clip(x, -1, 1) * 32767).astype("<i2")
+
+
+CHANNELS = ("mic", "call", "far")
+
+
+def _shape(x, gains):
+    """x (float32, 16 kHz) through a gain curve over frequency: gains(freqs in Hz) -> linear gains."""
+    import numpy as np
+
+    n = len(x)
+    spec = np.fft.rfft(x)
+    f = np.fft.rfftfreq(n, 1 / 16000)
+    return np.fft.irfft(spec * gains(f), n).astype("float32")
+
+
+def phone_channel(x16, which: str, seed: int):
+    """int16 16 kHz -> int16 16 kHz through a simulated phone channel (module docstring). Deterministic per seed."""
+    import numpy as np
+
+    rng = np.random.default_rng(seed)
+    x = x16.astype("float32") / 32768.0
+
+    def mic_eq(f):
+        hp = 1 / np.sqrt(1 + (150 / np.maximum(f, 1.0)) ** 4)  # 2nd-order high-pass at 150 Hz
+        lift = 1 + 0.41 * np.exp(-(((f - 3000) / 900) ** 2))  # about +3 dB around 2-4 kHz
+        lp = 1 / np.sqrt(1 + (f / 6500) ** 8)  # roll-off above 6.5 kHz
+        return hp * lift * lp
+
+    x = _shape(x, mic_eq)
+    if which == "far":
+        n = int(0.25 * 16000)  # a short room tail: decaying noise, 250 ms
+        tail = rng.standard_normal(n).astype("float32") * np.exp(-np.arange(n) / (0.05 * 16000)).astype("float32")
+        tail[0] = 1.0
+        x = np.convolve(x, tail * 0.3, mode="full")[: len(x)].astype("float32")
+    rms = float(np.sqrt(np.mean(x**2))) or 1e-6  # automatic gain to about -20 dBFS, then soft compression
+    x = x * (0.1 / rms)
+    x = np.tanh(2.0 * x) / 2.0
+    if which == "far":
+        x = x + rng.standard_normal(len(x)).astype("float32") * (0.1 * 10 ** (-30 / 20))
+    if which == "call":
+        x = _shape(x, lambda f: ((f >= 300) & (f <= 3400)).astype("float32"))
+        mu = 255.0  # 8-bit mu-law, there and back
+        y = np.sign(x) * np.log1p(mu * np.minimum(np.abs(x), 1.0)) / np.log1p(mu)
+        y = np.round((y + 1) * 127.5) / 127.5 - 1
+        x = np.sign(y) * ((1 + mu) ** np.abs(y) - 1) / mu
     return (np.clip(x, -1, 1) * 32767).astype("<i2")
 
 
@@ -107,6 +162,7 @@ def main() -> int:
     ap.add_argument("--model", type=Path, required=True)
     ap.add_argument("--name", required=True, help="campplus-en or campplus-multi (the file's name)")
     ap.add_argument("--out", type=Path, default=ROOT / "src" / "kurooto" / "data" / "voiceid")
+    ap.add_argument("--channel", choices=("plain", "phone"), default="plain", help="phone: a simulated phone channel")
     a = ap.parse_args()
 
     emb = sid.Embedder(a.model)
@@ -126,6 +182,8 @@ def main() -> int:
                 continue
             if len(x) < MIN_S * 16000:
                 continue
+            if a.channel == "phone":
+                x = phone_channel(x, CHANNELS[len(rows) // 3 % len(CHANNELS)], len(rows))
             for kind, piece in ((sid.KIND_FULL, x), (sid.KIND_3S, middle(x, 3.0)), (sid.KIND_15, middle(x, 1.5))):
                 rows.append(emb.embed(piece.tobytes()))
                 kinds.append(kind)
@@ -136,11 +194,14 @@ def main() -> int:
         print("No speech found.", file=sys.stderr)
         return 1
     a.out.mkdir(parents=True, exist_ok=True)
-    dest = a.out / f"impostors-{a.name}.bin"
+    dest = a.out / f"impostors-{a.name}{'-phone' if a.channel == 'phone' else ''}.bin"
     source = "LibriSpeech dev/test (CC BY 4.0)" + (
         " and Common Voice English, India and South Asia (CC0)" if a.cv else ""
     )
-    sid.write_bank(dest, rows, kinds, {"model_sha256": sha256(a.model), "speakers": n_spk, "source": source})
+    meta = {"model_sha256": sha256(a.model), "speakers": n_spk, "source": source}
+    if a.channel == "phone":
+        meta["channel"] = "phone (simulated: " + ", ".join(CHANNELS) + ")"
+    sid.write_bank(dest, rows, kinds, meta)
     print(f"{dest}: {len(rows)} rows from {n_spk} speakers")
     return 0
 

@@ -1451,7 +1451,8 @@ def test_each_frame_hands_every_face_with_its_place_identity_and_numbers():
     assert len(one) == 3
     me, other, far = one
     assert me["who"] == "owner" and me["score"] > 0.5 and len(me["e"]) == 128
-    assert other["who"] == "stranger" and len(other["e"]) == 128
+    assert other["who"] == "unsure" and len(other["e"]) == 128  # (0.9.2) someone else from their 2nd frame of 3
+    assert lists[1][1]["who"] == "stranger"
     assert other["yaw"] == pytest.approx(0.3, abs=0.01)  # as pose() gives it
     assert far["who"] is None and far["e"] is None and far["score"] is None
     assert me["h_px"] == 140.0 and me["h"] == pytest.approx(140 / 480, abs=1e-3)

@@ -1017,6 +1017,14 @@ REASONS: dict[str, Reason] = {
             counted=False,
             feature="voice",
         ),
+        R(  # (0.9.2) Voice ID's one-time yes for a microphone's own print (voice.speaker_id.per_device), once each
+            "voice.id_device",
+            "Voice ID learned how you sound through another microphone and asks once before using it there",
+            setting="voice.speaker_id.per_device",
+            stop=to(False, "Voice ID no longer learns other microphones"),
+            counted=False,
+            feature="voice",
+        ),
         R(  # (0.9.1) the same for a question someone asked you (ask-me): your spoken answer closes it everywhere
             "voice.messages.question",
             "a question for you, said aloud at your desk as well (voice.speak.messages)",

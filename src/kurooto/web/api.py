@@ -1026,7 +1026,8 @@ class Api:
     def _voice_id(self, vid, action: str, b: dict) -> tuple[int, dict]:
         """POST voice/id/session {action: start|again|continue|pause|stop|keep, own_words?, conds?}, skip {cond},
         train {use_anyway?}, undo (the last build), test {as: me|other|synthetic}, adapt {undo: today|all},
-        forget {confirm: true}, parts/add {path}. Answers carry counts, grades and scores, never a vector."""
+        forget {confirm: true}, parts/add {path}, device {device, action: use|no|forget} (0.9.2). Answers carry counts,
+        grades and scores, never a vector."""
         if action == "session":
             act = str(b.get("action") or "")
             if act == "start" and isinstance(b.get("conds"), list):
@@ -1048,6 +1049,8 @@ class Api:
             return 200, {"ok": True, "message": vid.forget()}
         if action == "parts/add":
             return 200, vid.add_file(str(b.get("path") or ""))
+        if action == "device":  # (0.9.2) a microphone's own print: {device: name|ref|number, action: use|no|forget}
+            return 200, vid.device_answer(str(b.get("device") or ""), str(b.get("action") or ""))
         return 404, {"error": "not found"}
 
     def _face(self, action: str, b: dict) -> tuple[int, dict]:

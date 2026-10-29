@@ -100,6 +100,17 @@ States: `off`, `paused(why)`, `resting` (camera closed, input is presence), `wat
    (every pair of those embeddings with cosine > 0.995 and landmarks moved < 0.5 px: a propped-up photo; it waits).
    Emits `arrived {away_min, others}`; `others` = a second face (score ≥ 0.6) in any of those frames.
 
+**Flicker (0.9.2, a fix, `watch.py`).** Per frame, after `drop_nested`: only faces at least `HALF` (0.5) of the
+biggest one's height count (`counted`; the rest are in `people` and the tracks but never judged, counted, in
+`sizes` or `looks`). Each counted face is followed by its box (`_follow`: greedy IoU ≥ `ID_IOU` 0.3, forgotten after
+`ID_MISS` 2 missed frames, `ids` cleared in `_close`; boxes and the last `OTHER_M` verdict words only). `_settle`:
+someone else only when `OTHER_N` of the last `OTHER_M` (2 of 3) judged frames said "stranger" (before that, unsure);
+a face recognised as his within `keep_s` = max(`ID_KEEP_S` 2 s, 1.5 frame gaps) stays his through an unjudged
+(small, low score, blurred) or unsure frame or a single "stranger" frame (`kept_i`). A kept face counts in "view"
+(`owner_alone`, `owner`, `eyes`, `looks` skip it) and the tracks' owner flag, never in `recent` (arrivals), `seen`,
+`candidate`, `counts.you` or learning. `counts.not_you`, `strangers` (away) and `people`'s `who` use the settled
+verdict. Golden scenes with the 0.9.1 and 0.9.2 rows: `tests/unit/test_face_flicker.py`.
+
 Camera problems back off: busy 60 s (Linux `/proc/*/fd` holders, Windows' CapabilityAccessManager record), no camera
 60 s, blocked 300 s, covered 300 s. `Camera.open()` raises `CameraError("busy" | "no camera" | "blocked")`; on Linux it
 tries only `free()` cameras, so "busy" means every candidate is held. A `face.camera.*` change swaps the watcher's

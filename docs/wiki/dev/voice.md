@@ -785,6 +785,42 @@ of accept + 0.08 (the other checks the same); the entry is marked `face: true` (
 `VoiceID.check()` keeps such a turn's vector in memory (`_face_last`); `Voice` holds it with the turn and calls
 `learn_face()` only when the turn went well (adapt and face_assist on); told off or closed, it's dropped.
 
+0.9.2, a fix: `VoiceID.check()` adapts the enrolled print only when `devices.enrolled_on(tpl, device())` (the
+template's `mic`/`mics`; a template that names none counts as enrolled here). On another microphone without its own
+print in use nothing is learned (the drift guard used to trip there for good); with one, `_adapt_device()` runs the same
+Adapter on `tpl["devices"][dev]["print"]` against the impostors it was built with. `learn_face()` follows the same rule.
+
+### Per microphone and "that was me" (0.9.2, `devices.py`)
+
+`VoiceID.device()` = `devices.key(capture_device or mic_now())`. **Hook:** whoever opens a microphone other than
+`voice.listen.device` (the "ears source lost" failover) sets `VoiceID.capture_device` to its name, and "" when it goes
+back, so the right print is used and learned. `_print_for(t, dev)`: the device's print when `per_device` is on, the
+device isn't the enrolment's and its entry is `on`; else the template. `_bootstrap()` (after each check with
+`adapt=True`, not on a device print): `per_device`, not the enrolment's device, the entry still learning, speech >= 2 s,
+`voices` not >= 2, `face_owner()` now, not `_speaker_near()`, and `above` (the score against the print in use at or
+above its band's `unsure`: not "clearly not you"; the same floor gates holding a claim) (busy, holding, or within 1 s of `speaker.until`);
+then `_add_device_sample(dev, e, "face", per_device_per_day)`. At `MIN_SAMPLES` (and every `REBUILD_EVERY` more while
+weak) `_build_device()` runs on its own thread: `devices.build()` = `sid.calibrate(samples, bank, ())` (no synthetic
+impostors) with `device_bank()`: `impostors-<model>-phone.bin` when its model sha matches, else the plain bank. Ready
+(good/fair) asks once: `notify(..., why="voice.id_device", buttons=vid:<ref>:devuse|devno)`; `<ref>` is a sha1 prefix
+of the name. `device_answer(which, use|no|forget)` (button, `/voice id mic`, `POST voice/id/device`). Template JSON
+gains `devices {name: {samples [{e, day, how}], state, print {centroid, centroid_enrolled, thresholds, calibrated,
+report, adapted, drift_stopped, bank}, built_n, asked}}` and `claimed {day, n}`; `status()["devices"]` is
+`devices.view()` (counts, state, grade; no vector).
+
+Claim: `check()` holds an unsure verdict's turn (with a score, one voice, `adapt=True`) in `_claim` (a bytearray copy of
+the sound, the vector, the verdict, the device) for `claim_s`; a timer zeroes it. `Voice.tapped()` calls
+`_claim_tap()` first: `VoiceID.claim()` (on, held and fresh, `face_owner()`, under `claim_per_day`) keeps the vector
+(a device sample, or `learn_face()` with an assisted owner verdict) and sets `_forced = (sound, owner verdict "you said
+it was you", assisted)`; Voice opens the portal (`Portal.tapped`) and queues the sound on the hearing thread
+(`_heard_audio`), where `hear()` is unchanged: its `check()` gets the forced verdict for that exact bytes object, once.
+Nothing in `hear()` or `live.py` changed for this.
+
+The phone bank: `tools/voiceid_bank.py --channel phone` (offline, from the same LibriSpeech dev/test audio): per
+utterance one of three simulated channels in turn (`mic`: 150 Hz high-pass, +3 dB at 2-4 kHz, roll-off above 6.5 kHz,
+AGC to -20 dBFS and tanh compression; `call`: mic then 300-3400 Hz and 8-bit mu-law; `far`: mic with a 250 ms room tail
+and a noise floor 30 dB down). The same 1,749 rows and kinds; meta `channel`.
+
 ### Storage
 
 `BioStore(app, "voice")`: `state/voiceid/template.bin` (0600 in a 0700 folder), `nonce || AES-256-GCM(json)` with AAD

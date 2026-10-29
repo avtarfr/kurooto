@@ -2284,6 +2284,15 @@ today / Undo all. Manage: add samples, retrain, change model, install the parts 
 *Leaves:* nothing of your voice. The speaker model (28 MB) downloads once from GitHub, or installs from a file; a
 guest's chat turns go to your AI without your data. *Kept:* only your voice print, encrypted (`state/voiceid/`), never
 backed up, synced or put in a diagnostics zip; never your recordings.
+- **Other microphones** (0.9.2, `voice.speaker_id.per_device`, on): through a microphone you didn't enrol on, turns
+  proven yours (only your face in view, one voice, 2 s, not scored as clearly someone else; or "that was me") build its own print (12 turns, at most 10 a
+  day), calibrated against strangers heard through a simulated phone channel; it asks once (Use it / No) before using
+  it. `/voice id mics`, `/voice id mic <n> use|no|forget`. Until then "improve over time" doesn't learn there (a fix).
+  *Undo:* off; `/voice id mic <n> forget`.
+- **"That was me"** (0.9.2, `voice.speaker_id.claim`, on): tap the Body face within 10 s of a "not sure" turn, with only
+  your face in view, and it's heard again as yours (the sound waits in memory that long only); at most 5 a day.
+  *Undo:* off.
+
 *Undo:* `voice.speaker_id.on` off stops checking at once (messages are then unchecked, as before); `/voice id forget`
 (or the page's Forget my voice, `kurooto voice id forget`, `/forget all`) deletes the voice print and its key;
 `/voice id undo all` drops what it learned over time.
@@ -2306,6 +2315,8 @@ never approves, unlocks or allows anything. Details: [the user guide](wiki/user/
 - **Watching:** the camera stays closed while you type; it looks about once a second only when you're idle, just
   unlocked or being confirmed, and pauses (saying why) when locked, on a call, in focus, at night, when the camera is
   busy, covered or blocked. A "● camera" badge shows on the dashboard while Kurooto holds it.
+- **Steady verdicts** (0.9.2, a fix): faces under half the biggest one's height don't count; someone else needs 2
+  of their last 3 frames; your face stays yours about 2 s through one blurred, unsure or misjudged frame.
 - **Following faces** (`face.track.on`): while the camera is open and a dashboard is in sight, the being's eye
   follows everyone in view (places and movement only), switching between people every few seconds; it looks up to
   10 times a second then (`face.track.fps`).

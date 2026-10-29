@@ -1488,6 +1488,9 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.speaker_id.carry` | `true` | A short reply right after a turn it knew was you counts as you (not when the voice is clearly someone else). ([guide](wiki/user/settings-guide.md#voicespeakeridcarry)) |
 | `voice.speaker_id.carry_s` | `15` | The window, in seconds, in which a quick reply after you spoke still counts as you. ([guide](wiki/user/settings-guide.md#voicespeakeridcarrys)) |
 | `voice.speaker_id.carry_talk` | `true` | In a talk Voice ID knew you opened, a voice it's only "not sure" of stays you, so history and tools carry. ([guide](wiki/user/settings-guide.md#voicespeakeridcarrytalk)) |
+| `voice.speaker_id.claim` | `true` | Tap the Body face within 10 s of a turn Voice ID wasn't sure of: it was you, and it's heard again as yours. ([guide](wiki/user/settings-guide.md#voicespeakeridclaim)) |
+| `voice.speaker_id.claim_per_day` | `5` | At most this many "that was me" claims a day. ([guide](wiki/user/settings-guide.md#voicespeakeridclaimperday)) |
+| `voice.speaker_id.claim_s` | `10` | How long after a "not sure" turn a tap can still claim it (seconds). ([guide](wiki/user/settings-guide.md#voicespeakeridclaims)) |
 | `voice.speaker_id.face_assist` | `true` | When Voice ID is only "not sure" it's your voice and Face presence sees just your face, it counts as you. ([guide](wiki/user/settings-guide.md#voicespeakeridfaceassist)) |
 | `voice.speaker_id.gate` | `true` | Check who's speaking before writing words out: other people not calling Kurooto are never transcribed. ([guide](wiki/user/settings-guide.md#voicespeakeridgate)) |
 | `voice.speaker_id.guest_brain` | `"main"` | Who answers other voices: your AI (none of your data, no tools) or the model on this computer. ([guide](wiki/user/settings-guide.md#voicespeakeridguestbrain)) |
@@ -1497,6 +1500,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.speaker_id.mode` | `"owner_only_acts"` | What other voices get: a chat with no actions and none of your data, or just one line saying it only talks with you. ([guide](wiki/user/settings-guide.md#voicespeakeridmode)) |
 | `voice.speaker_id.model` | `"campplus-en"` | The speaker model: campplus-en (English, the most accurate) or campplus-multi. Changing it means enrolling again. ([guide](wiki/user/settings-guide.md#voicespeakeridmodel)) |
 | `voice.speaker_id.on` | `false` | Voice ID: only your voice can make Kurooto act; others can only chat, with none of your data. Enrol first. ([guide](wiki/user/settings-guide.md#voicespeakeridon)) |
+| `voice.speaker_id.per_device` | `true` | Through a microphone you didn't enrol on, Voice ID learns that microphone's own print, used after your yes. ([guide](wiki/user/settings-guide.md#voicespeakeridperdevice)) |
+| `voice.speaker_id.per_device_per_day` | `10` | At most this many face-proven turns a day are kept for a microphone's own print. ([guide](wiki/user/settings-guide.md#voicespeakeridperdeviceperday)) |
 | `voice.speaker_id.spoken_enrol` | `true` | During enrolment Kurooto says each step aloud. Off: the page shows the steps only. ([guide](wiki/user/settings-guide.md#voicespeakeridspokenenrol)) |
 | `voice.speaker_id.strictness` | `"normal"` | How sure it must be that it's you: relaxed, normal or strict (strict turns you away more often). ([guide](wiki/user/settings-guide.md#voicespeakeridstrictness)) |
 | `voice.speaker_id.tell_guests` | `true` | Once per conversation, tell others they can chat but only you can make Kurooto act. ([guide](wiki/user/settings-guide.md#voicespeakeridtellguests)) |

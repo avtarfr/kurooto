@@ -550,6 +550,45 @@ its last answer to you. A voice clearly someone else's, or two voices, are never
 values = "`true` (default), `false` (only short replies carry, as before 0.8.13)."
 when = "Turn it off in a shared room where someone with a voice like yours might carry on your conversation."
 
+[s."voice.speaker_id.per_device"]
+tip = "Through a microphone you didn't enrol on, Voice ID learns that microphone's own print, used after your yes."
+what = """A phone's microphone (through an add-on) or a headset makes your voice score lower than at enrolment, so most turns
+come out "not sure". With this on, turns there that are proven yours (only your face in view at that moment, one voice,
+at least 2 seconds of speech, and a score not in the "clearly not you" band; or a "that was me" tap) keep their numbers (a vector, never sound) in your sealed voice
+print. With 12 of them it builds that microphone's own print, calibrated against the impostor voices heard through a
+simulated phone channel (never synthetic voices), and asks you once: Use it, or No (No drops them and it stops learning
+there). /voice id mics lists them; /voice id mic <n> use|no|forget. Until a microphone's print is in use, "improve over
+time" doesn't learn there (it used to drift your print toward that microphone until its guard stopped it for good)."""
+values = "`true` (default), `false`."
+when = "Turn it off to use only your enrolled print everywhere and keep nothing more of your voice."
+needs = "Voice ID enrolled; Face presence enrolled for the face-proven turns."
+
+[s."voice.speaker_id.per_device_per_day"]
+tip = "At most this many face-proven turns a day are kept for a microphone's own print."
+values = "A whole number; default `10`."
+when = "Lower it to keep fewer of your turns; the print is then built more slowly."
+
+[s."voice.speaker_id.claim"]
+tip = "Tap the Body face within 10 s of a turn Voice ID wasn't sure of: it was you, and it's heard again as yours."
+what = """Only with only your face in view at the tap. The "not sure" turn's sound waits in memory for
+voice.speaker_id.claim_s (never written), then goes. A claim opens the talk, runs the turn as yours, and may keep its
+numbers: as a sample for that microphone's own print (voice.speaker_id.per_device), or with "improve over time" on, as
+a learned turn under its caps, drift guard and undo. At most voice.speaker_id.claim_per_day a day. A tap with nothing to
+claim does what it did before (voice.listen.tap_to_talk)."""
+values = "`true` (default), `false`."
+when = "Turn it off if someone else might tap the face while you sit in front of it."
+needs = "Voice ID and Face presence enrolled; an add-on that passes taps (the Body face)."
+
+[s."voice.speaker_id.claim_s"]
+tip = "How long after a \"not sure\" turn a tap can still claim it (seconds)."
+values = "Seconds; default `10`."
+when = "Shorter if you want a turn's sound gone from memory sooner; longer if the tap often comes late."
+
+[s."voice.speaker_id.claim_per_day"]
+tip = "At most this many \"that was me\" claims a day."
+values = "A whole number; default `5`."
+when = "Lower it if claims are being used more than you expect."
+
 [s."voice.speak.ack"]
 tip = "While your AI thinks, a short soft sound says Kurooto heard you."
 what = """The moment a turn you said goes to your AI, a soft sound plays through the same speakers or output as its voice

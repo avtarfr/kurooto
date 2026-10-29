@@ -623,7 +623,31 @@ Off by default (`voice.speaker_id.adapt`; the Improve step, or the card's switch
 (well above the threshold, at least two seconds, one voice) slowly refine your voice print: at most 10 a day and 40 in
 all, never more than a quarter of its weight, never from a turn it wasn't sure of. If your voice print would drift too
 far from your enrolment, it stops and says so. **Undo today** and **Undo all** (or `/voice id undo today|all`) put it
-back.
+back. (0.9.2, a fix) Through a microphone you didn't enrol on, it doesn't learn at all until that microphone has its own
+print in use (below): before, those turns pulled your voice print toward that microphone until it stopped for good.
+
+### Other microphones (0.9.2)
+
+Your voice sounds different through a phone's microphone (the Body add-on's) or a headset, so through one you didn't
+enrol on most turns come out "not sure". With `voice.speaker_id.per_device` (on), Voice ID learns that microphone's own
+print from turns that are **proven** yours: only your face in view at that moment (Face presence), one voice, at least
+2 seconds of speech, nothing of Kurooto's own voice around it, and a voice that doesn't score as clearly someone
+else's (so a voice off camera while you sit there isn't taken); or a "that was me" tap (below). At most 10 a day per
+microphone (`voice.speaker_id.per_device_per_day`). Only their numbers are kept (a vector each, never sound), sealed
+inside your voice print. With 12 it builds that microphone's print the way enrolment does, calibrated against the
+strangers' voices heard through a simulated phone channel (never synthetic voices), and **asks you once**: Use it, or
+No. No drops what it kept and it stops learning there. Until you say yes, that microphone uses your enrolled print.
+`/voice id mics` lists them; `/voice id mic <number> use|no|forget`; the Your voice page's Improve step has the same
+buttons. Off: only your enrolled print, everywhere, and nothing more is kept.
+
+### "That was me" (0.9.2)
+
+Turned away as "not sure" (never a voice that scored as clearly someone else's)? Tap the Body face within 10 seconds (`voice.speaker_id.claim_s`) while only your face is in
+view: that turn is heard again as yours, in a conversation the tap opens. Its numbers may be kept: as a sample for that
+microphone's own print, or, with "improve over time" on, as a learned turn under its caps and undo. At most 5 a day
+(`voice.speaker_id.claim_per_day`). To make this work, the sound of a "not sure" turn waits in memory for those 10
+seconds (never written anywhere), then is zeroed. `voice.speaker_id.claim` off: nothing is held, and a tap only opens a
+talk as before.
 
 ### Strictness and the threshold
 
@@ -683,7 +707,7 @@ second: your name or your look still work. Off by default because it holds back 
 ### Your voice print
 
 - **Kept:** only your voice print (numbers, condition names, dates, thresholds, quality numbers and the microphone's
-  name), encrypted (AES-256-GCM) in Kurooto's state folder, with its key in your system's keychain (or the owner-only
+  name; 0.9.2: other microphones' names, their proven turns' numbers and their own prints), encrypted (AES-256-GCM) in Kurooto's state folder, with its key in your system's keychain (or the owner-only
   secrets file where there's none). Never your recordings: sound stays in memory and is dropped as soon as it's
   checked.
 - **Never:** backed up, synced to another computer, in a diagnostics bundle, logged, on the live stream, or shown.

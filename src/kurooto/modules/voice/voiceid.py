@@ -24,7 +24,15 @@ Another microphone (0.9.2, a fix): the voice print records the names of the micr
 ("mics": voice.listen.device or the system's default source, with voice.audio.backend when it isn't auto; names
 only). When Voice ID listens through one it wasn't enrolled on and has been unsure of most turns (MIC_TURNS long
 enough to judge, more than half unsure), it tells the owner once per microphone (voice.json "mic_told") that the
-print was enrolled on another microphone and `/voice enrol` records it again."""
+print was enrolled on another microphone and `/voice enrol` records it again.
+
+Per microphone (0.9.2, devices.py; voice.speaker_id.per_device): through a microphone the print wasn't enrolled on,
+turns proven his (his face alone in view, one voice, 2 s of speech; or a "that was me" tap) give that microphone its
+own print, used after his one-time yes (a message with Use it / No, /voice id mics, the page). Until then "improve over
+time" leaves the enrolled print alone there (a fix). "That was me" (voice.speaker_id.claim): a "not sure" turn's sound
+is held in memory for claim_s (never written); a tap on an add-on's device (Voice.tapped) within that time, with his
+face recognised alone, re-runs it as his (the hearing thread, check() hands it the owner's verdict once) and may keep
+its vector as a sample (a microphone's own, or "improve over time" under its caps)."""
 
 from __future__ import annotations
 
@@ -39,7 +47,7 @@ from typing import TYPE_CHECKING, Any
 from kurooto.core import biometric, nearby
 from kurooto.core.biometric import BioStore, Locked
 from kurooto.core.state import jload, jsave
-from kurooto.modules.voice import enrol
+from kurooto.modules.voice import devices, enrol
 from kurooto.modules.voice import speakerid as sid
 from kurooto.modules.voice.parts import KOKORO_VOICES, VOICEID_MODELS
 
@@ -55,6 +63,8 @@ SYNTH_PHRASES = enrol.PHRASES[:3]
 ECHO_TAIL_S = 0.6  # (0.9.2) enrolment: speech that began this soon after its own spoken step ended is its echo
 ECHO_TAIL_REMOTE_S = 1.2  # ...when it spoke through an add-on's output (a phone: its sound comes back later)
 MIC_TURNS = 10  # (0.9.2) turns long enough to judge, through a microphone it wasn't enrolled on, before it may tell
+SPEAKER_TAIL_S = 1.0  # (0.9.2) speech this soon after Kurooto spoke may be its own voice: never a microphone's sample
+CLAIM_WHY = "you said it was you"  # (0.9.2) a claimed turn's verdict
 
 
 def today() -> str:
@@ -93,6 +103,13 @@ class VoiceID:
         self.last_test: dict | None = None
         self._face_last: tuple | None = None  # (vector, verdict, voices) of the last face-assisted turn, memory only
         self.face_learned = 0  # face-confirmed turns added to the voice print since start (a count)
+        # (0.9.2) per microphone: who opens another microphone than voice.listen.device (the "ears source lost"
+        # failover) sets its name here, "" when it's that one again, so the right print is used and learned
+        self.capture_device = ""
+        self._claim: dict | None = None  # (0.9.2) the last "not sure" turn: its sound and vector, memory only
+        self._claim_timer: threading.Timer | None = None
+        self._forced: tuple | None = None  # (0.9.2) (the claimed sound, the owner's verdict): check() hands it once
+        self._building: set[str] = set()  # microphones whose print is being built
 
     # ------------------------------------------------------------------------------------------- settings
     def s(self, key: str, default: Any = None) -> Any:
@@ -227,6 +244,14 @@ class VoiceID:
     def check(self, pcm: bytes, speech_s: float, voices: int | None = None, adapt: bool = True) -> sid.Verdict:
         """One stretch of speech: owner, unsure or guest. The sound isn't kept; the score never leaves here. adapt
         False: never learned from (a stretch spoken over Kurooto's own voice, barge.py)."""
+        f = self._forced
+        if f is not None and f[0] is pcm:  # (0.9.2) a claimed turn: his, said by a tap with his face in view
+            self._forced = None
+            v = f[1]
+            self.who[v.decision] = self.who.get(v.decision, 0) + 1
+            self.last_word = v.word
+            self._face_last = None
+            return v
         p = self.v.portal
         ctx = sid.Ctx(
             portal_session=p.session,
@@ -239,10 +264,12 @@ class VoiceID:
         )
         missing = self.problem()
         t = self.template() if not missing else None
+        dev = self.device()
+        pr, on_dev = self._print_for(t, dev) if t else (None, "")  # (0.9.2) this microphone's own, once it's on
         ver = sid.Verifier(
             self.embed if not missing else None,
-            sid.from_b64(t["centroid"]) if t else None,
-            self.thresholds(t) if t else None,
+            sid.from_b64(pr["centroid"]) if pr else None,
+            self.thresholds(pr) if pr else None,
         )
         v = ver.check(pcm, speech_s, ctx, missing=missing, **self.rules())
         self.who[v.decision] = self.who.get(v.decision, 0) + 1
@@ -252,8 +279,18 @@ class VoiceID:
             if self.v.setting("listen.conversation_mode"):
                 biometric.note_others(self.app, float(self.v.setting("listen.conversation_s") or 60))
         if t is not None and ver.last is not None and adapt and self.s("adapt"):
-            self._adapt(t, ver.last, v, voices)
+            if on_dev:
+                self._adapt_device(t, on_dev, ver.last, v, voices)
+            elif devices.enrolled_on(t, dev):  # (0.9.2, a fix) another microphone without its own print: frozen
+                self._adapt(t, ver.last, v, voices)
+        # (0.9.2) the floor for a proven or claimed turn: not in the "clearly not you" band of the print it was
+        # scored against (at or above that band's unsure cut-off, the guest line)
+        above = v.score is not None and ver.t is not None and v.score >= ver.t.pick(speech_s).unsure
+        if t is not None and ver.last is not None and adapt and not on_dev and above:
+            self._bootstrap(t, dev, ver.last, v, voices, speech_s)
         self._face_last = (list(ver.last), v, voices) if v.assisted and ver.last is not None else None
+        if ver.last is not None and adapt and v.decision == sid.UNSURE and above:
+            self._hold_claim(pcm, ver.last, v, dev, voices)
         ver.last = None
         if not missing and not v.short:
             try:
@@ -322,6 +359,12 @@ class VoiceID:
             t = self.template()
             if not t or self.problem():
                 return False
+            dev = self.device()
+            _pr, on_dev = self._print_for(t, dev)
+            if on_dev:  # (0.9.2) this microphone's own print learns instead
+                return self._adapt_device(t, on_dev, e, v, voices, face=True)
+            if not devices.enrolled_on(t, dev):  # (0.9.2, a fix) frozen on a microphone without its own print
+                return False
             a = sid.Adapter(self.bank(), str(self.s("strictness") or "normal"), float(self.s("margin", 0.05)),
                             float(self.s("threshold", 0.0) or 0.0))  # fmt: skip
             work = dict(t)
@@ -336,6 +379,239 @@ class VoiceID:
                 self.face_learned += 1
                 self.app.events.emit("voiceid_adapted", count=len(work.get("adapted") or []), face=True)
             return took
+
+    # ------------------------------------------------------------------------- per microphone (0.9.2)
+    def device(self) -> str:
+        """The microphone listening now, as devices.key() names it."""
+        return devices.key(self.capture_device or self.mic_now())
+
+    def per_device(self) -> bool:
+        return bool(self.s("per_device", True))
+
+    def _print_for(self, t: dict, dev: str) -> tuple[dict, str]:
+        """The print to score with: this microphone's own when it's in use (and the dev), else the enrolled one."""
+        if self.per_device() and not devices.enrolled_on(t, dev):
+            d = devices.entry(t, dev)
+            if devices.usable(d):
+                return d["print"], dev  # type: ignore[index]
+        return t, ""
+
+    def device_bank(self) -> tuple[sid.Bank | None, str]:
+        """The impostors heard through a simulated phone channel when they ship for this model, else the plain set."""
+        m = self.model()
+        k = f"{m}-phone"
+        if k not in self._banks:
+            b = sid.read_bank(sid.bank_path(m, "phone"))
+            self._banks[k] = b if b is not None and str(b.meta.get("model_sha256") or "") == self.model_sha() else None
+        b = self._banks[k]
+        return (b, "phone") if b is not None and b.rows else (self.bank(), "plain")
+
+    def _speaker_near(self) -> bool:
+        sp = self.v.speaker
+        try:
+            return bool(sp.busy or sp.holding() or time.monotonic() < sp.until + SPEAKER_TAIL_S)
+        except Exception:
+            return True
+
+    def _bootstrap(self, t: dict, dev: str, e: list, v: sid.Verdict, voices: int | None, speech_s: float) -> None:
+        """A turn through a microphone without its own print, proven his: his face alone in view at that moment, one
+        voice, BOOT_SPEECH_S of speech, nothing of Kurooto's own voice around it. Its vector becomes a sample."""
+        if not self.per_device() or devices.enrolled_on(t, dev) or not devices.learning(devices.entry(t, dev)):
+            return
+        if speech_s < devices.BOOT_SPEECH_S or (voices is not None and voices >= 2):
+            return
+        if self._speaker_near() or not self.face_owner():
+            return
+        self._add_device_sample(dev, e, "face", int(self.s("per_device_per_day", 10)))
+
+    def _add_device_sample(self, dev: str, e: list, how: str, per_day: int) -> bool:
+        with self.lock:
+            t = self.template()
+            if not t or self.problem():
+                return False
+            devs = dict(t.get("devices") or {})
+            d = dict(devs.get(dev) or devices.new())
+            took, _why = devices.add(d, e, how, today(), per_day)
+            if not took:
+                return False
+            devs[dev] = d
+            self._save({**t, "devices": devs})
+            build = devices.due(d) and dev not in self._building
+            if build:
+                self._building.add(dev)
+        self.app.events.emit("voiceid_device_sample", n=len(d["samples"]), how=how)
+        if build:  # off the hearing thread: a turn never waits for it
+            threading.Thread(target=self._build_device, args=(dev,), daemon=True, name="voiceid-device").start()
+        return True
+
+    def _build_device(self, dev: str) -> None:
+        try:
+            with self.lock:
+                t = self.template()
+                if not t or self.problem() or not devices.entry(t, dev):
+                    return
+                d = dict(devices.entry(t, dev) or {})
+            bank, channel = self.device_bank()
+            if bank is None or not bank.rows:
+                return
+            strictness, margin = str(self.s("strictness") or "normal"), float(self.s("margin", 0.05))
+            # outside the lock: a turn's check never waits for the calibration
+            grade = devices.build(d, bank, channel, strictness, margin, float(self.s("threshold", 0.0) or 0.0))
+            if not grade:
+                return
+            with self.lock:
+                t = self.template()
+                now = devices.entry(t, dev) if t else None
+                if not t or now is None or not devices.learning(now):  # forgotten, or answered, meanwhile
+                    return
+                d["samples"] = now.get("samples") or d["samples"]  # any taken meanwhile stay (the next build uses them)
+                ask = d["state"] == "ready" and not d.get("asked")
+                if ask:
+                    d["asked"] = True
+                self._save({**t, "devices": {**(t.get("devices") or {}), dev: d}})
+            self.app.events.emit("voiceid_device_built", grade=grade, samples=int(d["built_n"]), bank=channel)
+            if ask:
+                self._ask_device(dev, d)
+        except Exception as e:
+            self.app.events.emit("voice_failed", part="voice id microphone", error=f"{type(e).__name__}"[:100])
+        finally:
+            self._building.discard(dev)
+
+    def _ask_device(self, dev: str, d: dict) -> None:
+        """The one-time yes: a message with Use it / No (Calm's reason voice.id_device)."""
+        r = (d.get("print") or {}).get("report") or {}
+        self.app.notify(
+            f"Voice ID has learned how you sound through {dev} from {d.get('built_n')} turns it was sure were you "
+            f"(your face alone in view, or you said so); its print there is {r.get('grade', 'fair')}. Use it to know "
+            "you on that microphone? Until you say yes it uses your enrolled print there and doesn't change it. Only "
+            "numbers are kept, sealed like your voice print.",
+            kind="info",
+            why="voice.id_device",
+            setting="voice.speaker_id.per_device",
+            about="Voice ID on another microphone",
+            buttons=[[("Use it", f"vid:{devices.ref(dev)}:devuse"), ("No", f"vid:{devices.ref(dev)}:devno")]],
+        )
+
+    def device_answer(self, which: str, act: str) -> dict:
+        """use / no / forget for a microphone (its name, ref or number in /voice id mics). Typed, a button or the
+        page; never by voice."""
+        with self.lock:
+            t = self.template()
+            if not t or self.problem() in ("locked", "no voice print"):
+                return {"ok": False, "message": "There's no voice print."}
+            devs = dict(t.get("devices") or {})
+            names = list(devs)
+            dev = next((n for n in names if which in (n, devices.ref(n))), None)
+            if dev is None and which.isdigit() and 0 < int(which) <= len(names):
+                dev = names[int(which) - 1]
+            if dev is None:
+                return {"ok": False, "message": "No such microphone: /voice id mics lists them."}
+            d = dict(devs[dev])
+            if act == "forget":
+                devs.pop(dev)
+                msg = f"Forgot what it learned through {dev}; it starts learning there again."
+            elif act == "use":
+                if not (d.get("print") or {}).get("centroid"):
+                    return {"ok": False, "message": f"There's no print for {dev} yet ({len(d.get('samples') or [])} "
+                            f"of {sid.MIN_SAMPLES} turns)."}  # fmt: skip
+                devices.decide(d, True)
+                devs[dev] = d
+                msg = f"It now knows you through {dev} by its own print."
+            elif act == "no":
+                devices.decide(d, False)
+                devs[dev] = d
+                msg = f"Not used, and dropped: it won't learn through {dev} (/voice id mic forget to start again)."
+            else:
+                return {"ok": False, "message": "use, no or forget."}
+            self._save({**t, "devices": devs})
+        self.app.events.emit("voiceid_device", act=act)
+        return {"ok": True, "message": msg}
+
+    def devices_view(self) -> list[dict]:
+        t = self.template() or {}
+        now = self.device() if self.app.is_on("voice") else ""
+        return [devices.view(n, d, now) for n, d in (t.get("devices") or {}).items()]
+
+    def _adapt_device(self, t: dict, dev: str, e: list, v: sid.Verdict, voices: int | None, face: bool = False) -> bool:
+        """Improve over time on a microphone's own print (the same caps, drift guard and undo as the enrolled one's,
+        against the impostors it was built with)."""
+        with self.lock:
+            d = dict(devices.entry(t, dev) or {})
+            pr = dict(d.get("print") or {})
+            if not pr.get("centroid"):
+                return False
+            bank = self.device_bank()[0] if pr.get("bank") == "phone" else self.bank()
+            a = sid.Adapter(bank, str(self.s("strictness") or "normal"), float(self.s("margin", 0.05)),
+                            float(self.s("threshold", 0.0) or 0.0))  # fmt: skip
+            took, why = a.consider(pr, e, v, voices, today(), int(self.s("adapt_per_day", 10)),
+                                   int(self.s("adapt_max", 40)), face=face)  # fmt: skip
+            if took or (why == "drift" and not (d.get("print") or {}).get("drift_stopped")):
+                d["print"] = pr
+                self._save({**t, "devices": {**(t.get("devices") or {}), dev: d}})
+            if took:
+                self.app.events.emit("voiceid_adapted", count=len(pr.get("adapted") or []), device=True)
+            return took
+
+    # ---------------------------------------------------------------------------- "that was me" (0.9.2)
+    def _hold_claim(self, pcm: bytes, e: list, v: sid.Verdict, dev: str, voices: int | None) -> None:
+        """A "not sure" turn: its sound and vector, in memory for claim_s only, for a tap that says it was him."""
+        self._drop_claim()
+        if not self.s("claim", True) or (voices is not None and voices >= 2):
+            return
+        hold = float(self.s("claim_s", 10) or 10)
+        self._claim = {"pcm": bytearray(pcm), "e": list(e), "v": v, "dev": dev, "at": time.monotonic(), "s": hold}
+        tm = threading.Timer(hold + 1.0, self._drop_claim)
+        tm.daemon = True
+        self._claim_timer = tm
+        tm.start()
+
+    def _drop_claim(self) -> None:
+        c, self._claim = self._claim, None
+        if c is not None:
+            c["pcm"][:] = bytes(len(c["pcm"]))  # zeroed, never written anywhere
+        tm, self._claim_timer = self._claim_timer, None
+        if tm is not None and tm is not threading.current_thread():
+            tm.cancel()
+
+    def claim(self) -> tuple[bool, str, bytes | None, float]:
+        """A tap within claim_s of a "not sure" turn, with only his face in view: the turn was his. Its vector may be
+        kept (a microphone's own sample, or "improve over time" under its caps), the claim is counted (claim_per_day)
+        and its sound comes back to be heard again, his: check() hands that sound the owner's verdict once.
+        (ok, why not, the sound, seconds of speech)."""
+        c = self._claim
+        if not self.on() or not self.s("claim", True):
+            return False, "off", None, 0.0
+        if c is None or time.monotonic() - c["at"] > c["s"]:
+            return False, "nothing to claim", None, 0.0
+        if not self.face_owner():
+            return False, "not with only your face in view", None, 0.0
+        with self.lock:
+            t = self.template()
+            if not t or self.problem():
+                return False, "no voice print", None, 0.0
+            dev, day = c["dev"], today()
+            got = dict(t.get("claimed") or {})
+            n = int(got.get("n") or 0) if got.get("day") == day else 0
+            if n >= int(self.s("claim_per_day", 5)):
+                return False, "enough claims for today", None, 0.0
+            self._save({**t, "claimed": {"day": day, "n": n + 1}})
+        self._claim = None
+        v: sid.Verdict = c["v"]
+        e = c["e"]
+        took = False
+        if v.speech_s >= devices.CLAIM_SPEECH_S:
+            t = self.template() or {}
+            _pr, on_dev = self._print_for(t, dev)
+            if self.per_device() and not on_dev and not devices.enrolled_on(t, dev):
+                took = self._add_device_sample(dev, e, "claim", int(self.s("claim_per_day", 5)))
+            elif self.s("adapt"):
+                mine = sid.Verdict(sid.OWNER, CLAIM_WHY, v.score, v.speech_s, v.short, assisted=True)
+                took = self.learn_face((e, mine, None))
+        pcm = bytes(c["pcm"])
+        c["pcm"][:] = bytes(len(c["pcm"]))
+        self._forced = (pcm, sid.Verdict(sid.OWNER, CLAIM_WHY, v.score, v.speech_s, v.short, assisted=True))
+        self.app.events.emit("voiceid_claimed", kept=took)
+        return True, "", pcm, v.speech_s
 
     def others_lately(self) -> int:
         now = time.monotonic()
@@ -465,6 +741,9 @@ class VoiceID:
                 "face": sum(1 for a in adapted if a.get("face")),  # (0.8.13) of them, face-confirmed turns
             },
             "face_assist": bool(self.s("face_assist", True)),
+            "per_device": self.per_device(),  # (0.9.2) per microphone: counts, states, grades; never a vector
+            "devices": self.devices_view(),
+            "claim": bool(self.s("claim", True)),
             "mic": {"enrolled": t.get("mic") or "", "now": self.mic_now() if self.app.is_on("voice") else ""},
             "ready": not missing,
             "missing": missing,
@@ -925,6 +1204,8 @@ class VoiceID:
             self._tpl, self._loaded, self.locked_why = None, True, ""
             self.guest_turns.clear()
             self._face_last = None
+            self._drop_claim()
+            self._forced = None
             self.drop_model()
         learner = getattr(self.v, "learner", None)  # (0.8.13) the gate's learned turns hold Voice ID's scores too
         if learner is not None:
@@ -942,6 +1223,8 @@ class VoiceID:
     def _button(self, ref: str, act: str) -> str:
         if act == "forget":
             return self.forget()[:190]
+        if act in ("devuse", "devno"):  # (0.9.2) a microphone's own print: the one-time yes
+            return self.device_answer(ref, "use" if act == "devuse" else "no")["message"][:190]
         return "Kept."
 
     def add_file(self, path: str) -> dict:

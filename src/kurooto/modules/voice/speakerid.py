@@ -226,8 +226,10 @@ def read_bank(path: Path) -> Bank | None:
     return Bank(meta, kinds, rows)
 
 
-def bank_path(model: str) -> Path:
-    return Path(__file__).resolve().parents[2] / "data" / "voiceid" / f"impostors-{model}.bin"
+def bank_path(model: str, channel: str = "") -> Path:
+    """channel "phone" (0.9.2): the same impostors through a simulated phone channel (tools/voiceid_bank.py)."""
+    tail = f"-{channel}" if channel else ""
+    return Path(__file__).resolve().parents[2] / "data" / "voiceid" / f"impostors-{model}{tail}.bin"
 
 
 # ----------------------------------------------------------------------------------------- calibrate
@@ -239,6 +241,8 @@ CONDITION_WORDS = {
     "calls": "short requests",
     "free": "free speech",
     "other": "added later",
+    "face": "turns with only your face in view",  # (0.9.2) a microphone's own print (devices.py)
+    "claim": "turns you said were you",
 }
 
 
