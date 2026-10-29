@@ -3082,6 +3082,9 @@ works too.
   only within the chapters it's cited in. `INDEX.md` lists every citation and the pages it became, or why not ("not
   found in the book's text"). A whole syllabus pasted as the aim goes by the citations, not its words. A note that
   belongs to another subject (its folder, or `course:` or tags in its header) doesn't come in on the topic's words.
+- **The right chapters (0.9.0).** A book's pages on the topic come from the chapters whose title or section headings
+  name it, or that the class cites, not from the chapter that only says its words most often; neighbouring chapters
+  are kept together, and `INDEX.md` says which chapters were taken and why (and which one was passed over).
 - **What comes to Telegram:** the zip, then the prompt as its own message, ready to copy (it's in the zip too).
 - **Size:** Telegram takes up to 50 MB. With [Drive upload](#drive-upload) on, nothing is left out: a bigger pack comes
   as a temporary Drive link (`drive_upload.temp_days`). Without it, the zip is kept under 50 MB (notes first, then

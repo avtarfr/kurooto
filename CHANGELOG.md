@@ -2,6 +2,10 @@
 
 ## 0.9.0 (unreleased)
 
+- **Study packs take the right chapters of a book** (a fix). A book's pages on a topic come from the chapters whose
+  title or section headings name it, or that the class cites, not from the one that only says its words more often (a
+  several-variables pack took the chapter on series of functions); neighbouring chapters stay together, and INDEX.md
+  says which chapters were taken and why.
 - **One person is one face** (a fix). A smaller face box inside a bigger one (half a face, a reflection in glasses)
   is no longer counted as a second person, which kept "others nearby" flickering and made Kurooto careful with its
   name when you were alone.

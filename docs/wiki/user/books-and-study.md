@@ -237,10 +237,23 @@ only listed in `INDEX.md`; name a topic to get their pages. A book
 Books hasn't read yet can't be cut to its pages, so it stays out too. The AI can do the same when you ask in plain
 words ("send me everything on thermodynamics for my POTA quiz").
 
-Which pages of a book go in, in order: first the readings your class material cites, then whole chapters and sections
-whose titles name the topic (from the book's own bookmarks), then other pages that mention it, those mentioning it most
-first. Lecture files Books hasn't read are judged by Classroom's text of them, and a file that's both in Classroom and
-in your books folder goes in once.
+Which pages of a book go in, in order: first the readings your class material cites, then the chapters the topic is
+in, then other pages that mention it, those mentioning it most first. Lecture files Books hasn't read are judged by
+Classroom's text of them, and a file that's both in Classroom and in your books folder goes in once.
+
+**Which chapters (0.9.0).** A chapter counts as the topic's place by its headings, not by how often its words come up:
+its title naming a topic counts most, then a section heading in it naming one, and the class material citing it; how
+often the words appear only breaks ties. (A pack on functions of several variables once took the chapter on series of
+functions, which says "function" and "differentiation" on every page, instead of the chapter titled for it.) The
+chapters come from the book's bookmarks, else its "Chapter 9" headings, else its numbered headings (9.1, 9.2 …); a
+running head in capitals ("FUNCTIONS OF SEVERAL VARIABLES 213") counts as a heading. Every chapter scoring at least
+half the best one's is taken, neighbouring chapters together; a chapter whose title names the topic (or that the class
+cites) goes in whole. Pages that mention the topic outside those chapters stay out, unless they're about a topic none
+of the chosen chapters names. `INDEX.md` has a **Chapters taken from the books, and why** list: each chapter taken
+("chapter 9 (Functions of Several Variables), pages 204-246 (whole): its title names ...; its headings name ...; 25
+mentions"), a chapter passed over that mentions the topic more ("not chapter 7 ...: 61 mentions, but no title,
+heading or citation puts the topic there"), and how many other pages were left out. A book that shows no chapters is
+picked by its words, as before.
 
 **What the class cites (0.8.13).** Kurooto reads citations in your class material in these forms:
 
