@@ -24,7 +24,8 @@ Another microphone (0.9.2, a fix): the voice print records the names of the micr
 ("mics": voice.listen.device or the system's default source, with voice.audio.backend when it isn't auto; names
 only). When Voice ID listens through one it wasn't enrolled on and has been unsure of most turns (MIC_TURNS long
 enough to judge, more than half unsure), it tells the owner once per microphone (voice.json "mic_told") that the
-print was enrolled on another microphone and `/voice enrol` records it again.
+print was enrolled on another microphone and `/voice enrol` records it again; not with voice.speaker_id.per_device on,
+which learns that microphone and asks him itself.
 
 Per microphone (0.9.2, devices.py; voice.speaker_id.per_device): through a microphone the print wasn't enrolled on,
 turns proven his (his face alone in view, one voice, 2 s of speech; or a "that was me" tap) give that microphone its
@@ -325,6 +326,8 @@ class VoiceID:
         w["n"] += 1
         w["unsure"] += v.decision == sid.UNSURE
         if w["told"] or w["n"] < MIC_TURNS or w["unsure"] * 2 <= w["n"]:
+            return
+        if self.per_device():  # per microphone learns this one from his turns and asks once itself: no second notice
             return
         w["told"] = True
         data = jload(self.v.file, {}) or {}

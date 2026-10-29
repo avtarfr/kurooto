@@ -966,6 +966,7 @@ def test_a_new_microphone_that_leaves_most_turns_unsure_is_told_once(vid, monkey
 
     told = []
     monkeypatch.setattr(vid.app, "notify", lambda text, **kw: told.append((text, kw)))
+    vid.app.settings.set("voice.speaker_id.per_device", False)  # with it on, per microphone asks instead (its own test)
     enrol_owner(vid)
     assert vid.template()["mics"] == ["Test mic"] and vid.template()["mic"] == "Test mic"
     unsure, owner = Verdict("unsure", "not sure", 0.5, 3.0), Verdict("owner", "your voice", 0.9, 3.0)
