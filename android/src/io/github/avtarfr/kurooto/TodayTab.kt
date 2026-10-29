@@ -3,6 +3,16 @@ package io.github.avtarfr.kurooto
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.ToggleButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -155,6 +165,9 @@ fun TodayPane(a: MainActivity, ui: HomeState, room: PaddingValues) {
             if (t.has("study_h")) more.add(Item("Studied today", t.optString("study_h") + " h"))
             if (cam != null) more.add(Item(if (cam.optBoolean("on")) "Laptop camera on" else "Laptop camera off", cam.optString("why")))
             if (more.isNotEmpty()) add("computer", "section") { Section("On your computer", R.drawable.ic_hourglass) { Group(more) } }
+            // (0.9.2) the room mode at the desk (Voice's room modes): only while Voice and room modes are on
+            val roomJ = t.optJSONObject("room")
+            if (roomJ != null) add("room", "section") { Section("Room", R.drawable.ic_volume_up) { RoomChoice(a, roomJ) } }
         }
         add("foot") { Foot(a, ui, d, t) }
     }
@@ -373,6 +386,76 @@ private fun DayStrip(slots: List<Slot>) {
                 }
             }
         }
+    }
+}
+
+private val ROOM_MODES = listOf("alone" to "Alone", "company" to "Company", "night" to "Night", "silent" to "Silent")
+private val ROOM_WHAT = mapOf(
+    "alone" to "As you set it",
+    "company" to "Nothing of yours said aloud by itself",
+    "night" to "Quieter, nothing of yours said aloud by itself",
+    "silent" to "Nothing aloud: answers on screen only",
+)
+
+/** (0.9.2) The room mode: four connected toggle buttons (the one on is filled), what it does and until when. A tap asks
+ *  your computer (BeingAsk, op voice.room) and shows its answer; the next Today copy follows it. A mode ends by itself. */
+@Composable
+private fun RoomChoice(a: MainActivity, room: JSONObject) {
+    var mode by remember(room.optString("mode")) { mutableStateOf(room.optString("mode", "alone")) }
+    var until by remember(room.optString("until")) { mutableStateOf(room.optString("until")) }
+    var note by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
+        ButtonGroup(
+            overflowIndicator = {},
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            ROOM_MODES.forEachIndexed { i, (id, label) ->
+                customItem(
+                    buttonGroupContent = {
+                        val src = remember { MutableInteractionSource() }
+                        ToggleButton(
+                            checked = mode == id,
+                            enabled = !busy,
+                            onCheckedChange = {
+                                if (id != mode) {
+                                    busy = true
+                                    scope.launch {
+                                        val r = withContext(Dispatchers.IO) {
+                                            runCatching { JSONObject(BeingAsk.send(a, "voice.room", JSONObject().put("mode", id).toString())) }.getOrNull()
+                                        }
+                                        busy = false
+                                        if (r != null && r.optBoolean("ok")) {
+                                            mode = r.optString("mode", id)
+                                            until = r.optString("until_hm")
+                                        }
+                                        note = r?.optString("note") ?: "That didn't work."
+                                    }
+                                }
+                            },
+                            shapes = when (i) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                ROOM_MODES.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            },
+                            interactionSource = src,
+                            contentPadding = PaddingValues(horizontal = 6.dp),
+                            modifier = Modifier.weight(1f).animateWidth(src).semantics { role = Role.RadioButton },
+                        ) { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    },
+                    menuContent = {},
+                )
+            }
+        }
+        val what = (ROOM_WHAT[mode] ?: "") + if (mode != "alone" && until.isNotEmpty()) " · until $until" else ""
+        Text(
+            note.ifEmpty { what },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 4.dp),
+        )
     }
 }
 

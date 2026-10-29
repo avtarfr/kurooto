@@ -25,6 +25,16 @@
 - **Face presence doesn't flicker** (a fix). A face far smaller than the biggest in view no longer counts as someone
   here, someone else needs two of their last three frames, and your face stays yours for about two seconds through a
   blurred, unsure or misjudged frame, so "only you in view" (Voice ID's face assist, look to talk) holds steady.
+- **Room modes: alone, company, night, silent** (`voice.room_modes.on`). `/room night` (Telegram, the app's chat, the
+  dashboard), the room button and Hearing panel on the dashboard, Today's Room card in the phone app, "night mode" in
+  your own voice (Voice ID; `voice.room_modes.spoken`), or the Body face. Company keeps your things quiet, night is
+  also quieter (`voice.room_modes.night_db`), silent is on screen only. A mode only tightens, never turns a feature on,
+  and ends by itself.
+- **One output stage for every sound** (a fix): Kokoro, Piper, the "heard you" sound and Gemini Live are levelled to
+  about the same loudness and held under -3 dBFS.
+- **Ears source lost** (`voice.degrade.ears`, off): when the microphone you named goes away, it listens through this
+  computer's own within about two seconds, with that microphone's voice print, and goes back. **Kokoro fails**
+  (`voice.degrade.piper`, on): Piper says the rest, only if it's already set up.
 
 ## 0.9.1 (2026-10-29)
 

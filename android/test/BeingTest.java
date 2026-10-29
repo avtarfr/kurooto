@@ -28,6 +28,8 @@ public final class BeingTest {
         // what the page may ask, and how its arguments are taken
         check(BeingRules.known("settings.set") && BeingRules.known("module") && BeingRules.known("note.get") && BeingRules.known("voice.mute"),
                 "the four requests the being makes");
+        check(BeingRules.known("voice.room") && BeingRules.args("{\"mode\":\"night\"}") != null,
+                "(0.9.2) the room mode, from Today's Room card and the being's Hearing panel");
         check(!BeingRules.known("session.delete") && !BeingRules.known("") && !BeingRules.known(null) && !BeingRules.known("text"), "nothing else");
         check("{}".equals(BeingRules.args(null)) && "{}".equals(BeingRules.args("  ")), "no arguments: an empty object");
         check(BeingRules.args("[1]") == null && BeingRules.args("{\"a\":1") == null, "arguments that aren't an object aren't sent");

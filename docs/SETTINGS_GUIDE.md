@@ -1415,6 +1415,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.addons.listen` | `true` | Let an add-on take one stretch of speech at a time through the microphone (written out here, never sent). ([guide](wiki/user/settings-guide.md#voiceaddonslisten)) |
 | `voice.answers_questions` | `true` | After the greeting's "Want to go through them?", a yes said aloud reads the waiting questions one by one and takes your spoken answers. ([guide](wiki/user/settings-guide.md#voiceanswersquestions)) |
 | `voice.audio.backend` | `"auto"` | How Kurooto plays and records sound: PipeWire's own tools, or the PortAudio library inside Kurooto. ([guide](wiki/user/settings-guide.md#voiceaudiobackend)) |
+| `voice.degrade.ears` | `false` | The microphone you named goes away: listening carries on from this computer's own microphone within about two seconds. ([guide](wiki/user/settings-guide.md#voicedegradeears)) |
+| `voice.degrade.piper` | `true` | Kokoro fails to load or to speak: Piper speaks instead, only when it's already set up. ([guide](wiki/user/settings-guide.md#voicedegradepiper)) |
 | `voice.listen.after_speak_s` | `6` | Seconds after it spoke during which a question counts as an answer to it. ([guide](wiki/user/settings-guide.md#voicelistenafterspeaks)) |
 | `voice.listen.after_talk` | `true` | When a talk at the desk ends, its text goes where a call's does: transcripts, open threads, a line in the day's note. ([guide](wiki/user/settings-guide.md#voicelistenaftertalk)) |
 | `voice.listen.auto_gain` | `true` | Hearing follows the room: speech must stand above its noise, and a quiet voice is evened up. ([guide](wiki/user/settings-guide.md#voicelistenautogain)) |
@@ -1469,6 +1471,12 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.warm_brain` | `true` | When listening starts, get your AI's program ready on this computer. ([guide](wiki/user/settings-guide.md#voicelistenwarmbrain)) |
 | `voice.listen.warm_up` | `true` | When listening starts, warm the transcriber and the voice, so your first turn isn't the slow one. ([guide](wiki/user/settings-guide.md#voicelistenwarmup)) |
 | `voice.mirror_to_chat` | `true` | What Kurooto says aloud by itself also shows in the app's and the dashboard's Chat. ([guide](wiki/user/settings-guide.md#voicemirrortochat)) |
+| `voice.room_modes.company_h` | `3` | Company mode ends by itself after this many hours. ([guide](wiki/user/settings-guide.md#voiceroommodescompanyh)) |
+| `voice.room_modes.night_db` | `-12` | At night every sound Kurooto plays is this much quieter (decibels). ([guide](wiki/user/settings-guide.md#voiceroommodesnightdb)) |
+| `voice.room_modes.night_h` | `10` | Night mode ends at the end of your night hours, or after this many hours without them. ([guide](wiki/user/settings-guide.md#voiceroommodesnighth)) |
+| `voice.room_modes.on` | `true` | Room modes: alone, company, night or silent, set with /room, the dashboard, the phone app or by saying it. ([guide](wiki/user/settings-guide.md#voiceroommodeson)) |
+| `voice.room_modes.silent_h` | `2` | Silent mode ends by itself after this many hours. ([guide](wiki/user/settings-guide.md#voiceroommodessilenth)) |
+| `voice.room_modes.spoken` | `true` | Set a room mode by saying it ("night mode", "go silent", "I'm alone"), in your own voice only. ([guide](wiki/user/settings-guide.md#voiceroommodesspoken)) |
 | `voice.speak.ack` | `"tone"` | While your AI thinks, a short soft sound says Kurooto heard you. ([guide](wiki/user/settings-guide.md#voicespeakack)) |
 | `voice.speak.engine` | `"kokoro"` | The voice made on this computer: Kokoro (natural, about 0.55 GB), Piper (lighter) or off. ([guide](wiki/user/settings-guide.md#voicespeakengine)) |
 | `voice.speak.guests_private` | `false` | With someone else at the desk, an AI answer isn't read aloud by itself: it stays on screen, and a message offers Read it aloud. ([guide](wiki/user/settings-guide.md#voicespeakguestsprivate)) |

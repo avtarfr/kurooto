@@ -66,6 +66,7 @@ CHANGES = {
     "class_skip", "class_attend", "startby_planned", "revision_planned", "plan_block_added", "plan_rescheduled",
     "plan_cleared", "plan_blocks_removed", "plan_reschedule_undone",
     "mind_sleep",  # (0.9.0) asleep or awake: bedside mode says so
+    "voice_room",  # (0.9.2) the room mode: Today's Room card
 }  # fmt: skip
 
 
@@ -115,9 +116,21 @@ class PhoneToday:
             out["waiting"] = waiting
         if self.calls.setting("today_plan"):  # (0.9.0) the day's plan, what to start, the hours studied
             out.update(self._plan(t))
+        room = self._room()
+        if room:
+            out["room"] = room
         if self._asleep():  # (0.9.0) bedside mode says so (Prefs.bedsideToday on the phone); absent while awake
             out["asleep"] = True
         return out
+
+    def _room(self) -> dict | None:
+        """(0.9.2) The room mode for Today's Room card: {"mode", "until"} (until as HH:MM, or ""); absent while Voice
+        or room modes are off."""
+        v = self.app.modules.get("voice")
+        if v is None or not self.app.is_on("voice") or not hasattr(v, "room_status"):
+            return None
+        st = v.room_status()
+        return {"mode": st["mode"], "until": st["until_hm"]} if st.get("on") else None
 
     @staticmethod
     def _plan(t: dict) -> dict:

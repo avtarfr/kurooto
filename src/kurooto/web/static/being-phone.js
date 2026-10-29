@@ -317,6 +317,7 @@ async function api(path, body) {
   if (p === "modules/enable") { const id = (body.ids || [])[0], r = await ask("module", { id, on: true }); return { results: { [id]: { ok: !!(r && r.ok), message: r && r.ok ? r.note : off(r) } } }; }
   if (p === "modules/disable") { const r = await ask("module", { id: body.id, on: false }); return { ok: !!(r && r.ok), message: r && r.ok ? r.note : off(r) }; }
   if (p === "voice/mute") { const r = await ask("voice.mute", {}); if (r && r.ok) { if (PV.voice) PV.voice.muted = !!r.muted; return { muted: !!r.muted, message: r.note || "" }; } return { error: off(r) }; }
+  if (p === "voice/room") { const r = await ask("voice.room", { mode: body.mode }); if (r && r.ok) { const room = Object.assign({}, (PV.voice && PV.voice.room) || { on: true, modes: ["alone", "company", "night", "silent"] }, { mode: r.mode, until_hm: r.until_hm || "", what: "" }); if (PV.voice) PV.voice.room = room; return { ok: true, message: r.note || "", room }; } return { error: off(r) }; } // (0.9.2)
   throw new Error("not on the phone"); // voice/shape (being.js estimates it), open-note (nothing to open it in)
 }
 

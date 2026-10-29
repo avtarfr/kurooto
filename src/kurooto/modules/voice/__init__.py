@@ -64,7 +64,13 @@ he keeps looking; looking away for look_away_s before anything was said closes i
 close_s and follow_s). One look opens it once: after it closes, he looks away and back. Never while Voice is off,
 muted, blocked (a call, the night, paused), on any call, or while Kurooto is asleep; the stretch still goes through
 Voice ID (someone else's voice isn't written out, as when the conversation is closed) and the chatter rules. Only
-two times are kept, in memory (core/nearby.py)."""
+two times are kept, in memory (core/nearby.py).
+
+0.9.2: room modes (room.py, voice.room_modes.on): alone, company, night and silent, each a table that only tightens
+these settings (read through setting()), ending by itself; /room, POST /api/voice/room, the phone app, a phrase in his
+own voice, and room_mode()/set_room_mode() for add-ons. Every sound goes through one output stage (outstage.py:
+levelling, night's gain, a -3 dBFS limiter). voice.degrade (ears.py): the named microphone lost -> this computer's
+default one within about two seconds, and back; Kokoro failing -> Piper, when it's already set up; else captions."""
 
 from __future__ import annotations
 
@@ -83,7 +89,7 @@ from kurooto.core import here, nearby
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Module
-from kurooto.modules.voice import fast
+from kurooto.modules.voice import fast, outstage
 from kurooto.modules.voice import shape as shape_mod
 from kurooto.modules.voice.barge import Barge
 from kurooto.modules.voice.gate import (
@@ -103,6 +109,7 @@ from kurooto.modules.voice.learn import NIGHT_AT, Learner
 from kurooto.modules.voice.live import Live
 from kurooto.modules.voice.parts import KOKORO_VOICES, STT_MODELS, Parts
 from kurooto.modules.voice.portal import Portal
+from kurooto.modules.voice.room import Room
 from kurooto.modules.voice.voiceid import CLAIM_WHY, NO_VOICE, VoiceID
 
 if TYPE_CHECKING:
@@ -243,6 +250,14 @@ register_defaults(
             "claim_s": 10,  # how long after a "not sure" turn a tap can claim it
             "claim_per_day": 5,  # at most this many claims a day
         },
+        "degrade": {
+            # (0.9.2) the microphone named in voice.listen.device goes away (an add-on's phone unplugged): listening
+            # carries on from this computer's default microphone within about two seconds, and goes back when it's back
+            "ears": False,
+            # (0.9.2) Kokoro fails to load or to speak: Piper speaks instead, only when it's already set up (nothing is
+            # fetched); without it, the answers are on screen only
+            "piper": True,
+        },
         "audio": {
             "backend": "auto",  # how sound is played and recorded: auto, pipewire (pw-play/pw-record) or portaudio
         },
@@ -282,6 +297,7 @@ WARM_BRAIN_S = 600  # (warm_brain) at most this often
 FAST_BRAINS = ("same", "local", "fastest")
 TOLD_SPOKE_S = 10.0  # (0.9.0) told off this soon after a line it said by itself: about that line (gate.TOLD_S)
 TALK_MAX = 400  # (after_talk) text lines kept for one conversation at most
+BROKEN_S = 600.0  # (voice.degrade.piper) a speech engine that failed isn't tried again for this long
 UNASKED_S = 600.0  # (mirror_to_chat) a typed turn this soon after an unasked spoken line is told about it
 SAID_YES = re.compile(r"^(?:yes|yeah|yep|sure|ok(?:ay)?|right|go ahead|do it|please do)\b", re.I)  # (0.9.1) spoken_yes
 SAID_NO = re.compile(r"^(?:no|nope|nah|don'?t|not now|cancel|stop)\b", re.I)
@@ -331,10 +347,21 @@ class Speaker:
         if tts is None:
             return False, why
         if not wait:
-            threading.Thread(target=self._speak, args=(tts, text, rate), name="voice-say", daemon=True).start()
+            threading.Thread(target=self._speak_on, args=(tts, text, rate), name="voice-say", daemon=True).start()
             return True, "Speaking."
-        self._speak(tts, text, rate)
+        self._speak_on(tts, text, rate)
         return True, "Spoken."
+
+    def _speak_on(self, tts, text: str, rate: float | None = None) -> None:
+        """(0.9.2, voice.degrade.piper) _speak; when the engine failed part way, what wasn't said yet goes to the next
+        rung (Piper, if it's set up) once; with none, it's on screen already."""
+        self.v.after_failure = ""
+        self._speak(tts, text, rate)
+        rest, self.v.after_failure = self.v.after_failure, ""
+        if rest:
+            alt, _why = self.v.tts()
+            if alt is not None and alt is not tts:
+                self._speak(alt, rest, rate)
 
     def _speak(self, tts, text: str, rate: float | None = None) -> None:
         limit = int(self.v.setting("speak.max_chars") or 800)
@@ -363,10 +390,13 @@ class Speaker:
             base = getattr(tts, "rate", None)
             if rate and base is not None:  # one utterance only: put back below, under the same lock
                 tts.rate = rate
+            made = -1  # (0.9.2) the piece the engine failed to make, if it did
             try:
                 fut = pool.submit(tts.synth, out[0])
                 for i in range(len(out)):
+                    made = i
                     pcm, sr = fut.result()
+                    made = -1
                     fast.stamp(self._turn, "audio")
                     if i + 1 < len(out):
                         fut = pool.submit(tts.synth, out[i + 1])
@@ -381,6 +411,9 @@ class Speaker:
                         break
             except Exception as e:
                 self.v.app.events.emit("voice_failed", part="speaking", error=f"{type(e).__name__}: {e}"[:300])
+                rest = [p for p in out[made:] if p != "The rest is on screen."] if made >= 0 else []
+                if rest and self.v.engine_failed(tts):  # (0.9.2, voice.degrade.piper) the rest, by the next rung
+                    self.v.after_failure = " ".join(rest)
             finally:
                 pool.shutdown(wait=False, cancel_futures=True)
                 if rate and base is not None:
@@ -435,6 +468,9 @@ class Speaker:
     def _play(self, pcm: bytes, sr: int) -> None:
         """One sentence: the newest output that takes it, else this computer's speakers. Runs inside _speak (busy),
         so holding() covers an output's whole play exactly as the Player's."""
+        pcm = self.v.out_stage(pcm, sr)  # (0.9.2) levelling, the room's gain, the limiter; silent: nothing
+        if not pcm:
+            return
         piece = threading.Event()
         if self._cancel.is_set() or self._held.is_set():
             piece.set()
@@ -641,13 +677,111 @@ class Voice(Module):
         # greeting offered, with when
         self.desk_calling: dict | None = None
         self._checkin_offer: tuple[str, float] | None = None
+        self.room = Room(self, app.paths.state / "voice" / "room.json")  # (0.9.2) room modes: room.py
+        self.after_failure = ""  # (0.9.2, voice.degrade.piper) what a failed engine didn't say, for the next rung
+        self._broken: dict[str, float] = {}  # (voice.degrade.piper) engine -> failed at (monotonic)
+        self._alt_tts = None  # (voice.degrade.piper) Piper standing in, loaded once
+        self.voice_rung = ""  # (voice.degrade) "" as chosen, "piper" standing in, "captions" (no voice)
+        self.ears_lost = 0  # (voice.degrade.ears) times the named microphone was lost since start (a count)
+
+    # ------------------------------------------------------------------------------------- 0.9.2: room modes
+    def setting(self, key: str, default=None):
+        """A Voice setting as saved, tightened by the room mode (room.py: a mode never loosens one)."""
+        v = super().setting(key, default)
+        room = getattr(self, "room", None)  # (during __init__ there's none yet)
+        return room.tighten(key, v) if room is not None else v
+
+    def room_mode(self) -> str:
+        """(0.9.2) The add-on hook (the Body face shows it): the room mode now, "alone", "company", "night" or
+        "silent"; "" while room modes are off (voice.room_modes.on). room_status() has the rest (until when, by)."""
+        return self.room.mode() if self.room.on() else ""
+
+    def room_status(self) -> dict:
+        """(0.9.2) {"on", "mode", "label", "what", "until" (a time.time(), or None), "until_hm", "by", "modes",
+        "spoken"}: words and times only (GET /api/voice's "room", the phone's Today)."""
+        return self.room.status()
+
+    def set_room_mode(self, mode: str, source: str = "body", hours: float | None = None) -> bool:
+        """(0.9.2) The add-on hook (the Body face's long-press, which calls it only while Face presence sees the
+        owner): set the room mode, "alone", "company", "night" or "silent"; "" (or "alone") ends one. True when it
+        was set; False for an unknown mode or room modes off. Only tightens, ends by itself (hours, else the mode's
+        own). The event voice_room {mode, by, was} and the pages' voice_room message follow every change."""
+        return self.room.set(mode or "alone", by=source, hours=hours)[0]
+
+    def out_stage(self, pcm: bytes, sr: int) -> bytes:
+        """(0.9.2) Every piece of sound on its way out (outstage.py), with the room's gain; b"" while silent."""
+        try:
+            if self.room.silent():
+                return b""
+            return outstage.process(pcm, sr, self.room.gain_db())
+        except Exception as e:  # a fix must never stop it speaking
+            self.app.events.emit("voice_failed", part="output stage", error=f"{type(e).__name__}"[:100])
+            return pcm
+
+    def _cmd_room(self, msg: Incoming | None, arg: str) -> str:
+        """/room [alone|company|night|silent] [2h|30m]: typed (Telegram, the phone app's chat, the dashboard)."""
+        from kurooto.modules.voice import room as room_mod
+
+        words = (arg or "").strip().split()
+        if not words:
+            st = self.room.status()
+            if not st["on"]:
+                return "Room modes are off (voice.room_modes.on)."
+            head = f"Room: {st['label'].lower()}" + (f" until {st['until_hm']}" if st["until_hm"] else "")
+            return (f"{head} ({st['what']}).\n/room alone, company, night or silent, and a length if you like "
+                    "(/room silent 30m); a mode ends by itself.")  # fmt: skip
+        hours = room_mod.hours_of(words[1]) if len(words) > 1 else None
+        if len(words) > 1 and hours is None:
+            return "/room <mode> [length], e.g. /room night or /room silent 30m"
+        return self.room.set(words[0], by=(getattr(msg, "via", "") or "typed") if msg is not None else "typed",
+                             hours=hours)[1]  # fmt: skip
+
+    # ------------------------------------------------------------------------------------- 0.9.2: degrade
+    def _degrades(self, part: str) -> bool:
+        return bool(super().setting(f"degrade.{part}"))
+
+    def engine_failed(self, tts) -> bool:
+        """(voice.degrade.piper) The engine failed while speaking: not tried again for BROKEN_S. True when there's a
+        next rung to say the rest."""
+        name = getattr(tts, "name", "")
+        if not self._degrades("piper") or name != "kokoro":
+            return False
+        self._broken["kokoro"] = time.monotonic()
+        return True
+
+    def ears_device(self) -> str:
+        """(0.9.2) The microphone listening now: voice.listen.device, or "" (this computer's default) while the named
+        one is lost (voice.degrade.ears). Voice ID uses the print made on this one."""
+        mic = getattr(self.listener, "mic", None) if self.listener is not None else None
+        if mic is not None and getattr(mic, "lost", False):
+            return ""
+        return str(super().setting("listen.device") or "")
+
+    def _ears_changed(self, state: str) -> None:
+        """(voice.degrade.ears) From ears.py's thread: the named microphone lost or back. When and which only."""
+        if state == "lost":
+            self.ears_lost += 1
+        self.app.events.emit("voice_ears", state=state)
+        self.publish("voice_ears", state=state, line=self.degrade_line())
+
+    def degrade_line(self) -> str:
+        """(voice.degrade) The rung it's on, for /voice and /health: "" when everything is as chosen."""
+        out = []
+        mic = getattr(self.listener, "mic", None) if self.listener is not None else None
+        if mic is not None and getattr(mic, "lost", False):
+            out.append("ears source lost: listening through this computer's microphone")
+        if self.voice_rung == "piper":
+            out.append("Kokoro failed: speaking with Piper")
+        elif self.voice_rung == "captions":
+            out.append("no voice: answers on screen only")
+        return "; ".join(out)
 
     # ------------------------------------------------------------------------------------------- the parts
     def wants(self) -> list[str]:
         """The parts the switches as they are need: "pkg:<key>" and "model:<key>" (parts.py)."""
         keys = []
         engine = self.setting("speak.engine") or "kokoro"
-        if self.setting("speak.on") and engine in ("kokoro", "piper"):
+        if super().setting("speak.on") and engine in ("kokoro", "piper"):  # as saved: silent mode needs them later
             keys += ["pkg:audio", f"pkg:{engine}", f"model:{engine}"]
         if self.setting("listen.on"):
             size = self.setting("listen.stt_model") or "base"
@@ -711,6 +845,9 @@ class Voice(Module):
         learned = self.learned_line()
         if learned:
             tail += f"; {learned}"
+        for extra in (self.room.line(), self.degrade_line()):  # (0.9.2) the room mode, the rung it's on
+            if extra:
+                tail += f"; {extra}"
         if not self.setting("listen.on"):
             return f"{speak}; not listening (voice.listen.on is off){tail}"
         if self.blocked_why:
@@ -764,8 +901,44 @@ class Voice(Module):
         if self.parts.missing([f"pkg:{engine}", f"model:{engine}"]):
             return None, f"{engine.capitalize()} isn't set up yet (Features → Voice → Set up)"
         key = (engine, self.setting("speak.voice") or "", float(self.setting("speak.rate") or 1.0))
-        with self._tts_lock:  # (warm_up) loaded once even when the warm-up and a turn ask at the same moment
-            return self._load_tts(engine, key)
+        broke = self._broken.get(engine)
+        if broke is not None and time.monotonic() - broke < BROKEN_S:
+            got, why = None, f"{engine.capitalize()} failed a moment ago"
+        else:
+            self._broken.pop(engine, None)
+            with self._tts_lock:  # (warm_up) loaded once even when the warm-up and a turn ask at the same moment
+                got, why = self._load_tts(engine, key)
+        if got is not None or engine != "kokoro" or not self._degrades("piper"):
+            self.voice_rung = ""
+            return got, why
+        if "didn't load" in why:  # not tried again on every sentence
+            self._broken["kokoro"] = time.monotonic()
+        return self._piper_rung(key, why)
+
+    def _piper_rung(self, key: tuple, why: str):
+        """(0.9.2, voice.degrade.piper) Kokoro can't: Piper, only when it's already set up (nothing is fetched)."""
+        if self.parts.missing(["pkg:piper", "model:piper"]):
+            if self.voice_rung != "captions":
+                self.app.events.emit("voice_rung", rung="captions")
+            self.voice_rung = "captions"
+            return None, why
+        with self._tts_lock:
+            if self._alt_tts is None or getattr(self._alt_tts, "rate", None) != key[2]:
+                try:
+                    self.parts.importable()
+                    from kurooto.modules.voice import audio
+
+                    self._alt_tts = audio.Piper(self.parts.path("en_US-lessac-medium.onnx"), key[2])
+                except Exception as e:
+                    self.app.events.emit("voice_failed", part="piper", error=f"{type(e).__name__}"[:100])
+                    self._alt_tts = None
+        if self._alt_tts is None:
+            self.voice_rung = "captions"
+            return None, why
+        if self.voice_rung != "piper":
+            self.app.events.emit("voice_rung", rung="piper")
+        self.voice_rung = "piper"
+        return self._alt_tts, ""
 
     def _load_tts(self, engine: str, key: tuple):
         if self._tts is None or self._tts_key != key:
@@ -919,6 +1092,16 @@ class Voice(Module):
                 "held": bool(self._face_hold_at),
                 "seen_s": self._face_seen_s(),  # seconds since a face close and facing it was last seen
                 **self.face_counts,
+            },
+            "room": self.room_status(),  # (0.9.2) the room mode: words and times
+            "degrade": {  # (0.9.2) the rung it's on: words and counts
+                "ears": bool(super().setting("degrade.ears")),
+                "piper": bool(super().setting("degrade.piper")),
+                "ears_lost": bool(getattr(getattr(self.listener, "mic", None), "lost", False)),
+                "ears_device": self.ears_device() if self.listener is not None else "",
+                "losses": self.ears_lost,
+                "voice": self.voice_rung or "as chosen",
+                "line": self.degrade_line(),
             },
             "look_to_talk": {  # (0.8.17) words and numbers only
                 "on": bool(s("listen.look_to_talk")),
@@ -1609,6 +1792,9 @@ class Voice(Module):
         (voice.listen.fast_brain), both through the queue's turn_options (core/jobs.py); the turn's times are kept."""
         turn = self._turn_t if self._turn_t is not None else {"end": time.monotonic()}
         self.spoken_why = ""  # (0.9.0) what's said next answers a turn: a stop over it isn't about a kind of line
+        room = self.room.heard(text, who)  # (0.9.2) "night mode", "go silent": his verified turn only
+        if room is not None:
+            return room
         if who is None or who.decision == "owner":  # (0.9.0) "yes" to the greeting's offer of held answers
             held = self.read_held(text)
             if held is not None:
@@ -2319,6 +2505,7 @@ class Voice(Module):
                 if s is not None and self.muted():  # mute ends an enrolment
                     s.command("stop")
                 self.portal.tick()
+                self.room.mode()  # (0.9.2) a mode past its time ends now (its event, the pages told)
                 self.look_tick()
                 self._face_hold()
                 try:
@@ -2358,7 +2545,7 @@ class Voice(Module):
             self._worker = threading.Thread(target=self._work_loop, name="voice-hear", daemon=True)
             self._worker.start()
         self.listener = audio.Listener(
-            audio.Mic(str(self.setting("listen.device") or ""), str(self.setting("audio.backend") or "auto")),
+            self._ears_mic(),
             vad,
             wake,
             on_speech=self._heard_audio,
@@ -2373,6 +2560,18 @@ class Voice(Module):
         self.listener.start()
         self.portal.state("addressed" if self.portal.open else "listening")
         self._warm()
+
+    def _ears_mic(self):
+        """The microphone the listener reads: voice.listen.device; with voice.degrade.ears and a named one, through
+        ears.py, which carries on from this computer's default microphone while the named one is lost."""
+        from kurooto.modules.voice import audio
+
+        dev, how = str(self.setting("listen.device") or ""), str(self.setting("audio.backend") or "auto")
+        if dev and self._degrades("ears"):
+            from kurooto.modules.voice.ears import Ears
+
+            return Ears(dev, how, make=audio.Mic, on_change=self._ears_changed)
+        return audio.Mic(dev, how)
 
     def _stretch_start(self) -> None:
         if self.early is not None:
@@ -2586,7 +2785,13 @@ class Voice(Module):
                 self._cmd,
                 usage="/voice [mute|unmute|stop|say <text>|id [test|retrain|undo today|undo all|mics|forget]|"
                 "enrol [again|stop]]",
-            )
+            ),
+            Command(
+                "room",
+                "Room mode: alone, company, night (quieter) or silent (on screen only); ends by itself",
+                self._cmd_room,
+                usage="/room [alone|company|night|silent] [2h|30m]",
+            ),
         ]
 
     def callbacks(self) -> dict:

@@ -1004,7 +1004,8 @@ class Api:
         return 404, {"error": "not found"}
 
     def _voice(self, action: str, b: dict) -> tuple[int, dict]:
-        """POST voice/say {text}, voice/mute {on: true|false, or none to flip}, voice/stop, voice/shape {text}."""
+        """POST voice/say {text}, voice/mute {on: true|false, or none to flip}, voice/stop, voice/shape {text},
+        (0.9.2) voice/room {mode, hours?}."""
         v = self.app.modules.get("voice")
         if v is None:
             return 404, {"error": "no Voice here"}
@@ -1021,6 +1022,14 @@ class Api:
         if action == "stop":
             v.speaker.stop()
             return 200, {"ok": True, "message": "Stopped speaking."}
+        if action == "room":  # (0.9.2) the room mode: {mode: alone|company|night|silent, hours?} (voice/room.py)
+            hours = b.get("hours")
+            try:
+                hours = None if hours in (None, "") else float(hours)
+            except (TypeError, ValueError):
+                return 400, {"error": "hours must be a number"}
+            ok, message = v.room.set(str(b.get("mode") or ""), by=str(b.get("by") or "dashboard")[:20], hours=hours)
+            return 200, {"ok": ok, "message": message, "room": v.room_status()}
         return 404, {"error": "not found"}
 
     def _voice_id(self, vid, action: str, b: dict) -> tuple[int, dict]:

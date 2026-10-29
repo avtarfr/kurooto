@@ -345,6 +345,28 @@ def test_the_beings_mute_goes_through_the_dashboards_voice_mute(chat, monkeypatc
     assert code == 403 and len(calls) == 1  # only the paired phone, sealed
 
 
+def test_the_room_mode_goes_through_the_dashboards_voice_room(chat, monkeypatch):
+    """0.9.2: Today's Room card (op voice.room) is the dashboard's POST /api/voice/room; only the paired phone."""
+    from kurooto.web.api import Api
+
+    calls = []
+
+    def fake_post(self, path, b):
+        calls.append((path, b))
+        room = {"mode": "night", "until_hm": "07:00"}
+        if path != "voice/room":
+            return 404, {}
+        return 200, {"ok": True, "message": "Night mode until 07:00.", "room": room}
+
+    monkeypatch.setattr(Api, "post", fake_post)
+    got = opened(chat, send(chat, op="voice.room", args={"mode": "night"})[1])
+    want = {"ok": True, "op": "voice.room", "mode": "night", "until_hm": "07:00", "note": "Night mode until 07:00."}
+    assert got == want
+    assert calls == [("voice/room", {"mode": "night", "by": "phone"})]
+    code, out, _ = send(chat, sealed=False, op="voice.room", args={"mode": "silent"})
+    assert code == 403 and len(calls) == 1
+
+
 def test_session_turns_are_forgotten_with_the_rest(chat):
     from kurooto.core import retention
 

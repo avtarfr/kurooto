@@ -151,7 +151,7 @@ window.beingMount = async function (host, opts) {
   .being .bp details{border-bottom:1px solid ${P.mute}26;padding:4px 0}.being .bp summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center}
   .being .bp pre{white-space:pre-wrap;font:11px/1.5 ui-monospace,monospace;color:${P.ink};max-height:52vh;overflow:auto}.being .bp button.b{background:transparent;color:${P.ink};border:1px solid ${P.mute}66;border-radius:99px;padding:4px 12px;cursor:pointer;font:inherit}
   .being .tip{position:absolute;z-index:5;pointer-events:none;background:${P.bg}e6;border:1px solid ${P.mute}55;border-radius:8px;padding:4px 8px;display:none;max-width:280px}
-  .being .hints{right:118px!important}.being .bmode{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:4;display:none;border:1px solid ${P.mute}88;border-radius:99px;overflow:hidden;background:${P.bg}cc}
+  .being .hints{right:118px!important}.being .room{right:212px!important}.being .grow .rm{background:transparent;color:inherit;border:1px solid ${P.mute}88;border-radius:99px;padding:2px 9px;margin-left:4px;cursor:pointer;font:500 11px Inter,sans-serif}.being .grow .rm.on{background:${P.ink};color:${P.bg}}.being .bmode{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:4;display:none;border:1px solid ${P.mute}88;border-radius:99px;overflow:hidden;background:${P.bg}cc}
   .being .bmode button{background:transparent;color:${P.mute};border:0;padding:5px 14px;font:500 11px Inter,sans-serif;cursor:pointer}.being .bmode button.on{background:${P.ink};color:${P.bg}}.being .mute{position:absolute;right:14px;top:14px;z-index:4;background:${P.bg};color:${P.ink};border:1px solid ${P.mute}88;border-radius:99px;padding:5px 14px;cursor:pointer;font:500 11px Inter,sans-serif}
   .being .mute.on{background:${P.ink};color:${P.bg}}`;
   if (PH) css.textContent += PH.css(P); // phone: the bottom sheet, bigger buttons
@@ -163,8 +163,10 @@ window.beingMount = async function (host, opts) {
   const muteB = document.createElement("button"); muteB.className = "mute"; muteB.textContent = "● MUTE";
   const modeB = document.createElement("div"); modeB.className = "bmode"; modeB.innerHTML = ["solid", "cut", "xray"].map((m) => `<button data-mode="${m}">${{ solid: "Solid", cut: "Cutaway", xray: "X-ray" }[m]}</button>`).join("");
   const hintsB = document.createElement("button"); hintsB.className = "mute hints"; hintsB.title = "the hints on the being: what to click, what each part is (H; look.being_hints)";
-  host.append(gl, ov, panel, tip, muteB, hintsB, modeB);
-  if (OM) for (const el of [muteB, hintsB, modeB]) el.style.visibility = "hidden"; // the app has its own controls
+  // (0.9.2) the room mode's quick toggle: shows the mode (lit when it isn't alone), a click goes to the next one
+  const roomB = document.createElement("button"); roomB.className = "mute room"; roomB.textContent = "● ALONE"; roomB.style.display = "none";
+  host.append(gl, ov, panel, tip, muteB, hintsB, modeB, roomB);
+  if (OM) for (const el of [muteB, hintsB, modeB, roomB]) el.style.visibility = "hidden"; // the app has its own controls
   // the hints (look.being_hints, H): the lines under each name, how to turn it, the colours' key, the rings on features
   let HINTS = opts.hints !== false;
   function setHints(v, save) {
@@ -925,8 +927,27 @@ window.beingMount = async function (host, opts) {
   async function voiceRows() {
     try { VOICE = await api("voice"); } catch { VOICE = null; }
     if (!VOICE || VOICE.error) return `<div class="s">Voice isn't on this install yet (Features → Voice).</div>`;
-    const v = VOICE; return `<div class="grow"><span>voice</span><span>${v.on ? esc(v.state || (v.listening ? "listening" : "on")) : "off"}</span></div><div class="grow"><span>listening</span><span>${v.listening ? "yes" : "no"}${v.why ? ` (${esc(v.why)})` : ""}</span></div><div class="grow"><span>portal</span><span>${v.portal ? "open: it's talking with you" : "closed"}</span></div><div class="grow"><span>muted</span><span>${v.muted ? "yes" : "no"}</span></div>${v.speak ? `<div class="grow"><span>speaks with</span><span>${esc(v.speak.engine || "")} ${esc(v.speak.voice || "")}</span></div>` : ""}${v.line ? `<div class="s">${esc(v.line)}</div>` : ""}`;
+    const v = VOICE; return `<div class="grow"><span>voice</span><span>${v.on ? esc(v.state || (v.listening ? "listening" : "on")) : "off"}</span></div><div class="grow"><span>listening</span><span>${v.listening ? "yes" : "no"}${v.why ? ` (${esc(v.why)})` : ""}</span></div><div class="grow"><span>portal</span><span>${v.portal ? "open: it's talking with you" : "closed"}</span></div><div class="grow"><span>muted</span><span>${v.muted ? "yes" : "no"}</span></div>${v.speak ? `<div class="grow"><span>speaks with</span><span>${esc(v.speak.engine || "")} ${esc(v.speak.voice || "")}</span></div>` : ""}${roomRow(v.room)}${v.line ? `<div class="s">${esc(v.line)}</div>` : ""}`;
   }
+  // (0.9.2) room modes: alone, company, night, silent (POST /api/voice/room); each ends by itself
+  const ROOM_MODES = ["alone", "company", "night", "silent"];
+  function roomRow(r) {
+    if (!r || !r.on) return "";
+    return `<div class="grow"><span>room</span><span>${ROOM_MODES.map((m) => `<button class="rm${r.mode === m ? " on" : ""}" data-room="${m}">${m}</button>`).join("")}</span></div><div class="s">${esc(r.what || "")}${r.until_hm ? ` · until ${esc(r.until_hm)}` : ""}</div>`;
+  }
+  function roomShow(r) {
+    if (!r || !r.on) { roomB.style.display = "none"; return; }
+    roomB.style.display = ""; roomB.classList.toggle("on", r.mode !== "alone"); roomB.textContent = `● ${String(r.mode || "alone").toUpperCase()}`;
+    roomB.title = `room mode: ${r.what || ""}${r.until_hm ? ` (until ${r.until_hm})` : ""}. Click for the next one; each ends by itself.`;
+  }
+  async function roomSet(mode) {
+    let r = null; try { r = await api("voice/room", { mode }); } catch { /* below */ }
+    if (!r || r.error) { roomB.title = "Voice isn't on this install"; return; }
+    roomShow(r.room); roomB.title = r.message || roomB.title;
+    if (PANEL_SENSE === "hearing") showSense("hearing");
+  }
+  roomB.onclick = () => { const v = VOICE && VOICE.room; const i = ROOM_MODES.indexOf(v ? v.mode : "alone"); roomSet(ROOM_MODES[(i + 1) % ROOM_MODES.length]); };
+  panel.addEventListener("click", (e) => { const b = e.target.closest("[data-room]"); if (b) roomSet(b.dataset.room); });
   async function showSense(k) {
     PICKED = k; const r = SENSES[k];
     subFocus({ kind: "sense", key: k, org: "senses", d: { sight: 2.7, heat: 2.3, touch: 1.9, hearing: 1.8, balance: 1.5 }[k], pos: () => wpos(senses.organs[k]), from: () => wpos(senses.organs[k]).sub(V(0, .25, 1)) }); let live = "";
@@ -964,7 +985,7 @@ window.beingMount = async function (host, opts) {
   }
 
   /* ===================== mute, and what you say ===================== */
-  async function muteState() { try { const v = await api("voice"); if (v.error) throw 0; VOICE = v; muteB.classList.toggle("on", !!v.muted); muteB.textContent = v.muted ? "● MUTED" : "● MUTE"; muteB.title = v.listening ? "it's listening; mute stops it hearing and speaking" : "Voice isn't listening"; } catch { muteB.title = "Voice isn't on this install yet (Features → Voice)"; muteB.style.opacity = .5; } }
+  async function muteState() { try { const v = await api("voice"); if (v.error) throw 0; VOICE = v; roomShow(v.room); muteB.classList.toggle("on", !!v.muted); muteB.textContent = v.muted ? "● MUTED" : "● MUTE"; muteB.title = v.listening ? "it's listening; mute stops it hearing and speaking" : "Voice isn't listening"; } catch { muteB.title = "Voice isn't on this install yet (Features → Voice)"; muteB.style.opacity = .5; } }
   muteB.onclick = async () => { let r = null; try { r = await api("voice/mute", {}); } catch { /* below */ } if (!r || r.error) { muteB.textContent = "● Voice isn't on this install"; setTimeout(() => (muteB.textContent = "● MUTE"), 2500); return; } muteB.classList.toggle("on", !!r.muted); muteB.textContent = r.muted ? "● MUTED" : "● MUTE"; muteB.title = r.message || ""; };
   muteState();
   async function typed(text, who) { LANES[who === "kurooto" ? "me" : "you"] = { text, s: await shape(text), t: NOW, typed: true }; if (who === "kurooto") mind.fire("speak", NOW, 8); else { senses.hit.hearing = NOW; LIVE.settled = NOW; } } // the talk box (home.js)
@@ -1139,7 +1160,7 @@ window.beingMount = async function (host, opts) {
     if (m.kind === "voice_speak" && m.samples) LANES.me = { text: "", s: m.samples, t: NOW };
     // speech heard that wasn't a turn (chatter, or not to it): only its loudness, never words; drawn dimmer
     if (m.kind === "voice_heard" && Array.isArray(m.samples) && m.samples.length) { LANES.you = { text: "", s: m.samples.slice(0, 120).map((x) => Math.max(0, Math.min(1, +x || 0))), t: NOW, heard: true }; senses.hit.hearing = NOW; LIVE.settled = NOW; }
-    if (m.kind === "voice_state") muteState();
+    if (m.kind === "voice_state" || m.kind === "voice_room") muteState();
     if (m.kind === "voice_level" && m.levels) { liveIn(m); senses.level = Math.max(senses.level || 0, ...m.levels.map(Number).filter(isFinite)); if (REST.on && senses.level > .15 && NOW - REST.heard > .4) { REST.heard = NOW; mind.fire("hear", NOW, 1); } }
   }
   function face(m) { // Face presence (t:"face"): where faces are in the camera's frame (places, an owner flag), nothing else
